@@ -1,5 +1,4 @@
 # Retribution v1.4.0
-#### Note: Re-save your missions in DCS' Mission Editor to avoid possible crashes due to datalink (usually the case when F-16C blk50s are used) when hosting missions on a dedicated server.
 
 ## Features/Improvements
 * **[Payload Editor]** Ability to configure liveries on flight/flight-member level
