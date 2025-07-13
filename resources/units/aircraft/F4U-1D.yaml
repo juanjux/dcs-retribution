@@ -1,4 +1,6 @@
 always_keeps_gun: true
+carrier_capable: true
+lha_capable: true
 description: # From Wikipedia, the free encyclopedia
   The Vought F4U Corsair is an American fighter aircraft that saw service primarily in World War II and the Korean War.
   Designed and initially manufactured by Chance Vought, the Corsair was soon in great demand;
