@@ -242,7 +242,8 @@ class ThreatZones:
 
         for tgo in air_defenses:
             for group in tgo.groups:
-                threat_range = group.max_threat_range()
+                # cap threat-range at 400km, otherwise it can cause issues wrt NavMesh calculations
+                threat_range = min(group.max_threat_range(), meters(400000))
                 # Any system with a shorter range than this is not worth
                 # even avoiding.
                 if threat_range > nautical_miles(3):
