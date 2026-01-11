@@ -21,6 +21,7 @@
 * **[Modding]** Add Airboss Moose Module
 * **[AirWing]** Use aircraft display names for easier differentiation between modules
 * **[Campaign]** Add ability to define livery overrides also for JTAC units
+* **[Campaign]** Pretense generator now applies ground unit livery overrides to zone groups as well, such as SAM sites
 * **[Plugins]** Added BigEye EWR Script
 * **[Modding]** Update CurrentHill Russia Assets Pack to 2.0.0
 * **[UI]** Add campaign name to retribution window name
