@@ -337,3 +337,4 @@ class GeneratorOptions(QtWidgets.QWizardPage):
         )
         self.tornado_adv.setChecked(s.get("tornado_adv", False))
         self.vsnf35.setChecked(s.get("vsnf35", False))
+        self.f111c.setChecked(s.get("f111c", False))
