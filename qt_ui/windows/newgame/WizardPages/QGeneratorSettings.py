@@ -178,8 +178,8 @@ class GeneratorOptions(QtWidgets.QWizardPage):
         self.registerField("mam", self.mam)
         self.tornado_adv = QtWidgets.QCheckBox()
         self.registerField("tornado_adv", self.tornado_adv)
-        self.VSN_F35 = QtWidgets.QCheckBox()
-        self.registerField("VSN_F35", self.VSN_F35)
+        self.vsnf35 = QtWidgets.QCheckBox()
+        self.registerField("vsnf35", self.vsnf35)
         self.f111c = QtWidgets.QCheckBox()
         self.registerField("f111c", self.f111c)
 
@@ -227,7 +227,7 @@ class GeneratorOptions(QtWidgets.QWizardPage):
             ("F-15I Ra'am (v1.0 by IDF Mods Project)", self.f_15_idf),
             ("F-16I Sufa & F-16D (v3.6 by IDF Mods Project)", self.f_16_idf),
             ("F-22A Raptor (v2.0.0 released May 2025)", self.f22_raptor),
-            {"F-35A/B/C Lightning II (v2.9.2.103 FC3 EFM)", self.VSN_F35},
+            ("F-35A/B/C Lightning II (v2.9.2.103 FC3 EFM)", self.vsnf35),
             ("F-4B/C Phantom II (2.8.7.204)", self.f4bc_phantom),
             ("F-84G Thunderjet (v2.5.7.01)", self.f84g_thunderjet),
             ("F-111C Aardvark (Warpig Production v2.260103)", self.f111c),
@@ -336,4 +336,4 @@ class GeneratorOptions(QtWidgets.QWizardPage):
             s.get("ukrainemilitaryassetspack", False)
         )
         self.tornado_adv.setChecked(s.get("tornado_adv", False))
-        self.VSN_F35.setChecked(s.get("VSN_F35", False))
+        self.vsnf35.setChecked(s.get("vsnf35", False))
