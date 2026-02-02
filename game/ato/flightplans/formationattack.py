@@ -29,7 +29,7 @@ class FormationAttackFlightPlan(FormationFlightPlan, ABC):
     @property
     def package_speed_waypoints(self) -> set[FlightWaypoint]:
         return {
-            self.layout.ingress,
+            self.layout.join,
             self.layout.split,
         } | set(self.layout.targets)
 
