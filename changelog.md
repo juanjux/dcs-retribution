@@ -8,6 +8,7 @@
 * **[Layouts]** Add signature to layouts' binary file for automatic reloading of updated layouts.
 * **[Modding]** Add support for Su-35S mod (v2.0.27b)
 * **[Plugins]** Update EW Script to version 2.1
+* **[Options]** New option to spawn TACAN beacons at captured airfields
 
 ## Fixes
 * **[Performance]** Improved robustness w.r.t. state.json handling to avoid corruption and thus save loss.
