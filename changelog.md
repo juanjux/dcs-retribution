@@ -9,6 +9,7 @@
 * **[Modding]** Add support for Su-35S mod (v2.0.27b)
 * **[Plugins]** Update EW Script to version 2.1
 * **[Options]** New option to spawn TACAN beacons at captured airfields
+* **[AirWing]** Show aircraft and pilot counts in the squadron list, and per-squadron aircraft stats (initial/current/destroyed/purchased), pilot level, and alive-first pilot ordering in the squadron dialog
 
 ## Fixes
 * **[Performance]** Improved robustness w.r.t. state.json handling to avoid corruption and thus save loss.

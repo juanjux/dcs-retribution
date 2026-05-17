@@ -53,7 +53,9 @@ class PilotDelegate(TwoColumnRowDelegate):
             missions = "missions" if flown != 1 else "mission"
             return f"{flown} {missions} flown"
         elif (row, column) == (1, 0):
-            return "Player" if pilot.player else "AI"
+            who = "Player" if pilot.player else "AI"
+            skill = self.squadron_model.squadron.pilot_skill(pilot)
+            return f"{who} - Level: {skill.value}"
         elif (row, column) == (1, 1):
             return pilot.status.value
         return ""
@@ -270,6 +272,10 @@ class SquadronDialog(QDialog):
         self.livery_selector = SquadronLiverySelector(self.squadron_model.squadron)
         left_column.addWidget(self.livery_selector)
 
+        left_column.addWidget(QLabel("Aircraft"))
+        self.aircraft_stats_label = QLabel(self._aircraft_stats_text())
+        left_column.addWidget(self.aircraft_stats_label)
+
         auto_assigned_tasks = AutoAssignedTaskControls(squadron_model)
         left_column.addLayout(auto_assigned_tasks)
 
@@ -318,6 +324,15 @@ class SquadronDialog(QDialog):
     @property
     def squadron(self) -> Squadron:
         return self.squadron_model.squadron
+
+    def _aircraft_stats_text(self) -> str:
+        s = self.squadron
+        return (
+            f"Initial: {s.initial_aircraft}\n"
+            f"Current: {s.owned_aircraft}\n"
+            f"Destroyed: {s.destroyed_aircraft}\n"
+            f"Purchased: {s.purchased_aircraft}"
+        )
 
     def _instant_relocate(self, destination: ControlPoint) -> None:
         self.squadron.relocate_to(destination)

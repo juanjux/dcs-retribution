@@ -508,9 +508,17 @@ class SquadronModel(QAbstractListModel):
         """Returns the icon that should be displayed for the pilot."""
         return None
 
+    def ordered_pilots(self) -> list[Pilot]:
+        """Squadron roster ordered for display: alive pilots first.
+
+        Stable within each group so the underlying roster order (used by game
+        logic) is preserved among alive pilots and among dead pilots.
+        """
+        return sorted(self.squadron.current_roster, key=lambda p: not p.alive)
+
     def pilot_at_index(self, index: QModelIndex) -> Pilot:
         """Returns the pilot located at the given index."""
-        return self.squadron.pilot_at_index(index.row())
+        return self.ordered_pilots()[index.row()]
 
     def toggle_ai_state(self, index: QModelIndex) -> None:
         pilot = self.pilot_at_index(index)
