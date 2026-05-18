@@ -35,7 +35,7 @@ from qt_ui.windows.newgame.WizardPages.QFactionSelection import QFactionUnits
 
 class SquadronDelegate(TwoColumnRowDelegate):
     def __init__(self, air_wing_model: AirWingModel) -> None:
-        super().__init__(rows=3, columns=2, font_size=12)
+        super().__init__(rows=2, columns=2, font_size=12)
         self.air_wing_model = air_wing_model
 
     @staticmethod
@@ -55,17 +55,13 @@ class SquadronDelegate(TwoColumnRowDelegate):
         elif (row, column) == (1, 0):
             return squadron.location.name
         elif (row, column) == (1, 1):
+            pilots = len(squadron.living_pilots)
             aircraft = squadron.owned_aircraft
-            pilots = squadron.number_of_pilots_including_inactive
+            unassigned = squadron.untasked_aircraft
             return (
-                f"{aircraft} aircraft, "
-                f"{pilots} {'pilot' if pilots == 1 else 'pilots'}"
+                f"{pilots} {'pilot' if pilots == 1 else 'pilots'}, "
+                f"{aircraft} aircraft ({unassigned} unassigned)"
             )
-        elif (row, column) == (2, 1):
-            active = len(squadron.active_pilots)
-            available = len(squadron.available_pilots)
-            on_leave = len(squadron.pilots_on_leave)
-            return f"{active} active, {available} unassigned, {on_leave} on leave"
         return ""
 
 
