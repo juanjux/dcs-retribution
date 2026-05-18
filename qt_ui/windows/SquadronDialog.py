@@ -3,6 +3,7 @@ from copy import deepcopy
 from typing import Callable, Iterator, Optional, Type
 
 from PySide6.QtCore import QItemSelection, QItemSelectionModel, QModelIndex, Qt
+from PySide6.QtGui import QColor, QPalette
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QApplication,
@@ -13,6 +14,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QListView,
     QPushButton,
+    QScrollArea,
     QVBoxLayout,
     QInputDialog,
     QLineEdit,
@@ -117,7 +119,7 @@ class SquadronDestinationComboBox(QComboBox):
         self.theater = theater
         #: Bases with squadrons that don't fit, collected while building the
         #: combo so the dialog can show a single consolidated warning.
-        self.parking_overflow: dict[str, list[Squadron]] = {}
+        self.parking_overflow: dict[str, list[tuple[Squadron, str]]] = {}
 
         parking_type = ParkingType().from_squadron(squadron)
         room = squadron.location.unclaimed_parking(parking_type)
@@ -218,7 +220,13 @@ class SquadronDestinationComboBox(QComboBox):
                         if slot:
                             slot.unit_id = id(s) + count
                         else:
-                            overflow.append(s)
+                            if s.aircraft.helicopter:
+                                pk_label = "rotary-wing"
+                            elif s.aircraft.lha_capable:
+                                pk_label = "STOL/ground-spawn"
+                            else:
+                                pk_label = "fixed-wing"
+                            overflow.append((s, pk_label))
                             break
             if overflow:
                 self.parking_overflow[cp.name] = list(overflow)
@@ -258,6 +266,8 @@ class SquadronDialog(QDialog):
             squadron_model.squadron, pilot_filter="dead"
         )
         self.sim_controller = sim_controller
+        self.theater = theater
+        self._child_dialogs: list[QDialog] = []
 
         self.setMinimumSize(1000, 440)
         self.setWindowTitle(str(squadron_model.squadron))
@@ -384,27 +394,72 @@ class SquadronDialog(QDialog):
         overflow = self.transfer_destination.parking_overflow
         if not overflow:
             return
-        lines = []
-        for cp_name, squadrons in overflow.items():
-            lines.append(f"<b>{cp_name}</b>:<br/>")
-            for s in squadrons:
-                lines.append(f"&nbsp;&nbsp;{s.name} - {s.aircraft.variant_id}<br/>")
-            lines.append("<br/>")
-        box = QMessageBox(self)
-        box.setIcon(QMessageBox.Icon.Warning)
-        box.setWindowTitle("Insufficient parking space detected!")
-        box.setTextFormat(Qt.TextFormat.RichText)
-        box.setText(
+        self._overflow_squadrons: dict[str, Squadron] = {}
+        lines = [
             "Insufficient parking space was detected at the following "
             "bases:<br/><br/>"
-            + "".join(lines)
-            + "Consider moving these squadrons to a different airfield to "
+        ]
+        for cp_name, entries in overflow.items():
+            lines.append(f"<b>{cp_name}</b>:<br/>")
+            for s, pk_label in entries:
+                href = str(s.id)
+                self._overflow_squadrons[href] = s
+                lines.append(
+                    f'&nbsp;&nbsp;<a href="{href}"><b><u>{s.name}</u></b></a>'
+                    f" - {s.aircraft.variant_id} "
+                    f"(no free {pk_label} parking space)<br/>"
+                )
+            lines.append("<br/>")
+        lines.append(
+            "Consider moving these squadrons to a different airfield to "
             "avoid possible air-starts."
         )
-        box.setWindowModality(Qt.WindowModality.NonModal)
-        box.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, True)
-        self._parking_warning = box
-        box.show()
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Insufficient parking space detected!")
+        dialog.setWindowModality(Qt.WindowModality.NonModal)
+        dialog.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, True)
+        layout = QVBoxLayout()
+
+        label = QLabel("".join(lines))
+        label.setTextFormat(Qt.TextFormat.RichText)
+        label.setTextInteractionFlags(
+            Qt.TextInteractionFlag.TextBrowserInteraction
+        )
+        label.setOpenExternalLinks(False)
+        # Default Qt link blue is nearly unreadable on the dark theme.
+        link_palette = label.palette()
+        link_palette.setColor(QPalette.ColorRole.Link, QColor("#E0E0E0"))
+        label.setPalette(link_palette)
+        label.linkActivated.connect(self._open_overflow_squadron)
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setWidget(label)
+        layout.addWidget(scroll)
+
+        ok_button = QPushButton("OK")
+        ok_button.clicked.connect(dialog.close)
+        layout.addWidget(ok_button, alignment=Qt.AlignmentFlag.AlignRight)
+
+        dialog.setLayout(layout)
+        dialog.resize(520, 360)
+        self._parking_warning = dialog
+        dialog.show()
+
+    def _open_overflow_squadron(self, href: str) -> None:
+        squadron = self._overflow_squadrons.get(href)
+        if squadron is None:
+            return
+        dialog = SquadronDialog(
+            self.ato_model,
+            SquadronModel(squadron),
+            self.theater,
+            self.sim_controller,
+            self,
+        )
+        self._child_dialogs.append(dialog)
+        dialog.show()
 
     @property
     def squadron(self) -> Squadron:

@@ -203,13 +203,16 @@ class UnitTransactionFrame(QFrame, Generic[TransactionItemType]):
 
         existing_count = self.current_quantity_of(item)
 
-        unitName = ClickableLabel(
-            f"<b>{self.display_name_of(item, multiline=True)}</b>"
-        )
+        display = self.display_name_of(item, multiline=True)
+        clickable = self.supports_item_dialog()
+        if clickable:
+            unitName = ClickableLabel(f"<b><u>{display}</u></b>")
+        else:
+            unitName = ClickableLabel(f"<b>{display}</b>")
         unitName.setSizePolicy(
             QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         )
-        if self.supports_item_dialog():
+        if clickable:
             unitName.set_on_click(lambda: self.on_item_clicked(item))
 
         existing_units = QLabel(self.existing_units_text(item, existing_count))
