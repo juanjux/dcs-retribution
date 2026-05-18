@@ -53,9 +53,13 @@ class PilotDelegate(TwoColumnRowDelegate):
             missions = "missions" if flown != 1 else "mission"
             return f"{flown} {missions} flown"
         elif (row, column) == (1, 0):
-            return "Player" if pilot.player else "AI"
+            who = "Player" if pilot.player else "AI"
+            skill = self.squadron_model.squadron.pilot_skill(pilot)
+            return f"{who} - Level: {skill.value}"
         elif (row, column) == (1, 1):
-            return pilot.status.value
+            # Dead pilots have their own list and living pilots are active by
+            # default, so only the "on leave" state is worth surfacing here.
+            return pilot.status.value if pilot.on_leave else ""
         return ""
 
 
@@ -242,6 +246,12 @@ class SquadronDialog(QDialog):
         super().__init__(parent)
         self.ato_model = ato_model
         self.squadron_model = squadron_model
+        # The main list (and the action buttons) operate on living pilots only;
+        # dead pilots get their own read-only list below.
+        self.squadron_model.pilot_filter = "living"
+        self.dead_squadron_model = SquadronModel(
+            squadron_model.squadron, pilot_filter="dead"
+        )
         self.sim_controller = sim_controller
 
         self.setMinimumSize(1000, 440)
@@ -273,11 +283,19 @@ class SquadronDialog(QDialog):
         auto_assigned_tasks = AutoAssignedTaskControls(squadron_model)
         left_column.addLayout(auto_assigned_tasks)
 
+        right_column = QVBoxLayout()
+        columns.addLayout(right_column)
+
+        right_column.addWidget(QLabel("Pilots"))
         self.pilot_list = PilotList(squadron_model)
         self.pilot_list.selectionModel().selectionChanged.connect(
             self.on_selection_changed
         )
-        columns.addWidget(self.pilot_list)
+        right_column.addWidget(self.pilot_list, stretch=3)
+
+        right_column.addWidget(QLabel("Killed in action"))
+        self.dead_pilot_list = PilotList(self.dead_squadron_model)
+        right_column.addWidget(self.dead_pilot_list, stretch=1)
 
         button_panel = QHBoxLayout()
 
