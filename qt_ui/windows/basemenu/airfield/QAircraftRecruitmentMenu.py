@@ -3,6 +3,7 @@ from typing import Set
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QGridLayout,
+    QGroupBox,
     QHBoxLayout,
     QLabel,
     QScrollArea,
@@ -60,6 +61,28 @@ class QAircraftRecruitmentMenu(UnitTransactionFrame[Squadron]):
         scroll.setWidget(scroll_content)
         main_layout.addLayout(self.hangar_status)
         main_layout.addWidget(scroll)
+
+        incoming = sorted(
+            (
+                s
+                for s in cp.coalition.air_wing.iter_squadrons()
+                if s.destination == cp
+            ),
+            key=lambda s: (s.aircraft.display_name, s.name),
+        )
+        if incoming:
+            transfer_box = QGroupBox("Units transferring here in the next turn")
+            transfer_layout = QVBoxLayout()
+            for s in incoming:
+                transfer_layout.addWidget(
+                    QLabel(
+                        f"{s.name} ({s.aircraft.display_name}) - "
+                        f"{s.owned_aircraft} aircraft from {s.location.name}"
+                    )
+                )
+            transfer_box.setLayout(transfer_layout)
+            main_layout.addWidget(transfer_box)
+
         self.setLayout(main_layout)
 
     def sell_tooltip(self, is_enabled: bool) -> str:
@@ -76,9 +99,15 @@ class QAircraftRecruitmentMenu(UnitTransactionFrame[Squadron]):
         self.hangar_status.update_label()
 
     def existing_units_text(self, item: Squadron, count: int) -> str:
-        return f"{count} ({item.untasked_aircraft} idle)"
+        text = f"{count} ({item.untasked_aircraft} idle)"
+        if item.destination is not None:
+            text += f" - transfer ordered to {item.destination.name}"
+        return text
 
     def supports_item_dialog(self) -> bool:
+        return True
+
+    def stacked_existing_units(self) -> bool:
         return True
 
     def on_item_clicked(self, item: Squadron) -> None:
