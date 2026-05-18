@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import logging
 from enum import Enum
-from typing import Generic, TypeVar
+from typing import Callable, Generic, Optional, TypeVar
 
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QMouseEvent
 from PySide6.QtWidgets import (
     QApplication,
     QFrame,
@@ -28,6 +29,26 @@ from qt_ui.windows.QUnitInfoWindow import QUnitInfoWindow
 class RecruitType(Enum):
     BUY = 0
     SELL = 1
+
+
+class ClickableLabel(QLabel):
+    """A QLabel that invokes a callback when left-clicked."""
+
+    def __init__(self, text: str) -> None:
+        super().__init__(text)
+        self._on_click: Optional[Callable[[], None]] = None
+
+    def set_on_click(self, callback: Callable[[], None]) -> None:
+        self._on_click = callback
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+
+    def mousePressEvent(self, event: QMouseEvent) -> None:
+        if (
+            self._on_click is not None
+            and event.button() == Qt.MouseButton.LeftButton
+        ):
+            self._on_click()
+        super().mousePressEvent(event)
 
 
 TransactionItemType = TypeVar("TransactionItemType")
@@ -136,6 +157,18 @@ class UnitTransactionFrame(QFrame, Generic[TransactionItemType]):
     def price_of(self, item: TransactionItemType) -> int:
         return self.purchase_adapter.price_of(item)
 
+    def existing_units_text(self, item: TransactionItemType, count: int) -> str:
+        """Text for the current-quantity label. Subclasses may add detail."""
+        return str(count)
+
+    def supports_item_dialog(self) -> bool:
+        """Whether clicking an item's name opens a detail dialog."""
+        return False
+
+    def on_item_clicked(self, item: TransactionItemType) -> None:
+        """Handle a click on an item's name. No-op unless overridden."""
+        return None
+
     @property
     def budget(self) -> float:
         return self.game_model.game.blue.budget
@@ -158,14 +191,18 @@ class UnitTransactionFrame(QFrame, Generic[TransactionItemType]):
         existLayout.setSizeConstraint(QLayout.SizeConstraint.SetMinimumSize)
         exist.setLayout(existLayout)
 
-        existing_units = self.current_quantity_of(item)
+        existing_count = self.current_quantity_of(item)
 
-        unitName = QLabel(f"<b>{self.display_name_of(item, multiline=True)}</b>")
+        unitName = ClickableLabel(
+            f"<b>{self.display_name_of(item, multiline=True)}</b>"
+        )
         unitName.setSizePolicy(
             QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         )
+        if self.supports_item_dialog():
+            unitName.set_on_click(lambda: self.on_item_clicked(item))
 
-        existing_units = QLabel(str(existing_units))
+        existing_units = QLabel(self.existing_units_text(item, existing_count))
         existing_units.setSizePolicy(
             QSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         )
