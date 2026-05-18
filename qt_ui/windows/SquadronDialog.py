@@ -190,7 +190,15 @@ class SquadronDestinationComboBox(QComboBox):
             )
             free_ground_spawns = cp.total_aircraft_parking(parking_type)
 
-            for s in cp.squadrons:
+            # Squadrons that will actually occupy this base next turn:
+            # those staying here (not relocating away) plus any relocating in.
+            occupants = [s for s in cp.squadrons if s.destination is None]
+            occupants += [
+                s
+                for s in cp.coalition.air_wing.iter_squadrons()
+                if s.destination == cp
+            ]
+            for s in occupants:
                 for count in range(s.owned_aircraft):
                     is_heli = s.aircraft.helicopter
                     is_vtol = not is_heli and s.aircraft.lha_capable
@@ -312,6 +320,9 @@ class SquadronDialog(QDialog):
             purchase_row.addStretch()
             left_column.addLayout(purchase_row)
 
+            self.parking_slots_label = QLabel()
+            left_column.addWidget(self.parking_slots_label)
+
             self._refresh_aircraft_controls()
 
         auto_assigned_tasks = AutoAssignedTaskControls(squadron_model)
@@ -424,6 +435,13 @@ class SquadronDialog(QDialog):
         )
         self.price_label.setText(
             f"$ {self.purchase_adapter.price_of(self.squadron)} M"
+        )
+        parking_type = ParkingType().from_squadron(self.squadron)
+        free_slots = self.squadron.location.unclaimed_parking(parking_type)
+        self.parking_slots_label.setText(
+            f"{free_slots} additional parking "
+            f"{'slot' if free_slots == 1 else 'slots'} available at "
+            f"{self.squadron.location}"
         )
         can_buy = self.purchase_adapter.can_buy(self.squadron)
         self.buy_aircraft_button.setEnabled(can_buy)
