@@ -1,3 +1,5 @@
+from copy import deepcopy
+
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QCloseEvent, QPixmap
 from PySide6.QtWidgets import (
@@ -14,6 +16,7 @@ from PySide6.QtWidgets import (
 from game import Game
 from game.ato.flighttype import FlightType
 from game.config import RUNWAY_REPAIR_COST
+from game.dcs.aircrafttype import AircraftType
 from game.radio.ICLSContainer import ICLSContainer
 from game.radio.RadioFrequencyContainer import RadioFrequencyContainer
 from game.radio.TacanContainer import TacanContainer
@@ -286,13 +289,119 @@ class QBaseMenu2(QDialog):
         self.repair_button.setVisible(False)
         self.repair_button.setDisabled(True)
 
+    def _parking_categories(self) -> "dict[str, dict[str, int]] | None":
+        """Estimate per-category parking usage by simulating slot allocation.
+
+        The data model only tracks aircraft counts, not which slot each one
+        occupies, so this replicates the placement priority used elsewhere to
+        attribute aircraft to slot categories. The split is an estimate.
+        """
+        airport = self.cp.dcs_airport
+        if airport is None:
+            return None
+
+        pt_rotary = ParkingType(rotary_wing=True)
+        pt_stol = ParkingType(fixed_wing_stol=True)
+        slots = list(self.cp.parking_slots)
+        totals = {
+            "shared": len([s for s in slots if s.helicopter and s.airplanes]),
+            "fixed": len([s for s in slots if s.airplanes and not s.helicopter]),
+            "rotary": len([s for s in slots if s.helicopter and not s.airplanes])
+            + self.cp.total_aircraft_parking(pt_rotary),
+            "ground": self.cp.total_aircraft_parking(pt_stol),
+        }
+        counts: dict[str, dict[str, int]] = {
+            c: {"present": 0, "transferring": 0, "ordered": 0}
+            for c in ("shared", "fixed", "rotary", "ground")
+        }
+
+        ap = deepcopy(airport)
+        free_helipads = self.cp.total_aircraft_parking(pt_rotary)
+        free_ground = self.cp.total_aircraft_parking(pt_stol)
+        ground_start = self.cp.coalition.game.settings.ground_start_ai_planes
+
+        def place(aircraft: AircraftType, phase: str) -> None:
+            nonlocal free_helipads, free_ground
+            is_heli = aircraft.helicopter
+            is_vtol = not is_heli and aircraft.lha_capable
+            ground_ok = aircraft.flyable or ground_start
+            if free_helipads > 0 and is_heli:
+                free_helipads -= 1
+                counts["rotary"][phase] += 1
+            elif free_ground > 0 and (is_heli or is_vtol or ground_ok):
+                free_ground -= 1
+                counts["ground"][phase] += 1
+            else:
+                slot = ap.free_parking_slot(aircraft.dcs_unit_type)
+                if slot is None:
+                    return
+                slot.unit_id = 1
+                if slot.helicopter and slot.airplanes:
+                    counts["shared"][phase] += 1
+                elif slot.airplanes:
+                    counts["fixed"][phase] += 1
+                else:
+                    counts["rotary"][phase] += 1
+
+        staying = [s for s in self.cp.squadrons if s.destination is None]
+        incoming = [
+            s
+            for s in self.cp.coalition.air_wing.iter_squadrons()
+            if s.destination == self.cp
+        ]
+        for s in staying:
+            for _ in range(s.owned_aircraft):
+                place(s.aircraft, "present")
+        for s in incoming:
+            for _ in range(s.owned_aircraft):
+                place(s.aircraft, "transferring")
+        for s in staying + incoming:
+            for _ in range(max(s.pending_deliveries, 0)):
+                place(s.aircraft, "ordered")
+
+        result: dict[str, dict[str, int]] = {}
+        for c, total in totals.items():
+            occ = counts[c]["present"]
+            tr = counts[c]["transferring"]
+            od = counts[c]["ordered"]
+            result[c] = {
+                "total": total,
+                "occupied": occ,
+                "transferring": tr,
+                "ordered": od,
+                "free": max(total - occ - tr - od, 0),
+            }
+        return result
+
+    @staticmethod
+    def _parking_line(label: str, data: dict[str, int]) -> str:
+        parts = [
+            f"{data['occupied']} occupied",
+            f"{data['transferring']} transferring",
+        ]
+        if data["ordered"]:
+            parts.append(f"{data['ordered']} ordered")
+        parts.append(f"{data['free']} free")
+        return f"{data['total']} {label} ({', '.join(parts)})"
+
     def update_intel_summary(self) -> None:
         parking_type_all = ParkingType(
             fixed_wing=True, fixed_wing_stol=True, rotary_wing=True
         )
 
-        aircraft = self.cp.allocated_aircraft(parking_type_all).total_present
+        air_alloc = self.cp.allocated_aircraft(parking_type_all)
+        aircraft = air_alloc.total_present
         parking = self.cp.total_aircraft_parking(parking_type_all)
+        air_transferring = air_alloc.total_transferring
+        air_ordered = air_alloc.total_ordered
+        air_free = max(parking - aircraft - air_transferring - air_ordered, 0)
+        air_parts = [
+            f"{aircraft} occupied",
+            f"{air_transferring} transferring",
+        ]
+        if air_ordered:
+            air_parts.append(f"{air_ordered} ordered")
+        air_parts.append(f"{air_free} free")
 
         parking_type_fixed_wing = ParkingType(
             fixed_wing=True, fixed_wing_stol=False, rotary_wing=False
@@ -319,27 +428,28 @@ class QBaseMenu2(QDialog):
             deployable_unit_info = (
                 f" (Up to {ground_unit_limit} deployable, {unit_overage} reserve)"
             )
-        fixed_wing_airfield_parking = [
-            slot
-            for slot in self.cp.parking_slots
-            if slot.airplanes and not slot.helicopter
-        ]
-        rotary_wing_airfield_parking = [
-            slot
-            for slot in self.cp.parking_slots
-            if slot.helicopter and not slot.airplanes
-        ]
-        mixed_parking = [
-            slot for slot in self.cp.parking_slots if slot.helicopter and slot.airplanes
-        ]
+        breakdown = self._parking_categories()
+        if breakdown is not None:
+            parking_lines = [
+                self._parking_line(
+                    "shared fixed/rotary capable parking", breakdown["shared"]
+                ),
+                self._parking_line("fixed-wing exclusive parking", breakdown["fixed"]),
+                self._parking_line(
+                    "rotary-wing exclusive parking", breakdown["rotary"]
+                ),
+                self._parking_line("ground spawns", breakdown["ground"]),
+            ]
+        else:
+            parking_lines = [
+                f"{ground_spawn_parking} ground spawns",
+                f"{helipads} helipads",
+            ]
         self.intel_summary.setText(
             "\n".join(
                 [
-                    f"{aircraft}/{parking} aircraft",
-                    f"{len(fixed_wing_airfield_parking)} fixed-wing only parking",
-                    f"{len(rotary_wing_airfield_parking) + helipads} rotary-wing only parking",
-                    f"{len(mixed_parking)} mixed parking",
-                    f"{ground_spawn_parking} ground spawns",
+                    f"{aircraft}/{parking} aircraft " f"({', '.join(air_parts)})",
+                    *parking_lines,
                     f"{self.cp.base.total_armor} ground units" + deployable_unit_info,
                     f"{allocated.total_transferring} more ground units en route, {allocated.total_ordered} ordered",
                     str(self.cp.runway_status),
