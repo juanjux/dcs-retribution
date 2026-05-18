@@ -5,6 +5,7 @@ from typing import Callable, Iterator, Optional, Type
 from PySide6.QtCore import QItemSelection, QItemSelectionModel, QModelIndex, Qt
 from PySide6.QtWidgets import (
     QAbstractItemView,
+    QApplication,
     QCheckBox,
     QComboBox,
     QDialog,
@@ -23,6 +24,7 @@ from game.ato.flightplans.custom import CustomFlightPlan
 from game.ato.flighttype import FlightType
 from game.ato.flightwaypointtype import FlightWaypointType
 from game.dcs.aircrafttype import AircraftType
+from game.purchaseadapter import AircraftPurchaseAdapter, TransactionError
 from game.server import EventStream
 from game.sim import GameUpdateEvents
 from game.squadrons import Pilot, Squadron
@@ -31,6 +33,7 @@ from qt_ui.delegates import TwoColumnRowDelegate
 from qt_ui.errorreporter import report_errors
 from qt_ui.models import AtoModel, SquadronModel
 from qt_ui.simcontroller import SimController
+from qt_ui.windows.GameUpdateSignal import GameUpdateSignal
 from qt_ui.widgets.combos.QSquadronLiverySelector import SquadronLiverySelector
 from qt_ui.widgets.combos.primarytaskselector import PrimaryTaskSelector
 
@@ -57,7 +60,9 @@ class PilotDelegate(TwoColumnRowDelegate):
             skill = self.squadron_model.squadron.pilot_skill(pilot)
             return f"{who} - Level: {skill.value}"
         elif (row, column) == (1, 1):
-            return pilot.status.value
+            # Dead pilots have their own list and living pilots are active by
+            # default, so only the "on leave" state is worth surfacing here.
+            return pilot.status.value if pilot.on_leave else ""
         return ""
 
 
@@ -110,6 +115,9 @@ class SquadronDestinationComboBox(QComboBox):
         super().__init__()
         self.squadron = squadron
         self.theater = theater
+        #: Bases with squadrons that don't fit, collected while building the
+        #: combo so the dialog can show a single consolidated warning.
+        self.parking_overflow: dict[str, list[Squadron]] = {}
 
         parking_type = ParkingType().from_squadron(squadron)
         room = squadron.location.unclaimed_parking(parking_type)
@@ -165,9 +173,8 @@ class SquadronDestinationComboBox(QComboBox):
                 continue
             yield control_point
 
-    @staticmethod
     def calculate_parking_slots(
-        cp: ControlPoint, dcs_unit_type: Type[FlyingType]
+        self, cp: ControlPoint, dcs_unit_type: Type[FlyingType]
     ) -> int:
         if cp.dcs_airport:
             ap = deepcopy(cp.dcs_airport)
@@ -206,17 +213,9 @@ class SquadronDestinationComboBox(QComboBox):
                             overflow.append(s)
                             break
             if overflow:
-                overflow_msg = ""
-                for s in overflow:
-                    overflow_msg += f"{s.name} - {s.aircraft.variant_id}<br/>"
-                QMessageBox.warning(
-                    None,
-                    "Insufficient parking space detected!",
-                    f"Insufficient parking space was detected at {cp.name}:<br/><br/>"
-                    f"{overflow_msg}<br/>"
-                    f"Consider moving these squadrons to different airfield "
-                    "to avoid possible air-starts.",
-                )
+                self.parking_overflow[cp.name] = list(overflow)
+            else:
+                self.parking_overflow.pop(cp.name, None)
             return (
                 len(ap.free_parking_slots(dcs_unit_type))
                 + free_helicopter_slots
@@ -244,6 +243,12 @@ class SquadronDialog(QDialog):
         super().__init__(parent)
         self.ato_model = ato_model
         self.squadron_model = squadron_model
+        # The main list (and the action buttons) operate on living pilots only;
+        # dead pilots get their own read-only list below.
+        self.squadron_model.pilot_filter = "living"
+        self.dead_squadron_model = SquadronModel(
+            squadron_model.squadron, pilot_filter="dead"
+        )
         self.sim_controller = sim_controller
 
         self.setMinimumSize(1000, 440)
@@ -259,6 +264,10 @@ class SquadronDialog(QDialog):
         left_column = QVBoxLayout()
         columns.addLayout(left_column)
 
+        left_column.addWidget(
+            QLabel(f"Aircraft: {self.squadron_model.squadron.aircraft.display_name}")
+        )
+
         left_column.addWidget(QLabel("Primary task"))
         self.primary_task_selector = PrimaryTaskSelector.for_squadron(
             self.squadron_model.squadron
@@ -272,18 +281,55 @@ class SquadronDialog(QDialog):
         self.livery_selector = SquadronLiverySelector(self.squadron_model.squadron)
         left_column.addWidget(self.livery_selector)
 
-        left_column.addWidget(QLabel("Aircraft"))
+        left_column.addWidget(QLabel("Aircraft inventory"))
         self.aircraft_stats_label = QLabel(self._aircraft_stats_text())
         left_column.addWidget(self.aircraft_stats_label)
+
+        # Buying aircraft is only meaningful for the player's own squadrons.
+        if self.squadron.player.is_blue:
+            self.purchase_adapter: AircraftPurchaseAdapter = AircraftPurchaseAdapter(
+                self.squadron.location
+            )
+
+            purchase_row = QHBoxLayout()
+            self.sell_aircraft_button = QPushButton("-")
+            self.sell_aircraft_button.setProperty("style", "btn-sell")
+            self.sell_aircraft_button.setMaximumWidth(28)
+            self.sell_aircraft_button.clicked.connect(self.sell_aircraft)
+            purchase_row.addWidget(self.sell_aircraft_button)
+
+            self.on_order_label = QLabel()
+            purchase_row.addWidget(self.on_order_label)
+
+            self.buy_aircraft_button = QPushButton("+")
+            self.buy_aircraft_button.setProperty("style", "btn-buy")
+            self.buy_aircraft_button.setMaximumWidth(28)
+            self.buy_aircraft_button.clicked.connect(self.buy_aircraft)
+            purchase_row.addWidget(self.buy_aircraft_button)
+
+            self.price_label = QLabel()
+            purchase_row.addWidget(self.price_label)
+            purchase_row.addStretch()
+            left_column.addLayout(purchase_row)
+
+            self._refresh_aircraft_controls()
 
         auto_assigned_tasks = AutoAssignedTaskControls(squadron_model)
         left_column.addLayout(auto_assigned_tasks)
 
+        right_column = QVBoxLayout()
+        columns.addLayout(right_column)
+
+        right_column.addWidget(QLabel("Pilots"))
         self.pilot_list = PilotList(squadron_model)
         self.pilot_list.selectionModel().selectionChanged.connect(
             self.on_selection_changed
         )
-        columns.addWidget(self.pilot_list)
+        right_column.addWidget(self.pilot_list, stretch=3)
+
+        right_column.addWidget(QLabel("Killed in action"))
+        self.dead_pilot_list = PilotList(self.dead_squadron_model)
+        right_column.addWidget(self.dead_pilot_list, stretch=1)
 
         button_panel = QHBoxLayout()
 
@@ -321,6 +367,34 @@ class SquadronDialog(QDialog):
             self.toggle_leave_button, alignment=Qt.AlignmentFlag.AlignRight
         )
 
+        self._warn_parking_overflow()
+
+    def _warn_parking_overflow(self) -> None:
+        overflow = self.transfer_destination.parking_overflow
+        if not overflow:
+            return
+        lines = []
+        for cp_name, squadrons in overflow.items():
+            lines.append(f"<b>{cp_name}</b>:<br/>")
+            for s in squadrons:
+                lines.append(f"&nbsp;&nbsp;{s.name} - {s.aircraft.variant_id}<br/>")
+            lines.append("<br/>")
+        box = QMessageBox(self)
+        box.setIcon(QMessageBox.Icon.Warning)
+        box.setWindowTitle("Insufficient parking space detected!")
+        box.setTextFormat(Qt.TextFormat.RichText)
+        box.setText(
+            "Insufficient parking space was detected at the following "
+            "bases:<br/><br/>"
+            + "".join(lines)
+            + "Consider moving these squadrons to a different airfield to "
+            "avoid possible air-starts."
+        )
+        box.setWindowModality(Qt.WindowModality.NonModal)
+        box.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, True)
+        self._parking_warning = box
+        box.show()
+
     @property
     def squadron(self) -> Squadron:
         return self.squadron_model.squadron
@@ -333,6 +407,62 @@ class SquadronDialog(QDialog):
             f"Destroyed: {s.destroyed_aircraft}\n"
             f"Purchased: {s.purchased_aircraft}"
         )
+
+    @staticmethod
+    def _purchase_amount() -> int:
+        modifiers = QApplication.keyboardModifiers()
+        if modifiers == Qt.KeyboardModifier.ShiftModifier:
+            return 10
+        if modifiers == Qt.KeyboardModifier.ControlModifier:
+            return 5
+        return 1
+
+    def _refresh_aircraft_controls(self) -> None:
+        self.aircraft_stats_label.setText(self._aircraft_stats_text())
+        self.on_order_label.setText(
+            f"On order: {self.squadron.pending_deliveries}"
+        )
+        self.price_label.setText(
+            f"$ {self.purchase_adapter.price_of(self.squadron)} M"
+        )
+        can_buy = self.purchase_adapter.can_buy(self.squadron)
+        self.buy_aircraft_button.setEnabled(can_buy)
+        self.buy_aircraft_button.setToolTip(
+            "Buy aircraft. Use Shift or Ctrl to buy 10 or 5 at once."
+            if can_buy
+            else "Cannot buy: insufficient budget, parking or squadron capacity."
+        )
+        can_sell = self.purchase_adapter.can_sell_or_cancel(self.squadron)
+        self.sell_aircraft_button.setEnabled(can_sell)
+        self.sell_aircraft_button.setToolTip(
+            "Sell aircraft. Use Shift or Ctrl to sell 10 or 5 at once."
+            if can_sell
+            else "Cannot sell: no idle aircraft or pending orders."
+        )
+
+    def buy_aircraft(self) -> None:
+        try:
+            self.purchase_adapter.buy(self.squadron, self._purchase_amount())
+        except TransactionError as ex:
+            logging.exception("Aircraft purchase failed")
+            QMessageBox.warning(
+                self, "Purchase failed", str(ex), QMessageBox.StandardButton.Ok
+            )
+        finally:
+            self._refresh_aircraft_controls()
+            GameUpdateSignal.get_instance().updateBudget(self.ato_model.game)
+
+    def sell_aircraft(self) -> None:
+        try:
+            self.purchase_adapter.sell(self.squadron, self._purchase_amount())
+        except TransactionError as ex:
+            logging.exception("Aircraft sale failed")
+            QMessageBox.warning(
+                self, "Sale failed", str(ex), QMessageBox.StandardButton.Ok
+            )
+        finally:
+            self._refresh_aircraft_controls()
+            GameUpdateSignal.get_instance().updateBudget(self.ato_model.game)
 
     def _instant_relocate(self, destination: ControlPoint) -> None:
         self.squadron.relocate_to(destination)
