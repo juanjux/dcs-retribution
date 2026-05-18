@@ -11,8 +11,9 @@
 * **[Options]** New option to spawn TACAN beacons at captured airfields
 * **[AirWing]** Squadron list rows show living-pilot, aircraft and unassigned counts, plus a "transfer ordered to X" indicator
 * **[AirWing]** Squadron dialog shows the aircraft type, an aircraft inventory (initial/current/destroyed/purchased), pilot level, a separate killed-in-action pilot list, and buy/sell aircraft controls with price, on-order count and available parking slots
-* **[AirWing]** Insufficient-parking warnings are consolidated into a single non-modal dialog instead of one blocking popup per base
+* **[AirWing]** Insufficient-parking warnings are consolidated into a single non-modal dialog that names the missing parking type and links each squadron to its dialog
 * **[AirWing]** Airfield Command shows idle aircraft per squadron and a "transfer ordered to X" indicator, lists units transferring in next turn, and lets you open a squadron's dialog by clicking its name
+* **[BaseMenu]** Base intel summary shows aircraft occupied/transferring/free and counts shared (mixed) slots as fixed- and rotary-wing capable parking, instead of a misleading "0 fixed-wing only" when only shared slots exist
 
 ## Fixes
 * **[AirWing]** Squadron transfer-destination parking now accounts for already-ordered incoming transfers, matching the Airfield Command hangar count
