@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
     QListView,
     QPushButton,
     QVBoxLayout,
+    QApplication,
     QInputDialog,
     QLineEdit,
     QMessageBox,
@@ -23,6 +24,7 @@ from game.ato.flightplans.custom import CustomFlightPlan
 from game.ato.flighttype import FlightType
 from game.ato.flightwaypointtype import FlightWaypointType
 from game.dcs.aircrafttype import AircraftType
+from game.purchaseadapter import AircraftPurchaseAdapter, TransactionError
 from game.server import EventStream
 from game.sim import GameUpdateEvents
 from game.squadrons import Pilot, Squadron
@@ -31,6 +33,7 @@ from qt_ui.delegates import TwoColumnRowDelegate
 from qt_ui.errorreporter import report_errors
 from qt_ui.models import AtoModel, SquadronModel
 from qt_ui.simcontroller import SimController
+from qt_ui.windows.GameUpdateSignal import GameUpdateSignal
 from qt_ui.widgets.combos.QSquadronLiverySelector import SquadronLiverySelector
 from qt_ui.widgets.combos.primarytaskselector import PrimaryTaskSelector
 
@@ -267,6 +270,10 @@ class SquadronDialog(QDialog):
         left_column = QVBoxLayout()
         columns.addLayout(left_column)
 
+        left_column.addWidget(
+            QLabel(f"Aircraft: {self.squadron_model.squadron.aircraft.display_name}")
+        )
+
         left_column.addWidget(QLabel("Primary task"))
         self.primary_task_selector = PrimaryTaskSelector.for_squadron(
             self.squadron_model.squadron
@@ -279,6 +286,42 @@ class SquadronDialog(QDialog):
         left_column.addWidget(QLabel("Livery"))
         self.livery_selector = SquadronLiverySelector(self.squadron_model.squadron)
         left_column.addWidget(self.livery_selector)
+
+        left_column.addWidget(QLabel("Aircraft inventory"))
+        self.aircraft_stats_label = QLabel(self._aircraft_stats_text())
+        left_column.addWidget(self.aircraft_stats_label)
+
+        # Buying aircraft is only meaningful for the player's own squadrons.
+        if self.squadron.player.is_blue:
+            self.purchase_adapter: AircraftPurchaseAdapter = AircraftPurchaseAdapter(
+                self.squadron.location
+            )
+
+            purchase_row = QHBoxLayout()
+            self.sell_aircraft_button = QPushButton("-")
+            self.sell_aircraft_button.setProperty("style", "btn-sell")
+            self.sell_aircraft_button.setMaximumWidth(28)
+            self.sell_aircraft_button.clicked.connect(self.sell_aircraft)
+            purchase_row.addWidget(self.sell_aircraft_button)
+
+            self.on_order_label = QLabel()
+            purchase_row.addWidget(self.on_order_label)
+
+            self.buy_aircraft_button = QPushButton("+")
+            self.buy_aircraft_button.setProperty("style", "btn-buy")
+            self.buy_aircraft_button.setMaximumWidth(28)
+            self.buy_aircraft_button.clicked.connect(self.buy_aircraft)
+            purchase_row.addWidget(self.buy_aircraft_button)
+
+            self.price_label = QLabel()
+            purchase_row.addWidget(self.price_label)
+            purchase_row.addStretch()
+            left_column.addLayout(purchase_row)
+
+            self.parking_slots_label = QLabel()
+            left_column.addWidget(self.parking_slots_label)
+
+            self._refresh_aircraft_controls()
 
         auto_assigned_tasks = AutoAssignedTaskControls(squadron_model)
         left_column.addLayout(auto_assigned_tasks)
@@ -336,6 +379,74 @@ class SquadronDialog(QDialog):
     @property
     def squadron(self) -> Squadron:
         return self.squadron_model.squadron
+
+    def _aircraft_stats_text(self) -> str:
+        s = self.squadron
+        return (
+            f"Initial: {s.initial_aircraft}\n"
+            f"Current: {s.owned_aircraft}\n"
+            f"Destroyed: {s.destroyed_aircraft}\n"
+            f"Purchased: {s.purchased_aircraft}"
+        )
+
+    @staticmethod
+    def _purchase_amount() -> int:
+        modifiers = QApplication.keyboardModifiers()
+        if modifiers == Qt.KeyboardModifier.ShiftModifier:
+            return 10
+        if modifiers == Qt.KeyboardModifier.ControlModifier:
+            return 5
+        return 1
+
+    def _refresh_aircraft_controls(self) -> None:
+        self.aircraft_stats_label.setText(self._aircraft_stats_text())
+        self.on_order_label.setText(f"On order: {self.squadron.pending_deliveries}")
+        self.price_label.setText(f"$ {self.purchase_adapter.price_of(self.squadron)} M")
+        parking_type = ParkingType().from_squadron(self.squadron)
+        free_slots = self.squadron.location.unclaimed_parking(parking_type)
+        self.parking_slots_label.setText(
+            f"{free_slots} additional parking "
+            f"{'slot' if free_slots == 1 else 'slots'} available at "
+            f"{self.squadron.location}"
+        )
+        can_buy = self.purchase_adapter.can_buy(self.squadron)
+        self.buy_aircraft_button.setEnabled(can_buy)
+        self.buy_aircraft_button.setToolTip(
+            "Buy aircraft. Use Shift or Ctrl to buy 10 or 5 at once."
+            if can_buy
+            else "Cannot buy: insufficient budget, parking or squadron capacity."
+        )
+        can_sell = self.purchase_adapter.can_sell_or_cancel(self.squadron)
+        self.sell_aircraft_button.setEnabled(can_sell)
+        self.sell_aircraft_button.setToolTip(
+            "Sell aircraft. Use Shift or Ctrl to sell 10 or 5 at once."
+            if can_sell
+            else "Cannot sell: no idle aircraft or pending orders."
+        )
+
+    def buy_aircraft(self) -> None:
+        try:
+            self.purchase_adapter.buy(self.squadron, self._purchase_amount())
+        except TransactionError as ex:
+            logging.exception("Aircraft purchase failed")
+            QMessageBox.warning(
+                self, "Purchase failed", str(ex), QMessageBox.StandardButton.Ok
+            )
+        finally:
+            self._refresh_aircraft_controls()
+            GameUpdateSignal.get_instance().updateBudget(self.ato_model.game)
+
+    def sell_aircraft(self) -> None:
+        try:
+            self.purchase_adapter.sell(self.squadron, self._purchase_amount())
+        except TransactionError as ex:
+            logging.exception("Aircraft sale failed")
+            QMessageBox.warning(
+                self, "Sale failed", str(ex), QMessageBox.StandardButton.Ok
+            )
+        finally:
+            self._refresh_aircraft_controls()
+            GameUpdateSignal.get_instance().updateBudget(self.ato_model.game)
 
     def _instant_relocate(self, destination: ControlPoint) -> None:
         self.squadron.relocate_to(destination)
