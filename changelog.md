@@ -9,9 +9,13 @@
 * **[Modding]** Add support for Su-35S mod (v2.0.27b)
 * **[Plugins]** Update EW Script to version 2.1
 * **[Options]** New option to spawn TACAN beacons at captured airfields
-* **[AirWing]** Show aircraft and living-pilot counts in the squadron list, and per-squadron aircraft type, aircraft stats (initial/current/destroyed/purchased), pilot level, and a separate killed-in-action pilot list in the squadron dialog
+* **[AirWing]** Squadron list rows show living-pilot, aircraft and unassigned counts, plus a "transfer ordered to X" indicator
+* **[AirWing]** Squadron dialog shows the aircraft type, an aircraft inventory (initial/current/destroyed/purchased), pilot level, a separate killed-in-action pilot list, and buy/sell aircraft controls with price, on-order count and available parking slots
+* **[AirWing]** Insufficient-parking warnings are consolidated into a single non-modal dialog instead of one blocking popup per base
+* **[AirWing]** Airfield Command shows idle aircraft per squadron and a "transfer ordered to X" indicator, lists units transferring in next turn, and lets you open a squadron's dialog by clicking its name
 
 ## Fixes
+* **[AirWing]** Squadron transfer-destination parking now accounts for already-ordered incoming transfers, matching the Airfield Command hangar count
 * **[Performance]** Improved robustness w.r.t. state.json handling to avoid corruption and thus save loss.
 * **[Flight Plans]** Stabilized waypoint solver debug GeoJSON coordinate precision to avoid platform-specific floating point drift in debug output.
 * **[Mission Generation]** Assign plane-specific laser codes to LGB weapons when building the mission
