@@ -311,6 +311,14 @@ class Squadron:
         return len(self.current_roster)
 
     @property
+    def living_pilots(self) -> list[Pilot]:
+        return self._pilots_without_status(PilotStatus.Dead)
+
+    @property
+    def dead_pilots(self) -> list[Pilot]:
+        return self._pilots_with_status(PilotStatus.Dead)
+
+    @property
     def _number_of_unfilled_pilot_slots(self) -> int:
         return self.pilot_limit - len(self.active_pilots)
 
