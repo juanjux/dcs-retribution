@@ -55,6 +55,7 @@ class MissionResultsProcessor:
 
             logging.info(f"{aircraft} destroyed from {squadron}")
             squadron.owned_aircraft -= 1
+            squadron.destroyed_aircraft += 1
 
     @staticmethod
     def _commit_pilot_experience(ato: AirTaskingOrder) -> None:
