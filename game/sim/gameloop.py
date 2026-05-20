@@ -58,13 +58,9 @@ class GameLoop:
         with self.timer.locked_pause():
             yield
 
-    #: Hard ceiling on fast-forward ticks (1 tick = 1 sim-second) used to
-    #: bound run_to_first_contact when the configured stop condition can
-    #: never fire - e.g. "Player startup time" combined with a player
-    #: flight whose start type is runway or air, which skips the Startup
-    #: state entirely. Four sim-hours is well past any reasonable mission
-    #: pre-engagement window; if we hit it, the user is misconfigured and
-    #: we abort fast-forward rather than spin forever.
+    #: Back-stop ceiling for run_to_first_contact (1 tick = 1 sim-second).
+    #: Four sim-hours is past any reasonable pre-engagement window; hitting
+    #: it means the stop condition is unreachable, so we abort.
     MAX_FAST_FORWARD_TICKS = 4 * 60 * 60
 
     def run_to_first_contact(self) -> None:
@@ -78,15 +74,9 @@ class GameLoop:
             ticks += 1
             if ticks >= self.MAX_FAST_FORWARD_TICKS:
                 logging.warning(
-                    "Fast-forward aborted after %s sim-ticks without the "
-                    "configured stop condition firing. The mission will be "
-                    "generated without fast-forward applied. This usually "
-                    "means the chosen 'Fast forward until' setting is "
-                    "unreachable for the current package - for example "
-                    "'Player startup time' with a player flight that "
-                    "starts on the runway or in the air (which skip the "
-                    "Startup state). Consider switching to 'Player takeoff "
-                    "time', 'First contact', 'Manual', or 'No fast forward'.",
+                    "Fast-forward aborted after %s sim-ticks; configured "
+                    "stop condition appears unreachable. Mission generated "
+                    "without fast-forward applied.",
                     ticks,
                 )
                 break
