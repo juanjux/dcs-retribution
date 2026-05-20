@@ -21,6 +21,7 @@
 ## Fixes
 * **[Mission]** End-of-mission detection now finds DCS' state.json wherever the export hook actually wrote it (install dir, RETRIBUTION_EXPORT_DIR, TEMP, or the DCS Saved Games Missions folder) instead of only the working directory, polls more responsively, and logs the watched paths — fixing missions frequently not being detected as finished
 * **[AirWing]** Squadron transfer-destination parking now accounts for already-ordered incoming transfers, matching the Airfield Command hangar count
+* **[Fast-forward]** Bound fast-forward-to-first-contact by a hard tick ceiling so it cannot hang the app when the configured stop condition is unreachable (e.g. "Player startup time" with a player flight that starts on the runway or in the air, which skip the Startup state)
 * **[Performance]** Improved robustness w.r.t. state.json handling to avoid corruption and thus save loss.
 * **[Flight Plans]** Stabilized waypoint solver debug GeoJSON coordinate precision to avoid platform-specific floating point drift in debug output.
 * **[Mission Generation]** Assign plane-specific laser codes to LGB weapons when building the mission
