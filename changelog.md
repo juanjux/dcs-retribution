@@ -12,7 +12,8 @@
 * **[UX]** Show an "End of Mission Detected, processing Mission Data" busy dialog while turn results are processed, so the wait is not mistaken for a missed detection
 
 ## Fixes
-* **[Mission]** Reliably auto-detect end-of-mission state.json that DCS finished writing before the player returned to Retribution, so missions are no longer frequently missed by the waiting dialog (especially short ones, or when alt-tabbing back to Retribution after the mission ended)
+* **[Mission]** Reliably auto-detect end of mission, even when DCS wrote the final state.json before the wait dialog started watching
+* **[Performance]** Faster post-mission turn processing
 * **[Performance]** Improved robustness w.r.t. state.json handling to avoid corruption and thus save loss.
 * **[Flight Plans]** Stabilized waypoint solver debug GeoJSON coordinate precision to avoid platform-specific floating point drift in debug output.
 * **[Mission Generation]** Assign plane-specific laser codes to LGB weapons when building the mission
