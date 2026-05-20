@@ -9,6 +9,7 @@
 * **[Modding]** Add support for Su-35S mod (v2.0.27b)
 * **[Plugins]** Update EW Script to version 2.1
 * **[Options]** New option to spawn TACAN beacons at captured airfields
+* **[UX]** Show an "End of Mission Detected, processing Mission Data" busy dialog while turn results are processed, so the wait is not mistaken for a missed detection
 
 ## Fixes
 * **[Mission]** Reliably auto-detect end-of-mission state.json that DCS finished writing before the player returned to Retribution, so missions are no longer frequently missed by the waiting dialog (especially short ones, or when alt-tabbing back to Retribution after the mission ended)
