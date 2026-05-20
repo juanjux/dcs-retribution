@@ -12,6 +12,7 @@
 * **[UX]** Show an "End of Mission Detected, processing Mission Data" busy dialog while turn results are processed, so the wait is not mistaken for a missed detection
 
 ## Fixes
+* **[Fast-forward]** Bound fast-forward-to-first-contact by a hard tick ceiling so it cannot hang the app when the configured stop condition is unreachable (e.g. "Player startup time" with a player flight that starts on the runway or in the air, which skip the Startup state)
 * **[Mission]** Reliably auto-detect end of mission, even when DCS wrote the final state.json before the wait dialog started watching
 * **[Performance]** Faster post-mission turn processing
 * **[Performance]** Improved robustness w.r.t. state.json handling to avoid corruption and thus save loss.
