@@ -12,8 +12,10 @@ from PySide6.QtWidgets import (
 
 import qt_ui.uiconstants as CONST
 from game import Game, persistency
+from game.ato.flight import Flight
 from game.ato.flightstate import Uninitialized
 from game.ato.package import Package
+from game.ato.starttype import StartType
 from game.ato.traveltime import TotEstimator
 from game.profiling import logged_duration
 from game.settings.settings import FastForwardStopCondition
@@ -293,6 +295,108 @@ class QTopPanel(QFrame):
         mbox.exec_()
         return True
 
+    # Lowest start_type compatible with each player-targeted fast-forward
+    # stop condition. If a player flight's start_type is "later" (skips
+    # earlier states), the stop condition never fires for that flight.
+    # Ordering of states the flight passes through:
+    #   COLD -> StartUp -> Taxi -> Takeoff -> Navigating
+    #   WARM ->           Taxi -> Takeoff -> Navigating
+    #   RUNWAY ->                 Takeoff -> Navigating
+    #   IN_FLIGHT ->                         Navigating
+    _STOP_CONDITION_REQUIRED_START: dict[
+        FastForwardStopCondition, frozenset[StartType]
+    ] = {
+        FastForwardStopCondition.PLAYER_STARTUP: frozenset({StartType.COLD}),
+        FastForwardStopCondition.PLAYER_TAXI: frozenset(
+            {StartType.COLD, StartType.WARM}
+        ),
+        FastForwardStopCondition.PLAYER_TAKEOFF: frozenset(
+            {StartType.COLD, StartType.WARM, StartType.RUNWAY}
+        ),
+    }
+
+    def _mismatched_player_flights(self) -> List[Flight]:
+        """Return player flights whose start_type would skip the configured
+        fast-forward stop condition (so the sim would never halt for them)."""
+        cond = self.game.settings.fast_forward_stop_condition
+        compatible = self._STOP_CONDITION_REQUIRED_START.get(cond)
+        if compatible is None:
+            return []
+        mismatched: List[Flight] = []
+        for package in self.game.blue.ato.packages:
+            for flight in package.flights:
+                if flight.client_count <= 0:
+                    continue
+                if flight.start_type not in compatible:
+                    mismatched.append(flight)
+        return mismatched
+
+    @staticmethod
+    def _matching_start_type_for_condition(
+        cond: FastForwardStopCondition,
+    ) -> StartType:
+        """Earliest-state start_type compatible with cond. Picking the
+        earliest preserves the user's intent ('halt at startup' means
+        actually go through startup), at the cost of a longer pre-mission
+        spool. Users who want a shorter spool can instead pick the
+        'halt at this flight's start' branch."""
+        if cond is FastForwardStopCondition.PLAYER_STARTUP:
+            return StartType.COLD
+        if cond is FastForwardStopCondition.PLAYER_TAXI:
+            return StartType.WARM
+        if cond is FastForwardStopCondition.PLAYER_TAKEOFF:
+            return StartType.RUNWAY
+        # Caller ensures cond targets a player-flight state.
+        raise ValueError(f"No matching start type for {cond}")
+
+    def resolve_start_type_mismatches(self) -> bool:
+        """For every player flight whose start_type makes the configured
+        fast-forward stop condition unreachable, ask the user to choose:
+        adjust the flight or override the stop condition (both
+        mission-only). Returns False if the user cancelled."""
+        mismatches = self._mismatched_player_flights()
+        if not mismatches:
+            return True
+
+        cond = self.game.settings.fast_forward_stop_condition
+        matching = self._matching_start_type_for_condition(cond)
+
+        for flight in mismatches:
+            mbox = QMessageBox(self)
+            mbox.setIcon(QMessageBox.Icon.Question)
+            mbox.setWindowTitle("Fast-forward / start-type mismatch")
+            mbox.setText(
+                f"<b>{flight}</b> starts <b>{flight.start_type.value}</b>, but "
+                f"<i>Fast forward until</i> is set to "
+                f"<b>{cond.value}</b>, which is a state this flight will "
+                f"skip.<br /><br />"
+                f"Where would you like fast-forward to stop for this "
+                f"flight?"
+            )
+            mbox.setInformativeText(
+                "Both choices apply to <i>this mission only</i> and do not "
+                "modify your saved settings."
+            )
+            change_flight_btn = mbox.addButton(
+                f"Change this flight to {matching.value}",
+                QMessageBox.ButtonRole.AcceptRole,
+            )
+            halt_at_spawn_btn = mbox.addButton(
+                f"Halt at this flight's start ({flight.start_type.value})",
+                QMessageBox.ButtonRole.AcceptRole,
+            )
+            cancel_btn = mbox.addButton(QMessageBox.StandardButton.Cancel)
+            mbox.setEscapeButton(cancel_btn)
+            mbox.exec_()
+            clicked = mbox.clickedButton()
+            if clicked is change_flight_btn:
+                flight.start_type = matching
+            elif clicked is halt_at_spawn_btn:
+                flight.halt_sim_on_spawn = True
+            else:
+                return False
+        return True
+
     def launch_mission(self):
         """Finishes planning and waits for mission completion."""
         if not self.ato_has_clients() and not self.confirm_no_client_launch():
@@ -312,6 +416,8 @@ class QTopPanel(QFrame):
             FastForwardStopCondition.DISABLED,
             FastForwardStopCondition.MANUAL,
         ]:
+            if not self.resolve_start_type_mismatches():
+                return
             with logged_duration("Simulating to first contact"):
                 self.sim_controller.run_to_first_contact()
         self.sim_controller.generate_miz(
