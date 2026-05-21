@@ -1,9 +1,13 @@
 import { selectControlPoints } from "../../api/controlPointsSlice";
 import { selectTgos } from "../../api/tgosSlice";
-import { setHoveredEmitter } from "../../api/mapSlice";
+import {
+  selectHighlightEmitters,
+  selectHoveredEmitter,
+  setHoveredEmitter,
+} from "../../api/mapSlice";
 import { useAppDispatch, useAppSelector } from "../../app/hooks";
 import { LatLng } from "../../api/liberationApi";
-import { Fragment, useState } from "react";
+import { Fragment } from "react";
 import { Circle, CircleMarker, LayerGroup } from "react-leaflet";
 
 interface RangeCirclesProps {
@@ -31,18 +35,20 @@ const RangeCircles = (props: RangeCirclesProps) => {
     : props.threat_ranges;
   const color = colorFor(props.blue, props.detection === true);
   const baseWeight = props.detection ? 1 : 2;
-  const [hovered, setHovered] = useState(false);
   const dispatch = useAppDispatch();
 
+  // Highlight when the feature is enabled and this emitter is the hovered one.
+  // Driven by shared state, so hovering either the ring or the emitter's icon
+  // lights up the other (and the icon is raised).
+  const highlighted = useAppSelector(
+    (state) =>
+      selectHighlightEmitters(state) &&
+      selectHoveredEmitter(state) === props.emitterId
+  );
+
   const hover = {
-    mouseover: () => {
-      setHovered(true);
-      dispatch(setHoveredEmitter(props.emitterId));
-    },
-    mouseout: () => {
-      setHovered(false);
-      dispatch(setHoveredEmitter(null));
-    },
+    mouseover: () => dispatch(setHoveredEmitter(props.emitterId)),
+    mouseout: () => dispatch(setHoveredEmitter(null)),
   };
 
   return (
@@ -52,9 +58,9 @@ const RangeCircles = (props: RangeCirclesProps) => {
           <Circle
             center={props.position}
             radius={radius}
-            color={hovered ? HIGHLIGHT_COLOR : color}
+            color={highlighted ? HIGHLIGHT_COLOR : color}
             fill={false}
-            weight={hovered ? baseWeight + 2 : baseWeight}
+            weight={highlighted ? baseWeight + 2 : baseWeight}
             interactive={false}
           />
           {/* Invisible wide ring that catches the hover. The visible stroke is
@@ -74,7 +80,7 @@ const RangeCircles = (props: RangeCirclesProps) => {
           />
         </Fragment>
       ))}
-      {hovered && (
+      {highlighted && (
         <CircleMarker
           center={props.position}
           radius={20}

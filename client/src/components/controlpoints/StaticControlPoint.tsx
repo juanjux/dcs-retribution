@@ -1,6 +1,10 @@
 import { ControlPoint } from "../../api/_liberationApi";
-import { selectHoveredEmitter } from "../../api/mapSlice";
-import { useAppSelector } from "../../app/hooks";
+import {
+  selectHighlightEmitters,
+  selectHoveredEmitter,
+  setHoveredEmitter,
+} from "../../api/mapSlice";
+import { useAppDispatch, useAppSelector } from "../../app/hooks";
 import { makeLocationMarkerEventHandlers } from "./EventHandlers";
 import { iconForControlPoint } from "./Icons";
 import LocationTooltipText from "./LocationTooltipText";
@@ -11,9 +15,12 @@ interface StaticControlPointProps {
 }
 
 export const StaticControlPoint = (props: StaticControlPointProps) => {
-  // Raised above other icons while its air-defense ring is hovered.
+  const dispatch = useAppDispatch();
+  // Raised above other icons while this emitter (or its ring) is hovered.
   const raised = useAppSelector(
-    (state) => selectHoveredEmitter(state) === props.controlPoint.id
+    (state) =>
+      selectHighlightEmitters(state) &&
+      selectHoveredEmitter(state) === props.controlPoint.id
   );
   return (
     <Marker
@@ -23,7 +30,12 @@ export const StaticControlPoint = (props: StaticControlPointProps) => {
       // other markers are helpful so we want to keep them, but make sure the CP
       // is always the clickable thing.
       zIndexOffset={raised ? 10000 : 1000}
-      eventHandlers={makeLocationMarkerEventHandlers(props.controlPoint)}
+      eventHandlers={{
+        ...makeLocationMarkerEventHandlers(props.controlPoint),
+        // Hovering the carrier highlights its escorts' rings (and vice versa).
+        mouseover: () => dispatch(setHoveredEmitter(props.controlPoint.id)),
+        mouseout: () => dispatch(setHoveredEmitter(null)),
+      }}
     >
       <Tooltip>
         <LocationTooltipText

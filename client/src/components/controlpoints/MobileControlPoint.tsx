@@ -1,7 +1,11 @@
 import { ControlPoint } from "../../api/_liberationApi";
 import backend from "../../api/backend";
-import { selectHoveredEmitter } from "../../api/mapSlice";
-import { useAppSelector } from "../../app/hooks";
+import {
+  selectHighlightEmitters,
+  selectHoveredEmitter,
+  setHoveredEmitter,
+} from "../../api/mapSlice";
+import { useAppDispatch, useAppSelector } from "../../app/hooks";
 import {
   useClearControlPointDestinationMutation,
   useSetControlPointDestinationMutation,
@@ -71,9 +75,12 @@ function PrimaryMarker(props: PrimaryMarkerProps) {
   // cause this component to redraw.
   const markerRef = useRef<LMarker | null>(null);
   const pathRef = useRef<MovementPathHandle | null>(null);
-  // Raised above other icons while its air-defense ring is hovered.
+  const dispatch = useAppDispatch();
+  // Raised above other icons while this emitter (or its ring) is hovered.
   const raised = useAppSelector(
-    (state) => selectHoveredEmitter(state) === props.controlPoint.id
+    (state) =>
+      selectHighlightEmitters(state) &&
+      selectHoveredEmitter(state) === props.controlPoint.id
   );
 
   const [hasDestination, setHasDestination] = useState<boolean>(
@@ -138,6 +145,9 @@ function PrimaryMarker(props: PrimaryMarkerProps) {
           }
         }}
         eventHandlers={{
+          // Hovering the carrier highlights its escorts' rings (and vice versa).
+          mouseover: () => dispatch(setHoveredEmitter(props.controlPoint.id)),
+          mouseout: () => dispatch(setHoveredEmitter(null)),
           click: () => {
             if (!hasDestination) {
               locationClickHandlers.click();

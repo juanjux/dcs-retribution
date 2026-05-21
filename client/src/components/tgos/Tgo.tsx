@@ -3,8 +3,12 @@ import {
   useOpenTgoInfoDialogMutation,
 } from "../../api/liberationApi";
 import { Tgo as TgoModel } from "../../api/liberationApi";
-import { selectHoveredEmitter } from "../../api/mapSlice";
-import { useAppSelector } from "../../app/hooks";
+import {
+  selectHighlightEmitters,
+  selectHoveredEmitter,
+  setHoveredEmitter,
+} from "../../api/mapSlice";
+import { useAppDispatch, useAppSelector } from "../../app/hooks";
 import SplitLines from "../splitlines/SplitLines";
 import { Icon, Point } from "leaflet";
 import ms from "milsymbol";
@@ -28,9 +32,12 @@ interface TgoProps {
 export default function Tgo(props: TgoProps) {
   const [openNewPackageDialog] = useOpenNewTgoPackageDialogMutation();
   const [openInfoDialog] = useOpenTgoInfoDialogMutation();
-  // Raised above other icons while its air-defense ring is hovered.
+  const dispatch = useAppDispatch();
+  // Raised above other icons while this emitter (or its ring) is hovered.
   const raised = useAppSelector(
-    (state) => selectHoveredEmitter(state) === props.tgo.id
+    (state) =>
+      selectHighlightEmitters(state) &&
+      selectHoveredEmitter(state) === props.tgo.id
   );
   return (
     <Marker
@@ -44,6 +51,9 @@ export default function Tgo(props: TgoProps) {
         contextmenu: () => {
           openNewPackageDialog({ tgoId: props.tgo.id });
         },
+        // Hovering the emitter highlights its ring (and vice versa).
+        mouseover: () => dispatch(setHoveredEmitter(props.tgo.id)),
+        mouseout: () => dispatch(setHoveredEmitter(null)),
       }}
     >
       <Tooltip>
