@@ -11,6 +11,7 @@
 * **[Options]** New option to spawn TACAN beacons at captured airfields
 
 ## Fixes
+* **[UI]** Avoid a crash dialog ("'QWidgetItem' object has no attribute 'width'") when a list using the two-column row delegate relayouts with a malformed style option under PySide6 6.4.x.
 * **[Performance]** Improved robustness w.r.t. state.json handling to avoid corruption and thus save loss.
 * **[Flight Plans]** Stabilized waypoint solver debug GeoJSON coordinate precision to avoid platform-specific floating point drift in debug output.
 * **[Mission Generation]** Assign plane-specific laser codes to LGB weapons when building the mission
