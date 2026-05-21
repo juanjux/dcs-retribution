@@ -74,7 +74,18 @@ class AntiShipIngressBuilder(PydcsWaypointBuilder):
                 )
                 continue
 
-            task = AttackGroup(miz_group.id, group_attack=True, weapon_type=ordnance)
+            # attack_limit caps the task at a single attack run so the AI
+            # egresses to the next waypoint once it has expended its ordnance.
+            # Without it the AttackGroup task has no completion condition, and
+            # aircraft that carry only stand-off weapons (e.g. an S-3B with two
+            # Harpoons) keep boring in on the fleet after firing instead of
+            # turning for home.
+            task = AttackGroup(
+                miz_group.id,
+                group_attack=True,
+                weapon_type=ordnance,
+                attack_limit=1,
+            )
             waypoint.tasks.append(task)
             added += 1
         return added
