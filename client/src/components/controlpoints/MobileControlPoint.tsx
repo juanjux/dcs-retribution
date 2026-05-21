@@ -1,5 +1,7 @@
 import { ControlPoint } from "../../api/_liberationApi";
 import backend from "../../api/backend";
+import { selectHoveredEmitter } from "../../api/mapSlice";
+import { useAppSelector } from "../../app/hooks";
 import {
   useClearControlPointDestinationMutation,
   useSetControlPointDestinationMutation,
@@ -69,6 +71,10 @@ function PrimaryMarker(props: PrimaryMarkerProps) {
   // cause this component to redraw.
   const markerRef = useRef<LMarker | null>(null);
   const pathRef = useRef<MovementPathHandle | null>(null);
+  // Raised above other icons while its air-defense ring is hovered.
+  const raised = useAppSelector(
+    (state) => selectHoveredEmitter(state) === props.controlPoint.id
+  );
 
   const [hasDestination, setHasDestination] = useState<boolean>(
     props.controlPoint.destination != null
@@ -124,7 +130,7 @@ function PrimaryMarker(props: PrimaryMarkerProps) {
         // We might draw other markers on top of the CP. The tooltips from the
         // other markers are helpful so we want to keep them, but make sure the CP
         // is always the clickable thing.
-        zIndexOffset={1000}
+        zIndexOffset={raised ? 10000 : 1000}
         opacity={props.controlPoint.destination ? 0.5 : 1}
         ref={(ref) => {
           if (ref != null) {
