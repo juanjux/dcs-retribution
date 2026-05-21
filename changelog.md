@@ -19,6 +19,7 @@
 * **[Options]** Add new option to fast forward until player is at the IP.
 
 ## Fixes
+* **[Mission Planning]** Carrier/LHA targets now offer SEAD in the flight-task list and no longer list SEAD Escort twice (their escorts are SAM platforms, so they can be suppressed directly like any other naval group).
 * **[App]** Retribution no longer stays alive in the background after its window is closed: the API server's graceful shutdown is now bounded (uvicorn otherwise waited forever on the long-lived event-stream websocket and the join hung).
 * **[App]** Relaunching the executable while it is already running no longer spawns orphaned, windowless duplicate processes; a second instance detects the first via an OS file lock and exits immediately.
 * **[Mission]** Reliably auto-detect end of mission, even when DCS wrote the final state.json before the wait dialog started watching
