@@ -307,12 +307,20 @@ class Loadout:
         dcs_unit_type: Type[FlyingType],
         target: Optional[MissionTarget] = None,
     ) -> Loadout:
-        # Iterate through each possible payload type for a given aircraft.
-        # Some aircraft have custom loadouts that in aren't the standard set.
-        for name in cls.default_loadout_names_for(task):
-            # This operation is cached, but must be called before load_by_name will
-            # work.
+        try:
             dcs_unit_type.load_payloads()
+        except Exception:
+            logging.exception(
+                "Could not load payloads for %s; using an empty loadout. This is "
+                "usually a malformed or unsupported payload file, often from a "
+                "third-party mod.",
+                dcs_unit_type.id,
+            )
+            return cls.empty_loadout()
+
+        # Iterate through each possible payload type for a given aircraft.
+        # Some aircraft have custom loadouts that aren't in the standard set.
+        for name in cls.default_loadout_names_for(task):
             payload = dcs_unit_type.loadout_by_name(name)
             if payload is not None:
                 if target:

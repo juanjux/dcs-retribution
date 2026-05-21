@@ -11,6 +11,7 @@
 * **[Options]** New option to spawn TACAN beacons at captured airfields
 
 ## Fixes
+* **[Mission Generation]** A malformed or unsupported aircraft payload file (e.g. from a third-party mod) no longer aborts turn generation; the affected aircraft falls back to an empty loadout and the error is logged.
 * **[Performance]** Improved robustness w.r.t. state.json handling to avoid corruption and thus save loss.
 * **[Flight Plans]** Stabilized waypoint solver debug GeoJSON coordinate precision to avoid platform-specific floating point drift in debug output.
 * **[Mission Generation]** Assign plane-specific laser codes to LGB weapons when building the mission
