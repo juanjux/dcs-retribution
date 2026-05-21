@@ -33,7 +33,10 @@ export const StaticControlPoint = (props: StaticControlPointProps) => {
       eventHandlers={{
         ...makeLocationMarkerEventHandlers(props.controlPoint),
         // Hovering the carrier highlights its escorts' rings (and vice versa).
-        mouseover: () => dispatch(setHoveredEmitter(props.controlPoint.id)),
+        mouseover: () =>
+          dispatch(
+            setHoveredEmitter({ id: props.controlPoint.id, source: "emitter" })
+          ),
         mouseout: () => dispatch(setHoveredEmitter(null)),
       }}
     >

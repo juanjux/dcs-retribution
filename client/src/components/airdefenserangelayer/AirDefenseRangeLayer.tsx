@@ -3,6 +3,7 @@ import { selectTgos } from "../../api/tgosSlice";
 import {
   selectHighlightEmitters,
   selectHoveredEmitter,
+  selectHoveredEmitterSource,
   setHoveredEmitter,
 } from "../../api/mapSlice";
 import { useAppDispatch, useAppSelector } from "../../app/hooks";
@@ -45,9 +46,17 @@ const RangeCircles = (props: RangeCirclesProps) => {
       selectHighlightEmitters(state) &&
       selectHoveredEmitter(state) === props.emitterId
   );
+  // Only mark the emitter with a blob when the hover came from a ring (to help
+  // locate the emitter, associating ring <-> emitter). When the emitter icon
+  // itself is hovered we don't blob it, since we're already pointing at it. The
+  // ring itself always lights up while highlighted, in either direction.
+  const markEmitter = useAppSelector(
+    (state) => highlighted && selectHoveredEmitterSource(state) === "ring"
+  );
 
   const hover = {
-    mouseover: () => dispatch(setHoveredEmitter(props.emitterId)),
+    mouseover: () =>
+      dispatch(setHoveredEmitter({ id: props.emitterId, source: "ring" })),
     mouseout: () => dispatch(setHoveredEmitter(null)),
   };
 
@@ -58,9 +67,15 @@ const RangeCircles = (props: RangeCirclesProps) => {
           <Circle
             center={props.position}
             radius={radius}
-            color={highlighted ? HIGHLIGHT_COLOR : color}
-            fill={false}
-            weight={highlighted ? baseWeight + 2 : baseWeight}
+            // Style goes through pathOptions (not bare color/weight props):
+            // react-leaflet only re-applies setStyle when pathOptions changes,
+            // so bare props would be set once at creation and never update when
+            // the highlight toggles.
+            pathOptions={{
+              color: highlighted ? HIGHLIGHT_COLOR : color,
+              weight: highlighted ? baseWeight + 2 : baseWeight,
+              fill: false,
+            }}
             interactive={false}
           />
           {/* Invisible wide ring that catches the hover. The visible stroke is
@@ -80,7 +95,7 @@ const RangeCircles = (props: RangeCirclesProps) => {
           />
         </Fragment>
       ))}
-      {highlighted && (
+      {markEmitter && (
         <CircleMarker
           center={props.position}
           radius={20}

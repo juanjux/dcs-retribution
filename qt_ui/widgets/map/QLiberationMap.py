@@ -4,7 +4,11 @@ import logging
 from pathlib import Path
 
 from PySide6.QtCore import QUrl
-from PySide6.QtWebEngineCore import QWebEnginePage, QWebEngineSettings
+from PySide6.QtWebEngineCore import (
+    QWebEnginePage,
+    QWebEngineProfile,
+    QWebEngineSettings,
+)
 from PySide6.QtWebEngineWidgets import QWebEngineView
 
 from game.server.settings import ServerSettings
@@ -40,6 +44,13 @@ class QLiberationMap(QWebEngineView):
         self.page.settings().setAttribute(
             QWebEngineSettings.WebAttribute.LocalContentCanAccessRemoteUrls, True
         )
+        # The bundled web client is replaced wholesale on every release, but
+        # QtWebEngine's HTTP cache may otherwise keep serving a stale build (old
+        # JS/CSS) after an upgrade, so the UI looks unchanged. Disable the cache
+        # and purge anything already stored so we always load the shipped client.
+        profile = self.page.profile()
+        profile.setHttpCacheType(QWebEngineProfile.HttpCacheType.NoCache)
+        profile.clearHttpCache()
 
         if dev:
             url = QUrl("http://localhost:3000")

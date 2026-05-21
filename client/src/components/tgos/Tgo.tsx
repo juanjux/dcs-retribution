@@ -52,7 +52,8 @@ export default function Tgo(props: TgoProps) {
           openNewPackageDialog({ tgoId: props.tgo.id });
         },
         // Hovering the emitter highlights its ring (and vice versa).
-        mouseover: () => dispatch(setHoveredEmitter(props.tgo.id)),
+        mouseover: () =>
+          dispatch(setHoveredEmitter({ id: props.tgo.id, source: "emitter" })),
         mouseout: () => dispatch(setHoveredEmitter(null)),
       }}
     >
