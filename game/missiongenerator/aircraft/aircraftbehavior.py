@@ -291,6 +291,11 @@ class AircraftBehavior:
             group,
             react_on_threat=OptReactOnThreat.Values.EvadeFire,
             roe=OptROE.Values.OpenFire,
+            # RTB once the anti-ship missiles are spent. Without this the
+            # AttackGroup task on the ingress waypoint has no completion
+            # condition, and aircraft carrying only stand-off weapons (e.g. the
+            # S-3B) keep flying in after launching their missiles.
+            rtb_winchester=OptRTBOnOutOfAmmo.Values.Antiship,
             restrict_jettison=True,
             mission_uses_gun=False,
         )
