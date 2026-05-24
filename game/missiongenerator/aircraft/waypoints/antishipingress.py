@@ -37,11 +37,13 @@ class AntiShipIngressBuilder(PydcsWaypointBuilder):
             return
 
         added = 0
-        for ordnance in (
-            WeaponType.Antiship,
-            WeaponType.Guided,
-            WeaponType.Unguided,
-        ):
+        # Deliberately omit WeaponType.Unguided: that category includes the
+        # gun, so emitting an Unguided AttackGroup task tells the AI it can
+        # also strafe the ships. The AI then closes inside the fleet's air
+        # defences even on aircraft with no useful gun (e.g. the S-3B with
+        # Harpoons) and gets shot down before it has fired its standoff
+        # weapons. Standoff-friendly categories only.
+        for ordnance in (WeaponType.Antiship, WeaponType.Guided):
             added += self.add_attack_group_tasks_for_ordnance(
                 waypoint, group_names, ordnance
             )
