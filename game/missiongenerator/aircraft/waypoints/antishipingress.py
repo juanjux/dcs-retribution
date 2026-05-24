@@ -36,6 +36,19 @@ class AntiShipIngressBuilder(PydcsWaypointBuilder):
             )
             return
 
+        # Rotate the target group list per flight in the package so flights
+        # don't all bunch up on the same ship. Without this, every flight gets
+        # the same group_names in the same order and the AI attacks them in
+        # that order, so the first ship eats everyone's missiles and the rest
+        # of the fleet survives.
+        if group_names and len(self.package.flights) > 1:
+            try:
+                idx = self.package.flights.index(self.flight)
+            except ValueError:
+                idx = 0
+            offset = idx % len(group_names)
+            group_names = group_names[offset:] + group_names[:offset]
+
         added = 0
         # Deliberately omit WeaponType.Unguided: that category includes the
         # gun, so emitting an Unguided AttackGroup task tells the AI it can
