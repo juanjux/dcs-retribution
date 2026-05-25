@@ -2,7 +2,7 @@ import logging
 from typing import List
 
 from dcs.point import MovingPoint
-from dcs.task import AttackGroup, OptFormation, WeaponType
+from dcs.task import AttackUnit, OptFormation, WeaponType
 
 from game.theater import NavalControlPoint, TheaterGroundObject
 from .pydcswaypointbuilder import PydcsWaypointBuilder
@@ -11,7 +11,6 @@ from .pydcswaypointbuilder import PydcsWaypointBuilder
 class AntiShipIngressBuilder(PydcsWaypointBuilder):
     def add_tasks(self, waypoint: MovingPoint) -> None:
         self.register_special_ingress_points()
-        group_names = []
         waypoint.tasks.append(OptFormation.finger_four_open())
 
         target = self.package.target
@@ -21,14 +20,11 @@ class AntiShipIngressBuilder(PydcsWaypointBuilder):
             # ground_objects[0]: a naval control point can own several ground
             # objects and the first is not necessarily the carrier. Targeting
             # the wrong one (e.g. a sunk escort group that is never spawned)
-            # leaves the flight with no AttackGroup task, so the AI flies to
+            # leaves the flight with no AttackUnit task, so the AI flies to
             # the ingress point and turns away without engaging.
-            carrier_tgo = target.find_main_tgo()
-            for g in carrier_tgo.groups:
-                group_names.append(g.group_name)
+            tgo_groups = target.find_main_tgo().groups
         elif isinstance(target, TheaterGroundObject):
-            for group in target.groups:
-                group_names.append(group.group_name)
+            tgo_groups = target.groups
         else:
             logging.error(
                 "Unexpected target type for Anti-Ship mission: %s",
@@ -36,60 +32,53 @@ class AntiShipIngressBuilder(PydcsWaypointBuilder):
             )
             return
 
-        # Rotate the target group list per flight in the package so flights
-        # don't all bunch up on the same ship. Without this, every flight gets
-        # the same group_names in the same order and the AI attacks them in
-        # that order, so the first ship eats everyone's missiles and the rest
-        # of the fleet survives.
-        if group_names and len(self.package.flights) > 1:
+        # Collect every live unit id across all groups in the target. We attack
+        # individual units (AttackUnit) rather than the group as a whole: for
+        # naval targets the DCS AI bunches all weapons on the same "priority"
+        # ship of a group, so AttackGroup leaves the rest of the fleet
+        # untouched. AttackUnit lets us distribute strikes across ships.
+        live_unit_ids: List[int] = []
+        for tgo_group in tgo_groups:
+            miz_group = self.mission.find_group(tgo_group.group_name)
+            if miz_group is None:
+                logging.error(
+                    "Could not find group for Anti-Ship mission %s",
+                    tgo_group.group_name,
+                )
+                continue
+            for unit in tgo_group.units:
+                if unit.alive:
+                    live_unit_ids.append(unit.id)
+
+        if not live_unit_ids:
+            logging.warning(
+                "Anti-Ship flight %s has no live target units; it will not "
+                "engage anything.",
+                self.flight,
+            )
+            return
+
+        # Rotate the unit list per flight in the package so flights distribute
+        # their initial targets across the fleet instead of all attacking the
+        # same ship first. Each flight's task list is the same set of unit ids,
+        # just starting from a different one.
+        if len(self.package.flights) > 1:
             try:
                 idx = self.package.flights.index(self.flight)
             except ValueError:
                 idx = 0
-            offset = idx % len(group_names)
-            group_names = group_names[offset:] + group_names[:offset]
+            offset = idx % len(live_unit_ids)
+            live_unit_ids = live_unit_ids[offset:] + live_unit_ids[:offset]
 
-        added = 0
         # Deliberately omit WeaponType.Unguided: that category includes the
-        # gun, so emitting an Unguided AttackGroup task tells the AI it can
-        # also strafe the ships. The AI then closes inside the fleet's air
-        # defences even on aircraft with no useful gun (e.g. the S-3B with
-        # Harpoons) and gets shot down before it has fired its standoff
-        # weapons. Standoff-friendly categories only.
+        # gun, so emitting an Unguided attack task tells the AI it can also
+        # strafe the ships. The AI then closes inside the fleet's air defences
+        # even on aircraft with no useful gun (e.g. the S-3B with Harpoons)
+        # and gets shot down before firing its standoff weapons. Standoff-
+        # friendly categories only.
         for ordnance in (WeaponType.Antiship, WeaponType.Guided):
-            added += self.add_attack_group_tasks_for_ordnance(
-                waypoint, group_names, ordnance
-            )
-
-        if not added:
-            # No AttackGroup task could be attached, so the AI would fly to the
-            # ingress point and turn back without engaging. Make this loud: it
-            # almost always means the target group(s) were never spawned (e.g.
-            # already destroyed) or the resolved name does not match a mission
-            # group.
-            logging.warning(
-                "Anti-Ship flight %s has no attackable target group "
-                "(resolved %s); it will not engage anything.",
-                self.flight,
-                group_names or "no groups",
-            )
-
-    def add_attack_group_tasks_for_ordnance(
-        self,
-        waypoint: MovingPoint,
-        group_names: List[str],
-        ordnance: WeaponType,
-    ) -> int:
-        added = 0
-        for group_name in group_names:
-            miz_group = self.mission.find_group(group_name)
-            if miz_group is None:
-                logging.error(
-                    "Could not find group for Anti-Ship mission %s", group_name
+            for unit_id in live_unit_ids:
+                task = AttackUnit(
+                    unit_id, weapon_type=ordnance, group_attack=True
                 )
-                continue
-
-            task = AttackGroup(miz_group.id, group_attack=True, weapon_type=ordnance)
-            waypoint.tasks.append(task)
-            added += 1
-        return added
+                waypoint.tasks.append(task)
