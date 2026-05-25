@@ -4,6 +4,7 @@ from typing import List
 from dcs.point import MovingPoint
 from dcs.task import AttackUnit, OptFormation, WeaponType
 
+from game.ato.flighttype import FlightType
 from game.theater import NavalControlPoint, TheaterGroundObject
 from .pydcswaypointbuilder import PydcsWaypointBuilder
 
@@ -58,13 +59,19 @@ class AntiShipIngressBuilder(PydcsWaypointBuilder):
             )
             return
 
-        # Rotate the unit list per flight in the package so flights distribute
-        # their initial targets across the fleet instead of all attacking the
-        # same ship first. Each flight's task list is the same set of unit ids,
-        # just starting from a different one.
-        if len(self.package.flights) > 1:
+        # Rotate the unit list per Anti-Ship flight in the package so flights
+        # distribute their initial targets across the fleet instead of all
+        # attacking the same ship first. Each flight's task list is the same
+        # set of unit ids, just starting from a different one. Index is taken
+        # among Anti-Ship flights only (not escorts/SEAD/etc. in the same
+        # package) so the offsets advance one per attacking flight and the
+        # distribution is even.
+        antiship_flights = [
+            f for f in self.package.flights if f.flight_type == FlightType.ANTISHIP
+        ]
+        if len(antiship_flights) > 1:
             try:
-                idx = self.package.flights.index(self.flight)
+                idx = antiship_flights.index(self.flight)
             except ValueError:
                 idx = 0
             offset = idx % len(live_unit_ids)

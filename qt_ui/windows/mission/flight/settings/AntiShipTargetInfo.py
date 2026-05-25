@@ -50,8 +50,13 @@ class AntiShipTargetInfo(QGroupBox):
             layout.addWidget(QLabel("No live units in target."))
             return
 
+        # Index among Anti-Ship flights only, to match what the mission
+        # generator does (game/missiongenerator/aircraft/waypoints/antishipingress.py).
+        antiship_flights = [
+            f for f in package.flights if f.flight_type == FlightType.ANTISHIP
+        ]
         try:
-            idx = package.flights.index(flight)
+            idx = antiship_flights.index(flight)
         except ValueError:
             idx = 0
         offset = idx % len(live)
@@ -59,7 +64,7 @@ class AntiShipTargetInfo(QGroupBox):
 
         layout.addWidget(
             QLabel(
-                f"Flight index in package: {idx} of {len(package.flights)}  |  "
+                f"Flight index (among Anti-Ship): {idx} of {len(antiship_flights)}  |  "
                 f"Live units: {len(live)}  |  Rotation offset: {offset}"
             )
         )
