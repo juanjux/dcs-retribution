@@ -59,23 +59,28 @@ class AntiShipIngressBuilder(PydcsWaypointBuilder):
             )
             return
 
-        # Rotate the unit list per Anti-Ship flight in the package so flights
-        # distribute their initial targets across the fleet instead of all
-        # attacking the same ship first. Each flight's task list is the same
-        # set of unit ids, just starting from a different one. Index is taken
-        # among Anti-Ship flights only (not escorts/SEAD/etc. in the same
-        # package) so the offsets advance one per attacking flight and the
-        # distribution is even.
-        antiship_flights = [
-            f for f in self.package.flights if f.flight_type == FlightType.ANTISHIP
-        ]
-        if len(antiship_flights) > 1:
-            try:
-                idx = antiship_flights.index(self.flight)
-            except ValueError:
-                idx = 0
-            offset = idx % len(live_unit_ids)
-            live_unit_ids = live_unit_ids[offset:] + live_unit_ids[:offset]
+        # If the user picked a specific first target in the Edit flight dialog
+        # and that unit is still alive, put it first. Otherwise (no override,
+        # or override targets a dead unit) fall back to round-robin across the
+        # package's Anti-Ship flights so flights distribute their initial
+        # targets across the fleet instead of all attacking the same ship.
+        override_id = self.flight.target_unit_id_override
+        if override_id is not None and override_id in live_unit_ids:
+            live_unit_ids.remove(override_id)
+            live_unit_ids.insert(0, override_id)
+        else:
+            antiship_flights = [
+                f
+                for f in self.package.flights
+                if f.flight_type == FlightType.ANTISHIP
+            ]
+            if len(antiship_flights) > 1:
+                try:
+                    idx = antiship_flights.index(self.flight)
+                except ValueError:
+                    idx = 0
+                offset = idx % len(live_unit_ids)
+                live_unit_ids = live_unit_ids[offset:] + live_unit_ids[:offset]
 
         # Deliberately omit WeaponType.Unguided: that category includes the
         # gun, so emitting an Unguided attack task tells the AI it can also
