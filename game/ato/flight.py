@@ -83,13 +83,6 @@ class Flight(
         self.custom_name = custom_name
         self.group_id: int = 0
 
-        # Optional per-flight override for the first ship targeted by an
-        # Anti-Ship flight. Set by the user via the Edit flight dialog. When
-        # None (default), the mission generator picks the first target by
-        # round-robin across the package's Anti-Ship flights. When set to a
-        # unit id that is still alive, the generator puts that unit first.
-        self.target_unit_id_override: Optional[int] = None
-
         # Transient (not persisted): when set, the next time this flight
         # transitions out of WaitingForStart the simulation halts. Used by
         # the pre-launch mismatch dialog so the user can opt to "halt
@@ -188,7 +181,6 @@ class Flight(
         if "use_same_loadout_for_all_members" not in state:
             state["use_same_loadout_for_all_members"] = True
         state.setdefault("halt_sim_on_spawn", False)
-        state.setdefault("target_unit_id_override", None)
         self.__dict__.update(state)
         if isinstance(self.roster, FlightRoster):
             self.roster = FlightMembers.from_roster(self, self.roster)

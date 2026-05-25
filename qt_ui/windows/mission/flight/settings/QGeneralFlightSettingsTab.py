@@ -4,9 +4,6 @@ from PySide6.QtWidgets import QFrame, QGridLayout, QVBoxLayout
 from game.ato.flight import Flight
 from qt_ui.models import PackageModel, GameModel
 from qt_ui.windows.mission.flight.payload.QFlightPayloadTab import QFlightPayloadTab
-from qt_ui.windows.mission.flight.settings.AntiShipTargetInfo import (
-    AntiShipTargetInfo,
-)
 from qt_ui.windows.mission.flight.settings.FlightPlanPropertiesGroup import (
     FlightPlanPropertiesGroup,
 )
@@ -61,7 +58,6 @@ class QGeneralFlightSettingsTab(QFrame):
             FlightPlanPropertiesGroup(
                 game.game, package_model, flight, flight_wpt_list
             ),
-            AntiShipTargetInfo(flight, package_model.package),
             self.flight_slot_editor,
             start_type,
             QFlightCustomName(flight),
