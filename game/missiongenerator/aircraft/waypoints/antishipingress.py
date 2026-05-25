@@ -59,7 +59,7 @@ class AntiShipIngressBuilder(PydcsWaypointBuilder):
             for theater_unit in tgo_group.units:
                 if not theater_unit.alive:
                     continue
-                miz_unit = miz_by_name.get(str(theater_unit))
+                miz_unit = miz_by_name.get(theater_unit.unit_name)
                 if miz_unit is None:
                     logging.warning(
                         "Anti-Ship: TheaterUnit %s has no matching pydcs unit "
