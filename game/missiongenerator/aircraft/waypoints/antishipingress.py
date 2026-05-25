@@ -33,12 +33,20 @@ class AntiShipIngressBuilder(PydcsWaypointBuilder):
             )
             return
 
-        # Collect every live unit id across all groups in the target. We attack
+        # Collect every live unit across all groups in the target. We attack
         # individual units (AttackUnit) rather than the group as a whole: for
         # naval targets the DCS AI bunches all weapons on the same "priority"
         # ship of a group, so AttackGroup leaves the rest of the fleet
         # untouched. AttackUnit lets us distribute strikes across ships.
-        live_unit_ids: List[int] = []
+        #
+        # IMPORTANT: TheaterUnit.id (Retribution-side, what we see in the UI
+        # and store as the user's override) is NOT the same as the pydcs unit
+        # id that DCS uses for the AttackUnit task. We have to match them by
+        # name (the format is "<id zero-padded> | <type name>", which both
+        # sides use). Without this mapping, AttackUnit tasks reference a
+        # non-existent unit id and the AI falls back to opportunistic
+        # engagement -- often hitting the wrong fleet.
+        live: List[tuple[int, int]] = []  # (theater_unit_id, miz_unit_id)
         for tgo_group in tgo_groups:
             miz_group = self.mission.find_group(tgo_group.group_name)
             if miz_group is None:
@@ -47,11 +55,22 @@ class AntiShipIngressBuilder(PydcsWaypointBuilder):
                     tgo_group.group_name,
                 )
                 continue
-            for unit in tgo_group.units:
-                if unit.alive:
-                    live_unit_ids.append(unit.id)
+            miz_by_name = {u.name: u for u in miz_group.units}
+            for theater_unit in tgo_group.units:
+                if not theater_unit.alive:
+                    continue
+                miz_unit = miz_by_name.get(str(theater_unit))
+                if miz_unit is None:
+                    logging.warning(
+                        "Anti-Ship: TheaterUnit %s has no matching pydcs unit "
+                        "in group %s; skipping.",
+                        theater_unit,
+                        tgo_group.group_name,
+                    )
+                    continue
+                live.append((theater_unit.id, miz_unit.id))
 
-        if not live_unit_ids:
+        if not live:
             logging.warning(
                 "Anti-Ship flight %s has no live target units; it will not "
                 "engage anything.",
@@ -60,14 +79,20 @@ class AntiShipIngressBuilder(PydcsWaypointBuilder):
             return
 
         # If the user picked a specific first target in the Edit flight dialog
-        # and that unit is still alive, put it first. Otherwise (no override,
-        # or override targets a dead unit) fall back to round-robin across the
-        # package's Anti-Ship flights so flights distribute their initial
-        # targets across the fleet instead of all attacking the same ship.
-        override_id = self.flight.target_unit_id_override
-        if override_id is not None and override_id in live_unit_ids:
-            live_unit_ids.remove(override_id)
-            live_unit_ids.insert(0, override_id)
+        # and that unit is still alive, put it first. Override is stored as a
+        # TheaterUnit.id (what the UI shows); map it back to its pydcs unit
+        # id here. Otherwise (no override, or override targets a dead unit)
+        # fall back to round-robin across the package's Anti-Ship flights so
+        # flights distribute their initial targets across the fleet instead
+        # of all attacking the same ship.
+        override_theater_id = self.flight.target_unit_id_override
+        override_idx = next(
+            (i for i, (t, _m) in enumerate(live) if t == override_theater_id),
+            None,
+        )
+        if override_idx is not None:
+            entry = live.pop(override_idx)
+            live.insert(0, entry)
         else:
             antiship_flights = [
                 f
@@ -79,8 +104,8 @@ class AntiShipIngressBuilder(PydcsWaypointBuilder):
                     idx = antiship_flights.index(self.flight)
                 except ValueError:
                     idx = 0
-                offset = idx % len(live_unit_ids)
-                live_unit_ids = live_unit_ids[offset:] + live_unit_ids[:offset]
+                offset = idx % len(live)
+                live = live[offset:] + live[:offset]
 
         # Deliberately omit WeaponType.Unguided: that category includes the
         # gun, so emitting an Unguided attack task tells the AI it can also
@@ -89,8 +114,8 @@ class AntiShipIngressBuilder(PydcsWaypointBuilder):
         # and gets shot down before firing its standoff weapons. Standoff-
         # friendly categories only.
         for ordnance in (WeaponType.Antiship, WeaponType.Guided):
-            for unit_id in live_unit_ids:
+            for _theater_id, miz_unit_id in live:
                 task = AttackUnit(
-                    unit_id, weapon_type=ordnance, group_attack=True
+                    miz_unit_id, weapon_type=ordnance, group_attack=True
                 )
                 waypoint.tasks.append(task)
