@@ -73,11 +73,11 @@ class AntiShipTargetInfo(QGroupBox):
             else rr_default_unit_id
         )
 
-        layout.addWidget(QLabel("First target (round-robin default):"))
+        layout.addWidget(QLabel("First target:"))
         self.combo = QComboBox()
         initial_index = 0
         for i, (uid, name) in enumerate(live):
-            tag = "  (round-robin)" if uid == rr_default_unit_id else ""
+            tag = "  (auto assigned)" if uid == rr_default_unit_id else ""
             self.combo.addItem(f"{str(uid).zfill(4)} | {name}{tag}", uid)
             if uid == initial_unit_id:
                 initial_index = i
