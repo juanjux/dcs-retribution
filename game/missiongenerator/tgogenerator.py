@@ -1412,19 +1412,32 @@ class PortableTacanGenerator:
         if runway_data.tacan is not None:
             return
 
-        # Allocate a TACAN channel from the X band.
-        try:
-            tacan = self.tacan_registry.alloc_for_band(
-                TacanBand.X, TacanUsage.TransmitReceive
-            )
-        except OutOfTacanChannelsError:
-            logging.warning(
-                "No TACAN channels available for portable beacon at %s",
-                self.airfield.name,
-            )
-            return
+        # Re-use a previously assigned TACAN channel and callsign for this
+        # airfield if it has one (set by the player from the base dialog, or
+        # auto-allocated on an earlier turn). Otherwise allocate fresh and
+        # persist the choice on the airfield so it stays stable across turns
+        # and is visible in tooltips/briefings even before the next mission
+        # generation.
+        if self.airfield.tacan is not None:
+            tacan = self.airfield.tacan
+        else:
+            try:
+                tacan = self.tacan_registry.alloc_for_band(
+                    TacanBand.X, TacanUsage.TransmitReceive
+                )
+            except OutOfTacanChannelsError:
+                logging.warning(
+                    "No TACAN channels available for portable beacon at %s",
+                    self.airfield.name,
+                )
+                return
+            self.airfield.tacan = tacan
 
-        callsign = self._derive_callsign(self.airfield.name)
+        if self.airfield.tcn_name is not None:
+            callsign = self.airfield.tcn_name
+        else:
+            callsign = self._derive_callsign(self.airfield.name)
+            self.airfield.tcn_name = callsign
 
         # Place the portable TACAN beacon near the airport reference point.
         position = airport.position.point_from_heading(
@@ -1432,7 +1445,7 @@ class PortableTacanGenerator:
         )
         group = self.mission.vehicle_group(
             country=self.country,
-            name=f"{self.airfield.name} TACAN",
+            name=f"{self.airfield.name} TACAN {tacan} ({callsign})",
             _type=VehicleFortification.TACAN_beacon,
             position=position,
             group_size=1,

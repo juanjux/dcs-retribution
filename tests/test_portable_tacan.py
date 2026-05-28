@@ -125,6 +125,8 @@ class TestPortableTacanSkipsWhenAlreadyPresent:
         gen.airfield = MagicMock()
         gen.airfield.airport.runways = [MagicMock()]  # has runways
         gen.airfield.name = "Batumi"
+        gen.airfield.tacan = None
+        gen.airfield.tcn_name = None
         gen.game = MagicMock()
         gen.tacan_registry = TacanRegistry()
         gen.runways = {}
@@ -161,6 +163,8 @@ class TestPortableTacanSkipsWhenAlreadyPresent:
         gen.airfield.airport.position.point_from_heading.return_value = MagicMock()
         gen.airfield.name = "TestAirfield"
         gen.airfield.full_name = "TestAirfield"
+        gen.airfield.tacan = None
+        gen.airfield.tcn_name = None
         gen.game = MagicMock()
         gen.tacan_registry = registry
         gen.runways = {}
@@ -195,6 +199,8 @@ class TestPortableTacanSkipsWhenAlreadyPresent:
         gen.airfield = MagicMock()
         gen.airfield.airport.runways = [MagicMock()]
         gen.airfield.name = "ExhaustedAirfield"
+        gen.airfield.tacan = None
+        gen.airfield.tcn_name = None
         gen.game = MagicMock()
         gen.tacan_registry = registry
         gen.runways = {}
