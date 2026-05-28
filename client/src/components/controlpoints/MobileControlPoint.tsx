@@ -118,6 +118,8 @@ function PrimaryMarker(props: PrimaryMarkerProps) {
             <LocationTooltipText
               name={props.controlPoint.name}
               units={props.controlPoint.units}
+              tacan={props.controlPoint.tacan}
+              atcFrequency={props.controlPoint.atc_frequency}
             />
           )
     );

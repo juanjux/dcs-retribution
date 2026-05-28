@@ -44,6 +44,8 @@ export const StaticControlPoint = (props: StaticControlPointProps) => {
         <LocationTooltipText
           name={props.controlPoint.name}
           units={props.controlPoint.units}
+          tacan={props.controlPoint.tacan}
+          atcFrequency={props.controlPoint.atc_frequency}
         />
       </Tooltip>
     </Marker>

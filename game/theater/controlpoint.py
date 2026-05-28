@@ -1221,7 +1221,7 @@ class ControlPoint(MissionTarget, SidcDescribable, ABC):
     def status(self) -> ControlPointStatus: ...
 
 
-class Airfield(ControlPoint, CTLD):
+class Airfield(ControlPoint, CTLD, TacanContainer):
     def __init__(
         self,
         airport: Airport,

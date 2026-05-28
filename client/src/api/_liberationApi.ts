@@ -352,6 +352,8 @@ export type ControlPoint = {
   units: string[];
   threat_ranges: number[];
   detection_ranges: number[];
+  tacan?: string | null;
+  atc_frequency?: string | null;
 };
 export type ValidationError = {
   loc: (string | number)[];
