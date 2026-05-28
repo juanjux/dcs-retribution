@@ -39,10 +39,13 @@ class QTacanWidget(QWidget):
         self.reset_tacan_btn.clicked.connect(self.reset_tacan)
 
     def _get_label_text(self) -> str:
-        c = "AUTO" if self.ct.tacan is None else self.ct.tacan
+        if self.ct.tacan is None:
+            return "<b>TACAN: AUTO</b>"
         cs = self.ct.tcn_name
         cs = "" if cs is None else f" ({cs})"
-        return f"<b>TACAN: {c}{cs}</b>"
+        is_auto = getattr(self.ct, "tacan_is_auto", False)
+        prefix = "AUTO " if is_auto else ""
+        return f"<b>TACAN: {prefix}{self.ct.tacan}{cs}</b>"
 
     def open_tacan_dialog(self) -> None:
         self.tacan_dialog = QTacanDialog(self, self.ct)
@@ -58,6 +61,9 @@ class QTacanWidget(QWidget):
         self.gm.allocated_tacan.append(self.ct.tacan)
         if cs := self.tacan_dialog.callsign_input.text():
             self.ct.tcn_name = cs.upper()
+        # User-chosen channel: lock it in so the auto-allocator reuses it and
+        # the UI no longer labels it 'AUTO'.
+        self.ct.tacan_is_auto = False
         self.channel.setText(self._get_label_text())
         self.check_channel()
 
@@ -65,6 +71,9 @@ class QTacanWidget(QWidget):
         self._try_remove()
         self.ct.tacan = None
         self.ct.tcn_name = None
+        # Back to auto: the next mission generation will allocate a fresh
+        # channel and the dialog will read 'AUTO' or 'AUTO (94X)' afterwards.
+        self.ct.tacan_is_auto = True
         self.channel.setText(self._get_label_text())
         self._reset_color_and_tooltip()
 
