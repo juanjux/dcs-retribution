@@ -32,15 +32,6 @@ class CommInfo:
     freq: RadioFrequency
 
 
-@dataclass
-class OwnedAirbaseInfo:
-    """A friendly airbase with its (optional) TACAN, for the briefing."""
-
-    name: str
-    tacan: str
-    tacan_callsign: str
-
-
 class FrontLineInfo:
     def __init__(self, front_line: FrontLine):
         self.front_line: FrontLine = front_line
@@ -177,35 +168,10 @@ class BriefingGenerator(MissionInfoGenerator):
         """Generate the mission briefing"""
         self._generate_frontline_info()
         self.generate_allied_flights_by_departure()
-        self.owned_airbases = self._collect_owned_airbases()
         self.mission.set_description_text(self.template.render(vars(self)))
         self.mission.add_picture_blue(
             os.path.abspath("./resources/ui/splash_screen.png")
         )
-
-    def _collect_owned_airbases(self) -> List[OwnedAirbaseInfo]:
-        """List friendly airfields with their TACAN (when present)."""
-        from game.radio.TacanContainer import TacanContainer
-        from game.theater.controlpoint import Airfield
-
-        owned: List[OwnedAirbaseInfo] = []
-        for cp in self.game.theater.controlpoints:
-            if not isinstance(cp, Airfield):
-                continue
-            if not cp.is_friendly(cp.coalition.player):
-                continue
-            tacan = "-"
-            callsign = ""
-            if isinstance(cp, TacanContainer) and cp.tacan is not None:
-                tacan = str(cp.tacan)
-                callsign = cp.tcn_name or ""
-            owned.append(
-                OwnedAirbaseInfo(
-                    name=cp.name, tacan=tacan, tacan_callsign=callsign
-                )
-            )
-        owned.sort(key=lambda a: a.name)
-        return owned
 
     def _generate_frontline_info(self) -> None:
         """Build FrontLineInfo objects from FrontLine type and append to briefing."""
