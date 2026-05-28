@@ -1,6 +1,7 @@
 from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
+    QMessageBox,
     QPushButton,
     QWidget,
 )
@@ -56,8 +57,30 @@ class QTacanWidget(QWidget):
         channel = self.tacan_dialog.tacan_input.value()
         band = self.tacan_dialog.band_input.currentText()
         band = TacanBand.X if band == "X" else TacanBand.Y
+        candidate = TacanChannel(number=channel, band=band)
+
+        # Warn before letting the user double-book a TACAN that is already in
+        # use elsewhere (another base/carrier, or a flight). Skip the warning
+        # when the user "re-saves" the same channel this container already
+        # owns — that's not a new collision.
+        if candidate != self.ct.tacan and candidate in self.gm.allocated_tacan:
+            reply = QMessageBox.question(
+                self,
+                "TACAN already in use",
+                (
+                    f"TACAN channel {candidate} is already assigned elsewhere "
+                    "in this mission (another base, carrier or flight). "
+                    "Assigning it here will double-book the channel.\n\n"
+                    "Use it anyway?"
+                ),
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
+            )
+            if reply != QMessageBox.StandardButton.Yes:
+                return
+
         self._try_remove()
-        self.ct.tacan = TacanChannel(number=channel, band=band)
+        self.ct.tacan = candidate
         self.gm.allocated_tacan.append(self.ct.tacan)
         if cs := self.tacan_dialog.callsign_input.text():
             self.ct.tcn_name = cs.upper()
