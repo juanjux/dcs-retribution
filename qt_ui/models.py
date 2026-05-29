@@ -608,9 +608,7 @@ class GameModel:
                 allocated_freqs.add(cp.frequency)
             # Airfields are TacanContainers too (built-in/portable TACAN); pick
             # them up so the manual-assign dialog can warn on duplicates.
-            if isinstance(cp, TacanContainer) and not isinstance(
-                cp, NavalControlPoint
-            ):
+            if isinstance(cp, TacanContainer) and not isinstance(cp, NavalControlPoint):
                 allocated_tacan.add(cp.tacan)
         allocated_freqs.remove(None)
         allocated_tacan.remove(None)
