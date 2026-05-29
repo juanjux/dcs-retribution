@@ -104,6 +104,15 @@ TACAN : {{ runway.tacan }} {{ runway.tacan_callsign }}
 {% endfor %}
 
 {% endif %}
+{%- if owned_airbases|length > 0 %}
+Owned Airbases:
+====================
+{% for ab in owned_airbases %}
+{{ ab.name }} -- TACAN: {{ ab.tacan }}{% if ab.tacan_callsign %} ({{ ab.tacan_callsign }}){% endif %} -- ATC: {{ ab.atc }}
+
+{% endfor %}
+
+{% endif %}
 {%- if awacs|length > 0 %}
 AWACS:
 ====================
