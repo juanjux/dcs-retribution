@@ -11,6 +11,7 @@
 * **[Options]** New option to spawn TACAN beacons at captured airfields
 
 ## Fixes
+* **[Flight Plans]** Player flights with a ground start (Cold/Warm/Runway) no longer spawn in the air when their computed startup time falls before mission start (e.g. due to a long player startup estimate); they now wait and start on the ground at mission start.
 * **[Performance]** Improved robustness w.r.t. state.json handling to avoid corruption and thus save loss.
 * **[Flight Plans]** Stabilized waypoint solver debug GeoJSON coordinate precision to avoid platform-specific floating point drift in debug output.
 * **[Mission Generation]** Assign plane-specific laser codes to LGB weapons when building the mission
