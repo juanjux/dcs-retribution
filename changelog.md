@@ -1,6 +1,7 @@
 # Retribution v1.6.0
 
 ## Features/Improvements
+* **[UX]** Hovering a friendly flight's route line on the map highlights it in yellow, and clicking it selects that flight's package (and the flight) in the ATO sidebar.
 * **[UX]** Avoid having escorts from wondering off too far while chasing a target.
 * **[UX]** Improved fast-forward settings with the ability to skip combat.
 * **[Data]** Add Refueling/Recovery tasks to A-6E Intruder mod
