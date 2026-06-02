@@ -18,6 +18,8 @@
 * **[AirWing]** Air Wing list shows a "transfer ordered to X" indicator, and Airfield Command lists the units transferring into the base next turn
 * **[AirWing]** Airfield Command shows idle aircraft per squadron (e.g. "20 (10 idle)") with a "transfer ordered to X" indicator, lets you open a squadron's dialog by clicking its name, and lays the count below the name so long text no longer adds a horizontal scrollbar
 * **[UX]** Show an "End of Mission Detected, processing Mission Data" busy dialog while turn results are processed, so the wait is not mistaken for a missed detection
+* **[Mission Status]** Mission result window splits every loss category into OwnFor (your faction) and OpFor (enemy) columns instead of a single combined total.
+* **[Mission Generation]** Target recon kneeboard pages for each player flight: overview map of the package corridor with nearby threats and threat rings, detail map of the target with numbered aimpoints (MGRS), recommended attack-axis arrow, and an aimpoint table. OCA missions get an airfield-layout variant. Ground-start flights also get an airfield-departure page with spawn-slot markers, runway-in-use highlight, wind arrow, and an ATIS-like weather block (winds aloft, QNH, temp, clouds, sunrise/sunset). Toggleable via new "Generate target recon kneeboard pages" setting (default on); threats can be widened beyond the corridor with a new search-radius slider. Requires the new `mgrs` dependency.
 
 ## Fixes
 * **[Mission Generation]** A malformed or unsupported aircraft payload file (e.g. from a third-party mod) no longer aborts turn generation; the affected aircraft falls back to an empty loadout and the error is logged.
