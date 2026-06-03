@@ -11,6 +11,7 @@
 * **[Options]** New option to spawn TACAN beacons at captured airfields
 
 ## Fixes
+* **[Kneeboard]** Flight-plan kneeboard now matches the in-game waypoint numbering for flights that start in the air: previously it always listed the full plan from takeoff, so for an in-air start the kneeboard waypoints were offset from the cockpit's (e.g. kneeboard "1: Hold" while DCS showed "1: Escort Hold"). The kneeboard now starts at the spawn waypoint, like the generated mission.
 * **[Performance]** Improved robustness w.r.t. state.json handling to avoid corruption and thus save loss.
 * **[Flight Plans]** Stabilized waypoint solver debug GeoJSON coordinate precision to avoid platform-specific floating point drift in debug output.
 * **[Mission Generation]** Assign plane-specific laser codes to LGB weapons when building the mission

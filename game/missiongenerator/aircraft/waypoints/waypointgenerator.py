@@ -129,7 +129,19 @@ class WaypointGenerator:
         # plan construction, but for now it's only used by the kneeboard so is generated
         # late.
         self._estimate_min_fuel_for(waypoints)
-        return mission_start_time, waypoints
+
+        # The kneeboard (and the recon kneeboard pages) must list the same
+        # waypoints the player sees in the cockpit. For in-air starts, DCS spawns
+        # the flight at its current waypoint (group point 0) and omits the
+        # already-passed takeoff/join/ingress waypoints, which shifts the in-game
+        # waypoint numbering. Returning the full plan from index 0 would leave the
+        # kneeboard numbered/labelled out of sync with the actual flight plan (e.g.
+        # kneeboard "1: Hold" while the cockpit shows "1: Escort Hold"). Slice from
+        # the spawn waypoint onward so the kneeboard matches the generated mission.
+        kneeboard_waypoints = waypoints
+        if isinstance(self.flight.state, InFlight):
+            kneeboard_waypoints = waypoints[self.flight.state.waypoint_index :]
+        return mission_start_time, kneeboard_waypoints
 
     def builder_for_waypoint(self, waypoint: FlightWaypoint) -> PydcsWaypointBuilder:
         builders = {
