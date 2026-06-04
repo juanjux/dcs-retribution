@@ -10,7 +10,8 @@ from typing import TYPE_CHECKING, TypeVar
 from dcs import Point
 
 from game.flightplan import HoldZoneGeometry
-from game.theater import MissionTarget
+from game.theater import MissionTarget, TheaterGroundObject
+from game.theater.theatergroup import SceneryUnit
 from game.utils import nautical_miles, Speed, feet
 from .flightplan import FlightPlan
 from .formation import FormationFlightPlan, FormationLayout
@@ -264,6 +265,22 @@ class FormationAttackBuilder(IBuilder[FlightPlanT, LayoutT], ABC):
             assert self.package.primary_flight is not None
             fp = self.package.primary_flight.flight_plan
             return fp.is_airassault
+
+    @staticmethod
+    def strike_targets_for(location: TheaterGroundObject) -> list[StrikeTarget]:
+        """One StrikeTarget per individual unit of a ground objective.
+
+        This is the same per-unit list the kneeboard target page renders (with
+        coordinates). Mission types whose kneeboard lists targets with
+        coordinates (Strike, DEAD, SEAD) pass this to ``_build`` so each listed
+        target also gets its own TARGET_POINT waypoint in the aircraft, making it
+        trivial to designate with TOO.
+        """
+        targets: list[StrikeTarget] = []
+        for idx, unit in enumerate(location.strike_targets):
+            name = unit.name if isinstance(unit, SceneryUnit) else unit.type.id
+            targets.append(StrikeTarget(f"{name} #{idx}", unit))
+        return targets
 
     @staticmethod
     def target_waypoint(
