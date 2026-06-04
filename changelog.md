@@ -9,7 +9,7 @@
 * **[Modding]** Add support for Su-35S mod (v2.0.27b)
 * **[Plugins]** Update EW Script to version 2.1
 * **[Options]** New option to spawn TACAN beacons at captured airfields
-* **[Mission Generation]** DEAD and SEAD flights against a ground target now get one waypoint per individual target — the same targets (with coordinates) already listed on the SEAD/DEAD kneeboard page — so they can be designated quickly with TOO, just like Strike flights. The waypoints are player-only (AI tasking is unchanged), and targets the kneeboard does not list with coordinates (e.g. SEAD against a naval group) are unaffected.
+* **[Mission Generation]** DEAD and SEAD flights against a ground target now get one waypoint per individual target — the same targets (with coordinates) already listed on the SEAD/DEAD kneeboard page — so they can be designated quickly with TOO, just like Strike flights. The waypoints are player-only (AI tasking is unchanged), and targets the kneeboard does not list with coordinates (e.g. SEAD against a naval group) are unaffected. The SEAD/DEAD kneeboard target list also gains an "STPT" column showing each target's assigned waypoint number, matching the strike task page.
 
 ## Fixes
 * **[Performance]** Improved robustness w.r.t. state.json handling to avoid corruption and thus save loss.
