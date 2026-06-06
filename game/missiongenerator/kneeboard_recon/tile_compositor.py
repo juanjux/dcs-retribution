@@ -216,13 +216,26 @@ def render_tiles(
     # citizen toward the Esri free service.
     tile_coords = [(tx, ty) for tx in range(tx0, tx1 + 1) for ty in range(ty0, ty1 + 1)]
     workers = max(1, min(6, len(tile_coords)))
-    with ThreadPoolExecutor(max_workers=workers) as exe:
-        results = list(
-            exe.map(
-                lambda c: (c, fetch_tile(z, c[0], c[1], cache_dir)),
-                tile_coords,
+    try:
+        with ThreadPoolExecutor(max_workers=workers) as exe:
+            results = list(
+                exe.map(
+                    lambda c: (c, fetch_tile(z, c[0], c[1], cache_dir)),
+                    tile_coords,
+                )
             )
+    except Exception as exc:
+        # fetch_tile already degrades known network failures to None. This is a
+        # last-resort backstop: any unforeseen error raised on a worker thread
+        # is re-raised here by exe.map, and a kneeboard nicety must never abort
+        # turn/mission generation. Fall back to the offline basemap instead.
+        logger.warning(
+            "kneeboard_recon: tile fetch failed unexpectedly (%s); "
+            "falling back to offline basemap",
+            exc,
         )
+        _set_failure(FAILURE_TILE_FETCH)
+        return None
 
     for (tx, ty), tile in results:
         if tile is None:

@@ -89,6 +89,20 @@ def test_fetch_tile_returns_none_on_urlerror(tmp_path: Path) -> None:
     assert not (tmp_path / "world_imagery" / "8" / "1" / "1.png").exists()
 
 
+def test_fetch_tile_returns_none_on_remote_disconnected(tmp_path: Path) -> None:
+    # Regression: urllib does NOT wrap ``http.client.RemoteDisconnected``
+    # ("Remote end closed connection without response") in ``URLError``, so a
+    # dropped/reset connection must still degrade to None instead of
+    # propagating and aborting mission generation at Take Off.
+    err = http.client.RemoteDisconnected(
+        "Remote end closed connection without response"
+    )
+    with patch.object(tile_source, "urlopen", side_effect=err):
+        result = fetch_tile(8, 2, 3, tmp_path)
+    assert result is None
+    assert not (tmp_path / "world_imagery" / "8" / "2" / "3.png").exists()
+
+
 def test_fetch_tile_retries_once_on_transient_failure(tmp_path: Path) -> None:
     body = _png_bytes(color=(1, 2, 3))
 

@@ -12,15 +12,15 @@ refresh.
 
 from __future__ import annotations
 
+import http.client
 import io
 import logging
 import os
-import socket
 import threading
 import time
 from pathlib import Path
 from typing import Optional
-from urllib.error import HTTPError, URLError
+from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 from PIL import Image, UnidentifiedImageError
@@ -135,7 +135,12 @@ def fetch_tile(
 
 
 def _http_get(url: str, timeout: float) -> Optional[bytes]:
-    """Single retry on URLError/timeout; no retry on HTTP non-200.
+    """Single retry on transient network errors; no retry on HTTP non-200.
+
+    "Transient" covers timeouts, connection drops (including
+    ``http.client.RemoteDisconnected``, which urllib does not wrap in
+    ``URLError``) and malformed responses — all return ``None`` so the caller
+    falls back to the offline basemap instead of aborting mission generation.
 
     Caps the response body at ``MAX_TILE_BYTES + 1`` and rejects anything
     larger so a misconfigured proxy can't make a single fetch balloon
@@ -167,7 +172,15 @@ def _http_get(url: str, timeout: float) -> Optional[bytes]:
             # recurs immediately on the next request from the same IP.
             _log_failure(url, f"HTTP {exc.code}")
             return None
-        except (URLError, socket.timeout) as exc:
+        except (OSError, http.client.HTTPException) as exc:
+            # Any other transient/unreachable network condition: URLError,
+            # timeouts, and crucially connection drops and malformed responses
+            # that urllib does NOT wrap in URLError — e.g.
+            # ``http.client.RemoteDisconnected`` ("Remote end closed connection
+            # without response", a ConnectionResetError + BadStatusLine),
+            # ConnectionError, ssl.SSLError, IncompleteRead. These must degrade
+            # to a missing tile (caller falls back to the offline basemap), not
+            # abort mission generation. Retry once, then give up.
             if attempt == 2:
                 _log_failure(url, exc)
                 return None
