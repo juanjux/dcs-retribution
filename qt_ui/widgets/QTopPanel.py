@@ -189,10 +189,10 @@ class QTopPanel(QFrame):
         return packages
 
     @staticmethod
-    def fix_tots(packages: List[Package]) -> None:
+    def fix_tots(packages: List[Package], now: datetime) -> None:
         for package in packages:
             estimator = TotEstimator(package)
-            package.time_over_target = estimator.earliest_tot()
+            package.time_over_target = estimator.earliest_tot(now)
 
     def ato_has_clients(self) -> bool:
         for package in self.game.blue.ato.packages:
@@ -224,7 +224,9 @@ class QTopPanel(QFrame):
         )
         return result == QMessageBox.StandardButton.Yes
 
-    def confirm_negative_start_time(self, negative_starts: List[Package]) -> bool:
+    def confirm_negative_start_time(
+        self, negative_starts: List[Package], now: datetime
+    ) -> bool:
         formatted = "<br />".join(
             [f"{p.primary_task} {p.target.name}" for p in negative_starts]
         )
@@ -259,7 +261,7 @@ class QTopPanel(QFrame):
         mbox.exec_()
         clicked = mbox.clickedButton()
         if clicked == auto:
-            self.fix_tots(negative_starts)
+            self.fix_tots(negative_starts, now)
             return True
         elif clicked == ignore:
             return True
@@ -405,11 +407,10 @@ class QTopPanel(QFrame):
         if self.check_no_missing_pilots():
             return
 
-        negative_starts = self.negative_start_packages(
-            self.sim_controller.current_time_in_sim
-        )
+        now = self.sim_controller.current_time_in_sim
+        negative_starts = self.negative_start_packages(now)
         if negative_starts:
-            if not self.confirm_negative_start_time(negative_starts):
+            if not self.confirm_negative_start_time(negative_starts, now):
                 return
 
         if self.game.settings.fast_forward_stop_condition not in [

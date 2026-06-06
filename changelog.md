@@ -12,6 +12,7 @@
 
 ## Fixes
 * **[Fast-forward]** Fix Take Off hang when the configured "Fast forward until" state is one the player flight will skip (e.g. "Player startup time" with a runway start); the user is now prompted to resolve the mismatch before launch.
+* **[Mission]** Fix a crash when choosing "Fix TOTs automatically" in the past-start-times dialog at Take Off: the automatic fix called `TotEstimator.earliest_tot()` without the required current-time argument and raised a `TypeError`.
 * **[Performance]** Improved robustness w.r.t. state.json handling to avoid corruption and thus save loss.
 * **[Flight Plans]** Stabilized waypoint solver debug GeoJSON coordinate precision to avoid platform-specific floating point drift in debug output.
 * **[Mission Generation]** Assign plane-specific laser codes to LGB weapons when building the mission
