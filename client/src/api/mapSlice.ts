@@ -19,6 +19,11 @@ interface MapState {
   // Whether the hover highlight (ring <-> emitter) is enabled. Toggled from
   // the map's layer control.
   highlightEmitters: boolean;
+  // Whether fully-destroyed, non-repairable ground objects (buildings, ships,
+  // ...) are shown on the map, per coalition. Toggled from the map's layer
+  // control; defaults to shown. Repairable objects (SAM/EWR/armor) are never
+  // hidden by this.
+  showDestroyedNonRepairable: { blue: boolean; red: boolean };
 }
 
 const initialState: MapState = {
@@ -26,6 +31,7 @@ const initialState: MapState = {
   hoveredEmitterId: null,
   hoveredEmitterSource: null,
   highlightEmitters: true,
+  showDestroyedNonRepairable: { blue: true, red: true },
 };
 
 const mapSlice = createSlice({
@@ -34,15 +40,23 @@ const mapSlice = createSlice({
   reducers: {
     setHoveredEmitter(
       state,
-      action: PayloadAction<
-        { id: string; source: EmitterHoverSource } | null
-      >
+      action: PayloadAction<{ id: string; source: EmitterHoverSource } | null>
     ) {
       state.hoveredEmitterId = action.payload?.id ?? null;
       state.hoveredEmitterSource = action.payload?.source ?? null;
     },
     setHighlightEmitters(state, action: PayloadAction<boolean>) {
       state.highlightEmitters = action.payload;
+    },
+    setShowDestroyedNonRepairable(
+      state,
+      action: PayloadAction<{ blue: boolean; value: boolean }>
+    ) {
+      if (action.payload.blue) {
+        state.showDestroyedNonRepairable.blue = action.payload.value;
+      } else {
+        state.showDestroyedNonRepairable.red = action.payload.value;
+      }
     },
   },
   extraReducers: (builder) => {
@@ -59,7 +73,11 @@ const mapSlice = createSlice({
   },
 });
 
-export const { setHoveredEmitter, setHighlightEmitters } = mapSlice.actions;
+export const {
+  setHoveredEmitter,
+  setHighlightEmitters,
+  setShowDestroyedNonRepairable,
+} = mapSlice.actions;
 
 export const selectMapCenter = (state: RootState) => state.map.center;
 export const selectHoveredEmitter = (state: RootState) =>
@@ -68,5 +86,7 @@ export const selectHoveredEmitterSource = (state: RootState) =>
   state.map.hoveredEmitterSource;
 export const selectHighlightEmitters = (state: RootState) =>
   state.map.highlightEmitters;
+export const selectShowDestroyedNonRepairable = (state: RootState) =>
+  state.map.showDestroyedNonRepairable;
 
 export default mapSlice.reducer;

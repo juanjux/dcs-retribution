@@ -24,6 +24,10 @@ class TgoJs(BaseModel):
     threat_ranges: list[float]  # TODO: Event stream
     detection_ranges: list[float]  # TODO: Event stream
     dead: bool  # TODO: Event stream
+    # Whether the group can be rebuilt/repaired (SAM/EWR/armor). Non-purchasable
+    # destroyed objects (buildings, ships, ...) are permanent losses; the map's
+    # "destroyed (non-repairable)" layer uses this to decide what it may hide.
+    purchasable: bool
     sidc: str  # TODO: Event stream
     task: Optional[GroupTask]
 
@@ -49,6 +53,7 @@ class TgoJs(BaseModel):
             threat_ranges=threat_ranges,
             detection_ranges=detection_ranges,
             dead=tgo.is_dead,
+            purchasable=tgo.purchasable,
             sidc=str(tgo.sidc()),
             task=tgo.groups[0].ground_object.task if tgo.groups else None,
         )
