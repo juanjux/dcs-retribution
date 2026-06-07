@@ -76,7 +76,13 @@ def select_flight(
     game: Game = Depends(GameContext.require),
     qt: QtCallbacks = Depends(QtContext.get),
 ) -> None:
-    qt.select_flight(game.db.flights.get(flight_id))
+    flight = game.db.flights.get(flight_id)
+    if flight is None:
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND,
+            detail=f"Game has no flight with ID {flight_id}",
+        )
+    qt.select_flight(flight)
 
 
 @router.post(

@@ -4,6 +4,7 @@ import itertools
 import logging
 from collections import defaultdict
 from dataclasses import dataclass, field
+from functools import cached_property
 from typing import (
     Any,
     Dict,
@@ -177,12 +178,6 @@ class Debriefing:
         self.ground_losses = self.dead_ground_units()
         self.base_captures = self.base_capture_events()
 
-        # Lazily-built {origin control point: front-line casualty count}.
-        # commit_front_line_battle_impact() calls casualty_count() twice per
-        # front-line pair; without this cache each call re-scans every
-        # front-line loss (O(pairs x losses), thousands of losses per mission).
-        self._casualties_by_origin: Optional[Dict[ControlPoint, int]] = None
-
     def merge_simulation_results(self, results: SimulationResults) -> None:
         for air_loss in results.air_losses:
             if air_loss.flight.squadron.player.is_blue:
@@ -225,12 +220,17 @@ class Debriefing:
         yield from self.ground_losses.player_airfields
         yield from self.ground_losses.enemy_airfields
 
+    @cached_property
+    def _casualties_by_origin(self) -> Dict[ControlPoint, int]:
+        # commit_front_line_battle_impact() calls casualty_count() twice per
+        # front-line pair; computing this once avoids re-scanning every
+        # front-line loss on each call (O(pairs x losses), thousands per mission).
+        counts: Dict[ControlPoint, int] = defaultdict(int)
+        for loss in self.front_line_losses:
+            counts[loss.origin] += 1
+        return counts
+
     def casualty_count(self, control_point: ControlPoint) -> int:
-        if self._casualties_by_origin is None:
-            counts: Dict[ControlPoint, int] = defaultdict(int)
-            for loss in self.front_line_losses:
-                counts[loss.origin] += 1
-            self._casualties_by_origin = counts
         return self._casualties_by_origin.get(control_point, 0)
 
     def front_line_losses_by_type(self, player: Player) -> dict[GroundUnitType, int]:
