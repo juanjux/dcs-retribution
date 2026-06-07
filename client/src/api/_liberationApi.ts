@@ -420,6 +420,7 @@ export type Tgo = {
   threat_ranges: number[];
   detection_ranges: number[];
   dead: boolean;
+  purchasable: boolean;
   sidc: string;
   task?: string[];
 };

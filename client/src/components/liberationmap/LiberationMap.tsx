@@ -12,6 +12,7 @@ import NavMeshLayer from "../navmesh/NavMeshLayer";
 import LeafletRuler from "../ruler/Ruler";
 import SupplyRoutesLayer from "../supplyrouteslayer";
 import TerrainZonesLayers from "../terrainzones/TerrainZonesLayers";
+import DestroyedTgoToggle from "../tgoslayer/DestroyedTgoToggle";
 import TgosLayer from "../tgoslayer/TgosLayer";
 import { CoalitionThreatZones } from "../threatzones";
 import { WaypointDebugZonesControls } from "../waypointdebugzones/WaypointDebugZonesControls";
@@ -109,6 +110,12 @@ export default function LiberationMap() {
         </LayersControl.Overlay>
       </LayersControl>
       <LayersControl position="topleft">
+        <LayersControl.Overlay name="Red: destroyed (non-repairable)" checked>
+          <DestroyedTgoToggle blue={false} />
+        </LayersControl.Overlay>
+        <LayersControl.Overlay name="Blue: destroyed (non-repairable)" checked>
+          <DestroyedTgoToggle blue={true} />
+        </LayersControl.Overlay>
         <CoalitionThreatZones blue={true} />
         <CoalitionThreatZones blue={false} />
         <LayersControl.Overlay name="Blue navmesh">

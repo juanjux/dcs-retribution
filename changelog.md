@@ -10,6 +10,7 @@
 * **[Modding]** Add support for Su-35S mod (v2.0.27b)
 * **[Plugins]** Update EW Script to version 2.1
 * **[Options]** New option to spawn TACAN beacons at captured airfields
+* **[Map]** New "Red/Blue: destroyed (non-repairable)" layer toggles (below the ruler) to hide fully destroyed, non-rebuildable ground objects (buildings, ships, ...) per coalition. Repairable objects (air defenses, vehicle groups) are never hidden. Both shown by default.
 
 ## Fixes
 * **[Performance]** Improved robustness w.r.t. state.json handling to avoid corruption and thus save loss.
