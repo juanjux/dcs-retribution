@@ -41,10 +41,15 @@ class MissionResultsProcessor:
                 self.commit_ground_losses(debriefing, events)
             with logged_duration("commit_damaged_runways"):
                 self.commit_damaged_runways(debriefing)
-            with logged_duration("commit_captures"):
-                self.commit_captures(debriefing, events)
+            # Score the front line before capturing bases: casualty_count
+            # attributes a dead front-line unit to its origin CP regardless of
+            # side, so a base's defenders (origin == that base) would be
+            # miscounted as the new owner's casualties once a capture flips
+            # ownership, turning a win into a defeat.
             with logged_duration("commit_front_line_battle_impact"):
                 self.commit_front_line_battle_impact(debriefing, events)
+            with logged_duration("commit_captures"):
+                self.commit_captures(debriefing, events)
             with logged_duration("record_carcasses"):
                 self.record_carcasses(debriefing)
 

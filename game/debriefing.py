@@ -4,6 +4,7 @@ import itertools
 import logging
 from collections import defaultdict
 from dataclasses import dataclass, field
+from functools import cached_property
 from typing import (
     Any,
     Dict,
@@ -92,6 +93,18 @@ class BaseCaptureEvent:
 
 
 @dataclass(frozen=True)
+class SideLossCounts:
+    aircraft: int
+    front_line: int
+    convoy: int
+    cargo_ships: int
+    airlift_cargo: int
+    ground_objects: int
+    scenery: int
+    bases_lost: int
+
+
+@dataclass(frozen=True)
 class StateData:
     #: True if the mission ended. If False, the mission exited abnormally.
     mission_ended: bool
@@ -165,12 +178,6 @@ class Debriefing:
         self.ground_losses = self.dead_ground_units()
         self.base_captures = self.base_capture_events()
 
-        # Lazily-built {origin control point: front-line casualty count}.
-        # commit_front_line_battle_impact() calls casualty_count() twice per
-        # front-line pair; without this cache each call re-scans every
-        # front-line loss (O(pairs x losses), thousands of losses per mission).
-        self._casualties_by_origin: Optional[Dict[ControlPoint, int]] = None
-
     def merge_simulation_results(self, results: SimulationResults) -> None:
         for air_loss in results.air_losses:
             if air_loss.flight.squadron.player.is_blue:
@@ -213,12 +220,17 @@ class Debriefing:
         yield from self.ground_losses.player_airfields
         yield from self.ground_losses.enemy_airfields
 
+    @cached_property
+    def _casualties_by_origin(self) -> Dict[ControlPoint, int]:
+        # commit_front_line_battle_impact() calls casualty_count() twice per
+        # front-line pair; computing this once avoids re-scanning every
+        # front-line loss on each call (O(pairs x losses), thousands per mission).
+        counts: Dict[ControlPoint, int] = defaultdict(int)
+        for loss in self.front_line_losses:
+            counts[loss.origin] += 1
+        return counts
+
     def casualty_count(self, control_point: ControlPoint) -> int:
-        if self._casualties_by_origin is None:
-            counts: Dict[ControlPoint, int] = defaultdict(int)
-            for loss in self.front_line_losses:
-                counts[loss.origin] += 1
-            self._casualties_by_origin = counts
         return self._casualties_by_origin.get(control_point, 0)
 
     def front_line_losses_by_type(self, player: Player) -> dict[GroundUnitType, int]:
@@ -282,6 +294,39 @@ class Debriefing:
         for loss in losses:
             losses_by_type[loss.trigger_zone.name] += 1
         return losses_by_type
+
+    def loss_counts(self, player: Player) -> SideLossCounts:
+        gl = self.ground_losses
+        if player.is_blue:
+            air = self.air_losses.player
+            front_line = gl.player_front_line
+            convoy = gl.player_convoy
+            cargo_ships = gl.player_cargo_ships
+            airlifts = gl.player_airlifts
+            ground_objects = gl.player_ground_objects
+            scenery = gl.player_scenery
+        else:
+            air = self.air_losses.enemy
+            front_line = gl.enemy_front_line
+            convoy = gl.enemy_convoy
+            cargo_ships = gl.enemy_cargo_ships
+            airlifts = gl.enemy_airlifts
+            ground_objects = gl.enemy_ground_objects
+            scenery = gl.enemy_scenery
+        return SideLossCounts(
+            aircraft=len(air),
+            front_line=len(front_line),
+            convoy=len(convoy),
+            cargo_ships=len(cargo_ships),
+            airlift_cargo=sum(len(loss.cargo) for loss in airlifts),
+            ground_objects=len(ground_objects),
+            scenery=len(scenery),
+            bases_lost=sum(
+                1
+                for capture in self.base_captures
+                if capture.captured_by_player == player.opponent
+            ),
+        )
 
     def dead_aircraft(self) -> AirLosses:
         player_losses = []
