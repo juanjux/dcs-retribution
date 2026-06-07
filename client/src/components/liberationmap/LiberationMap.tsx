@@ -114,14 +114,14 @@ export default function LiberationMap() {
         </LayersControl.Overlay>
       </LayersControl>
       <LayersControl position="topleft">
-        <LayersControl.Overlay name="Red: destroyed (non-repairable)" checked>
-          <DestroyedTgoToggle blue={false} />
-        </LayersControl.Overlay>
+        <CoalitionThreatZones blue={true} />
         <LayersControl.Overlay name="Blue: destroyed (non-repairable)" checked>
           <DestroyedTgoToggle blue={true} />
         </LayersControl.Overlay>
-        <CoalitionThreatZones blue={true} />
         <CoalitionThreatZones blue={false} />
+        <LayersControl.Overlay name="Red: destroyed (non-repairable)" checked>
+          <DestroyedTgoToggle blue={false} />
+        </LayersControl.Overlay>
         <LayersControl.Overlay name="Blue navmesh">
           <NavMeshLayer blue={true} />
         </LayersControl.Overlay>
