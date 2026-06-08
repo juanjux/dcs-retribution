@@ -338,32 +338,11 @@ class FlightGroupConfigurator:
             unit.set_player()
 
     def skill_level_for(self, unit: FlyingUnit, pilot: Optional[Pilot]) -> Skill:
-        if self.flight.squadron.player.is_blue:
-            base_skill = Skill(self.game.settings.player_skill)
-        else:
-            base_skill = Skill(self.game.settings.enemy_skill)
-
+        squadron = self.flight.squadron
         if pilot is None:
             logging.error(f"Cannot determine skill level: {unit.name} has not pilot")
-            return base_skill
-
-        levels = [
-            Skill.Average,
-            Skill.Good,
-            Skill.High,
-            Skill.Excellent,
-        ]
-        current_level = levels.index(base_skill)
-        missions_for_skill_increase = 4
-        increase = pilot.record.missions_flown // missions_for_skill_increase
-        capped_increase = min(current_level + increase, len(levels) - 1)
-
-        if self.game.settings.ai_pilot_levelling:
-            new_level = capped_increase
-        else:
-            new_level = current_level
-
-        return levels[new_level]
+            return squadron.base_skill
+        return squadron.pilot_skill(pilot)
 
     def setup_props(self) -> None:
         unit: FlyingUnit

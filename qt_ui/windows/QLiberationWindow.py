@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
 
 import qt_ui.uiconstants as CONST
 from game import Game, VERSION, persistency, Migrator
+from game.ato import Flight
 from game.debriefing import Debriefing
 from game.game import TurnState
 from game.layout import LAYOUTS
@@ -56,6 +57,7 @@ class QLiberationWindow(QMainWindow):
     new_package_signal = Signal(MissionTarget)
     tgo_info_signal = Signal(TheaterGroundObject)
     control_point_info_signal = Signal(ControlPoint)
+    select_flight_signal = Signal(Flight)
 
     def __init__(self, game: Game | None, ui_flags: UiFlags) -> None:
         super().__init__()
@@ -72,11 +74,13 @@ class QLiberationWindow(QMainWindow):
         )
         self.tgo_info_signal.connect(self.open_tgo_info_dialog)
         self.control_point_info_signal.connect(self.open_control_point_info_dialog)
+        self.select_flight_signal.connect(self.on_select_flight)
         QtContext.set_callbacks(
             QtCallbacks(
                 lambda target: self.new_package_signal.emit(target),
                 lambda tgo: self.tgo_info_signal.emit(tgo),
                 lambda cp: self.control_point_info_signal.emit(cp),
+                lambda flight: self.select_flight_signal.emit(flight),
             )
         )
         Dialog.set_game(self.game_model)
@@ -619,6 +623,9 @@ class QLiberationWindow(QMainWindow):
     def open_control_point_info_dialog(self, cp: ControlPoint) -> None:
         self._cp_dialog = QBaseMenu2(None, cp, self.game_model)
         self._cp_dialog.show()
+
+    def on_select_flight(self, flight: Flight) -> None:
+        self.ato_panel.select_flight_on_map(flight)
 
     def _qsettings(self) -> QSettings:
         return QSettings("DCS Retribution", "Qt UI")
