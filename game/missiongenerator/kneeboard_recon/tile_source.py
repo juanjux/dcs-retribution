@@ -12,15 +12,15 @@ refresh.
 
 from __future__ import annotations
 
+import http.client
 import io
 import logging
 import os
-import socket
 import threading
 import time
 from pathlib import Path
 from typing import Optional
-from urllib.error import HTTPError, URLError
+from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 from PIL import Image, UnidentifiedImageError
@@ -135,7 +135,12 @@ def fetch_tile(
 
 
 def _http_get(url: str, timeout: float) -> Optional[bytes]:
-    """Single retry on URLError/timeout; no retry on HTTP non-200.
+    """Single retry on transient network/protocol errors; none on HTTP non-200.
+
+    Transient covers timeouts, connection resets/drops (including
+    ``http.client.RemoteDisconnected``, which ``urllib`` does not wrap in
+    ``URLError``), SSL errors and malformed responses. ``HTTPError`` (4xx/5xx)
+    is handled separately and never retried.
 
     Caps the response body at ``MAX_TILE_BYTES + 1`` and rejects anything
     larger so a misconfigured proxy can't make a single fetch balloon
@@ -167,7 +172,20 @@ def _http_get(url: str, timeout: float) -> Optional[bytes]:
             # recurs immediately on the next request from the same IP.
             _log_failure(url, f"HTTP {exc.code}")
             return None
-        except (URLError, socket.timeout) as exc:
+        except (OSError, http.client.HTTPException) as exc:
+            # ``urllib`` raises ``URLError`` (an ``OSError``) for DNS/refused
+            # and ``socket.timeout``/``TimeoutError`` (also ``OSError``) for
+            # slow responses, but it does NOT wrap
+            # ``http.client.RemoteDisconnected`` ("Remote end closed
+            # connection without response") in ``URLError`` — it escapes
+            # ``getresponse()`` unwrapped on a dropped/reset connection.
+            # ``RemoteDisconnected`` is a ``ConnectionResetError`` (OSError)
+            # *and* a ``BadStatusLine``/``HTTPException``. Catching the
+            # ``OSError`` + ``HTTPException`` families covers timeouts,
+            # connection resets/drops, SSL errors and malformed responses so
+            # any transient network/protocol failure degrades to the offline
+            # basemap instead of aborting mission generation. ``HTTPError``
+            # (4xx/5xx) is caught above and never reaches here.
             if attempt == 2:
                 _log_failure(url, exc)
                 return None
