@@ -8,12 +8,14 @@ from PySide6 import QtCore
 from PySide6.QtCore import QObject, Signal
 from PySide6.QtGui import QIcon, QMovie, QPixmap
 from PySide6.QtWidgets import (
+    QApplication,
     QDialog,
     QFileDialog,
     QGridLayout,
     QGroupBox,
     QHBoxLayout,
     QLabel,
+    QProgressDialog,
     QPushButton,
     QTextBrowser,
     QWidget,
@@ -23,6 +25,7 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 from game import Game
 from game.ato.flightstate import Uninitialized
 from game.debriefing import Debriefing
+from game.theater import Player
 from game.profiling import logged_duration
 from game.server import EventStream
 from game.sim import GameUpdateEvents
@@ -136,10 +139,13 @@ class QWaitingForMissionResultWindow(QDialog):
         self.setLayout(self.layout)
 
     @staticmethod
-    def add_update_row(description: str, count: int, layout: QGridLayout) -> None:
+    def add_update_row(
+        description: str, blue: int, red: int, layout: QGridLayout
+    ) -> None:
         row = layout.rowCount()
         layout.addWidget(QLabel(f"<b>{description}</b>"), row, 0)
-        layout.addWidget(QLabel(f"{count}"), row, 1)
+        layout.addWidget(QLabel(f"{blue}"), row, 1)
+        layout.addWidget(QLabel(f"{red}"), row, 2)
 
     def updateLayout(self, debriefing: Debriefing) -> None:
         updateBox = QGroupBox("Mission status")
@@ -147,40 +153,28 @@ class QWaitingForMissionResultWindow(QDialog):
         updateBox.setLayout(update_layout)
         self.debriefing = debriefing
 
-        self.add_update_row(
-            "Aircraft destroyed", len(list(debriefing.air_losses.losses)), update_layout
+        blue = debriefing.loss_counts(Player.BLUE)
+        red = debriefing.loss_counts(Player.RED)
+
+        update_layout.addWidget(
+            QLabel(f"<b>{debriefing.player_country} (OwnFor)</b>"), 0, 1
         )
-        self.add_update_row(
-            "Front line units destroyed",
-            len(list(debriefing.front_line_losses)),
-            update_layout,
+        update_layout.addWidget(
+            QLabel(f"<b>{debriefing.enemy_country} (OpFor)</b>"), 0, 2
         )
-        self.add_update_row(
-            "Convoy units destroyed", len(list(debriefing.convoy_losses)), update_layout
-        )
-        self.add_update_row(
-            "Shipping cargo destroyed",
-            len(list(debriefing.cargo_ship_losses)),
-            update_layout,
-        )
-        self.add_update_row(
-            "Airlift cargo destroyed",
-            sum(len(loss.cargo) for loss in debriefing.airlift_losses),
-            update_layout,
-        )
-        self.add_update_row(
-            "Ground Objects destroyed",
-            len(list(debriefing.ground_object_losses)),
-            update_layout,
-        )
-        self.add_update_row(
-            "Scenery Objects destroyed",
-            len(list(debriefing.scenery_object_losses)),
-            update_layout,
-        )
-        self.add_update_row(
-            "Base capture events", len(debriefing.base_captures), update_layout
-        )
+
+        rows = [
+            ("Aircraft lost", blue.aircraft, red.aircraft),
+            ("Front line units lost", blue.front_line, red.front_line),
+            ("Convoy units lost", blue.convoy, red.convoy),
+            ("Shipping cargo lost", blue.cargo_ships, red.cargo_ships),
+            ("Airlift cargo lost", blue.airlift_cargo, red.airlift_cargo),
+            ("Ground Objects lost", blue.ground_objects, red.ground_objects),
+            ("Scenery Objects lost", blue.scenery, red.scenery),
+            ("Bases lost", blue.bases_lost, red.bases_lost),
+        ]
+        for label, blue_count, red_count in rows:
+            self.add_update_row(label, blue_count, red_count, update_layout)
 
         # Clear previous content of the window
         for i in reversed(range(self.gridLayout.count())):
@@ -208,12 +202,33 @@ class QWaitingForMissionResultWindow(QDialog):
             logging.exception("Got an error while sending debriefing")
 
     def process_debriefing(self):
-        with logged_duration("Turn processing"):
-            self.sim_controller.process_results(self.debriefing)
-            self.game.pass_turn()
+        # Turn processing blocks the UI for a while; without feedback the user
+        # can't tell whether the mission end was missed or is just being
+        # processed. Show an indeterminate busy dialog meanwhile.
+        progress = QProgressDialog(
+            "End of Mission Detected, processing Mission Data",
+            "",
+            0,
+            0,
+            self,
+        )
+        progress.setWindowTitle("Processing")
+        progress.setWindowModality(QtCore.Qt.WindowModality.ApplicationModal)
+        progress.setCancelButton(None)
+        progress.setMinimumDuration(0)
+        progress.setAutoClose(False)
+        progress.setAutoReset(False)
+        progress.show()
+        QApplication.processEvents()
+        try:
+            with logged_duration("Turn processing"):
+                self.sim_controller.process_results(self.debriefing)
+                self.game.pass_turn()
 
-            GameUpdateSignal.get_instance().sendDebriefing(self.debriefing)
-            GameUpdateSignal.get_instance().updateGame(self.game)
+                GameUpdateSignal.get_instance().sendDebriefing(self.debriefing)
+                GameUpdateSignal.get_instance().updateGame(self.game)
+        finally:
+            progress.close()
         self.close()
 
     def closeEvent(self, evt):
