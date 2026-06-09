@@ -4,11 +4,13 @@ import itertools
 import logging
 from collections import defaultdict
 from dataclasses import dataclass, field
+from functools import cached_property
 from typing import (
     Any,
     Dict,
     Iterator,
     List,
+    Optional,
     TYPE_CHECKING,
     Union,
 )
@@ -218,8 +220,18 @@ class Debriefing:
         yield from self.ground_losses.player_airfields
         yield from self.ground_losses.enemy_airfields
 
+    @cached_property
+    def _casualties_by_origin(self) -> Dict[ControlPoint, int]:
+        # commit_front_line_battle_impact() calls casualty_count() twice per
+        # front-line pair; computing this once avoids re-scanning every
+        # front-line loss on each call (O(pairs x losses), thousands per mission).
+        counts: Dict[ControlPoint, int] = defaultdict(int)
+        for loss in self.front_line_losses:
+            counts[loss.origin] += 1
+        return counts
+
     def casualty_count(self, control_point: ControlPoint) -> int:
-        return len([x for x in self.front_line_losses if x.origin == control_point])
+        return self._casualties_by_origin.get(control_point, 0)
 
     def front_line_losses_by_type(self, player: Player) -> dict[GroundUnitType, int]:
         losses_by_type: dict[GroundUnitType, int] = defaultdict(int)

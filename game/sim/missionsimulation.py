@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import time
 from datetime import timedelta
 from pathlib import Path
 from typing import Optional, TYPE_CHECKING
@@ -32,6 +33,7 @@ class MissionSimulation:
         self.aircraft_simulation = AircraftSimulation(self.game)
         self.completed = False
         self.time = self.game.conditions.start_time
+        self.miz_generated_at: float = 0.0
 
     def begin_simulation(self) -> None:
         self.time = self.game.conditions.start_time
@@ -48,6 +50,7 @@ class MissionSimulation:
     def generate_miz(self, output: Path) -> None:
         with logged_duration("Mission generation"):
             self.unit_map = MissionGenerator(self.game, self.time).generate_miz(output)
+        self.miz_generated_at = time.time()
 
     def debrief_current_state(
         self, state_path: Path, force_end: bool = False
