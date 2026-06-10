@@ -479,12 +479,14 @@ class SquadronModel(QAbstractListModel):
 
     PilotRole = Qt.ItemDataRole.UserRole
 
-    def __init__(self, squadron: Squadron) -> None:
+    def __init__(self, squadron: Squadron, pilot_filter: str = "all") -> None:
         super().__init__()
         self.squadron = squadron
+        #: Which pilots this model exposes: "all", "living", or "dead".
+        self.pilot_filter = pilot_filter
 
     def rowCount(self, parent: QModelIndex = QModelIndex()) -> int:
-        return self.squadron.number_of_pilots_including_inactive
+        return len(self._filtered_pilots())
 
     def data(self, index: QModelIndex, role: int = Qt.ItemDataRole.DisplayRole) -> Any:
         if not index.isValid():
@@ -508,9 +510,22 @@ class SquadronModel(QAbstractListModel):
         """Returns the icon that should be displayed for the pilot."""
         return None
 
+    def _filtered_pilots(self) -> list[Pilot]:
+        """Roster subset this model exposes, preserving roster order.
+
+        "living" excludes dead pilots, "dead" keeps only them, "all" lists
+        everyone with living pilots first (stable within each group).
+        """
+        roster = self.squadron.current_roster
+        if self.pilot_filter == "living":
+            return [p for p in roster if p.alive]
+        if self.pilot_filter == "dead":
+            return [p for p in roster if not p.alive]
+        return sorted(roster, key=lambda p: not p.alive)
+
     def pilot_at_index(self, index: QModelIndex) -> Pilot:
         """Returns the pilot located at the given index."""
-        return self.squadron.pilot_at_index(index.row())
+        return self._filtered_pilots()[index.row()]
 
     def toggle_ai_state(self, index: QModelIndex) -> None:
         pilot = self.pilot_at_index(index)
