@@ -9,6 +9,9 @@ AIRCRAFT = f"{Settings.automate_aircraft_reinforcements=}".split("=")[0].split("
 GROUND_OBJECT_REPAIR = (
 	f"{Settings.automate_ground_object_repairs=}".split("=")[0].split(".")[1]
 )
+BUILDING_REPAIR = (
+	f"{Settings.automate_building_repairs=}".split("=")[0].split(".")[1]
+)
 MISSION_LENGTH = f"{Settings.desired_player_mission_duration=}".split("=")[0].split(".")[1]
 SUPER_CARRIER = f"{Settings.supercarrier=}".split("=")[0].split(".")[1]
 SQN_AC_LIMITS = f"{Settings.enable_squadron_aircraft_limits=}".split("=")[0].split(".")[1]
