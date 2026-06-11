@@ -2,6 +2,7 @@ import { selectMapCenter } from "../../api/mapSlice";
 import { useAppSelector } from "../../app/hooks";
 import AircraftLayer from "../aircraftlayer";
 import AirDefenseRangeLayer from "../airdefenserangelayer";
+import EmitterHighlightToggle from "../airdefenserangelayer/EmitterHighlightToggle";
 import CombatLayer from "../combatlayer";
 import ControlPointsLayer from "../controlpointslayer";
 import CullingExclusionZones from "../cullingexclusionzones/CullingExclusionZones";
@@ -94,6 +95,9 @@ export default function LiberationMap() {
         </LayersControl.Overlay>
         <LayersControl.Overlay name="Allied SAM detection range">
           <AirDefenseRangeLayer blue={true} detection />
+        </LayersControl.Overlay>
+        <LayersControl.Overlay name="Highlight radar emitter on hover" checked>
+          <EmitterHighlightToggle />
         </LayersControl.Overlay>
         <LayersControl.Overlay name="Allied IADS Network">
           <Iadsnetworklayer blue={true} />
