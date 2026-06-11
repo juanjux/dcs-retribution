@@ -13,6 +13,12 @@ if TYPE_CHECKING:
     from game.sim import MissionSimulation
 
 
+#: How often (seconds) we check state.json. DCS' export hook rewrites the
+#: file every second once the mission has ended, so a short interval keeps
+#: end-of-mission detection responsive without burning CPU.
+POLL_INTERVAL_SECONDS = 2
+
+
 class PollDebriefingFileThread(Thread):
     """Thread class with a stop() method. The thread itself has to check
     regularly for the stopped() condition."""
@@ -34,10 +40,14 @@ class PollDebriefingFileThread(Thread):
         return self._stop_event.is_set()
 
     def run(self) -> None:
-        if os.path.isfile("state.json"):
-            last_modified = os.path.getmtime("state.json")
-        else:
-            last_modified = 0
+        # Treat any state.json newer than this mission's .miz as the current
+        # mission's result; an older file is a stale leftover from a previous
+        # mission and is ignored until DCS rewrites it.
+        last_modified = self.mission_sim.miz_generated_at
+        logging.info(
+            "Watching state.json for writes after mission launch (mtime > %s)",
+            last_modified,
+        )
         while not self.stopped():
             try:
                 if (
@@ -50,10 +60,13 @@ class PollDebriefingFileThread(Thread):
                     self.callback(debriefing)
                     last_modified = os.path.getmtime("state.json")
                     if debriefing.state_data.mission_ended:
+                        logging.info("Mission end detected; stopping poll")
                         break
             except (json.JSONDecodeError, OSError, ValueError, KeyError):
-                logging.warning(
-                    "Failed to read state.json. Probably attempted read while DCS "
-                    "was still writing the file. Will retry in 5 seconds."
+                logging.error(
+                    "Failed to read state.json (likely read while DCS was "
+                    "still writing it); will retry in %ss.",
+                    POLL_INTERVAL_SECONDS,
+                    exc_info=True,
                 )
-            time.sleep(5)
+            time.sleep(POLL_INTERVAL_SECONDS)

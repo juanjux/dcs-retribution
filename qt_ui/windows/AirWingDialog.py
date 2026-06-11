@@ -53,13 +53,20 @@ class SquadronDelegate(TwoColumnRowDelegate):
         elif (row, column) == (0, 1):
             return squadron.aircraft.display_name
         elif (row, column) == (1, 0):
+            if squadron.destination is not None:
+                return (
+                    f"{squadron.location.name} - transfer ordered to "
+                    f"{squadron.destination.name}"
+                )
             return squadron.location.name
         elif (row, column) == (1, 1):
-            squadron = self.squadron(index)
-            active = len(squadron.active_pilots)
-            available = len(squadron.available_pilots)
-            on_leave = len(squadron.pilots_on_leave)
-            return f"{active} active, {available} unassigned, {on_leave} on leave"
+            pilots = len(squadron.living_pilots)
+            aircraft = squadron.owned_aircraft
+            unassigned = squadron.untasked_aircraft
+            return (
+                f"{pilots} {'pilot' if pilots == 1 else 'pilots'}, "
+                f"{aircraft} aircraft ({unassigned} unassigned)"
+            )
         return ""
 
 

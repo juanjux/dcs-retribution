@@ -13,6 +13,7 @@ from PySide6.QtCore import (
 from PySide6.QtGui import (
     QContextMenuEvent,
     QAction,
+    QKeyEvent,
 )
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -380,6 +381,25 @@ class QPackageList(QListView):
 
         menu.exec_(event.globalPos())
 
+    def keyPressEvent(self, event: QKeyEvent) -> None:
+        # Delete/Supr cancels (deletes) the selected package, so several can be
+        # cleared in a row without reaching for the context menu each time.
+        if event.key() == Qt.Key.Key_Delete:
+            index = self.currentIndex()
+            if index.isValid():
+                row = index.row()
+                self.delete_package(index)
+                # Keep a package selected so repeated Delete clears consecutive
+                # packages: the same row now holds the next one (clamped to the
+                # new last row). If the package wasn't removed (its flights were
+                # only aborted, not cancelled), this re-selects it harmlessly.
+                remaining = self.model().rowCount()
+                if remaining:
+                    self.setCurrentIndex(self.model().index(min(row, remaining - 1), 0))
+                event.accept()
+                return
+        super().keyPressEvent(event)
+
 
 class QPackagePanel(QGroupBox):
     """The package display portion of the ATO panel.
@@ -514,6 +534,35 @@ class QAirTaskingOrderPanel(QSplitter):
 
         self.flight_panel = QFlightPanel(game_model)
         self.addWidget(self.flight_panel)
+
+    def select_flight_on_map(self, flight: Flight) -> None:
+        """Selects the package and flight owning the given flight.
+
+        Triggered when the player clicks a flight's route line on the web map.
+        """
+        # Make sure the panel is showing the ATO that owns this flight.
+        show_opfor = not flight.blue.is_blue
+        if self.red_ato_checkbox.isChecked() != show_opfor:
+            self.red_ato_checkbox.setChecked(show_opfor)
+
+        packages = list(self.ato_model.ato.packages)
+        if flight.package not in packages:
+            return
+        package_row = packages.index(flight.package)
+        self.package_panel.package_list.selectionModel().setCurrentIndex(
+            self.ato_model.index(package_row, 0),
+            QItemSelectionModel.SelectionFlag.ClearAndSelect,
+        )
+
+        # Selecting the package synchronously triggers on_package_change, which
+        # sets the flight panel's package model. Now select the flight row.
+        if flight not in flight.package.flights:
+            return
+        flight_row = flight.package.flights.index(flight)
+        self.flight_panel.flight_list.selectionModel().setCurrentIndex(
+            self.flight_panel.flight_list.model().index(flight_row, 0),
+            QItemSelectionModel.SelectionFlag.ClearAndSelect,
+        )
 
     def on_package_change(self) -> None:
         """Sets the newly selected flight for display in the bottom panel."""
