@@ -53,6 +53,11 @@ class SquadronDelegate(TwoColumnRowDelegate):
         elif (row, column) == (0, 1):
             return squadron.aircraft.display_name
         elif (row, column) == (1, 0):
+            if squadron.destination is not None:
+                return (
+                    f"{squadron.location.name} - transfer ordered to "
+                    f"{squadron.destination.name}"
+                )
             return squadron.location.name
         elif (row, column) == (1, 1):
             pilots = len(squadron.living_pilots)
