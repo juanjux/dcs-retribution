@@ -8,12 +8,14 @@ from PySide6 import QtCore
 from PySide6.QtCore import QObject, Signal
 from PySide6.QtGui import QIcon, QMovie, QPixmap
 from PySide6.QtWidgets import (
+    QApplication,
     QDialog,
     QFileDialog,
     QGridLayout,
     QGroupBox,
     QHBoxLayout,
     QLabel,
+    QProgressDialog,
     QPushButton,
     QTextBrowser,
     QWidget,
@@ -200,12 +202,33 @@ class QWaitingForMissionResultWindow(QDialog):
             logging.exception("Got an error while sending debriefing")
 
     def process_debriefing(self):
-        with logged_duration("Turn processing"):
-            self.sim_controller.process_results(self.debriefing)
-            self.game.pass_turn()
+        # Turn processing blocks the UI for a while; without feedback the user
+        # can't tell whether the mission end was missed or is just being
+        # processed. Show an indeterminate busy dialog meanwhile.
+        progress = QProgressDialog(
+            "End of Mission Detected, processing Mission Data",
+            "",
+            0,
+            0,
+            self,
+        )
+        progress.setWindowTitle("Processing")
+        progress.setWindowModality(QtCore.Qt.WindowModality.ApplicationModal)
+        progress.setCancelButton(None)
+        progress.setMinimumDuration(0)
+        progress.setAutoClose(False)
+        progress.setAutoReset(False)
+        progress.show()
+        QApplication.processEvents()
+        try:
+            with logged_duration("Turn processing"):
+                self.sim_controller.process_results(self.debriefing)
+                self.game.pass_turn()
 
-            GameUpdateSignal.get_instance().sendDebriefing(self.debriefing)
-            GameUpdateSignal.get_instance().updateGame(self.game)
+                GameUpdateSignal.get_instance().sendDebriefing(self.debriefing)
+                GameUpdateSignal.get_instance().updateGame(self.game)
+        finally:
+            progress.close()
         self.close()
 
     def closeEvent(self, evt):
