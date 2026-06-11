@@ -4,15 +4,15 @@ import { PayloadAction, createSlice } from "@reduxjs/toolkit";
 import { LatLngLiteral } from "leaflet";
 
 // Where a hover originated: the emitter's icon, or one of its range rings. The
-// highlight is symmetric (hovering either lights up the other), but we draw a
-// different cue depending on the source: hovering a ring marks the emitter with
-// a blob so you can find it; hovering the emitter only lights up its ring.
+// highlight is symmetric (hovering either lights up the other), but hovering a
+// ring also marks its emitter with a blob so you can find it; hovering the
+// emitter does not blob the icon you're already pointing at.
 export type EmitterHoverSource = "emitter" | "ring";
 
 interface MapState {
   center: LatLngLiteral;
-  // Id of the TGO/control point whose air-defense ring (or icon) is currently
-  // hovered, so its icon can be raised above overlapping ones while highlighted.
+  // Id of the TGO whose air-defense ring (or icon) is currently hovered, so its
+  // icon can be raised above overlapping ones while highlighted.
   hoveredEmitterId: string | null;
   // What was hovered to set hoveredEmitterId (icon vs. ring).
   hoveredEmitterSource: EmitterHoverSource | null;
@@ -40,7 +40,9 @@ const mapSlice = createSlice({
   reducers: {
     setHoveredEmitter(
       state,
-      action: PayloadAction<{ id: string; source: EmitterHoverSource } | null>
+      action: PayloadAction<
+        { id: string; source: EmitterHoverSource } | null
+      >
     ) {
       state.hoveredEmitterId = action.payload?.id ?? null;
       state.hoveredEmitterSource = action.payload?.source ?? null;

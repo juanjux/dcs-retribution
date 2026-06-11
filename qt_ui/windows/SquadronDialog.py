@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (
     QPushButton,
     QScrollArea,
     QVBoxLayout,
+    QApplication,
     QInputDialog,
     QLineEdit,
     QMessageBox,
@@ -192,9 +193,11 @@ class SquadronDestinationComboBox(QComboBox):
             )
             free_ground_spawns = cp.total_aircraft_parking(parking_type)
 
-            # Squadrons that will actually occupy this base next turn:
-            # those staying here (not relocating away) plus any relocating in.
-            occupants = [s for s in cp.squadrons if s.destination is None]
+            # Squadrons whose parking must be reserved at this base next turn:
+            # every squadron currently based here (outgoing transfers included —
+            # they may need to return if the destination is captured this turn)
+            # plus any squadrons relocating in.
+            occupants = list(cp.squadrons)
             occupants += [
                 s for s in cp.coalition.air_wing.iter_squadrons() if s.destination == cp
             ]
