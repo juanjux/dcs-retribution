@@ -115,6 +115,7 @@ class ModSettings:
     SWPack: bool = False
     vietnamwarvessels: bool = False
     chinesemilitaryassetspack: bool = False
+    iranmilitaryassetspack: bool = False
     russianmilitaryassetspack: bool = False
     usamilitaryassetspack: bool = False
     ukmilitaryassetspack: bool = False

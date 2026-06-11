@@ -38,6 +38,7 @@ from .su30 import *
 from .su35s import *
 from .su57 import *
 from .swedishmilitaryassetspack import *
+from .iranmilitaryassetspack import *
 from .coldwarassets import *
 from .uh60l import *
 from .vietnamwarvessels import *
