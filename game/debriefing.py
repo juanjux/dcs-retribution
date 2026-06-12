@@ -347,6 +347,12 @@ class Debriefing:
         untracked: List[str] = []
         for unit_name in self.state_data.killed_ground_units:
             front_line_unit = self.unit_map.front_line_unit(unit_name)
+            if front_line_unit is None:
+                # The TIC plugin respawns frontline units as renamed
+                # single-unit clones; map clone deaths back to their group.
+                front_line_unit = self.unit_map.front_line_unit_from_tic_clone(
+                    unit_name
+                )
             if front_line_unit is not None:
                 if front_line_unit.origin.captured.is_blue:
                     losses.player_front_line.append(front_line_unit)

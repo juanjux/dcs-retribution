@@ -69,6 +69,26 @@ RANDOM_OFFSET_ATTACK = 250
 
 INFANTRY_GROUP_SIZE = 5
 
+# TIC-managed formations advance to this far short of the front-line trace
+# (min, max meters). Both sides stopping one standoff from the trace leaves
+# them 1.2-1.8 km apart: inside TIC's ~2 NM targeting bubble, so opposing
+# formations halt face to face and exchange fire instead of driving past
+# each other to deep objectives.
+TIC_CONTACT_STANDOFF = (600, 900)
+# Sideways movement along the front on the second advance leg (min, max
+# meters). Reshuffles the geometry so formations deadlocked behind LOS
+# blockers (towns, ridges) pick up new sightlines and opponents.
+TIC_LATERAL_SLIDE = (1500, 3000)
+# How far past the front-line trace the final press leg goes (min, max
+# meters). Both sides pressing converge into close range, guaranteeing
+# combat even where LOS was blocked at standoff.
+TIC_PUSH_DEPTH = (400, 800)
+# Minutes before the first advance leg steps off (min, max), staggered so
+# the line doesn't move as one.
+TIC_STEP_OFF = (0, 3)
+# Fallback for the "tic.boundPause" plugin option (minutes between legs).
+TIC_DEFAULT_BOUND_PAUSE = 25
+
 
 class FlotGenerator:
     def __init__(
@@ -94,6 +114,15 @@ class FlotGenerator:
         self.unit_map = unit_map
         self.radio_registry = radio_registry
         self.mission_data = mission_data
+        # When the TIC plugin is enabled, frontline maneuver units are handed
+        # over to the Troops In Contact script (group/waypoint naming contract)
+        # instead of receiving vanilla DCS combat tasking.
+        self.tic_enabled = bool(self.game.settings.plugins.get("tic"))
+        # Minutes between TIC advance legs, from the plugin settings UI.
+        # Default 25 paces the battle arc across roughly 1.5-2 hours.
+        self.tic_bound_pause = int(
+            self.game.settings.plugins.get("tic.boundPause") or TIC_DEFAULT_BOUND_PAUSE
+        )
 
     def generate(self) -> None:
         position = FrontLineConflictDescription.frontline_position(
@@ -214,12 +243,24 @@ class FlotGenerator:
                     )
                 )
 
+    @staticmethod
+    def _tic_managed_role(role: CombatGroupRole) -> bool:
+        """Roles handed over to the TIC script. Artillery keeps Retribution's
+        fire-mission tasking; SHORAD/AAA keep vanilla air-defense AI."""
+        return role in (
+            CombatGroupRole.TANK,
+            CombatGroupRole.IFV,
+            CombatGroupRole.APC,
+            CombatGroupRole.ATGM,
+        )
+
     def gen_infantry_group_for_group(
         self,
         group: VehicleGroup,
         is_player: Player,
         side: Country,
         forward_heading: Heading,
+        tic_formation: Optional[str] = None,
     ) -> None:
         infantry_position = self.conflict.find_ground_position(
             group.points[0].position.random_point_within(250, 50),
@@ -229,6 +270,15 @@ class FlotGenerator:
         )
 
         faction = self.game.faction_for(is_player)
+
+        def infantry_group_name(unit_type: GroundUnitType) -> str:
+            name = namegen.next_infantry_name(side, unit_type)
+            if tic_formation is not None:
+                # Join the carrier group's TIC formation. The "#" bookend
+                # keeps the DCS group name unique while TIC merges every
+                # group sharing the formation name.
+                return f"TIC:{tic_formation}#{name}"
+            return name
 
         # Disable infantry unit gen if disabled
         if not self.game.settings.perf_infantry:
@@ -270,7 +320,7 @@ class FlotGenerator:
         )
         vg = self.mission.vehicle_group(
             side,
-            namegen.next_infantry_name(side, units[0]),
+            infantry_group_name(units[0]),
             units[0].dcs_unit_type,
             position=infantry_position,
             group_size=1,
@@ -280,12 +330,14 @@ class FlotGenerator:
         vehicle = vg.units[0]
         GroundForcePainter(faction, vehicle).apply_livery()
         vg.hidden_on_mfd = True
+        if tic_formation is not None:
+            vg.late_activation = True
 
         for unit in units[1:]:
             position = infantry_position.random_point_within(55, 5)
             vg = self.mission.vehicle_group(
                 side,
-                namegen.next_infantry_name(side, unit),
+                infantry_group_name(unit),
                 unit.dcs_unit_type,
                 position=position,
                 group_size=1,
@@ -295,6 +347,8 @@ class FlotGenerator:
             vehicle = vg.units[0]
             GroundForcePainter(faction, vehicle).apply_livery()
             vg.hidden_on_mfd = True
+            if tic_formation is not None:
+                vg.late_activation = True
 
     def _earliest_tot_on_flot(self, player: Player) -> timedelta:
         tots = [
@@ -531,6 +585,111 @@ class FlotGenerator:
             return True
         return False
 
+    def _tic_distance_to_front(
+        self, dcs_group: VehicleGroup, forward_heading: Heading
+    ) -> float:
+        """Signed distance (m) from the group to the front-line trace, measured
+        along the forward heading. Positive = the front is ahead."""
+        pos = dcs_group.points[0].position
+        probe = pos.point_from_heading(forward_heading.degrees, 1000.0)
+        unit_x = (probe.x - pos.x) / 1000.0
+        unit_y = (probe.y - pos.y) / 1000.0
+        front = self.conflict.position
+        return (front.x - pos.x) * unit_x + (front.y - pos.y) * unit_y
+
+    def _tic_jitter(self) -> int:
+        """Minutes until the next TIC advance leg: boundPause +/- 25%."""
+        pause = self.tic_bound_pause
+        return random.randint(round(pause * 0.75), round(pause * 1.25))
+
+    def _plan_tic_action(
+        self,
+        stance: CombatStance,
+        dcs_group: VehicleGroup,
+        forward_heading: Heading,
+        from_cp: ControlPoint,
+        to_cp: ControlPoint,
+    ) -> bool:
+        """
+        Plans movement for a TIC-managed formation by encoding TIC commands in
+        waypoint names ("t+N" = advance N minutes after activation, "hdg=" =
+        formation facing). TIC ignores DCS tasks/triggers, so none are added.
+
+        TIC runs the 414th's chosen "simulate" ROE: theatrical, mostly
+        inaccurate fire that only happens while stationary. Advancing
+        formations therefore get a 3-leg timed route instead of a deep
+        objective: (1) stop one TIC_CONTACT_STANDOFF short of the front-line
+        trace, inside TIC's targeting bubble, and fight; (2) slide laterally
+        along the front to break LOS deadlocks behind towns/ridges; (3) press
+        just past the trace into close contact to guarantee combat. Leg
+        pacing comes from the "tic.boundPause" plugin setting. Players
+        provide the real attrition.
+
+        Returns True if movement waypoints were added.
+        """
+        heading_cmd = f"hdg={int(forward_heading.degrees)}"
+        if stance == CombatStance.RETREAT:
+            if (
+                from_cp.position.distance_to_point(dcs_group.points[0].position)
+                <= RETREAT_DISTANCE
+            ):
+                retreat_point = self.conflict.theater.nearest_land_pos(
+                    from_cp.position.random_point_within(500, 250)
+                )
+            else:
+                retreat_point = self.find_retreat_point(dcs_group, forward_heading)
+            wp = dcs_group.add_waypoint(retreat_point, self.wpt_pointaction)
+            wp.name = f"t+0 {heading_cmd} roe=simulate"
+            return True
+
+        if stance in (
+            CombatStance.AGGRESSIVE,
+            CombatStance.BREAKTHROUGH,
+            CombatStance.ELIMINATION,
+        ):
+            standoff = random.randint(*TIC_CONTACT_STANDOFF)
+            travel = self._tic_distance_to_front(dcs_group, forward_heading) - standoff
+
+            # Leg 1: advance to the firing line, where contact can occur.
+            leg_time = random.randint(*TIC_STEP_OFF)
+            if travel > 100:
+                firing_line = self.find_offensive_point(
+                    dcs_group, forward_heading, int(travel)
+                )
+                wp = dcs_group.add_waypoint(firing_line, self.wpt_pointaction)
+                wp.name = f"t+{leg_time} {heading_cmd} roe=simulate"
+            else:
+                # Spawned at contact range already; slide and press from here.
+                firing_line = dcs_group.points[0].position
+
+            # Leg 2: slide sideways along the front to pick up new sightlines
+            # and opponents. hdg keeps the formation facing the enemy.
+            slide_heading = random.choice([forward_heading.right, forward_heading.left])
+            slide_point = self.conflict.theater.nearest_land_pos(
+                firing_line.point_from_heading(
+                    slide_heading.degrees, random.randint(*TIC_LATERAL_SLIDE)
+                )
+            )
+            leg_time += self._tic_jitter()
+            wp = dcs_group.add_waypoint(slide_point, self.wpt_pointaction)
+            wp.name = f"t+{leg_time} {heading_cmd} roe=simulate"
+
+            # Leg 3: press just past the front trace into close contact.
+            press_point = self.conflict.theater.nearest_land_pos(
+                slide_point.point_from_heading(
+                    forward_heading.degrees,
+                    standoff + random.randint(*TIC_PUSH_DEPTH),
+                )
+            )
+            leg_time += self._tic_jitter()
+            wp = dcs_group.add_waypoint(press_point, self.wpt_pointaction)
+            wp.name = f"t+{leg_time} {heading_cmd} roe=simulate"
+            return True
+
+        # DEFENSIVE/AMBUSH: hold position. TIC formations idle (with default
+        # "shift" milling) at their spawn point when no movement is commanded.
+        return False
+
     def plan_action_for_groups(
         self,
         stance: CombatStance,
@@ -544,6 +703,14 @@ class FlotGenerator:
             return
 
         for dcs_group, group in ally_groups:
+            if self.tic_enabled and self._tic_managed_role(group.role):
+                # TIC-managed formations get their orders from waypoint names
+                # (parsed by the TIC script), not from DCS AI tasks/triggers.
+                self._plan_tic_action(
+                    stance, dcs_group, forward_heading, from_cp, to_cp
+                )
+                continue
+
             if group.role == CombatGroupRole.ARTILLERY:
                 if self.game.settings.perf_artillery:
                     target = self.get_artillery_target_in_range(
@@ -819,6 +986,7 @@ class FlotGenerator:
                 group.size,
                 final_position,
                 heading=spawn_heading.opposite,
+                role=group.role,
             )
             if is_player == Player.BLUE:
                 g.set_skill(Skill(self.game.settings.player_skill))
@@ -827,11 +995,18 @@ class FlotGenerator:
             positioned_groups.append((g, group))
 
             if group.role in [CombatGroupRole.APC, CombatGroupRole.IFV]:
+                tic_formation = None
+                group_name = str(g.name)
+                if group_name.startswith("TIC:"):
+                    # Infantry joins the carrier group's TIC formation so TIC
+                    # auto-pairs it with the nearest carrier for mounting.
+                    tic_formation = group_name[len("TIC:") :]
                 self.gen_infantry_group_for_group(
                     g,
                     is_player,
                     country,
                     spawn_heading.opposite,
+                    tic_formation=tic_formation,
                 )
 
         return positioned_groups
@@ -844,19 +1019,32 @@ class FlotGenerator:
         count: int,
         at: Point,
         heading: Heading,
+        role: CombatGroupRole,
     ) -> VehicleGroup:
         cp = self.conflict.front_line.control_point_friendly_to(player)
         faction = self.game.faction_for(player)
 
+        name = namegen.next_unit_name(side, unit_type)
+        tic_managed = self.tic_enabled and self._tic_managed_role(role)
+        if tic_managed:
+            # TIC discovers groups by the "TIC:" prefix; each vehicle group is
+            # its own formation (formation name = the unique generated name).
+            name = f"TIC:{name}"
+
         group = self.mission.vehicle_group(
             side,
-            namegen.next_unit_name(side, unit_type),
+            name,
             unit_type.dcs_unit_type,
             position=at,
             group_size=count,
             heading=heading.degrees,
         )
         group.hidden_on_mfd = True
+        if tic_managed:
+            # TIC requires late-activated originals; it respawns its own
+            # single-unit copies at mission start.
+            group.late_activation = True
+            self.mission_data.tic_groups.append(str(group.name))
         if self.game.settings.perf_red_alert_state:
             group.points[0].tasks.append(OptAlarmState(2))
         else:

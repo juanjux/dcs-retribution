@@ -125,3 +125,6 @@ class MissionData:
     cp_stack: dict[UUID, Distance] = field(default_factory=dict)
     player_frontline_groups: list[FrontlineUnitGroupsInfo] = field(default_factory=list)
     enemy_frontline_groups: list[FrontlineUnitGroupsInfo] = field(default_factory=list)
+    # Names of frontline ground groups handed over to the Troops In Contact
+    # script (TIC plugin). Non-empty means TIC_v1.1.lua must be injected.
+    tic_groups: list[str] = field(default_factory=list)
