@@ -96,10 +96,9 @@ class TwoColumnRowDelegate(QStyledItemDelegate):
     @staticmethod
     def icon_size(option: QStyleOptionViewItem) -> QSize:
         icon_size: Optional[QSize] = option.decorationSize
-        # Guard against a malformed option: under PySide6 6.4.x the option
-        # handed to sizeHint() during some relayouts can carry a decorationSize
-        # that is not a QSize (e.g. a QWidgetItem), which then blows up on
-        # .width()/.height(). Treat anything unexpected as "no icon".
+        # Under PySide6 6.4.x the option passed to sizeHint() can carry a
+        # decorationSize that isn't a QSize (e.g. a QWidgetItem); treat
+        # anything unexpected as "no icon" instead of crashing on .width().
         if not isinstance(icon_size, QSize):
             return QSize(0, 0)
         return icon_size
