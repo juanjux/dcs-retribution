@@ -23,6 +23,7 @@
 * **[AirWing]** Air Wing list shows a "transfer ordered to X" indicator, and Airfield Command lists the units transferring into the base next turn
 * **[AirWing]** Insufficient-parking warnings are consolidated into a single non-modal dialog that names the missing parking type and links each squadron to its dialog
 * **[BaseMenu]** Base intel summary shows aircraft occupied/transferring/free and a per-parking-type breakdown (shared / fixed-wing-exclusive / rotary-wing-exclusive / ground spawns), fixing the misleading "0 fixed-wing only parking" at bases whose slots are all shared
+* **[UI]** Avoid a crash dialog ("'QWidgetItem' object has no attribute 'width'") when a list using the two-column row delegate relayouts with a malformed style option under PySide6 6.4.x.
 
 ## Fixes
 * **[AirWing]** Squadron transfer-destination parking now accounts for already-ordered incoming transfers, matching the Airfield Command hangar count
