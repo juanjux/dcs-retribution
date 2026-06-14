@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 from datetime import datetime
 from functools import cached_property
+from time import sleep
 from typing import Any, Dict, List, TYPE_CHECKING, Tuple
 
 from dcs import Point
@@ -46,6 +47,45 @@ from ...radio.datalink import DataLinkRegistry
 if TYPE_CHECKING:
     from game import Game
     from game.squadrons import Squadron
+
+
+def _ensure_payloads_loaded(dcs_unit_type: Any) -> None:
+    """Warm pydcs' per-type payload cache before mission generation reads it.
+
+    pydcs loads every payload .lua for the aircraft type and, on the full parse,
+    only catches SyntaxError. A torn read of a payload file that is mid-write
+    yields an empty number and raises ValueError ("could not convert string to
+    float: ''"), which would abort the whole turn at Take Off; it succeeds on a
+    later attempt once the write has settled (pydcs caches payloads after the
+    first success). Retry a few times, clearing the partial cache between
+    attempts, then fall back to an empty payload set so a persistently
+    unparseable file degrades to a logged error instead of crashing generation.
+    """
+    if not hasattr(dcs_unit_type, "load_payloads"):
+        return
+    if getattr(dcs_unit_type, "payloads", None) is not None:
+        return
+    for attempt in range(3):
+        try:
+            dcs_unit_type.load_payloads()
+            return
+        except (ValueError, SyntaxError) as e:
+            # load_payloads() leaves a partial/empty cache on failure; clear it
+            # so the next attempt re-reads the files from disk.
+            dcs_unit_type.payloads = None
+            logging.warning(
+                "Failed to parse payloads for %s (attempt %d/3): %s",
+                getattr(dcs_unit_type, "id", dcs_unit_type),
+                attempt + 1,
+                e,
+            )
+            sleep(0.25)
+    logging.error(
+        "Could not parse payloads for %s after 3 attempts; continuing with an "
+        "empty payload set so mission generation is not aborted.",
+        getattr(dcs_unit_type, "id", dcs_unit_type),
+    )
+    dcs_unit_type.payloads = {}
 
 
 class AircraftGenerator:
@@ -154,6 +194,7 @@ class AircraftGenerator:
                         flight.return_pilots_and_aircraft()
                         continue
                     logging.info(f"Generating flight: {flight.unit_type}")
+                    _ensure_payloads_loaded(flight.unit_type.dcs_unit_type)
                     group = self.create_and_configure_flight(
                         flight, country, dynamic_runways
                     )
