@@ -22,6 +22,7 @@
 * **[AirWing]** Squadron dialog shows the aircraft type, an aircraft inventory (initial/current/destroyed/purchased), and buy/sell aircraft controls with price, on-order count and available parking slots
 * **[AirWing]** Air Wing list shows a "transfer ordered to X" indicator, and Airfield Command lists the units transferring into the base next turn
 * **[Map]** Carrier/LHA control points now show their ship group on the map like other naval groups: the tooltip lists the carrier and escorts (with [DEAD] markers for losses), the surviving escorts' air-defense rings are drawn, and the status marker turns yellow while any ship survives instead of red as soon as the carrier itself is sunk.
+* **[UI]** Avoid a crash dialog ("'QWidgetItem' object has no attribute 'width'") when a list using the two-column row delegate relayouts with a malformed style option under PySide6 6.4.x.
 
 ## Fixes
 * **[AirWing]** Squadron transfer-destination parking now accounts for already-ordered incoming transfers, matching the Airfield Command hangar count
