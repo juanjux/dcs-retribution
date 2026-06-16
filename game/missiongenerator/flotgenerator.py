@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import math
 import random
+from dataclasses import dataclass
 from datetime import timedelta
 from typing import List, Optional, TYPE_CHECKING, Tuple
 
@@ -70,24 +71,109 @@ RANDOM_OFFSET_ATTACK = 250
 INFANTRY_GROUP_SIZE = 5
 
 # TIC-managed formations advance to this far short of the front-line trace
-# (min, max meters). Both sides stopping one standoff from the trace leaves
-# them 1.2-1.8 km apart: inside TIC's ~2 NM targeting bubble, so opposing
-# formations halt face to face and exchange fire instead of driving past
-# each other to deep objectives.
+# (min, max meters). Attackers stopping one standoff from the trace leaves
+# them inside TIC's ~2 NM targeting bubble, so opposing formations halt face
+# to face and exchange fire instead of driving past each other to deep
+# objectives.
 TIC_CONTACT_STANDOFF = (600, 900)
-# Sideways movement along the front on the second advance leg (min, max
-# meters). Reshuffles the geometry so formations deadlocked behind LOS
-# blockers (towns, ridges) pick up new sightlines and opponents.
+# Defenders dig in a bound short of the trace rather than idling at their rear
+# spawn (which could sit OUTSIDE the ~2 NM bubble, leaving an attacker pressing
+# an empty line). Still well inside the bubble, just deeper than the attacker.
+TIC_DEFENSIVE_STANDOFF = (900, 1400)
+# Ambush is the most rearward/weapons-tight hold: further back than DEFENSIVE
+# but still inside the bubble so the line engages once the attacker presses in.
+TIC_AMBUSH_STANDOFF = (1400, 2200)
+# Sideways movement along the front on a slide leg (min, max meters).
+# Reshuffles the geometry so formations deadlocked behind LOS blockers (towns,
+# ridges) pick up new sightlines and opponents.
 TIC_LATERAL_SLIDE = (1500, 3000)
-# How far past the front-line trace the final press leg goes (min, max
-# meters). Both sides pressing converge into close range, guaranteeing
+# How far past the front-line trace a press leg goes (min, max meters), before
+# the per-stance depth scale. Pressing converges into close range, guaranteeing
 # combat even where LOS was blocked at standoff.
 TIC_PUSH_DEPTH = (400, 800)
-# Minutes before the first advance leg steps off (min, max), staggered so
-# the line doesn't move as one.
-TIC_STEP_OFF = (0, 3)
+# Per-group tempo multiplier (min, max) applied to every leg gap so formations
+# don't all reach the firing line on the same beat. <1 = quicker mover.
+TIC_GROUP_TEMPO = (0.7, 1.4)
+# Floor for the step-off window (minutes) when boundPause is small.
+TIC_STEP_OFF_FLOOR = 3
+# BREAKTHROUGH presses much deeper than a measured AGGRESSIVE push.
+TIC_BREAKTHROUGH_DEPTH_SCALE = 1.8
+# Probability a dug-in DEFENSIVE group throws an occasional local counterattack
+# leg, and how shallow that lunge is relative to a full press.
+TIC_COUNTERATTACK_CHANCE = 0.25
+TIC_COUNTERATTACK_DEPTH_SCALE = 0.6
 # Fallback for the "tic.boundPause" plugin option (minutes between legs).
 TIC_DEFAULT_BOUND_PAUSE = 25
+
+
+@dataclass(frozen=True)
+class TicStanceProfile:
+    """Per-stance movement shape for a TIC-managed formation. Maps a campaign
+    CombatStance onto a distinct firing-line posture so opposing sides don't run
+    the same script and collide as a symmetric wall. See
+    docs/dev/design/414th-tic-dynamic-fronts-notes.md."""
+
+    # Distance band (m) to halt short of the trace for the opening bound.
+    standoff: Tuple[int, int]
+    # Number of slide/press assault cycles after the opening bound (attackers).
+    assault_cycles: int
+    # Whether each assault cycle slides laterally before pressing. Breakthrough
+    # thrusts straight (no lateral dithering); aggressive/elimination slide to
+    # break LOS deadlocks first.
+    slide_before_press: bool
+    # Multiplier on TIC_PUSH_DEPTH for press legs.
+    push_depth_scale: float
+    # Cadence multiplier on the leg gap (<1 = faster tempo, e.g. breakthrough).
+    cadence_scale: float
+    # Chance of an extra shallow forward counterattack leg (DEFENSIVE only).
+    counter_chance: float
+
+
+# AGGRESSIVE/BREAKTHROUGH/ELIMINATION attack; DEFENSIVE/AMBUSH hold a forward
+# bound (and DEFENSIVE may occasionally counterattack). RETREAT is handled
+# separately. Stances absent here fall back to the DEFENSIVE-style hold.
+TIC_STANCE_PROFILES = {
+    CombatStance.AGGRESSIVE: TicStanceProfile(
+        standoff=TIC_CONTACT_STANDOFF,
+        assault_cycles=1,
+        slide_before_press=True,
+        push_depth_scale=1.0,
+        cadence_scale=1.0,
+        counter_chance=0.0,
+    ),
+    CombatStance.BREAKTHROUGH: TicStanceProfile(
+        standoff=TIC_CONTACT_STANDOFF,
+        assault_cycles=1,
+        slide_before_press=False,
+        push_depth_scale=TIC_BREAKTHROUGH_DEPTH_SCALE,
+        cadence_scale=0.7,
+        counter_chance=0.0,
+    ),
+    CombatStance.ELIMINATION: TicStanceProfile(
+        standoff=TIC_CONTACT_STANDOFF,
+        assault_cycles=2,
+        slide_before_press=True,
+        push_depth_scale=1.0,
+        cadence_scale=1.0,
+        counter_chance=0.0,
+    ),
+    CombatStance.DEFENSIVE: TicStanceProfile(
+        standoff=TIC_DEFENSIVE_STANDOFF,
+        assault_cycles=0,
+        slide_before_press=False,
+        push_depth_scale=TIC_COUNTERATTACK_DEPTH_SCALE,
+        cadence_scale=1.0,
+        counter_chance=TIC_COUNTERATTACK_CHANCE,
+    ),
+    CombatStance.AMBUSH: TicStanceProfile(
+        standoff=TIC_AMBUSH_STANDOFF,
+        assault_cycles=0,
+        slide_before_press=False,
+        push_depth_scale=TIC_COUNTERATTACK_DEPTH_SCALE,
+        cadence_scale=1.0,
+        counter_chance=0.0,
+    ),
+}
 
 
 class FlotGenerator:
@@ -597,10 +683,32 @@ class FlotGenerator:
         front = self.conflict.position
         return (front.x - pos.x) * unit_x + (front.y - pos.y) * unit_y
 
+    def _tic_step_off(self) -> int:
+        """Minutes before a group's opening bound steps off. Scaled to the
+        battle tempo so the line doesn't move as one -- groups begin advancing
+        across a wide window instead of together."""
+        window = max(TIC_STEP_OFF_FLOOR, self.tic_bound_pause // 2)
+        return random.randint(0, window)
+
     def _tic_jitter(self) -> int:
-        """Minutes until the next TIC advance leg: boundPause +/- 25%."""
+        """Minutes between TIC legs: boundPause +/- 45% (loosened from +/-25%
+        so leg transitions don't re-cluster after the staggered step-off)."""
         pause = self.tic_bound_pause
-        return random.randint(round(pause * 0.75), round(pause * 1.25))
+        return random.randint(round(pause * 0.55), round(pause * 1.45))
+
+    def _tic_leg_gap(self, tempo: float, cadence_scale: float) -> int:
+        """Minutes to the next leg for one group: jitter scaled by the group's
+        own tempo and the stance cadence (breakthrough presses faster). Floored
+        at 1 so legs never collapse onto the same minute."""
+        return max(1, round(self._tic_jitter() * tempo * cadence_scale))
+
+    @staticmethod
+    def _tic_stance_profile(stance: CombatStance) -> TicStanceProfile:
+        """Movement shape for a stance. Unknown/unmapped stances fall back to a
+        DEFENSIVE-style dug-in hold rather than a symmetric advance."""
+        return TIC_STANCE_PROFILES.get(
+            stance, TIC_STANCE_PROFILES[CombatStance.DEFENSIVE]
+        )
 
     def _plan_tic_action(
         self,
@@ -616,14 +724,16 @@ class FlotGenerator:
         formation facing). TIC ignores DCS tasks/triggers, so none are added.
 
         TIC runs the 414th's chosen "simulate" ROE: theatrical, mostly
-        inaccurate fire that only happens while stationary. Advancing
-        formations therefore get a 3-leg timed route instead of a deep
-        objective: (1) stop one TIC_CONTACT_STANDOFF short of the front-line
-        trace, inside TIC's targeting bubble, and fight; (2) slide laterally
-        along the front to break LOS deadlocks behind towns/ridges; (3) press
-        just past the trace into close contact to guarantee combat. Leg
-        pacing comes from the "tic.boundPause" plugin setting. Players
-        provide the real attrition.
+        inaccurate fire that only happens while stationary. Movement is shaped
+        per CombatStance (`_tic_stance_profile`) so opposing sides don't run the
+        same script and collide as a symmetric wall. Every formation takes an
+        opening bound to a fighting line short of the trace (inside TIC's ~2 NM
+        bubble); attackers then run slide/press assault cycles past the trace,
+        while DEFENSIVE/AMBUSH dig in there and only DEFENSIVE occasionally
+        counterattacks. Cadence is staggered per group (`_tic_step_off`,
+        `_tic_leg_gap`) so the line ripples instead of lurching. Leg pacing
+        comes from the "tic.boundPause" plugin setting; players provide the real
+        attrition. See docs/dev/design/414th-tic-dynamic-fronts-notes.md.
 
         Returns True if movement waypoints were added.
         """
@@ -642,53 +752,73 @@ class FlotGenerator:
             wp.name = f"t+0 {heading_cmd} roe=simulate"
             return True
 
-        if stance in (
-            CombatStance.AGGRESSIVE,
-            CombatStance.BREAKTHROUGH,
-            CombatStance.ELIMINATION,
-        ):
-            standoff = random.randint(*TIC_CONTACT_STANDOFF)
-            travel = self._tic_distance_to_front(dcs_group, forward_heading) - standoff
+        profile = self._tic_stance_profile(stance)
+        tempo = random.uniform(*TIC_GROUP_TEMPO)
+        leg_time = self._tic_step_off()
+        added = False
 
-            # Leg 1: advance to the firing line, where contact can occur.
-            leg_time = random.randint(*TIC_STEP_OFF)
-            if travel > 100:
-                firing_line = self.find_offensive_point(
-                    dcs_group, forward_heading, int(travel)
-                )
-                wp = dcs_group.add_waypoint(firing_line, self.wpt_pointaction)
-                wp.name = f"t+{leg_time} {heading_cmd} roe=simulate"
-            else:
-                # Spawned at contact range already; slide and press from here.
-                firing_line = dcs_group.points[0].position
+        def emit(point: Point, when: int) -> None:
+            nonlocal added
+            wp = dcs_group.add_waypoint(point, self.wpt_pointaction)
+            wp.name = f"t+{when} {heading_cmd} roe=simulate"
+            added = True
 
-            # Leg 2: slide sideways along the front to pick up new sightlines
-            # and opponents. hdg keeps the formation facing the enemy.
-            slide_heading = random.choice([forward_heading.right, forward_heading.left])
-            slide_point = self.conflict.theater.nearest_land_pos(
-                firing_line.point_from_heading(
-                    slide_heading.degrees, random.randint(*TIC_LATERAL_SLIDE)
-                )
+        # Opening bound: advance to the fighting line short of the trace. For
+        # attackers this is the contact standoff; for DEFENSIVE/AMBUSH it digs
+        # them in well inside the bubble instead of idling at the rear spawn
+        # (which could leave an attacker pressing an empty line).
+        standoff = random.randint(*profile.standoff)
+        travel = self._tic_distance_to_front(dcs_group, forward_heading) - standoff
+        if travel > 100:
+            firing_line = self.find_offensive_point(
+                dcs_group, forward_heading, int(travel)
             )
-            leg_time += self._tic_jitter()
-            wp = dcs_group.add_waypoint(slide_point, self.wpt_pointaction)
-            wp.name = f"t+{leg_time} {heading_cmd} roe=simulate"
+            emit(firing_line, leg_time)
+        else:
+            # Already at (or past) the fighting line; slide and press from here.
+            firing_line = dcs_group.points[0].position
 
-            # Leg 3: press just past the front trace into close contact.
-            press_point = self.conflict.theater.nearest_land_pos(
-                slide_point.point_from_heading(
-                    forward_heading.degrees,
-                    standoff + random.randint(*TIC_PUSH_DEPTH),
+        current = firing_line
+
+        # Assault cycles (attackers): optionally slide to break an LOS deadlock,
+        # then press just past the trace into close contact. ELIMINATION runs
+        # two cycles to hunt sightlines; BREAKTHROUGH thrusts straight and deep.
+        for _ in range(profile.assault_cycles):
+            if profile.slide_before_press:
+                slide_heading = random.choice(
+                    [forward_heading.right, forward_heading.left]
                 )
-            )
-            leg_time += self._tic_jitter()
-            wp = dcs_group.add_waypoint(press_point, self.wpt_pointaction)
-            wp.name = f"t+{leg_time} {heading_cmd} roe=simulate"
-            return True
+                current = self.conflict.theater.nearest_land_pos(
+                    current.point_from_heading(
+                        slide_heading.degrees, random.randint(*TIC_LATERAL_SLIDE)
+                    )
+                )
+                leg_time += self._tic_leg_gap(tempo, profile.cadence_scale)
+                emit(current, leg_time)
 
-        # DEFENSIVE/AMBUSH: hold position. TIC formations idle (with default
-        # "shift" milling) at their spawn point when no movement is commanded.
-        return False
+            press_depth = standoff + round(
+                random.randint(*TIC_PUSH_DEPTH) * profile.push_depth_scale
+            )
+            current = self.conflict.theater.nearest_land_pos(
+                current.point_from_heading(forward_heading.degrees, press_depth)
+            )
+            leg_time += self._tic_leg_gap(tempo, profile.cadence_scale)
+            emit(current, leg_time)
+
+        # DEFENSIVE: occasional local counterattack -- a single shallow lunge to
+        # ~the trace, then it holds again. Keeps the dug-in line from being fully
+        # predictable without committing it to a full assault.
+        if profile.counter_chance and random.random() < profile.counter_chance:
+            press_depth = standoff + round(
+                random.randint(*TIC_PUSH_DEPTH) * profile.push_depth_scale
+            )
+            counter_point = self.conflict.theater.nearest_land_pos(
+                current.point_from_heading(forward_heading.degrees, press_depth)
+            )
+            leg_time += self._tic_leg_gap(tempo, profile.cadence_scale)
+            emit(counter_point, leg_time)
+
+        return added
 
     def plan_action_for_groups(
         self,
