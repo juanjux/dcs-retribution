@@ -444,3 +444,36 @@ def test_render_tiles_concurrent_fetch_invokes_all_tile_coords(tmp_path: Path) -
     assert len(seen) >= 1
     # All fetches at one zoom level (sanity check on the parallel path).
     assert len({z for z, _, _ in seen}) == 1
+
+
+def test_render_tiles_degrades_when_fetch_raises_unexpectedly(
+    tmp_path: Path,
+) -> None:
+    """An unforeseen exception escaping ``fetch_tile`` must degrade to the
+    offline basemap, not abort mission generation.
+
+    ``fetch_tile`` is designed to return ``None`` on every known failure,
+    but the ``ThreadPoolExecutor`` re-raises anything it does not catch when
+    its results are realised. Belt-and-suspenders: a raw exception here must
+    still resolve to ``None`` + ``FAILURE_TILE_FETCH`` so the caller renders
+    the OFFLINE fallback instead of crashing turn generation."""
+    terrain, _LL = _fake_terrain_with_latlng()
+    extent = _make_extent(terrain, half_extent_m=300.0)
+
+    from game.missiongenerator.kneeboard_recon import tile_compositor as tc
+
+    def fake_point(x: float, y: float, t: Any) -> MagicMock:
+        p = MagicMock()
+        p.latlng.return_value = _LL(42.0 + x * 1e-6, 41.0 + y * 1e-6)
+        return p
+
+    def exploding_fetch(z: int, x: int, y: int, cache_dir: Path) -> Image.Image:
+        raise RuntimeError("unexpected tile-fetch failure")
+
+    with patch.object(tc, "Point", side_effect=fake_point), patch.object(
+        tc, "fetch_tile", side_effect=exploding_fetch
+    ):
+        result = tc.render_tiles(extent, 200, 200, tmp_path)
+
+    assert result is None
+    assert tc.last_failure_reason() == tc.FAILURE_TILE_FETCH

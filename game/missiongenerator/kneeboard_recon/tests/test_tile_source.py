@@ -89,20 +89,6 @@ def test_fetch_tile_returns_none_on_urlerror(tmp_path: Path) -> None:
     assert not (tmp_path / "world_imagery" / "8" / "1" / "1.png").exists()
 
 
-def test_fetch_tile_returns_none_on_remote_disconnected(tmp_path: Path) -> None:
-    # Regression: urllib does NOT wrap ``http.client.RemoteDisconnected``
-    # ("Remote end closed connection without response") in ``URLError``, so a
-    # dropped/reset connection must still degrade to None instead of
-    # propagating and aborting mission generation at Take Off.
-    err = http.client.RemoteDisconnected(
-        "Remote end closed connection without response"
-    )
-    with patch.object(tile_source, "urlopen", side_effect=err):
-        result = fetch_tile(8, 2, 3, tmp_path)
-    assert result is None
-    assert not (tmp_path / "world_imagery" / "8" / "2" / "3.png").exists()
-
-
 def test_fetch_tile_retries_once_on_transient_failure(tmp_path: Path) -> None:
     body = _png_bytes(color=(1, 2, 3))
 
@@ -210,3 +196,53 @@ def test_fetch_tile_corrupt_cache_file_is_repaired(tmp_path: Path) -> None:
 
     assert img is not None
     assert img.getpixel((0, 0)) == (33, 66, 99)
+
+
+def test_fetch_tile_returns_none_on_remote_disconnected(tmp_path: Path) -> None:
+    # ``http.client.RemoteDisconnected`` ("Remote end closed connection
+    # without response") is a ``ConnectionResetError``/``BadStatusLine`` and
+    # is NOT wrapped by ``urllib`` in ``URLError`` when raised from
+    # ``getresponse()``. It must still degrade to ``None`` (offline basemap
+    # fallback) rather than escaping and aborting mission generation.
+    disconnect = http.client.RemoteDisconnected(
+        "Remote end closed connection without response"
+    )
+    with patch.object(tile_source, "urlopen", side_effect=disconnect):
+        result = fetch_tile(8, 2, 3, tmp_path)
+    assert result is None
+    assert not (tmp_path / "world_imagery" / "8" / "2" / "3.png").exists()
+
+
+def test_fetch_tile_recovers_from_transient_remote_disconnected(
+    tmp_path: Path,
+) -> None:
+    # A dropped connection is transient: the single retry must succeed.
+    body = _png_bytes(color=(7, 8, 9))
+
+    class FakeResp:
+        status = 200
+
+        def read(self, _n: int = -1) -> bytes:
+            return body
+
+        def __enter__(self) -> "FakeResp":
+            return self
+
+        def __exit__(self, *a: Any) -> None:
+            pass
+
+    call_count: dict[str, int] = {"n": 0}
+
+    def fake_urlopen(req: Request, timeout: float | None = None) -> FakeResp:
+        call_count["n"] += 1
+        if call_count["n"] == 1:
+            raise http.client.RemoteDisconnected(
+                "Remote end closed connection without response"
+            )
+        return FakeResp()
+
+    with patch.object(tile_source, "urlopen", side_effect=fake_urlopen):
+        img = fetch_tile(12, 3, 4, tmp_path)
+
+    assert img is not None
+    assert call_count["n"] == 2

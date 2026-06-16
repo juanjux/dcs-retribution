@@ -135,12 +135,12 @@ def fetch_tile(
 
 
 def _http_get(url: str, timeout: float) -> Optional[bytes]:
-    """Single retry on transient network errors; no retry on HTTP non-200.
+    """Single retry on transient network/protocol errors; none on HTTP non-200.
 
-    "Transient" covers timeouts, connection drops (including
-    ``http.client.RemoteDisconnected``, which urllib does not wrap in
-    ``URLError``) and malformed responses — all return ``None`` so the caller
-    falls back to the offline basemap instead of aborting mission generation.
+    Transient covers timeouts, connection resets/drops (including
+    ``http.client.RemoteDisconnected``, which ``urllib`` does not wrap in
+    ``URLError``), SSL errors and malformed responses. ``HTTPError`` (4xx/5xx)
+    is handled separately and never retried.
 
     Caps the response body at ``MAX_TILE_BYTES + 1`` and rejects anything
     larger so a misconfigured proxy can't make a single fetch balloon
@@ -173,14 +173,19 @@ def _http_get(url: str, timeout: float) -> Optional[bytes]:
             _log_failure(url, f"HTTP {exc.code}")
             return None
         except (OSError, http.client.HTTPException) as exc:
-            # Any other transient/unreachable network condition: URLError,
-            # timeouts, and crucially connection drops and malformed responses
-            # that urllib does NOT wrap in URLError — e.g.
-            # ``http.client.RemoteDisconnected`` ("Remote end closed connection
-            # without response", a ConnectionResetError + BadStatusLine),
-            # ConnectionError, ssl.SSLError, IncompleteRead. These must degrade
-            # to a missing tile (caller falls back to the offline basemap), not
-            # abort mission generation. Retry once, then give up.
+            # ``urllib`` raises ``URLError`` (an ``OSError``) for DNS/refused
+            # and ``socket.timeout``/``TimeoutError`` (also ``OSError``) for
+            # slow responses, but it does NOT wrap
+            # ``http.client.RemoteDisconnected`` ("Remote end closed
+            # connection without response") in ``URLError`` — it escapes
+            # ``getresponse()`` unwrapped on a dropped/reset connection.
+            # ``RemoteDisconnected`` is a ``ConnectionResetError`` (OSError)
+            # *and* a ``BadStatusLine``/``HTTPException``. Catching the
+            # ``OSError`` + ``HTTPException`` families covers timeouts,
+            # connection resets/drops, SSL errors and malformed responses so
+            # any transient network/protocol failure degrades to the offline
+            # basemap instead of aborting mission generation. ``HTTPError``
+            # (4xx/5xx) is caught above and never reaches here.
             if attempt == 2:
                 _log_failure(url, exc)
                 return None
