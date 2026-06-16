@@ -254,6 +254,14 @@ class TheaterGroundObject(MissionTarget, SidcDescribable, ABC):
         raise NotImplementedError
 
     @property
+    def repairable(self) -> bool:
+        """Whether a destroyed group can be rebuilt or repaired, so the map must
+        not treat it as a permanent loss. Re-purchasable groups (SAM/EWR/armor)
+        qualify; BuildingGroundObject overrides this for the building-repair
+        feature."""
+        return self.purchasable
+
+    @property
     def value(self) -> int:
         """The value of all units of the Ground Objects"""
         return sum(u.unit_type.price for u in self.units if u.unit_type and u.alive)
@@ -363,6 +371,17 @@ class BuildingGroundObject(TheaterGroundObject):
     @property
     def purchasable(self) -> bool:
         return False
+
+    @property
+    def repairable(self) -> bool:
+        settings = self.control_point.coalition.game.settings
+        # Forward-compat with the building-repair feature (PRs 679/680), which
+        # isn't upstream yet: only treat a destroyed building as repairable when
+        # that feature is present and enabled.
+        if not getattr(settings, "automate_building_repairs", False):
+            return False
+        repair_cost = getattr(self, "repair_cost", None)
+        return repair_cost is not None and repair_cost() > 0
 
 
 class NavalGroundObject(TheaterGroundObject, ABC):
