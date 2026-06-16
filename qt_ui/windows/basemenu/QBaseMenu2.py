@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
     QGridLayout,
 )
 
+from dcs.planes import B_1B
 from game import Game
 from game.ato.flighttype import FlightType
 from game.config import RUNWAY_REPAIR_COST
@@ -116,6 +117,7 @@ class QBaseMenu2(QDialog):
             self.link4_widget.freq_changed.connect(self.freq_widget.check_freq)
 
         self.intel_summary = QLabel()
+        self.intel_summary.setTextFormat(Qt.TextFormat.RichText)
         self.intel_summary.setToolTip(self.generate_intel_tooltip())
         self.update_intel_summary()
         top_layout.addWidget(self.intel_summary)
@@ -359,6 +361,33 @@ class QBaseMenu2(QDialog):
             for _ in range(max(s.pending_deliveries, 0)):
                 place(s.aircraft, "ordered")
 
+        # Fixed-wing slots split by size. "Big" slots are those that can host a
+        # heavy aircraft (C-130, B-1B, tankers, AWACS...). DCS uses two slot
+        # schemes: v1 maps flag big slots with .large, while v2 maps decide
+        # purely by physical dimensions, so we mirror pydcs' own v2 fit test
+        # against a representative heavy (the B-1B). Free counts come from the
+        # placement sim above, so they match what a transfer would actually find.
+        fw_slots = [s for s in ap.parking_slots if s.airplanes]
+        if ap.slot_version == 1:
+            big_flags = [s.large for s in fw_slots]
+        else:
+            big_flags = [
+                s.width is not None
+                and s.length is not None
+                and B_1B.width < s.width
+                and B_1B.height < (s.height or 1000)
+                and B_1B.length < s.length
+                for s in fw_slots
+            ]
+        big_total = sum(big_flags)
+        small_total = len(fw_slots) - big_total
+        free_big = sum(
+            1 for s, big in zip(fw_slots, big_flags) if big and s.unit_id is None
+        )
+        free_small = sum(
+            1 for s, big in zip(fw_slots, big_flags) if not big and s.unit_id is None
+        )
+
         result: dict[str, dict[str, int]] = {}
         for c, total in totals.items():
             occ = counts[c]["present"]
@@ -371,18 +400,13 @@ class QBaseMenu2(QDialog):
                 "ordered": od,
                 "free": max(total - occ - tr - od, 0),
             }
+        result["fixed_size"] = {
+            "small_total": small_total,
+            "free_small": free_small,
+            "big_total": big_total,
+            "free_big": free_big,
+        }
         return result
-
-    @staticmethod
-    def _parking_line(label: str, data: dict[str, int]) -> str:
-        parts = [
-            f"{data['occupied']} occupied",
-            f"{data['transferring']} transferring",
-        ]
-        if data["ordered"]:
-            parts.append(f"{data['ordered']} ordered")
-        parts.append(f"{data['free']} free")
-        return f"{data['total']} {label} ({', '.join(parts)})"
 
     def update_intel_summary(self) -> None:
         parking_type_all = ParkingType(
@@ -395,24 +419,12 @@ class QBaseMenu2(QDialog):
         air_transferring = air_alloc.total_transferring
         air_ordered = air_alloc.total_ordered
         air_free = max(parking - aircraft - air_transferring - air_ordered, 0)
-        air_parts = [
-            f"{aircraft} occupied",
-            f"{air_transferring} transferring",
-        ]
-        if air_ordered:
-            air_parts.append(f"{air_ordered} ordered")
-        air_parts.append(f"{air_free} free")
-
-        parking_type_fixed_wing = ParkingType(
-            fixed_wing=True, fixed_wing_stol=False, rotary_wing=False
-        )
         parking_type_stol = ParkingType(
             fixed_wing=False, fixed_wing_stol=True, rotary_wing=False
         )
         parking_type_rotary_wing = ParkingType(
             fixed_wing=False, fixed_wing_stol=False, rotary_wing=True
         )
-
         ground_spawn_parking = self.cp.total_aircraft_parking(parking_type_stol)
         helipads = self.cp.total_aircraft_parking(parking_type_rotary_wing)
         ground_unit_limit = self.cp.frontline_unit_count_limit
@@ -428,36 +440,62 @@ class QBaseMenu2(QDialog):
             deployable_unit_info = (
                 f" (Up to {ground_unit_limit} deployable, {unit_overage} reserve)"
             )
+
+        # Grouped into Air / Ground / Status sections for readability. Indentation
+        # via non-breaking spaces since this renders as rich text in a QLabel.
+        i1 = "&nbsp;" * 4
+        i2 = "&nbsp;" * 8
+        air_lines = [
+            "<b>Air</b>",
+            f"{i1}Total: {aircraft}/{parking} aircraft ({air_free} free)",
+        ]
+        ground_spawn_line = None
         breakdown = self._parking_categories()
         if breakdown is not None:
-            parking_lines = [
-                self._parking_line(
-                    "shared fixed/rotary capable parking", breakdown["shared"]
-                ),
-                self._parking_line("fixed-wing exclusive parking", breakdown["fixed"]),
-                self._parking_line(
-                    "rotary-wing exclusive parking", breakdown["rotary"]
-                ),
-                self._parking_line("ground spawns", breakdown["ground"]),
+            fs = breakdown["fixed_size"]
+            fw_total = fs["small_total"] + fs["big_total"]
+            fw_free = fs["free_small"] + fs["free_big"]
+            air_lines += [
+                f"{i1}Fixed-wing: {fw_free} free of {fw_total}",
+                f"{i2}Small: {fs['free_small']} free of {fs['small_total']}",
+                f"{i2}Big: {fs['free_big']} free of {fs['big_total']}",
+                f"{i1}Rotary: {breakdown['rotary']['free']} free of "
+                f"{breakdown['rotary']['total']}",
             ]
+            if air_transferring or air_ordered:
+                air_lines.append(
+                    f"{i1}<i>{air_transferring} transferring, "
+                    f"{air_ordered} ordered</i>"
+                )
+            g = breakdown["ground"]
+            if g["total"]:
+                ground_spawn_line = (
+                    f"{i1}Ground spawns: {g['free']} free of {g['total']}"
+                )
         else:
-            parking_lines = [
-                f"{ground_spawn_parking} ground spawns",
-                f"{helipads} helipads",
-            ]
-        self.intel_summary.setText(
-            "\n".join(
-                [
-                    f"{aircraft}/{parking} aircraft " f"({', '.join(air_parts)})",
-                    *parking_lines,
-                    f"{self.cp.base.total_armor} ground units" + deployable_unit_info,
-                    f"{allocated.total_transferring} more ground units en route, {allocated.total_ordered} ordered",
-                    str(self.cp.runway_status),
-                    f"{self.cp.active_ammo_depots_count}/{self.cp.total_ammo_depots_count} ammo depots",
-                    f"{'Factory can produce units' if self.cp.has_factory else 'Does not have a factory'}",
-                ]
-            )
-        )
+            air_lines.append(f"{i1}Helipads: {helipads}")
+            if ground_spawn_parking:
+                ground_spawn_line = f"{i1}Ground spawns: {ground_spawn_parking}"
+
+        # Ground spawns are ground-start aircraft positions, so they live in the
+        # Ground section (before ground units), per the agreed layout.
+        ground_lines = ["<b>Ground</b>"]
+        if ground_spawn_line is not None:
+            ground_lines.append(ground_spawn_line)
+        ground_lines += [
+            f"{i1}Units: {self.cp.base.total_armor}{deployable_unit_info}",
+            f"{i1}{allocated.total_transferring} en route, "
+            f"{allocated.total_ordered} ordered",
+        ]
+        status_lines = [
+            "<b>Status</b>",
+            f"{i1}{self.cp.runway_status}",
+            f"{i1}Ammo depots: {self.cp.active_ammo_depots_count}/"
+            f"{self.cp.total_ammo_depots_count}",
+            f"{i1}"
+            + ("Factory can produce units" if self.cp.has_factory else "No factory"),
+        ]
+        self.intel_summary.setText("<br>".join(air_lines + ground_lines + status_lines))
 
     def generate_intel_tooltip(self) -> str:
         tooltip = (
