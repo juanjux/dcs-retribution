@@ -875,8 +875,54 @@ class NotesPage(KneeboardPage):
         writer.write(path)
 
 
+class AllPackagesPage(KneeboardPage):
+    """Lists every friendly package with its timing, for cross-package coordination.
+
+    Strike-type packages show their target and TOT; CAP / tanker / AWACS packages
+    show their patrol window instead. Rendered in a smaller font and split across
+    several pages when there are more packages than fit on one.
+    """
+
+    HEADERS = ["Task", "Target", "TOT / Window"]
+
+    def __init__(
+        self,
+        rows: List[List[str]],
+        page_no: int,
+        total_pages: int,
+        dark_kneeboard: bool,
+    ) -> None:
+        self.rows = rows
+        self.page_no = page_no
+        self.total_pages = total_pages
+        self.dark_kneeboard = dark_kneeboard
+
+    def write(self, path: Path) -> None:
+        writer = KneeboardPageWriter(dark_theme=self.dark_kneeboard)
+        suffix = f" ({self.page_no}/{self.total_pages})" if self.total_pages > 1 else ""
+        writer.title(f"Friendly Packages{suffix}")
+        # Smaller than the default table font so more packages fit per page.
+        font = ImageFont.truetype(
+            "courbd.ttf", 14, layout_engine=ImageFont.Layout.BASIC
+        )
+        writer.table(self.rows, headers=self.HEADERS, font=font)
+        writer.write(path)
+
+
 class KneeboardGenerator(MissionInfoGenerator):
     """Creates kneeboard pages for each client flight in the mission."""
+
+    #: Tasks shown with a patrol window (start - end) instead of a single TOT.
+    PATROL_TASKS = frozenset(
+        {
+            FlightType.BARCAP,
+            FlightType.TARCAP,
+            FlightType.REFUELING,
+            FlightType.AEWC,
+        }
+    )
+    #: Conservative rows-per-page for the (smaller-font) packages list.
+    PACKAGES_PER_PAGE = 35
 
     def __init__(self, mission: Mission, game: "Game") -> None:
         super().__init__(mission, game)
@@ -989,4 +1035,63 @@ class KneeboardGenerator(MissionInfoGenerator):
                 )
             )
 
+        # Friendly-packages coordination list goes last, gated by settings.
+        if self.game.settings.generate_all_packages_kneeboard:
+            pages.extend(self.generate_all_packages_pages(flight))
+
         return pages
+
+    def _to_kneeboard_time(
+        self, time: Optional[datetime.datetime], utc: bool
+    ) -> Optional[datetime.datetime]:
+        """Apply the same UTC/local convention the rest of the kneeboard uses."""
+        if time is None:
+            return None
+        if utc:
+            return time.replace(tzinfo=self.game.theater.timezone).astimezone(
+                datetime.timezone.utc
+            )
+        return time
+
+    def generate_all_packages_pages(self, flight: FlightData) -> List[KneeboardPage]:
+        """One row per friendly package (target + TOT, or patrol window), paginated."""
+        utc = flight.aircraft_type.utc_kneeboard
+        ato = self.game.coalition_for(flight.friendly).ato
+        entries: List[Tuple[datetime.datetime, List[str]]] = []
+        for package in ato.packages:
+            if not package.flights:
+                continue
+            target = package.target.name[:30] if package.target is not None else ""
+            primary = package.primary_flight
+            flight_plan = primary.flight_plan if primary is not None else None
+            start = getattr(flight_plan, "patrol_start_time", None)
+            end = getattr(flight_plan, "patrol_end_time", None)
+            if package.primary_task in self.PATROL_TASKS and start and end:
+                timing = (
+                    f"{SupportPage._format_time(self._to_kneeboard_time(start, utc))}"
+                    f" - {SupportPage._format_time(self._to_kneeboard_time(end, utc))}"
+                )
+                sort_key = start
+            else:
+                tot = package.time_over_target
+                if tot is not None and tot != datetime.datetime.min:
+                    timing = SupportPage._format_time(self._to_kneeboard_time(tot, utc))
+                    sort_key = tot
+                else:
+                    timing = ""
+                    sort_key = datetime.datetime.max
+            entries.append((sort_key, [package.package_description, target, timing]))
+
+        entries.sort(key=lambda entry: entry[0])
+        rows = [row for _, row in entries]
+        if not rows:
+            return []
+
+        chunks = [
+            rows[i : i + self.PACKAGES_PER_PAGE]
+            for i in range(0, len(rows), self.PACKAGES_PER_PAGE)
+        ]
+        return [
+            AllPackagesPage(chunk, index + 1, len(chunks), self.dark_kneeboard)
+            for index, chunk in enumerate(chunks)
+        ]
