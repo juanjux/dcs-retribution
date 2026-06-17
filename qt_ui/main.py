@@ -62,56 +62,6 @@ def inject_custom_payloads(user_path: Path) -> None:
     PayloadDirectories.set_preferred(user_path / "MissionEditor" / "UnitPayloads")
 
 
-def _harden_payload_loading() -> None:
-    """Make pydcs' payload loading tolerant of malformed / mid-write payload files.
-
-    FlyingType.load_payloads() reads every payload .lua for an aircraft type and,
-    on the full parse, only catches SyntaxError. A bad payload file -- or one
-    caught mid-write, whose truncated number raises ValueError ("could not convert
-    string to float: ''") -- therefore crashes whatever first triggered the load
-    for that type: the Add-Flight loadout selector, mission generation, the payload
-    editor, etc. Wrap load_payloads so any parse error is tolerated: retry a couple
-    of times (clearing the partial cache so the files are re-read, which recovers a
-    transient torn read), then fall back to an empty payload set with a logged
-    error. Installed once, this covers every call site. Idempotent.
-    """
-    from time import sleep
-    from dcs.unittype import FlyingType
-
-    if getattr(FlyingType, "_retribution_payload_hardening", False):
-        return
-    original = FlyingType.load_payloads.__func__
-
-    def load_payloads(cls):
-        last_error = None
-        for attempt in range(3):
-            try:
-                return original(cls)
-            except (ValueError, SyntaxError) as e:
-                last_error = e
-                # Drop the partial cache so the next attempt re-reads from disk
-                # (recovers a payload file that was briefly mid-write).
-                cls.payloads = None
-                logging.warning(
-                    "Failed to parse payloads for %s (attempt %d/3): %s",
-                    getattr(cls, "id", cls.__name__),
-                    attempt + 1,
-                    e,
-                )
-                sleep(0.25)
-        logging.error(
-            "Could not parse payloads for %s after 3 attempts; using an empty "
-            "payload set so the app does not crash. Last error: %s",
-            getattr(cls, "id", cls.__name__),
-            last_error,
-        )
-        cls.payloads = {}
-        return cls.payloads
-
-    FlyingType.load_payloads = classmethod(load_payloads)
-    FlyingType._retribution_payload_hardening = True
-
-
 def on_game_load(game: Optional[Game]) -> None:
     EventStream.drain()
     EventStream.put_nowait(GameUpdateEvents().game_loaded(game))
@@ -483,10 +433,6 @@ def dump_task_priorities() -> None:
 
 def main():
     logging_config.init_logging(VERSION)
-
-    # Tolerate malformed / mid-write payload .lua files instead of crashing
-    # (see _harden_payload_loading). Installed before anything loads payloads.
-    _harden_payload_loading()
 
     logging.debug("Python version %s", sys.version)
 
