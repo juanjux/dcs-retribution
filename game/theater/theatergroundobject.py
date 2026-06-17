@@ -374,12 +374,12 @@ class BuildingGroundObject(TheaterGroundObject):
 
     @property
     def repairable(self) -> bool:
-        settings = self.control_point.coalition.game.settings
         # Forward-compat with the building-repair feature (PRs 679/680), which
-        # isn't upstream yet: only treat a destroyed building as repairable when
-        # that feature is present and enabled.
-        if not getattr(settings, "automate_building_repairs", False):
-            return False
+        # isn't upstream yet: a destroyed income building is repairable when that
+        # feature is present (it adds repair_cost) and the building has a repair
+        # cost. Repair is available manually whenever there is a repair cost --
+        # it does not require the (auto-repair) automate_building_repairs
+        # setting -- so don't gate on it.
         repair_cost = getattr(self, "repair_cost", None)
         return repair_cost is not None and repair_cost() > 0
 
