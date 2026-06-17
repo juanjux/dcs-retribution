@@ -175,18 +175,7 @@ class FormationAttackBuilder(IBuilder[FlightPlanT, LayoutT], ABC):
         assert self.package.waypoints is not None
         builder = WaypointBuilder(self.flight, targets)
 
-        target_waypoints: list[FlightWaypoint] = []
-        if targets is not None:
-            for target in targets:
-                target_waypoints.append(
-                    self.target_waypoint(self.flight, builder, target)
-                )
-        else:
-            target_waypoints.append(
-                self.target_area_waypoint(
-                    self.flight, self.flight.package.target, builder
-                )
-            )
+        target_waypoints = self._target_waypoints(builder, targets)
 
         hold = None
         if not self.flight.is_helo:
@@ -246,6 +235,22 @@ class FormationAttackBuilder(IBuilder[FlightPlanT, LayoutT], ABC):
             bullseye=builder.bullseye(),
             custom_waypoints=list(),
         )
+
+    def _target_waypoints(
+        self, builder: WaypointBuilder, targets: list[StrikeTarget] | None
+    ) -> list[FlightWaypoint]:
+        # `targets` can be an *empty* list (not just None) -- e.g. a Strike/DEAD/
+        # SEAD against an objective whose units are all already destroyed, since
+        # strike_targets_for() only lists live units. Fall back to a single
+        # target-area waypoint in that case so the layout always has at least one
+        # target (tot_waypoint and the timing math index targets[0]).
+        if targets:
+            return [
+                self.target_waypoint(self.flight, builder, target) for target in targets
+            ]
+        return [
+            self.target_area_waypoint(self.flight, self.flight.package.target, builder)
+        ]
 
     def _build_refuel(self, builder: WaypointBuilder) -> Optional[FlightWaypoint]:
         refuel: Optional[FlightWaypoint] = None
