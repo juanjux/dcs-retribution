@@ -21,7 +21,7 @@
 * **[AirWing]** Squadron list shows living-pilot, aircraft and unassigned counts; squadron dialog shows each pilot's experience level, lists killed-in-action pilots separately and hides the redundant "Active" status
 * **[AirWing]** Squadron dialog shows the aircraft type, an aircraft inventory (initial/current/destroyed/purchased), and buy/sell aircraft controls with price, on-order count and available parking slots
 * **[AirWing]** Air Wing list shows a "transfer ordered to X" indicator, and Airfield Command lists the units transferring into the base next turn
-* **[Mission Generation]** A malformed or unsupported aircraft payload file (e.g. from a third-party mod) no longer aborts turn generation; the affected aircraft falls back to an empty loadout and the error is logged.
+* **[Mission Generation]** A malformed or unsupported aircraft payload file (e.g. a hand-written third-party mod file) no longer hides every payload for that airframe: the unparseable file is skipped and the rest -- including your own Mission-Editor-saved loadouts -- still load and are selectable. If none can be read, the aircraft falls back to an empty loadout instead of aborting turn generation, and the error is logged.
 * **[UI]** Avoid a crash dialog ("'QWidgetItem' object has no attribute 'width'") when a list using the two-column row delegate relayouts with a malformed style option under PySide6 6.4.x.
 
 ## Fixes
