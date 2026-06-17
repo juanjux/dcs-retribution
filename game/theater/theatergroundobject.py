@@ -390,10 +390,12 @@ class BuildingGroundObject(TheaterGroundObject):
 
     @property
     def repairable(self) -> bool:
-        # Buildings aren't purchasable, but the building-repair feature rebuilds
-        # income buildings (those with a repair cost) when it is enabled.
-        settings = self.control_point.coalition.game.settings
-        return settings.automate_building_repairs and self.repair_cost() > 0
+        # Buildings aren't purchasable, but the building-repair feature lets the
+        # player rebuild income buildings (those with a repair cost). Repair is
+        # available manually whenever the building has a repair cost -- it does
+        # not require the (auto-repair) automate_building_repairs setting -- so
+        # the map should not treat such a destroyed building as a permanent loss.
+        return self.repair_cost() > 0
 
     def repair_cost(self) -> float:
         income = REWARDS.get(self.category, 0.0)
