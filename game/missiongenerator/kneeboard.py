@@ -63,6 +63,7 @@ from .missiondata import AwacsInfo, TankerInfo
 from ..persistency import kneeboards_dir
 
 if TYPE_CHECKING:
+    from dcs.terrain.terrain import Terrain
     from game import Game
     from game.theater.conflicttheater import ConflictTheater
 
@@ -875,6 +876,16 @@ class NotesPage(KneeboardPage):
         writer.write(path)
 
 
+def _abbreviated_target_name(name: str) -> str:
+    """Shorten verbose target prefixes so long names fit the kneeboard tables.
+
+    Front-line objectives are named "Front line <CP A>/<CP B>", wide enough to
+    overflow the packages list and crowd the map labels; "Front" is
+    unambiguous in context.
+    """
+    return name.replace("Front line ", "Front ")
+
+
 class AllPackagesPage(KneeboardPage):
     """Lists every friendly package with its timing, for cross-package coordination.
 
@@ -901,92 +912,170 @@ class AllPackagesPage(KneeboardPage):
         writer = KneeboardPageWriter(dark_theme=self.dark_kneeboard)
         suffix = f" ({self.page_no}/{self.total_pages})" if self.total_pages > 1 else ""
         writer.title(f"Friendly Packages{suffix}")
-        # Smaller than the default table font so more packages fit per page.
+        # A little smaller than the default table font so more packages fit.
         font = ImageFont.truetype(
-            "courbd.ttf", 14, layout_engine=ImageFont.Layout.BASIC
+            "courbd.ttf", 18, layout_engine=ImageFont.Layout.BASIC
         )
         writer.table(self.rows, headers=self.HEADERS, font=font)
         writer.write(path)
 
 
 class PackagesMapPage(KneeboardPage):
-    """A simple schematic theater map with the package targets labelled.
+    """A theater map with each attack package's target labelled.
 
-    Friendly/enemy control points give the geographic frame; each package target
-    is drawn as a labelled marker so the pilot can see where the packages on the
-    previous page are headed. Coordinates are projected with a plain
-    aspect-preserving bounding-box fit, North up.
+    Draws the theater coastline (filled land over sea, from the recon module's
+    landmap) so the pilot can see where the attack packages on the previous
+    page are headed. Control points are marked for orientation: airfields,
+    carriers and LHAs get a distinct shape (square / diamond / triangle) and a
+    haloed name label, while FOBs and other points stay as plain dots. All are
+    coloured by side (blue friendly, red enemy). Overlapping labels are stacked
+    downward (and flipped left near the right edge).
     """
 
-    #: Marker colours that read on both the light and dark kneeboard themes.
     FRIENDLY = (40, 90, 200)
     ENEMY = (200, 45, 45)
-    NEUTRAL = (130, 130, 130)
-    TARGET = (225, 140, 0)
+    NEUTRAL = (110, 110, 110)
+    TARGET = (255, 140, 0)
 
     def __init__(
         self,
         targets: List[Tuple[str, float, float]],
-        control_points: List[Tuple[float, float, str]],
+        control_points: List[Tuple[float, float, str, str, str]],
+        terrain: "Terrain",
         dark_kneeboard: bool,
     ) -> None:
         self.targets = targets
         self.control_points = control_points
+        self.terrain = terrain
         self.dark_kneeboard = dark_kneeboard
 
     def write(self, path: Path) -> None:
+        from dcs.mapping import Point as DcsPoint
+        from .kneeboard_recon.basemap import render_landmap_basemap
+        from .kneeboard_recon.extent import MapExtent, aspect_correct
+        from .kneeboard_recon.projection import Projector
+
         writer = KneeboardPageWriter(dark_theme=self.dark_kneeboard)
         writer.title("Package Targets Map")
         label_font = ImageFont.truetype(
             "courbd.ttf", 13, layout_engine=ImageFont.Layout.BASIC
         )
         writer.text(
-            "Targets labelled; blue = friendly base, red = enemy base.",
+            "Orange = package targets; airfields, carriers & LHAs are named "
+            "(blue = friendly, red = enemy).",
             font=label_font,
         )
 
         points = [(x, y) for _, x, y in self.targets]
-        points += [(x, y) for x, y, _ in self.control_points]
+        points += [(x, y) for x, y, *_ in self.control_points]
         xs = [p[0] for p in points]
         ys = [p[1] for p in points]
-        min_x, max_x, min_y, max_y = min(xs), max(xs), min(ys), max(ys)
-        range_x = max(max_x - min_x, 1.0)
-        range_y = max(max_y - min_y, 1.0)
-
         margin = writer.page_margin
-        top = writer.y + 10
-        area_w = writer.image_size[0] - 2 * margin
-        # Leave headroom at the bottom for labels that hang below a low marker.
-        area_h = writer.image_size[1] - top - margin - 24
-        scale = min(area_w / range_y, area_h / range_x)
-        x_off = margin + (area_w - range_y * scale) / 2
-        y_off = top + (area_h - range_x * scale) / 2
+        top = writer.y + 8
+        width = writer.image_size[0] - 2 * margin
+        height = writer.image_size[1] - top - margin
 
-        def project(x: float, y: float) -> Tuple[int, int]:
-            # DCS x is North, y is East; put North up (image y grows downward).
-            px = x_off + (y - min_y) * scale
-            py = y_off + (max_x - x) * scale
-            return int(px), int(py)
+        # World bounding box of everything shown, plus an 8% margin, fitted to
+        # the page aspect so the basemap crop is not distorted.
+        pad = 0.08 * max(max(xs) - min(xs), max(ys) - min(ys), 1.0)
+        extent = MapExtent(
+            min_x=min(xs) - pad,
+            max_x=max(xs) + pad,
+            min_y=min(ys) - pad,
+            max_y=max(ys) + pad,
+            terrain=self.terrain,
+        )
+        extent = aspect_correct(extent, width, height)
+        writer.image.paste(
+            render_landmap_basemap(extent, width, height, dark=self.dark_kneeboard),
+            (margin, top),
+        )
+
+        projector = Projector(extent=extent, pixel_width=width, pixel_height=height)
+
+        def to_px(x: float, y: float) -> Tuple[int, int]:
+            px, py = projector.project(DcsPoint(x, y, self.terrain))
+            return margin + px, top + py
 
         draw = writer.draw
-        for x, y, side in self.control_points:
-            px, py = project(x, y)
+        base_labels: List[Tuple[str, int, int, Tuple[int, int, int]]] = []
+        for x, y, side, kind, name in self.control_points:
+            px, py = to_px(x, y)
             color = (
                 self.FRIENDLY
                 if side == "friendly"
                 else self.ENEMY if side == "enemy" else self.NEUTRAL
             )
-            draw.ellipse([px - 3, py - 3, px + 3, py + 3], fill=color)
+            if kind == "airbase":
+                draw.rectangle(
+                    (px - 4, py - 4, px + 4, py + 4), fill=color, outline=(0, 0, 0)
+                )
+            elif kind == "carrier":
+                draw.polygon(
+                    [(px, py - 5), (px + 5, py), (px, py + 5), (px - 5, py)],
+                    fill=color,
+                    outline=(0, 0, 0),
+                )
+            elif kind == "lha":
+                draw.polygon(
+                    [(px, py - 5), (px + 5, py + 4), (px - 5, py + 4)],
+                    fill=color,
+                    outline=(0, 0, 0),
+                )
+            else:
+                draw.ellipse([px - 3, py - 3, px + 3, py + 3], fill=color)
+                continue
+            base_labels.append((name, px, py, color))
 
-        for name, x, y in self.targets:
-            px, py = project(x, y)
-            draw.ellipse(
-                [px - 5, py - 5, px + 5, py + 5],
-                fill=self.TARGET,
-                outline=writer.foreground_fill,
+        placed: List[Tuple[float, float, float, float]] = []
+
+        def overlaps(box: Tuple[float, float, float, float]) -> bool:
+            ax0, ay0, ax1, ay1 = box
+            return any(
+                ax0 < bx1 and bx0 < ax1 and ay0 < by1 and by0 < ay1
+                for bx0, by0, bx1, by1 in placed
             )
+
+        label_h = 15
+        right_edge = margin + width
+        bottom_edge = top + height - label_h
+        for name, x, y in self.targets:
+            px, py = to_px(x, y)
+            draw.ellipse(
+                [px - 5, py - 5, px + 5, py + 5], fill=self.TARGET, outline=(0, 0, 0)
+            )
+            tw = label_font.getlength(name)
+            lx = px - 8 - tw if px + 8 + tw > right_edge else px + 8
+            ly = py - 7
+            # Stack overlapping labels downward so clustered targets stay legible.
+            while overlaps((lx, ly, lx + tw, ly + label_h)) and ly < bottom_edge:
+                ly += label_h
+            placed.append((lx, ly, lx + tw, ly + label_h))
+            # White plate behind the label so it reads against the map.
+            draw.rectangle(
+                (lx - 1, ly, lx + tw + 1, ly + label_h), fill=(255, 255, 255)
+            )
+            draw.text((lx, ly), name, font=label_font, fill=(0, 0, 0))
+
+        # Base names: a white halo instead of a solid plate, in the base's side
+        # colour, so they read apart from the boxed black-on-white target labels.
+        base_font = ImageFont.truetype(
+            "courbd.ttf", 12, layout_engine=ImageFont.Layout.BASIC
+        )
+        for name, px, py, color in base_labels:
+            tw = base_font.getlength(name)
+            lx = px - 8 - tw if px + 8 + tw > right_edge else px + 8
+            ly = py - 6
+            while overlaps((lx, ly, lx + tw, ly + label_h)) and ly < bottom_edge:
+                ly += label_h
+            placed.append((lx, ly, lx + tw, ly + label_h))
             draw.text(
-                (px + 8, py - 7), name, font=label_font, fill=writer.foreground_fill
+                (lx, ly),
+                name,
+                font=base_font,
+                fill=color,
+                stroke_width=2,
+                stroke_fill=(255, 255, 255),
             )
 
         writer.write(path)
@@ -1004,8 +1093,8 @@ class KneeboardGenerator(MissionInfoGenerator):
             FlightType.AEWC,
         }
     )
-    #: Conservative rows-per-page for the (smaller-font) packages list.
-    PACKAGES_PER_PAGE = 35
+    #: Conservative rows-per-page for the packages list.
+    PACKAGES_PER_PAGE = 30
 
     def __init__(self, mission: Mission, game: "Game") -> None:
         super().__init__(mission, game)
@@ -1146,7 +1235,11 @@ class KneeboardGenerator(MissionInfoGenerator):
         for package in ato.packages:
             if not package.flights:
                 continue
-            target = package.target.name[:30] if package.target is not None else ""
+            target = (
+                _abbreviated_target_name(package.target.name)[:40]
+                if package.target is not None
+                else ""
+            )
             primary = package.primary_flight
             flight_plan = primary.flight_plan if primary is not None else None
             start = getattr(flight_plan, "patrol_start_time", None)
@@ -1190,15 +1283,22 @@ class KneeboardGenerator(MissionInfoGenerator):
         for package in ato.packages:
             if not package.flights or package.target is None:
                 continue
+            # Attack packages only -- skip the support patrols (CAP, AWACS,
+            # tankers) that loiter rather than head to a target. Strike, CAS,
+            # DEAD/SEAD, BAI, anti-ship, OCA, air assault and recon all show.
+            if package.primary_task in self.PATROL_TASKS:
+                continue
             if package.target.name in seen:
                 continue
             seen.add(package.target.name)
             pos = package.target.position
-            targets.append((package.target.name[:24], pos.x, pos.y))
+            targets.append(
+                (_abbreviated_target_name(package.target.name)[:40], pos.x, pos.y)
+            )
         if not targets:
             return []
 
-        control_points: List[Tuple[float, float, str]] = []
+        control_points: List[Tuple[float, float, str, str, str]] = []
         for cp in self.game.theater.controlpoints:
             if cp.captured == player:
                 side = "friendly"
@@ -1206,6 +1306,24 @@ class KneeboardGenerator(MissionInfoGenerator):
                 side = "neutral"
             else:
                 side = "enemy"
-            control_points.append((cp.position.x, cp.position.y, side))
+            # Fixed bases that can host aircraft get a distinct icon + name;
+            # FOBs and off-map spawns stay anonymous dots to avoid clutter.
+            if cp.is_carrier:
+                kind = "carrier"
+            elif cp.is_lha:
+                kind = "lha"
+            elif cp.category == "airfield":
+                kind = "airbase"
+            else:
+                kind = "dot"
+            name = cp.name[:24] if kind != "dot" else ""
+            control_points.append((cp.position.x, cp.position.y, side, kind, name))
 
-        return [PackagesMapPage(targets, control_points, self.dark_kneeboard)]
+        return [
+            PackagesMapPage(
+                targets,
+                control_points,
+                self.game.theater.terrain,
+                self.dark_kneeboard,
+            )
+        ]
