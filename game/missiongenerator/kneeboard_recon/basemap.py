@@ -129,6 +129,62 @@ def render_basemap(
     return fallback
 
 
+# Filled-coastline palette for the static overview map (render_landmap_basemap).
+_SEA_RGB = (150, 190, 220)
+_SEA_RGB_DARK = (28, 42, 60)
+_LAND_FILL = (228, 216, 190)
+_LAND_FILL_DARK = (66, 62, 52)
+_COAST_RGB = (110, 100, 80)
+
+
+def render_landmap_basemap(
+    extent: MapExtent,
+    page_width: int,
+    page_height: int,
+    *,
+    dark: bool = False,
+) -> Image.Image:
+    """Render a tile-free filled-coastline basemap for a wide overview page.
+
+    The theater's landmasses (from the shipped landmap polygons) are filled
+    over a sea-coloured background, with a coastline stroke and a light
+    reference grid. Never touches the network and adds no OFFLINE banner, so
+    it suits whole-theater overview pages where satellite tiles would be both
+    too numerous and too zoomed out to be useful.
+
+    Unlike the theater-GIF crop this is correct for *any* extent: the geometry
+    comes from world-coordinate polygons projected through
+    :class:`~.projection.Projector`, so it aligns with markers drawn for the
+    same extent and page size even where a fixed-coverage raster would not
+    reach (e.g. map areas added after the shipped GIF was authored).
+    """
+    # Local import keeps this module's import graph minimal — Projector is
+    # only needed by the tile-free paths, which the happy path bypasses.
+    from dcs.mapping import Point as DcsPoint
+    from .projection import Projector
+
+    sea = _SEA_RGB_DARK if dark else _SEA_RGB
+    land = _LAND_FILL_DARK if dark else _LAND_FILL
+    img = Image.new("RGB", (page_width, page_height), sea)
+    draw = ImageDraw.Draw(img)
+    projector = Projector(
+        extent=extent, pixel_width=page_width, pixel_height=page_height
+    )
+    for poly in _landmap_polygons_for_terrain(extent.terrain):
+        pts = [
+            projector.project(DcsPoint(x, y, extent.terrain))
+            for x, y in poly.exterior.coords
+        ]
+        if len(pts) >= 3:
+            draw.polygon(pts, fill=land, outline=_COAST_RGB)
+    for i in range(1, 8):
+        gx = i * page_width // 8
+        draw.line((gx, 0, gx, page_height), fill=_GRID_LINE, width=1)
+        gy = i * page_height // 8
+        draw.line((0, gy, page_width, gy), fill=_GRID_LINE, width=1)
+    return img
+
+
 def _banner_text_for_reason(reason: str) -> str:
     """Pick the OFFLINE banner string for a ``render_tiles`` failure reason.
 
