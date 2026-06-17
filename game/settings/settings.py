@@ -1092,6 +1092,17 @@ class Settings:
             "tasks, showing aimpoints, threat rings, and target area context."
         ),
     )
+    generate_all_packages_kneeboard: bool = boolean_option(
+        "Generate friendly packages kneeboard page",
+        MISSION_GENERATOR_PAGE,
+        KNEEBOARD_SECTION,
+        default=True,
+        detail=(
+            "Append page(s) listing every friendly package with its TOT (strike "
+            "tasks) or patrol window (CAP, tanker, AWACS), for cross-package "
+            "coordination."
+        ),
+    )
     target_recon_extra_threat_search_nmi: int = bounded_int_option(
         "Extra threat search radius (nmi)",
         MISSION_GENERATOR_PAGE,
