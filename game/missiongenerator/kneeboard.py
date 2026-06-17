@@ -936,6 +936,89 @@ class AllPackagesPage(KneeboardPage):
         writer.write(path)
 
 
+class PackagesMapPage(KneeboardPage):
+    """A simple schematic theater map with the package targets labelled.
+
+    Friendly/enemy control points give the geographic frame; each package target
+    is drawn as a labelled marker so the pilot can see where the packages on the
+    previous page are headed. Coordinates are projected with a plain
+    aspect-preserving bounding-box fit, North up.
+    """
+
+    #: Marker colours that read on both the light and dark kneeboard themes.
+    FRIENDLY = (40, 90, 200)
+    ENEMY = (200, 45, 45)
+    NEUTRAL = (130, 130, 130)
+    TARGET = (225, 140, 0)
+
+    def __init__(
+        self,
+        targets: List[Tuple[str, float, float]],
+        control_points: List[Tuple[float, float, str]],
+        dark_kneeboard: bool,
+    ) -> None:
+        self.targets = targets
+        self.control_points = control_points
+        self.dark_kneeboard = dark_kneeboard
+
+    def write(self, path: Path) -> None:
+        writer = KneeboardPageWriter(dark_theme=self.dark_kneeboard)
+        writer.title("Package Targets Map")
+        label_font = ImageFont.truetype(
+            "courbd.ttf", 13, layout_engine=ImageFont.Layout.BASIC
+        )
+        writer.text(
+            "Targets labelled; blue = friendly base, red = enemy base.",
+            font=label_font,
+        )
+
+        points = [(x, y) for _, x, y in self.targets]
+        points += [(x, y) for x, y, _ in self.control_points]
+        xs = [p[0] for p in points]
+        ys = [p[1] for p in points]
+        min_x, max_x, min_y, max_y = min(xs), max(xs), min(ys), max(ys)
+        range_x = max(max_x - min_x, 1.0)
+        range_y = max(max_y - min_y, 1.0)
+
+        margin = writer.page_margin
+        top = writer.y + 10
+        area_w = writer.image_size[0] - 2 * margin
+        # Leave headroom at the bottom for labels that hang below a low marker.
+        area_h = writer.image_size[1] - top - margin - 24
+        scale = min(area_w / range_y, area_h / range_x)
+        x_off = margin + (area_w - range_y * scale) / 2
+        y_off = top + (area_h - range_x * scale) / 2
+
+        def project(x: float, y: float) -> Tuple[int, int]:
+            # DCS x is North, y is East; put North up (image y grows downward).
+            px = x_off + (y - min_y) * scale
+            py = y_off + (max_x - x) * scale
+            return int(px), int(py)
+
+        draw = writer.draw
+        for x, y, side in self.control_points:
+            px, py = project(x, y)
+            color = (
+                self.FRIENDLY
+                if side == "friendly"
+                else self.ENEMY if side == "enemy" else self.NEUTRAL
+            )
+            draw.ellipse([px - 3, py - 3, px + 3, py + 3], fill=color)
+
+        for name, x, y in self.targets:
+            px, py = project(x, y)
+            draw.ellipse(
+                [px - 5, py - 5, px + 5, py + 5],
+                fill=self.TARGET,
+                outline=writer.foreground_fill,
+            )
+            draw.text(
+                (px + 8, py - 7), name, font=label_font, fill=writer.foreground_fill
+            )
+
+        writer.write(path)
+
+
 class KneeboardGenerator(MissionInfoGenerator):
     """Creates kneeboard pages for each client flight in the mission."""
 
@@ -1062,9 +1145,11 @@ class KneeboardGenerator(MissionInfoGenerator):
                 )
             )
 
-        # Friendly-packages coordination list goes last, gated by settings.
+        # Friendly-packages coordination list, then the target map, go last (in
+        # that order), gated by settings.
         if self.game.settings.generate_all_packages_kneeboard:
             pages.extend(self.generate_all_packages_pages(flight))
+            pages.extend(self.generate_packages_map_page(flight))
 
         return pages
 
@@ -1122,3 +1207,32 @@ class KneeboardGenerator(MissionInfoGenerator):
             AllPackagesPage(chunk, index + 1, len(chunks), self.dark_kneeboard)
             for index, chunk in enumerate(chunks)
         ]
+
+    def generate_packages_map_page(self, flight: FlightData) -> List[KneeboardPage]:
+        """A schematic theater map labelling where each friendly package is headed."""
+        player = flight.friendly
+        ato = self.game.coalition_for(player).ato
+        targets: List[Tuple[str, float, float]] = []
+        seen: set[str] = set()
+        for package in ato.packages:
+            if not package.flights or package.target is None:
+                continue
+            if package.target.name in seen:
+                continue
+            seen.add(package.target.name)
+            pos = package.target.position
+            targets.append((package.target.name[:24], pos.x, pos.y))
+        if not targets:
+            return []
+
+        control_points: List[Tuple[float, float, str]] = []
+        for cp in self.game.theater.controlpoints:
+            if cp.captured == player:
+                side = "friendly"
+            elif cp.captured.is_neutral:
+                side = "neutral"
+            else:
+                side = "enemy"
+            control_points.append((cp.position.x, cp.position.y, side))
+
+        return [PackagesMapPage(targets, control_points, self.dark_kneeboard)]
