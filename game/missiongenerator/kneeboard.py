@@ -586,14 +586,15 @@ class BriefingPage(KneeboardPage):
         ]
 
     def format_frequency(self, frequency: RadioFrequency) -> str:
-        channel = self.flight.channel_for(frequency)
-        if channel is None:
+        channels = self.flight.channels_for(frequency)
+        if not channels:
             return str(frequency)
 
-        channel_name = self.flight.aircraft_type.channel_name(
-            channel.radio_id, channel.channel
+        names = " / ".join(
+            self.flight.aircraft_type.channel_name(c.radio_id, c.channel)
+            for c in channels
         )
-        return f"{channel_name}\n{frequency}"
+        return f"{names}\n{frequency}"
 
 
 class SupportPage(KneeboardPage):
@@ -736,14 +737,15 @@ class SupportPage(KneeboardPage):
     def format_frequency(self, frequency: Optional[RadioFrequency]) -> str:
         if frequency is None:
             return ""
-        channel = self.flight.channel_for(frequency)
-        if channel is None:
+        channels = self.flight.channels_for(frequency)
+        if not channels:
             return str(frequency)
 
-        channel_name = self.flight.aircraft_type.channel_name(
-            channel.radio_id, channel.channel
+        names = " / ".join(
+            self.flight.aircraft_type.channel_name(c.radio_id, c.channel)
+            for c in channels
         )
-        return f"{channel_name}\n{frequency}"
+        return f"{names}\n{frequency}"
 
     @staticmethod
     def _format_time(time: datetime.datetime | None) -> str:
