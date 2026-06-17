@@ -645,7 +645,6 @@ class SupportPage(KneeboardPage):
             comm_ladder.append(
                 [
                     tanker.callsign,
-                    "Tanker",
                     KneeboardPageWriter.wrap_line(tanker.variant, 21),
                     str(tanker.tacan) if tanker.tacan else "N/A",
                     self.format_frequency(tanker.freq),
@@ -655,7 +654,10 @@ class SupportPage(KneeboardPage):
 
         writer.table(
             comm_ladder,
-            headers=["Callsign", "Task", "Type", "TACAN", "FREQ", "TOT / TOS"],
+            # Drop the "Task" column (always "Tanker" in this table) and shorten
+            # TACAN to TCN (3-char code), so the wider FREQ column (now COMM1 +
+            # COMM2) and TOT/TOS no longer run off the page edge.
+            headers=["Callsign", "Type", "TCN", "FREQ", "TOT / TOS"],
         )
 
         writer.heading("JTAC")
@@ -672,7 +674,9 @@ class SupportPage(KneeboardPage):
                     self.format_frequency(jtac.freq),
                 ]
             )
-        writer.table(jtacs, headers=["Callsign", "Region", "Laser Code", "FREQ"])
+        # "Laser" instead of "Laser Code": the code is 4 digits, so the longer
+        # header padded the column and pushed the FREQ column off the page.
+        writer.table(jtacs, headers=["Callsign", "Region", "Laser", "FREQ"])
 
         writer.write(path)
 
