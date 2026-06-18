@@ -111,11 +111,17 @@ class FinancesLayout(QGridLayout):
         self.addWidget(QHorizontalSeparationLine(), next(self.row), 0, 1, 3)
 
 
-#: Automated-spending categories shown in the dialog, in display order. Each is
+#: Automated-spending categories the dialog *can* show, in display order. Each is
 #: (last_turn_expenses key, label, the settings flag that toggles it for blue).
+#: A category is only shown if its settings flag exists in the running build, so
+#: the dialog adapts automatically: builds without the building/ground-object
+#: repair automation simply omit those rows, and they appear on their own once
+#: that automation is present - no change to this dialog needed.
 _EXPENSE_CATEGORIES = [
     ("front_line", "Front line reinforcement", "automate_front_line_reinforcements"),
     ("aircraft", "Aircraft purchases", "automate_aircraft_reinforcements"),
+    ("ground_objects", "SAM / ground repairs", "automate_ground_object_repairs"),
+    ("buildings", "Building repairs", "automate_building_repairs"),
     ("runways", "Runway repairs", "automate_runway_repair"),
 ]
 
@@ -351,6 +357,14 @@ class QFinancesMenu(QDialog):
             row += 1
 
         for key, label, flag in _EXPENSE_CATEGORIES:
+            # Only show categories whose automation exists in this build. We probe
+            # the Settings *class* (not the instance): a loaded save can carry
+            # settings attributes pickled by a fork build that declared them, but
+            # the running code is what decides whether the feature actually exists.
+            # This is what lets the dialog adapt to optional repair features
+            # without code changes here when they land.
+            if not hasattr(type(settings), flag):
+                continue
             enabled = bool(getattr(settings, flag, False))
             grid.addWidget(_label(label), row, 0)
 
