@@ -126,7 +126,7 @@ class Builder(FormationAttackBuilder[AirAssaultFlightPlan, AirAssaultLayout]):
             pickup_position = pickup.position
 
         # Use the package ingress point for the ingress waypoint -- the same point
-        # the join uses below.        
+        # the join uses below.
         ingress = builder.ingress(
             FlightWaypointType.INGRESS_AIR_ASSAULT,
             self.package.waypoints.ingress,

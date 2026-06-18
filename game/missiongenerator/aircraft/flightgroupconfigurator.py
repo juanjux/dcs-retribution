@@ -59,7 +59,7 @@ if TYPE_CHECKING:
 #: sound update they resolve a sound scheme without the ``suppress_ballute``
 #: input port ("No input port in scheme: suppress_ballute" -> unhandled
 #: exception -> DCS closes). Strip them when equipping pylons so even loadouts
-#: stored in an old save never carry them. 
+#: stored in an old save never carry them.
 _CRASHY_BALLUTE_CLSIDS = frozenset({"Herc_Soldier_Squad"})
 
 
