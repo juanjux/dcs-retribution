@@ -8,7 +8,7 @@ import {
 } from "../../api/mapSlice";
 import { useAppDispatch, useAppSelector } from "../../app/hooks";
 import { Fragment } from "react";
-import { Circle, CircleMarker, LayerGroup } from "react-leaflet";
+import { Circle, CircleMarker, LayerGroup, Tooltip } from "react-leaflet";
 
 interface TgoRangeCirclesProps {
   tgo: Tgo;
@@ -26,6 +26,14 @@ export function colorFor(blue: boolean, detection: boolean) {
 // Bright colour used to mark the hovered ring and its emitter.
 const HIGHLIGHT_COLOR = "#ffff00";
 
+// Collapse a unit list like ["SA-6 TEL", "SA-6 TEL", "Straight Flush"] into
+// ["2x SA-6 TEL", "Straight Flush"] so the ring tooltip names the SAM compactly.
+function summarizeUnits(units: string[]): string[] {
+  const counts = new Map<string, number>();
+  units.forEach((unit) => counts.set(unit, (counts.get(unit) ?? 0) + 1));
+  return Array.from(counts, ([name, n]) => (n > 1 ? `${n}x ${name}` : name));
+}
+
 const TgoRangeCircles = (props: TgoRangeCirclesProps) => {
   const radii = props.detection
     ? props.tgo.detection_ranges
@@ -40,14 +48,14 @@ const TgoRangeCircles = (props: TgoRangeCirclesProps) => {
   const highlighted = useAppSelector(
     (state) =>
       selectHighlightEmitters(state) &&
-      selectHoveredEmitter(state) === props.tgo.id
+      selectHoveredEmitter(state) === props.tgo.id,
   );
   // Mark the emitter with a blob only when the hover came from a ring, to help
   // locate it (associating ring <-> emitter). When the emitter icon itself is
   // hovered we don't blob it, since we're already pointing at it. The ring
   // itself always lights up while highlighted, in either direction.
   const markEmitter = useAppSelector(
-    (state) => highlighted && selectHoveredEmitterSource(state) === "ring"
+    (state) => highlighted && selectHoveredEmitterSource(state) === "ring",
   );
 
   const hover = {
@@ -88,7 +96,14 @@ const TgoRangeCircles = (props: TgoRangeCirclesProps) => {
             weight={18}
             className="air-defense-ring-hit"
             eventHandlers={hover}
-          />
+          >
+            <Tooltip sticky className="tooltip-delayed">
+              <b>{props.tgo.name}</b>
+              {summarizeUnits(props.tgo.units).map((unit, i) => (
+                <div key={i}>{unit}</div>
+              ))}
+            </Tooltip>
+          </Circle>
         </Fragment>
       ))}
       {markEmitter && (

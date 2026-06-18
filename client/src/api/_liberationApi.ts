@@ -404,6 +404,12 @@ export type Flight = {
   position?: LatLng;
   sidc: string;
   waypoints?: Waypoint[];
+  aircraft?: string;
+  num_aircraft?: number;
+  flight_type?: string;
+  callsign?: string | null;
+  package_target?: string;
+  package_tot?: string;
 };
 export type FrontLine = {
   id: string;
