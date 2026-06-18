@@ -13,6 +13,7 @@
 * **[Options]** New option to spawn TACAN beacons at captured airfields
 * **[UX]** Show an "End of Mission Detected, processing Mission Data" busy dialog while turn results are processed, so the wait is not mistaken for a missed detection
 * **[Map]** Hovering a SAM threat or detection ring highlights its emitter — and hovering an emitter highlights its ring — making it easy to tell which site a ring belongs to. Can be disabled from the map's layer control.
+* **[UI]** The Finances dialog now spells out gross income, the HQ's automated per-category spending (front line, aircraft, runway repairs) and the resulting net for the turn, so the gap between income and the balance that actually lands is no longer a mystery. Building income is grouped into collapsible sections and the automation toggles can be flipped right from the dialog.
 
 ## Fixes
 * **[Mission]** Reliably auto-detect end of mission, even when DCS wrote the final state.json before the wait dialog started watching
