@@ -71,6 +71,7 @@ from .missiontarget import MissionTarget
 from .player import Player
 from .theatergroundobject import (
     GenericCarrierGroundObject,
+    ShipGroundObject,
     TheaterGroundObject,
     VehicleGroupGroundObject,
 )
@@ -1106,6 +1107,13 @@ class ControlPoint(MissionTarget, SidcDescribable, ABC):
                         for u in group.units:
                             u.position.x = u.position.x + delta.x
                             u.position.y = u.position.y + delta.y
+
+        # Reposition any movable (combatant) ship groups that were given a
+        # destination from the map. Independent of this control point's own
+        # move above, so it runs every turn for every control point.
+        for ground_object in self.ground_objects:
+            if isinstance(ground_object, ShipGroundObject):
+                ground_object.commit_move()
 
     def allocated_aircraft(self, parking_type: ParkingType) -> AircraftAllocations:
         present: dict[AircraftType, int] = defaultdict(int)
