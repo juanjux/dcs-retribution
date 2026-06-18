@@ -225,6 +225,33 @@ QPushButton:disabled{
     background:#d6d6d6;
 }
 
+/* ── Finances dialog: income / expense / net hierarchy ─────────── */
+QLabel[style="green"]   { color: #8FBF6A; font-weight: 700; }   /* income  */
+QLabel[style="expense"] { color: #E06C5E; font-weight: 700; }   /* spending */
+QLabel[style="muted"]   { color: #7E8C99; }                     /* 0 / OFF / sub-text */
+QLabel[style="balance"] { color: #3592C4; font-weight: 700; }   /* current balance */
+
+QLabel[style="net"]     { font-size: 18px; font-weight: 800; color: #8FBF6A; }
+QLabel[style="net-neg"] { font-size: 18px; font-weight: 800; color: #E06C5E; }
+
+/* Summary band: a darker recessed box to set it apart from the detail. */
+QFrame[style="summary-box"] {
+    background-color: #1D2731;
+    border: 1px solid #435466;
+    border-radius: 3px;
+}
+QFrame[style="summary-box"] QLabel { background: transparent; }
+
+/* ON / OFF pills for the auto-spending categories. */
+QLabel[style="pill-on"] {
+    border: 1px solid #5C863F; color: #8FBF6A;
+    padding: 1px 8px; font-weight: 700;
+}
+QLabel[style="pill-off"] {
+    border: 1px solid #435466; color: #7E8C99;
+    padding: 1px 8px; font-weight: 700;
+}
+
 /*QLabel*/
 QLabel{
     border: none;
