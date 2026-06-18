@@ -125,18 +125,15 @@ class Builder(FormationAttackBuilder[AirAssaultFlightPlan, AirAssaultLayout]):
             pickup.alt = altitude
             pickup_position = pickup.position
 
-        ingress = (
-            builder.ingress(
-                FlightWaypointType.INGRESS_AIR_ASSAULT,
-                self.package.waypoints.ingress,
-                self.package.target,
-            )
-            if not self.flight.is_hercules
-            else builder.ingress(
-                FlightWaypointType.INGRESS_AIR_ASSAULT,
-                self.package.waypoints.initial,
-                self.package.target,
-            )
+        # Use the package ingress point for the ingress waypoint -- the same point
+        # the join uses below. The Hercules previously ingressed via
+        # package.waypoints.initial while the join stayed at .ingress, so its route
+        # ran out to one point, back to the other, then to the target (a visible
+        # zig-zag). Helicopters never had this because both already used .ingress.
+        ingress = builder.ingress(
+            FlightWaypointType.INGRESS_AIR_ASSAULT,
+            self.package.waypoints.ingress,
+            self.package.target,
         )
 
         assault_area = builder.assault_area(self.package.target)
