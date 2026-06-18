@@ -126,10 +126,7 @@ class Builder(FormationAttackBuilder[AirAssaultFlightPlan, AirAssaultLayout]):
             pickup_position = pickup.position
 
         # Use the package ingress point for the ingress waypoint -- the same point
-        # the join uses below. The Hercules previously ingressed via
-        # package.waypoints.initial while the join stayed at .ingress, so its route
-        # ran out to one point, back to the other, then to the target (a visible
-        # zig-zag). Helicopters never had this because both already used .ingress.
+        # the join uses below.        
         ingress = builder.ingress(
             FlightWaypointType.INGRESS_AIR_ASSAULT,
             self.package.waypoints.ingress,
