@@ -13,6 +13,7 @@
 * **[Options]** New option to spawn TACAN beacons at captured airfields
 =* **[Mission Generation]** Target recon kneeboard pages for each player flight: overview map of the package corridor with nearby threats and threat rings, detail map of the target with numbered aimpoints (MGRS), recommended attack-axis arrow, and an aimpoint table. OCA missions get an airfield-layout variant. Ground-start flights also get an airfield-departure page with spawn-slot markers, runway-in-use highlight, wind arrow, and an ATIS-like weather block (winds aloft, QNH, temp, clouds, sunrise/sunset). Toggleable via new "Generate target recon kneeboard pages" setting (default on); threats can be widened beyond the corridor with a new search-radius slider. Requires the new `mgrs` dependency.
 * **[UX]** Show an "End of Mission Detected, processing Mission Data" busy dialog while turn results are processed, so the wait is not mistaken for a missed detection
+* **[Map]** Hovering a SAM threat or detection ring highlights its emitter — and hovering an emitter highlights its ring — making it easy to tell which site a ring belongs to. Can be disabled from the map's layer control.
 
 ## Fixes
 * **[Mission]** Reliably auto-detect end of mission, even when DCS wrote the final state.json before the wait dialog started watching
@@ -20,8 +21,11 @@
 * **[AirWing]** Track per-squadron campaign aircraft stats (initial/destroyed/purchased, save-compatible) and expose pilot experience level and living/dead pilot views for the UI
 * **[AirWing]** Squadron list shows living-pilot, aircraft and unassigned counts; squadron dialog shows each pilot's experience level, lists killed-in-action pilots separately and hides the redundant "Active" status
 * **[AirWing]** Squadron dialog shows the aircraft type, an aircraft inventory (initial/current/destroyed/purchased), and buy/sell aircraft controls with price, on-order count and available parking slots
+* **[AirWing]** Air Wing list shows a "transfer ordered to X" indicator, and Airfield Command lists the units transferring into the base next turn
+* **[UI]** Avoid a crash dialog ("'QWidgetItem' object has no attribute 'width'") when a list using the two-column row delegate relayouts with a malformed style option under PySide6 6.4.x.
 
 ## Fixes
+* **[AirWing]** Squadron transfer-destination parking now accounts for already-ordered incoming transfers, matching the Airfield Command hangar count
 * **[Mission Generation]** Anti-Ship flights now attack the carrier group the flight plan routes to instead of the control point's first ground object, so strikes against carrier groups no longer leave the AI without a target (it would fly to the ingress point and turn back without engaging).
 * **[Performance]** Improved robustness w.r.t. state.json handling to avoid corruption and thus save loss.
 * **[Flight Plans]** Stabilized waypoint solver debug GeoJSON coordinate precision to avoid platform-specific floating point drift in debug output.
