@@ -54,6 +54,16 @@ if TYPE_CHECKING:
     from game import Game
 
 
+#: Mod weapon CLSIDs that crash DCS when dropped or cooked off. The Anubis C-130
+#: airdrop weapons are class ``wAmmunitionBallute``; since the official C-130J
+#: sound update they resolve a sound scheme without the ``suppress_ballute``
+#: input port ("No input port in scheme: suppress_ballute" -> unhandled
+#: exception -> DCS closes). Strip them when equipping pylons so even loadouts
+#: stored in an old save never carry them. ``Herc_GBU-43/B(MOAB)`` is a usable
+#: weapon and a rarer trigger, so it is deliberately kept (residual risk).
+_CRASHY_BALLUTE_CLSIDS = frozenset({"Herc_Soldier_Squad"})
+
+
 class FlightGroupConfigurator:
     def __init__(
         self,
@@ -413,6 +423,10 @@ class FlightGroupConfigurator:
 
         for pylon_number, weapon in loadout.pylons.items():
             if weapon is None:
+                continue
+            if weapon.clsid in _CRASHY_BALLUTE_CLSIDS:
+                # Drop the crash-prone mod airdrop weapon even if a stored
+                # loadout still carries it; air-assault troops come from CTLD.
                 continue
             pylon = Pylon.for_aircraft(self.flight.unit_type, pylon_number)
             settings = self._merge_laser_code(
