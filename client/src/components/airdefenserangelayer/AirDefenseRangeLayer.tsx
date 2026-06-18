@@ -101,7 +101,7 @@ const RangeCircles = (props: RangeCirclesProps) => {
             className="air-defense-ring-hit"
             eventHandlers={hover}
           >
-            <Tooltip sticky>
+            <Tooltip sticky className="tooltip-delayed">
               <b>{props.name}</b>
               {summarizeUnits(props.units).map((unit, i) => (
                 <div key={i}>{unit}</div>

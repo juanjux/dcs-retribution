@@ -37,7 +37,7 @@ function FlightTooltip({ flight }: { flight: Flight }) {
       ? `${flight.num_aircraft ?? "?"}x ${flight.aircraft}`
       : null;
   return (
-    <Tooltip sticky>
+    <Tooltip sticky className="tooltip-delayed">
       <b>{flight.callsign || composition || "Flight"}</b>
       {flight.flight_type ? ` - ${flight.flight_type}` : ""}
       {flight.callsign && composition ? <div>{composition}</div> : null}

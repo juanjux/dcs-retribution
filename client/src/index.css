@@ -1,15 +1,15 @@
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
-    "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
-    sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu",
+    "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New",
-    monospace;
+  font-family:
+    source-code-pro, Menlo, Monaco, Consolas, "Courier New", monospace;
 }
 
 /* Wide, invisible hover target for SAM threat/detection rings. pointer-events:
@@ -17,4 +17,19 @@ code {
    though it is not painted, so the ring is easy to hover when zoomed out. */
 .air-defense-ring-hit {
   pointer-events: stroke !important;
+}
+
+/* Hover delay for the SAM-ring and package-route tooltips, so they don't flicker
+   when the cursor merely sweeps past. Leaflet has no open-delay option, so we
+   hold the tooltip invisible for the animation's duration; once it ends the
+   element reverts to Leaflet's inline opacity and appears. (Animations override
+   inline styles while running.) Scoped by class so other tooltips are instant. */
+.leaflet-tooltip.tooltip-delayed {
+  animation: tooltip-hover-delay 0.3s;
+}
+@keyframes tooltip-hover-delay {
+  0%,
+  100% {
+    opacity: 0;
+  }
 }
