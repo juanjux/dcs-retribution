@@ -972,11 +972,10 @@ class PackagesMapPage(KneeboardPage):
         ys = [p[1] for p in points]
         margin = writer.page_margin
         top = writer.y + 8
-        width = writer.image_size[0] - 2 * margin
-        height = writer.image_size[1] - top - margin
+        avail_w = writer.image_size[0] - 2 * margin
+        avail_h = writer.image_size[1] - top - margin
 
-        # World bounding box of everything shown, plus an 8% margin, fitted to
-        # the page aspect so the basemap crop is not distorted.
+        # World bounding box of everything shown, plus an 8% margin.
         pad = 0.08 * max(max(xs) - min(xs), max(ys) - min(ys), 1.0)
         extent = MapExtent(
             min_x=min(xs) - pad,
@@ -985,17 +984,35 @@ class PackagesMapPage(KneeboardPage):
             max_y=max(ys) + pad,
             terrain=self.terrain,
         )
-        extent = aspect_correct(extent, width, height)
+
+        # Size the rendered map to the area-of-operations aspect rather than
+        # stretching it to fill the near-square page. A wide, short theater
+        # (carriers far offshore + inland targets) would otherwise be aspect-
+        # padded with ~half a page of empty sea above and below, squashing the
+        # actual front into the middle. Fit to the binding axis, then centre the
+        # strip so it reads as a deliberate map rather than a cut-off frame.
+        # Page-x (width) <- DCS y (east); page-y (height) <- DCS x (north).
+        content_ew = max(extent.span_y_m, 1.0)
+        content_ns = max(extent.span_x_m, 1.0)
+        map_w = avail_w
+        map_h = round(map_w * content_ns / content_ew)
+        if map_h > avail_h:
+            map_h = avail_h
+            map_w = round(map_h * content_ew / content_ns)
+        off_x = margin + (avail_w - map_w) // 2
+        off_y = top + (avail_h - map_h) // 2
+
+        extent = aspect_correct(extent, map_w, map_h)
         writer.image.paste(
-            render_landmap_basemap(extent, width, height, dark=self.dark_kneeboard),
-            (margin, top),
+            render_landmap_basemap(extent, map_w, map_h, dark=self.dark_kneeboard),
+            (off_x, off_y),
         )
 
-        projector = Projector(extent=extent, pixel_width=width, pixel_height=height)
+        projector = Projector(extent=extent, pixel_width=map_w, pixel_height=map_h)
 
         def to_px(x: float, y: float) -> Tuple[int, int]:
             px, py = projector.project(DcsPoint(x, y, self.terrain))
-            return margin + px, top + py
+            return off_x + px, off_y + py
 
         draw = writer.draw
         base_labels: List[Tuple[str, int, int, Tuple[int, int, int]]] = []
@@ -1037,8 +1054,8 @@ class PackagesMapPage(KneeboardPage):
             )
 
         label_h = 15
-        right_edge = margin + width
-        bottom_edge = top + height - label_h
+        right_edge = off_x + map_w
+        bottom_edge = off_y + map_h - label_h
         for name, x, y in self.targets:
             px, py = to_px(x, y)
             draw.ellipse(
