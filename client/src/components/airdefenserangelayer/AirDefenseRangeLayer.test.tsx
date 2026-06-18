@@ -12,6 +12,7 @@ jest.mock("react-leaflet", () => ({
   Circle: (props: any) => {
     mockCircle(props);
   },
+  Tooltip: (props: PropsWithChildren<any>) => <>{props.children}</>,
 }));
 
 describe("colorFor", () => {
@@ -106,7 +107,7 @@ describe("AirDefenseRangeLayer", () => {
         },
         radius: 10,
         color: colorFor(true, false),
-      })
+      }),
     );
   });
 
@@ -147,7 +148,7 @@ describe("AirDefenseRangeLayer", () => {
         },
         radius: 20,
         color: colorFor(true, true),
-      })
+      }),
     );
   });
 });

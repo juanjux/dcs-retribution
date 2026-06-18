@@ -9,10 +9,12 @@ import {
 import { useAppDispatch, useAppSelector } from "../../app/hooks";
 import { LatLng } from "../../api/liberationApi";
 import { Fragment } from "react";
-import { Circle, CircleMarker, LayerGroup } from "react-leaflet";
+import { Circle, CircleMarker, LayerGroup, Tooltip } from "react-leaflet";
 
 interface RangeCirclesProps {
   emitterId: string;
+  name: string;
+  units: string[];
   position: LatLng;
   threat_ranges: number[];
   detection_ranges: number[];
@@ -30,10 +32,16 @@ export function colorFor(blue: boolean, detection: boolean) {
 // Bright colour used to mark the hovered ring and its emitter.
 const HIGHLIGHT_COLOR = "#ffff00";
 
+// Collapse a unit list like ["SA-6 TEL", "SA-6 TEL", "Straight Flush"] into
+// ["2x SA-6 TEL", "Straight Flush"] so the ring tooltip names the SAM compactly.
+function summarizeUnits(units: string[]): string[] {
+  const counts = new Map<string, number>();
+  units.forEach((unit) => counts.set(unit, (counts.get(unit) ?? 0) + 1));
+  return Array.from(counts, ([name, n]) => (n > 1 ? `${n}x ${name}` : name));
+}
+
 const RangeCircles = (props: RangeCirclesProps) => {
-  const radii = props.detection
-    ? props.detection_ranges
-    : props.threat_ranges;
+  const radii = props.detection ? props.detection_ranges : props.threat_ranges;
   const color = colorFor(props.blue, props.detection === true);
   const baseWeight = props.detection ? 1 : 2;
   const dispatch = useAppDispatch();
@@ -44,14 +52,14 @@ const RangeCircles = (props: RangeCirclesProps) => {
   const highlighted = useAppSelector(
     (state) =>
       selectHighlightEmitters(state) &&
-      selectHoveredEmitter(state) === props.emitterId
+      selectHoveredEmitter(state) === props.emitterId,
   );
   // Only mark the emitter with a blob when the hover came from a ring (to help
   // locate the emitter, associating ring <-> emitter). When the emitter icon
   // itself is hovered we don't blob it, since we're already pointing at it. The
   // ring itself always lights up while highlighted, in either direction.
   const markEmitter = useAppSelector(
-    (state) => highlighted && selectHoveredEmitterSource(state) === "ring"
+    (state) => highlighted && selectHoveredEmitterSource(state) === "ring",
   );
 
   const hover = {
@@ -92,7 +100,14 @@ const RangeCircles = (props: RangeCirclesProps) => {
             weight={18}
             className="air-defense-ring-hit"
             eventHandlers={hover}
-          />
+          >
+            <Tooltip sticky>
+              <b>{props.name}</b>
+              {summarizeUnits(props.units).map((unit, i) => (
+                <div key={i}>{unit}</div>
+              ))}
+            </Tooltip>
+          </Circle>
         </Fragment>
       ))}
       {markEmitter && (
@@ -120,14 +135,14 @@ interface AirDefenseRangeLayerProps {
 
 export const AirDefenseRangeLayer = (props: AirDefenseRangeLayerProps) => {
   const tgos = Object.values(useAppSelector(selectTgos).tgos).filter(
-    (tgo) => tgo.blue === props.blue
+    (tgo) => tgo.blue === props.blue,
   );
   // Carrier/LHA control points carry their air-defense ranges (from the
   // surviving escort ships) directly, since their ship group is not emitted as
   // a standalone TGO. Draw their rings here too so a battered carrier group
   // does not look defenceless on the map.
   const controlPoints = Object.values(
-    useAppSelector(selectControlPoints).controlPoints
+    useAppSelector(selectControlPoints).controlPoints,
   ).filter((cp) => cp.blue === props.blue);
 
   return (
@@ -137,6 +152,8 @@ export const AirDefenseRangeLayer = (props: AirDefenseRangeLayerProps) => {
           <RangeCircles
             key={tgo.id}
             emitterId={tgo.id}
+            name={tgo.name}
+            units={tgo.units}
             position={tgo.position}
             threat_ranges={tgo.threat_ranges}
             detection_ranges={tgo.detection_ranges}
@@ -149,6 +166,8 @@ export const AirDefenseRangeLayer = (props: AirDefenseRangeLayerProps) => {
           <RangeCircles
             key={cp.id}
             emitterId={cp.id}
+            name={cp.name}
+            units={cp.units}
             position={cp.position}
             threat_ranges={cp.threat_ranges}
             detection_ranges={cp.detection_ranges}

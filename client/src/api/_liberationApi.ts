@@ -162,10 +162,7 @@ const injectedRtkApi = api.injectEndpoints({
         method: "POST",
       }),
     }),
-    selectFlight: build.mutation<
-      SelectFlightApiResponse,
-      SelectFlightApiArg
-    >({
+    selectFlight: build.mutation<SelectFlightApiResponse, SelectFlightApiArg>({
       query: (queryArg) => ({
         url: `/qt/select-flight/${queryArg.flightId}`,
         method: "POST",
@@ -345,8 +342,7 @@ export type OpenControlPointInfoDialogApiResponse =
 export type OpenControlPointInfoDialogApiArg = {
   cpId: string;
 };
-export type SelectFlightApiResponse =
-  /** status 200 Successful Response */ any;
+export type SelectFlightApiResponse = /** status 200 Successful Response */ any;
 export type SelectFlightApiArg = {
   flightId: string;
 };
@@ -455,6 +451,12 @@ export type Flight = {
   position?: LatLng;
   sidc: string;
   waypoints?: Waypoint[];
+  aircraft?: string;
+  num_aircraft?: number;
+  flight_type?: string;
+  callsign?: string | null;
+  package_target?: string;
+  package_tot?: string;
 };
 export type FrontLine = {
   id: string;
