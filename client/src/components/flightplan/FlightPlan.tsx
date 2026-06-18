@@ -92,33 +92,52 @@ function FlightPlanPath(props: FlightPlanProps) {
   // sidebar via a round-trip through the server.
   const interactive = props.flight.blue;
 
-  return (
+  // The thin visible route never catches the mouse itself. For blue flights a
+  // wide, invisible overlay polyline sits on top and handles hover (yellow
+  // highlight + tooltip) and the click-to-select, so the route is easy to grab
+  // without looking any thicker -- the same trick the SAM rings use.
+  const visible = (
     <Polyline
       positions={points}
-      pathOptions={{ color: color, interactive: interactive }}
+      pathOptions={{ color: color, interactive: false }}
       ref={polylineRef}
-      eventHandlers={
-        interactive
-          ? {
-              mouseover: () => {
-                polylineRef.current?.setStyle({ color: SELECTED_PATH });
-                polylineRef.current?.bringToFront();
-              },
-              mouseout: () => {
-                if (!props.selected) {
-                  polylineRef.current?.setStyle({ color: color });
-                  polylineRef.current?.bringToBack();
-                }
-              },
-              click: () => {
-                selectFlight({ flightId: props.flight.id });
-              },
+    />
+  );
+
+  if (!interactive) {
+    return visible;
+  }
+
+  return (
+    <>
+      {visible}
+      <Polyline
+        positions={points}
+        pathOptions={{
+          color: color,
+          weight: 16,
+          opacity: 0,
+          interactive: true,
+        }}
+        eventHandlers={{
+          mouseover: () => {
+            polylineRef.current?.setStyle({ color: SELECTED_PATH });
+            polylineRef.current?.bringToFront();
+          },
+          mouseout: () => {
+            if (!props.selected) {
+              polylineRef.current?.setStyle({ color: color });
+              polylineRef.current?.bringToBack();
             }
-          : undefined
-      }
-    >
-      {interactive ? <FlightTooltip flight={props.flight} /> : null}
-    </Polyline>
+          },
+          click: () => {
+            selectFlight({ flightId: props.flight.id });
+          },
+        }}
+      >
+        <FlightTooltip flight={props.flight} />
+      </Polyline>
+    </>
   );
 }
 
