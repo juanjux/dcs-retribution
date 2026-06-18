@@ -426,7 +426,20 @@ class QTopPanel(QFrame):
         )
 
         waiting = QWaitingForMissionResultWindow(self.game, self.sim_controller, self)
-        waiting.exec_()
+        # Hide the live QtWebEngine map while this modal dialog is open. Compositing
+        # a modal over the live map deadlocks the main thread inside the desktop-GL
+        # driver (nvoglv64, wglSwapLayerBuffers) on Qt6 -- the whole app goes "Not
+        # Responding". (Qt5 dodged this with ANGLE, but Qt6 removed ANGLE, and
+        # software GL makes the map unusably slow, so we keep the GPU map and just
+        # take it out of the compositing path for the duration of the dialog.)
+        game_map = getattr(self.window(), "liberation_map", None)
+        if game_map is not None:
+            game_map.setVisible(False)
+        try:
+            waiting.exec_()
+        finally:
+            if game_map is not None:
+                game_map.setVisible(True)
 
     def budget_update(self, game: Game):
         self.budgetBox.setGame(game)
