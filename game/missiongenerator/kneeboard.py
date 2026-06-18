@@ -1093,8 +1093,10 @@ class KneeboardGenerator(MissionInfoGenerator):
             FlightType.AEWC,
         }
     )
-    #: Conservative rows-per-page for the packages list.
-    PACKAGES_PER_PAGE = 30
+    #: Rows-per-page for the packages list. Tuned to fill the 1080px-tall
+    #: kneeboard at the 18px table font: ~50 rows reach the bottom margin, so 46
+    #: leaves a small safety gap while wasting far less space than the old 30.
+    PACKAGES_PER_PAGE = 46
 
     def __init__(self, mission: Mission, game: "Game") -> None:
         super().__init__(mission, game)
