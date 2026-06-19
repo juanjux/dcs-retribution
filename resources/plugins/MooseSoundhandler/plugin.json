@@ -1,24 +1,25 @@
 {
     "nameInUI": "Moose Soundhandler",
+    "descriptionInUI": "Plays radio-call and combat sound effects (weapon launch calls, kill confirmations, SAM warnings) in response to in-game events for added immersion.",
     "defaultValue": false,
     "specificOptions": [
         {
-            "nameInUI": "Play Sounds to Involved Group Only",
+            "nameInUI": "Play sounds only to the involved group",
             "mnemonic": "SoundToGroupOnly",
             "defaultValue": true
         },
         {
-            "nameInUI": "Play SAM Sounds for Ship Surface to Air Missiles",
+            "nameInUI": "Play SAM warning sounds for ship-launched SAMs",
             "mnemonic": "ShipSamSounds",
             "defaultValue": true
         },
         {
-            "nameInUI": "Play Sounds for Own Jet Cannons",
+            "nameInUI": "Play sounds for your own gun fire",
             "mnemonic": "PlayOwnShootingGuns",
             "defaultValue": true
         },
         {
-            "nameInUI": "Debug Mode",
+            "nameInUI": "Generate debug information",
             "mnemonic": "SoundDebug",
             "defaultValue": false
         }

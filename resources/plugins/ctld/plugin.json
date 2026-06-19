@@ -1,19 +1,20 @@
 {
-    "nameInUI": "CTLD",
+    "nameInUI": "CTLD (Cargo Transport & Logistics Deployment)",
+    "descriptionInUI": "Helicopter and transport logistics: sling-loading crates, deploying troops and vehicles, and JTAC autolasing for laser-guided strikes.",
     "defaultValue": true,
     "specificOptions": [
         {
-            "nameInUI": "Tailor CTLD for the Retribution specific missions",
+            "nameInUI": "Tailor CTLD for Retribution missions",
             "mnemonic": "tailorctld",
             "defaultValue": true
         },
         {
-            "nameInUI": "Create logistic unit in each pickup zone",
+            "nameInUI": "Create a logistics unit in each pickup zone",
             "mnemonic": "logisticunit",
             "defaultValue": true
         },
         {
-            "nameInUI": "CTLD Use smoke in zones",
+            "nameInUI": "Mark pickup/drop zones with smoke",
             "mnemonic": "smoke",
             "defaultValue": true
         },
@@ -23,27 +24,27 @@
             "defaultValue": false
         },
         {
-            "nameInUI": "Use real sling loading",
+            "nameInUI": "Use real sling-loading (vs. radio-menu loading)",
             "mnemonic": "slingload",
             "defaultValue": false
         },
         {
-            "nameInUI": "JTAC Autolase",
+            "nameInUI": "JTAC autolase targets",
             "mnemonic": "autolase",
             "defaultValue": true
         },
         {
-            "nameInUI": "JTAC Use smoke",
+            "nameInUI": "JTAC marks targets with smoke",
             "mnemonic": "jtacsmoke",
             "defaultValue": true
         },
         {
-            "nameInUI": "JTAC Use FC3 laser code (1113)",
+            "nameInUI": "JTAC uses FC3 laser code (1113)",
             "mnemonic": "fc3LaserCode",
             "defaultValue": false
         },
         {
-            "nameInUI": "CTLD Debug",
+            "nameInUI": "Generate CTLD debug information",
             "mnemonic": "debug",
             "defaultValue": false
         }

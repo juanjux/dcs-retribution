@@ -1,91 +1,92 @@
 {
     "nameInUI": "BigEye EWR",
+    "descriptionInUI": "Early-warning radar that broadcasts text threat reports to pilots, prioritised by how dangerous each contact is and tuned per coalition by available sensors (datalink, RWR, IRST).",
     "defaultValue": false,
     "specificOptions": [
         {
-            "nameInUI": "Time to display messages (Secs)",
+            "nameInUI": "Message display duration (seconds)",
             "mnemonic": "displayMessageTime",
             "minimumValue": 1,
             "maximumValue": 60,
             "defaultValue": 10
         },
         {
-            "nameInUI": "High Priority Reports Frequency (Secs, No less than Time to display",
+            "nameInUI": "High-priority report interval (seconds; no less than display duration)",
             "mnemonic": "highReportFrequencyPreference",
             "minimumValue": 1,
             "maximumValue": 60,
             "defaultValue": 15
         },
         {
-            "nameInUI": "Default Priority Report Frequency (Secs)",
+            "nameInUI": "Default-priority report interval (seconds)",
             "mnemonic": "defaultReportFrequencyPreference",
             "minimumValue": 1,
             "maximumValue": 5000,
             "defaultValue": 30
         },
         {
-            "nameInUI": "Low Priority Report Frequency (Secs)", 
+            "nameInUI": "Low-priority report interval (seconds)",
             "mnemonic": "lowReportFrequencyPreference",
             "minimumValue": 1,
             "maximumValue": 120,
             "defaultValue": 60
         },
         {
-            "nameInUI": "GCI Report Frequency (Secs)", 
+            "nameInUI": "GCI report interval (seconds)",
             "mnemonic": "gciReportFrequency",
             "minimumValue": 1,
             "maximumValue": 120,
             "defaultValue": 5
         },
         {
-            "nameInUI": "Enable Reports", 
+            "nameInUI": "Enable threat reports",
             "mnemonic": "defaultEnableReportPreference",
             "defaultValue": true
         },
         {
-            "nameInUI": "Maximum Reported Units", 
+            "nameInUI": "Maximum units reported per message",
             "mnemonic": "maxReportUnits",
             "minimumValue": 1,
             "maximumValue": 120,
             "defaultValue": 5
         },
         {
-            "nameInUI": "Enable NCTR (For post 2000)", 
+            "nameInUI": "Enable NCTR aircraft typing (post-2000 fits)",
             "mnemonic": "isAvailableNCTR",
             "defaultValue": true
         },
         {
-            "nameInUI": "BLUE Has Datalink", 
+            "nameInUI": "BLUE has datalink",
             "mnemonic": "blueHasDLINK",
             "defaultValue": false
         },
         {
-            "nameInUI": "BLUE Has RWR", 
+            "nameInUI": "BLUE has RWR",
             "mnemonic": "blueHasRWR",
             "defaultValue": true
         },
         {
-            "nameInUI": "BLUE Has IRST", 
+            "nameInUI": "BLUE has IRST",
             "mnemonic": "blueHasIRST",
             "defaultValue": false
         },
         {
-            "nameInUI": "RED Has Datalink", 
+            "nameInUI": "RED has datalink",
             "mnemonic": "redHasDLINK",
             "defaultValue": false
         },
         {
-            "nameInUI": "RED Has RWR", 
+            "nameInUI": "RED has RWR",
             "mnemonic": "redHasRWR",
             "defaultValue": true
         },
         {
-            "nameInUI": "RED Has IRST", 
+            "nameInUI": "RED has IRST",
             "mnemonic": "redHasIRST",
             "defaultValue": false
         },
         {
-            "nameInUI": "Report using NATO Names", 
+            "nameInUI": "Report contacts using NATO reporting names",
             "mnemonic": "reportUnitNameNATO",
             "defaultValue": true
         }
