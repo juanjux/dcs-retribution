@@ -248,6 +248,11 @@ class AircraftType(UnitType[Type[FlyingType]]):
 
     use_f15e_waypoint_names: bool
 
+    #: Tasks the aircraft is capable of but that are not auto-assignable by default
+    #: (the squadron's mission-type checkbox starts unchecked). Still selectable
+    #: manually. Each must also appear in ``tasks`` to supply its priority.
+    secondary_tasks: frozenset[FlightType] = frozenset()
+
     _by_name: ClassVar[dict[str, AircraftType]] = {}
     _by_unit_type: ClassVar[dict[type[FlyingType], list[AircraftType]]] = defaultdict(
         list
@@ -569,6 +574,9 @@ class AircraftType(UnitType[Type[FlyingType]]):
             cls._set_props_overrides(prop_overrides, aircraft)
 
         task_priorities = cls.get_task_priorities(data)
+        secondary_tasks = frozenset(
+            FlightType(t) for t in data.get("secondary_tasks", [])
+        )
 
         cls._custom_weapon_injections(aircraft, data)
         cls._user_weapon_injections(aircraft)
@@ -608,6 +616,7 @@ class AircraftType(UnitType[Type[FlyingType]]):
             cabin_size=data.get("cabin_size", 10 if aircraft.helicopter else 0),
             can_carry_crates=data.get("can_carry_crates", aircraft.helicopter),
             task_priorities=task_priorities,
+            secondary_tasks=secondary_tasks,
             has_built_in_target_pod=data.get("has_built_in_target_pod", False),
             has_built_in_ecm=data.get("has_built_in_ecm", False),
             has_built_in_jamming=data.get("has_built_in_jamming", False),
