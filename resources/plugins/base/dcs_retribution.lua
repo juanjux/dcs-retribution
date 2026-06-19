@@ -7,7 +7,8 @@ logger:info("Check that json.lua is loaded : json = "..tostring(json))
 crash_events = {} -- killed aircraft will be added via S_EVENT_CRASH event
 dead_events = {} -- killed units will be added via S_EVENT_DEAD event
 unit_lost_events = {} -- killed units will be added via S_EVENT_UNIT_LOST
-kill_events = {} -- killed units will be added via S_EVENT_KILL 
+kill_events = {} -- killed units will be added via S_EVENT_KILL
+kill_details = {} -- structured S_EVENT_KILL records {target, initiator, weapon} for the UI feed
 base_capture_events = {}
 destroyed_objects_positions = {} -- will be added via S_EVENT_DEAD event
 mission_ended = false
@@ -45,8 +46,10 @@ function write_state()
         ["base_capture_events"] = base_capture_events,
 		["unit_lost_events"] = unit_lost_events,
 		["kill_events"] = kill_events,
+		["kill_details"] = kill_details,
         ["mission_ended"] = mission_ended,
         ["destroyed_objects_positions"] = destroyed_objects_positions,
+        ["model_time"] = timer.getTime(),
     }
     local ok, write_error = pcall(function()
         fp:write(json:encode(game_state))
@@ -179,7 +182,23 @@ local function onEvent(event)
     end
 	
 	if event.id == world.event.S_EVENT_KILL and event.target then
-        kill_events[#kill_events + 1] = event.target.getName(event.target)
+        local target_name = event.target.getName(event.target)
+        kill_events[#kill_events + 1] = target_name
+        -- Also record who killed it and with what, for the UI event feed. All
+        -- accessors are pcall-guarded so a missing field never breaks the mission.
+        local detail = { ["target"] = target_name }
+        if event.initiator then
+            pcall(function() detail["initiator"] = event.initiator:getName() end)
+            pcall(function() detail["initiator_type"] = event.initiator:getTypeName() end)
+            pcall(function()
+                local pn = event.initiator:getPlayerName()
+                if pn and pn ~= "" then detail["initiator_player"] = pn end
+            end)
+        end
+        if event.weapon then
+            pcall(function() detail["weapon"] = event.weapon:getTypeName() end)
+        end
+        kill_details[#kill_details + 1] = detail
         dirty_state = true
     end
 

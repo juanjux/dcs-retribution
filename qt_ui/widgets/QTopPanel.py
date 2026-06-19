@@ -480,8 +480,11 @@ class QTopPanel(QFrame):
         # block by disabling those + the top-panel controls for the panel's lifetime.
         self.setControls(False)
         menu_bar = window.menuBar() if hasattr(window, "menuBar") else None
-        for w in [menu_bar, *window.findChildren(QToolBar)]:
-            if w is not None and w.isEnabled():
+        chrome = [
+            w for w in [menu_bar, *window.findChildren(QToolBar)] if w is not None
+        ]
+        for w in chrome:
+            if w.isEnabled():
                 w.setEnabled(False)
                 self._mp_disabled.append(w)
         for action in window.findChildren(QAction):
@@ -496,6 +499,10 @@ class QTopPanel(QFrame):
             [self, getattr(window, "ato_panel", None)],
             overlay_parent,
         )
+        # The menu bar + toolbars live outside the central widget; disabling alone
+        # doesn't grey them under the custom QSS, so dim them with their own scrims.
+        if chrome:
+            panel.install_scrims(chrome, window)
 
         panel.accept_btn.clicked.connect(self._mp_accept)
         panel.manually_submit_btn.clicked.connect(self._mp_submit_manually)
@@ -542,15 +549,13 @@ class QTopPanel(QFrame):
         except Exception:
             sim_time = None
         try:
-            sim_elapsed = self.sim_controller.elapsed_time
-        except Exception:
-            sim_elapsed = None
-        try:
+            # DCS mission elapsed is fed from the debriefing's model_time in
+            # ingest_debriefing; the campaign sim clock is paused during the mission.
             panel.update_clocks(
                 self._mp_real_start,
                 datetime.now(),
                 sim_time,
-                sim_elapsed,
+                None,
                 self.game.turn,
             )
         except Exception:

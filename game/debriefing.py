@@ -122,6 +122,13 @@ class StateData:
     #: Mangled names of bases that were captured during the mission.
     base_capture_events: List[str]
 
+    #: Structured S_EVENT_KILL records ({target, initiator, initiator_type,
+    #: initiator_player, weapon}), used to attribute air losses in the UI feed.
+    kill_details: List[Dict[str, Any]] = field(default_factory=list)
+
+    #: DCS mission model time in seconds (timer.getTime()); None for older states.
+    model_time: Optional[float] = None
+
     @classmethod
     def from_json(cls, data: Dict[str, Any], unit_map: UnitMap) -> StateData:
         def clean_unit_list(unit_list: List[Any]) -> List[str]:
@@ -160,6 +167,8 @@ class StateData:
             killed_ground_units=killed_ground_units,
             destroyed_statics=data.get("destroyed_objects_positions", []),
             base_capture_events=data.get("base_capture_events", []),
+            kill_details=data.get("kill_details", []),
+            model_time=data.get("model_time"),
         )
 
 
@@ -177,6 +186,21 @@ class Debriefing:
         self.air_losses = self.dead_aircraft()
         self.ground_losses = self.dead_ground_units()
         self.base_captures = self.base_capture_events()
+        self.kill_info_by_flying_unit = self._index_kill_details()
+
+    def _index_kill_details(self) -> Dict["FlyingUnit", Dict[str, Any]]:
+        """Map each killed FlyingUnit to its S_EVENT_KILL detail (killer + weapon)."""
+        index: Dict[FlyingUnit, Dict[str, Any]] = {}
+        for detail in self.state_data.kill_details:
+            if not isinstance(detail, dict):
+                continue
+            name = detail.get("target")
+            if not name:
+                continue
+            flying_unit = self.unit_map.flight(str(name))
+            if flying_unit is not None:
+                index[flying_unit] = detail
+        return index
 
     def merge_simulation_results(self, results: SimulationResults) -> None:
         for air_loss in results.air_losses:

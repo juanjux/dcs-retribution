@@ -82,6 +82,16 @@ def _fmt_td(td: timedelta) -> str:
     return f"{h}:{m:02d}:{s:02d}" if h else f"{m:02d}:{s:02d}"
 
 
+def _prettify_dcs_name(raw: Optional[str]) -> Optional[str]:
+    """'weapons.missiles.AIM_120C' -> 'AIM 120C'; 'FA-18C_hornet' -> 'FA-18C hornet'."""
+    if not raw:
+        return None
+    name = str(raw)
+    if "." in name:
+        name = name.rsplit(".", 1)[-1]
+    return name.replace("_", " ").strip() or None
+
+
 class DimScrim(QWidget):
     """Translucent, click-eating overlay that tracks a target widget's geometry."""
 
@@ -160,7 +170,7 @@ class MissionProgressPanel(QFrame):
         self._shown_blue_air = 0
         self._shown_enemy_air = 0
         self._seen_captures: set[str] = set()
-        self._shown_ground = 0
+        self._shown_ground_by_cat: dict[str, int] = {}
         self._completed = False
 
         root = QVBoxLayout(self)
@@ -223,7 +233,7 @@ class MissionProgressPanel(QFrame):
         self.ingame_caption = _label("IN-GAME — TURN ?", "mip-stat-label")
         self.ingame_group = self._clock_group(
             None,
-            [("MISSION TIME", self.ig_time), ("SIM ELAPSED", self.ig_elapsed)],
+            [("MISSION TIME", self.ig_time), ("DCS MISSION", self.ig_elapsed)],
             caption_widget=self.ingame_caption,
         )
         lay.addWidget(self.ingame_group)
@@ -287,7 +297,7 @@ class MissionProgressPanel(QFrame):
         lay.addWidget(
             _v(
                 _label("EXCHANGE RATIO", "mip-stat-label"),
-                _label("enemy : own losses", "mip-stat-label"),
+                _label("kills : losses", "mip-stat-label"),
             )
         )
 
@@ -317,10 +327,11 @@ class MissionProgressPanel(QFrame):
             ratio = f"{enemy} : 0"
         else:
             ratio = f"{enemy / own:.1f} : 1"
+        # First number = our kills (enemy losses) → blue; second = our losses → red.
         self.ratio_value.setText(
-            f'<span style="color:#D84545">{ratio.split(" : ")[0]}</span>'
+            f'<span style="color:#3592C4">{ratio.split(" : ")[0]}</span>'
             f' <span style="color:#6F7F8B">:</span> '
-            f'<span style="color:#3592C4">{ratio.split(" : ")[1] if " : " in ratio else ""}</span>'
+            f'<span style="color:#D84545">{ratio.split(" : ")[1] if " : " in ratio else ""}</span>'
             if " : " in ratio
             else f'<span style="color:#6F7F8B">{ratio}</span>'
         )
@@ -437,6 +448,7 @@ class MissionProgressPanel(QFrame):
         h.addWidget(self.feed_dot)
         h.addWidget(_label("LIVE EVENTS", "mip-stat-label"))
         h.addStretch(1)
+        h.addWidget(_label("~15s behind DCS", "mip-event-time"))
         lay.addWidget(header)
 
         self.feed_list = QListWidget()
@@ -450,7 +462,9 @@ class MissionProgressPanel(QFrame):
     def prepend_event(
         self, icon_path: str, text: str, verb: str, side: str, time_str: str
     ) -> None:
-        item = QListWidgetItem(self.feed_list)
+        # Don't pass the list to the ctor (that appends); build detached then
+        # insert at the top so the newest event leads the feed.
+        item = QListWidgetItem()
         row = EventRow(icon_path, text, verb, side, time_str)
         item.setSizeHint(row.sizeHint())
         self.feed_list.insertItem(0, item)
@@ -459,7 +473,7 @@ class MissionProgressPanel(QFrame):
             self.feed_list.takeItem(self.feed_list.count() - 1)
 
     def prepend_divider(self, text: str) -> None:
-        item = QListWidgetItem(self.feed_list)
+        item = QListWidgetItem()
         lbl = _label(text, "mip-feed-divider")
         lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         item.setSizeHint(lbl.sizeHint())
@@ -475,7 +489,8 @@ class MissionProgressPanel(QFrame):
         self._footer_lay.setSpacing(12)
 
         self.hint = _label(
-            "Mission is being played — results poll every ~1s", "mip-footer-hint"
+            "Mission in progress — DCS writes results every ~15s, so events lag a little",
+            "mip-footer-hint",
         )
         self.accept_btn = QPushButton("Accept results")
         self.accept_btn.setProperty("style", "btn-success")
@@ -558,17 +573,32 @@ class MissionProgressPanel(QFrame):
         red_counts = debriefing.loss_counts(Player.RED)
         self.update_casualties(blue_counts, red_counts)
 
+        # DCS mission elapsed (from the Lua model_time); the campaign sim is paused
+        # while the player flies, so sim_controller.elapsed_time would stay frozen.
+        mt = getattr(debriefing.state_data, "model_time", None)
+        if mt is not None:
+            self.ig_elapsed.setText(_fmt_td(timedelta(seconds=mt)))
+
         now = datetime.now().strftime("%H:%M:%S")
 
-        # new blue air losses (we have the squadron + type for these)
+        # new air losses, attributed with killer + weapon when DCS reported them
+        kill_info = getattr(debriefing, "kill_info_by_flying_unit", {})
         player_losses = debriefing.air_losses.player
         for loss in player_losses[self._shown_blue_air :]:
-            self.prepend_event(ICON_AIR, self._air_text(loss), "LOST", "blue", now)
+            self.prepend_event(
+                ICON_AIR, self._air_text(loss, kill_info.get(loss)), "LOST", "blue", now
+            )
         self._shown_blue_air = len(player_losses)
 
         enemy_losses = debriefing.air_losses.enemy
         for loss in enemy_losses[self._shown_enemy_air :]:
-            self.prepend_event(ICON_AIR, self._air_text(loss), "DESTROYED", "red", now)
+            self.prepend_event(
+                ICON_AIR,
+                self._air_text(loss, kill_info.get(loss)),
+                "DESTROYED",
+                "red",
+                now,
+            )
         self._shown_enemy_air = len(enemy_losses)
 
         # base captures
@@ -585,45 +615,118 @@ class MissionProgressPanel(QFrame):
                 ICON_CAPTURE, str(capture.control_point), "CAPTURED", side, now
             )
 
-        # ground/static losses (aggregate, no per-unit side attribution from DCS).
-        # Count only categorised losses (matches the scoreboard); the raw
-        # killed_ground_units bucket includes thousands of untracked infantry/scenery
-        # deaths with no campaign effect, which would render a nonsensical feed number.
-        ground_keys = (
-            "front_line",
-            "convoy",
-            "cargo_ships",
-            "ground_objects",
-            "scenery",
-        )
-        total_ground = sum(
-            getattr(c, k, 0) for c in (blue_counts, red_counts) for k in ground_keys
-        )
-        if total_ground > self._shown_ground:
-            delta = total_ground - self._shown_ground
-            self.prepend_event(
-                ICON_GROUND,
-                f"{delta} ground unit{'s' if delta > 1 else ''} destroyed",
-                "DESTROYED",
-                "neutral",
-                now,
-            )
-            self._shown_ground = total_ground
+        # ground/static losses: per side + unit type, grouped per category so the
+        # feed shows e.g. "3x T-72 (front line)" with the correct side colour. The
+        # categorised lists (not the raw killed_ground_units bucket) match the
+        # scoreboard and exclude the thousands of untracked infantry/scenery deaths.
+        ground_losses = getattr(debriefing, "ground_losses", None)
+        if ground_losses is not None:
+            self._ingest_ground_losses(ground_losses, now)
 
         if debriefing.state_data.mission_ended and not self._completed:
             self.set_complete(True)
 
+    def _ingest_ground_losses(self, gl, now: str) -> None:
+        # (side, key, list, label, typed) — typed categories carry a unit type.
+        categories = [
+            (
+                "blue",
+                "p_front",
+                getattr(gl, "player_front_line", []),
+                "front line",
+                True,
+            ),
+            ("red", "e_front", getattr(gl, "enemy_front_line", []), "front line", True),
+            ("blue", "p_convoy", getattr(gl, "player_convoy", []), "convoy", True),
+            ("red", "e_convoy", getattr(gl, "enemy_convoy", []), "convoy", True),
+            (
+                "blue",
+                "p_ship",
+                getattr(gl, "player_cargo_ships", []),
+                "cargo ship",
+                False,
+            ),
+            (
+                "red",
+                "e_ship",
+                getattr(gl, "enemy_cargo_ships", []),
+                "cargo ship",
+                False,
+            ),
+            (
+                "blue",
+                "p_obj",
+                getattr(gl, "player_ground_objects", []),
+                "ground object",
+                False,
+            ),
+            (
+                "red",
+                "e_obj",
+                getattr(gl, "enemy_ground_objects", []),
+                "ground object",
+                False,
+            ),
+            ("blue", "p_scen", getattr(gl, "player_scenery", []), "structure", False),
+            ("red", "e_scen", getattr(gl, "enemy_scenery", []), "structure", False),
+        ]
+        for side, key, items, label, typed in categories:
+            shown = self._shown_ground_by_cat.get(key, 0)
+            new_items = items[shown:]
+            self._shown_ground_by_cat[key] = len(items)
+            if not new_items:
+                continue
+            groups: dict[str, int] = {}
+            for it in new_items:
+                name = (
+                    self._unit_type_name(getattr(it, "unit_type", None))
+                    if typed
+                    else None
+                ) or label.capitalize()
+                groups[name] = groups.get(name, 0) + 1
+            for name, count in groups.items():
+                text = f"{count}x {name}" if count > 1 else name
+                if typed:
+                    text = f"{text} ({label})"
+                self.prepend_event(ICON_GROUND, text, "DESTROYED", side, now)
+
     @staticmethod
-    def _air_text(loss) -> str:
+    def _unit_type_name(unit_type) -> Optional[str]:
+        if unit_type is None:
+            return None
+        for attr in ("name", "display_name"):
+            value = getattr(unit_type, attr, None)
+            if value:
+                return str(value)
+        return str(unit_type)
+
+    def _air_text(self, loss, detail=None) -> str:
         try:
             ac = loss.flight.unit_type.display_name
         except Exception:
             ac = "Aircraft"
         try:
-            sq = str(loss.flight.squadron)
-            return f"{ac} from {sq}"
+            text = f"{ac} from {loss.flight.squadron}"
         except Exception:
-            return ac
+            text = ac
+        killer = self._format_killer(detail)
+        return f"{text} — {killer}" if killer else text
+
+    @staticmethod
+    def _format_killer(detail) -> Optional[str]:
+        if not detail:
+            return None
+        who = detail.get("initiator_player") or _prettify_dcs_name(
+            detail.get("initiator_type")
+        )
+        weapon = _prettify_dcs_name(detail.get("weapon"))
+        if who and weapon:
+            return f"shot down by {who} ({weapon})"
+        if who:
+            return f"shot down by {who}"
+        if weapon:
+            return f"hit by {weapon}"
+        return None
 
     # ---- state switch ---------------------------------------------------- #
     def set_complete(self, complete: bool) -> None:
