@@ -441,8 +441,9 @@ class QTopPanel(QFrame):
 
     # ------------------------------------------------------------------ #
     # Embedded "mission in progress" panel (replaces the old waiting dialog).
-    # The live map is hidden and the panel takes its splitter slot; the rest
-    # of the UI is covered with dim scrims so the panel reads as modal.
+    # The live QtWebEngine map is DETACHED (reparented out, not just hidden) and
+    # the panel takes its splitter slot; the rest of the UI is covered with dim
+    # scrims so the panel reads as modal.
     # ------------------------------------------------------------------ #
     def _begin_mission_panel(self) -> None:
         if getattr(self, "_mp_panel", None) is not None:
@@ -464,11 +465,19 @@ class QTopPanel(QFrame):
         panel = MissionProgressPanel()
         self._mp_panel = panel
 
-        if self._mp_splitter is not None:
+        if self._mp_splitter is not None and self._mp_map is not None:
             self._mp_map_index = self._mp_splitter.indexOf(self._mp_map)
             self._mp_splitter_sizes = self._mp_splitter.sizes()
+            # DETACH the QtWebEngine map, don't just hide it. setVisible(False)
+            # leaves its native HWND a child of the main window, so subsequent
+            # window ops keep issuing synchronous SendMessage to the Chromium
+            # renderer process and deadlock the GUI thread (NtUserMessageCall).
+            # Reparenting to None takes that HWND out of the main window's tree, so
+            # the renderer can't be messaged. Do it BEFORE adding the panel/scrims.
+            # GPU acceleration stays on (software GL makes the map unusable).
+            self._mp_map.setParent(None)
+            self._mp_map.hide()
             self._mp_splitter.insertWidget(self._mp_map_index, panel)
-            self._mp_map.setVisible(False)
             # Hide the info panel too so the mission panel owns the whole splitter
             # column (no leftover strip, no live splitter handle to drag it away).
             if self._mp_info_panel is not None:
@@ -689,9 +698,16 @@ class QTopPanel(QFrame):
             self._mp_info_panel.setVisible(True)
             self._mp_info_panel = None
         if getattr(self, "_mp_map", None) is not None:
-            self._mp_map.setVisible(True)
-            if self._mp_splitter is not None and self._mp_splitter_sizes is not None:
-                self._mp_splitter.setSizes(self._mp_splitter_sizes)
+            # Re-attach the detached map into its old splitter slot (the panel was
+            # already removed above, so the index lines up with the original layout).
+            # Show it BEFORE setSizes, else the still-hidden widget gets 0px.
+            if self._mp_splitter is not None and self._mp_map_index >= 0:
+                self._mp_splitter.insertWidget(self._mp_map_index, self._mp_map)
+                self._mp_map.setVisible(True)
+                if self._mp_splitter_sizes is not None:
+                    self._mp_splitter.setSizes(self._mp_splitter_sizes)
+            else:
+                self._mp_map.setVisible(True)
         self._mp_map = None
         self._mp_splitter = None
         # Re-enable the chrome we disabled while the panel was up.
