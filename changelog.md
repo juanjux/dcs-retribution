@@ -15,6 +15,7 @@
 * **[Map]** Hovering a SAM threat or detection ring highlights its emitter — and hovering an emitter highlights its ring — making it easy to tell which site a ring belongs to. Can be disabled from the map's layer control.
 
 ## Fixes
+* **[AirWing]** Selling aircraft no longer lets the same units be re-sold (and re-flown) after a turn re-initialisation, which refunded their price repeatedly and could drive a squadron's aircraft count negative and then balloon it to ~airfield capacity on reload.
 * **[Mission]** Reliably auto-detect end of mission, even when DCS wrote the final state.json before the wait dialog started watching
 * **[Performance]** Faster post-mission turn processing
 * **[AirWing]** Track per-squadron campaign aircraft stats (initial/destroyed/purchased, save-compatible) and expose pilot experience level and living/dead pilot views for the UI
