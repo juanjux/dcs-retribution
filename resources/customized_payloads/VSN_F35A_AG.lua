@@ -633,6 +633,55 @@ local unitPayloads = {
 				[1] = 31,
 			},
 		},
+		[9] = {
+			["displayName"] = "Retribution DEAD",
+			["name"] = "Retribution DEAD",
+			["pylons"] = {
+				[1] = {
+					["CLSID"] = "{0519A264-0AB6-11d6-9193-00A0249B6F00}",
+					["num"] = 13,
+				},
+				[2] = {
+					["CLSID"] = "{44EE8698-89F9-48EE-AF36-5FD31896A82F}",
+					["num"] = 12,
+				},
+				[3] = {
+					["CLSID"] = "{5CE2FF2A-645A-4197-B48D-8720AC69394F}",
+					["num"] = 11,
+				},
+				[4] = {
+					["CLSID"] = "{AF42E6DF-9A60-46D8-A9A0-1708B241AADB}",
+					["num"] = 9,
+				},
+				[5] = {
+					["CLSID"] = "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}",
+					["num"] = 8,
+				},
+				[6] = {
+					["CLSID"] = "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}",
+					["num"] = 7,
+				},
+				[7] = {
+					["CLSID"] = "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}",
+					["num"] = 5,
+				},
+				[8] = {
+					["CLSID"] = "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}",
+					["num"] = 4,
+				},
+				[9] = {
+					["CLSID"] = "{AF42E6DF-9A60-46D8-A9A0-1708B241AADB}",
+					["num"] = 3,
+				},
+				[10] = {
+					["CLSID"] = "{5CE2FF2A-645A-4197-B48D-8720AC69394F}",
+					["num"] = 1,
+				},
+			},
+			["tasks"] = {
+				[1] = 31,
+			},
+		},
 	},
 	["tasks"] = {
 	},

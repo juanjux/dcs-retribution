@@ -4,6 +4,7 @@ max_range: 350
 variants:
   F-16A: null
 tasks:
+  DEAD: 150
   BARCAP: 420
   CAS: 340
   Escort: 420
@@ -15,3 +16,5 @@ tasks:
   TARCAP: 420
   SEAD: 150
   SEAD Escort: 150
+secondary_tasks:
+  - DEAD

@@ -52,6 +52,23 @@ local unitPayloads = {
 				[1] = 31,
 			},
 		},
+		[4] = {
+			["displayName"] = "Retribution DEAD",
+			["name"] = "Retribution DEAD",
+			["pylons"] = {
+				[1] = {
+					["CLSID"] = "{Tu160M2_Kh101x6}",
+					["num"] = 1,
+				},
+				[2] = {
+					["CLSID"] = "{Tu160M2_Kh101x6}",
+					["num"] = 2,
+				},
+			},
+			["tasks"] = {
+				[1] = 31,
+			},
+		},
 	},
 	["tasks"] = {
 	},
