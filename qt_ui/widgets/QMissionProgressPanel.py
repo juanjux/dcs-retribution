@@ -581,12 +581,17 @@ class MissionProgressPanel(QFrame):
 
         now = datetime.now().strftime("%H:%M:%S")
 
-        # new air losses, attributed with killer + weapon when DCS reported them
-        kill_info = getattr(debriefing, "kill_info_by_flying_unit", {})
+        # new air losses, attributed with killer + weapon when DCS reported them.
+        # Keyed by id(loss): FlyingUnit isn't hashable (holds a Pilot dataclass).
+        kill_info = getattr(debriefing, "kill_info_by_unit_id", {})
         player_losses = debriefing.air_losses.player
         for loss in player_losses[self._shown_blue_air :]:
             self.prepend_event(
-                ICON_AIR, self._air_text(loss, kill_info.get(loss)), "LOST", "blue", now
+                ICON_AIR,
+                self._air_text(loss, kill_info.get(id(loss))),
+                "LOST",
+                "blue",
+                now,
             )
         self._shown_blue_air = len(player_losses)
 
@@ -594,7 +599,7 @@ class MissionProgressPanel(QFrame):
         for loss in enemy_losses[self._shown_enemy_air :]:
             self.prepend_event(
                 ICON_AIR,
-                self._air_text(loss, kill_info.get(loss)),
+                self._air_text(loss, kill_info.get(id(loss))),
                 "DESTROYED",
                 "red",
                 now,

@@ -186,20 +186,30 @@ class Debriefing:
         self.air_losses = self.dead_aircraft()
         self.ground_losses = self.dead_ground_units()
         self.base_captures = self.base_capture_events()
-        self.kill_info_by_flying_unit = self._index_kill_details()
+        self.kill_info_by_unit_id = self._index_kill_details()
 
-    def _index_kill_details(self) -> Dict["FlyingUnit", Dict[str, Any]]:
-        """Map each killed FlyingUnit to its S_EVENT_KILL detail (killer + weapon)."""
-        index: Dict[FlyingUnit, Dict[str, Any]] = {}
-        for detail in self.state_data.kill_details:
-            if not isinstance(detail, dict):
-                continue
-            name = detail.get("target")
-            if not name:
-                continue
-            flying_unit = self.unit_map.flight(str(name))
-            if flying_unit is not None:
-                index[flying_unit] = detail
+    def _index_kill_details(self) -> Dict[int, Dict[str, Any]]:
+        """Map id(FlyingUnit) -> its S_EVENT_KILL detail (killer + weapon).
+
+        Keyed by id() (not the FlyingUnit itself) because FlyingUnit holds a Pilot,
+        which is an unhashable dataclass. The lookup side (the mission panel) keys by
+        id(loss); those loss objects are the same instances unit_map.flight() returns,
+        so identity matches. Wrapped defensively: this only feeds the UI feed, so a
+        problem here must never break turn processing/debriefing construction.
+        """
+        index: Dict[int, Dict[str, Any]] = {}
+        try:
+            for detail in self.state_data.kill_details:
+                if not isinstance(detail, dict):
+                    continue
+                name = detail.get("target")
+                if not name:
+                    continue
+                flying_unit = self.unit_map.flight(str(name))
+                if flying_unit is not None:
+                    index[id(flying_unit)] = detail
+        except Exception:
+            logging.exception("Failed to index kill details; killer attribution off")
         return index
 
     def merge_simulation_results(self, results: SimulationResults) -> None:
