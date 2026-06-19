@@ -130,10 +130,10 @@ class StateData:
             #   is dropped on them when they've already dead.
             # - Normalise dead map objects (which are ints) to strings. The unit map
             #   only stores strings
-            units = set()
-            for unit in unit_list:
-                units.add(str(unit))
-            return list(units)
+            # dict.fromkeys dedups while preserving first-seen order, so the cumulative
+            # state re-parsed every poll yields a stable append-only prefix (consumers
+            # that diff by position, e.g. the mission panel event feed, rely on this).
+            return list(dict.fromkeys(str(unit) for unit in unit_list))
 
         killed_aircraft = []
         killed_ground_units = []

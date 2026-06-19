@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import List, Optional
 
 from PySide6.QtCore import Qt, QTimer
+from PySide6.QtGui import QAction
 from PySide6.QtWidgets import (
     QApplication,
     QDialog,
@@ -14,6 +15,8 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QProgressDialog,
     QPushButton,
+    QToolBar,
+    QWidget,
 )
 
 import qt_ui.uiconstants as CONST
@@ -335,8 +338,12 @@ class QTopPanel(QFrame):
     # of the UI is covered with dim scrims so the panel reads as modal.
     # ------------------------------------------------------------------ #
     def _begin_mission_panel(self) -> None:
+        if getattr(self, "_mp_panel", None) is not None:
+            return  # a mission is already in progress; ignore re-entry
+
         window = self.window()
         self._mp_map = getattr(window, "liberation_map", None)
+        self._mp_info_panel = getattr(window, "info_panel", None)
         self._mp_splitter = (
             self._mp_map.parentWidget() if self._mp_map is not None else None
         )
@@ -344,6 +351,8 @@ class QTopPanel(QFrame):
         self._mp_splitter_sizes = None
         self._mp_debriefing = None
         self._mp_real_start = datetime.now()
+        self._mp_disabled: List[QWidget] = []
+        self._mp_disabled_actions: List[QAction] = []
 
         panel = MissionProgressPanel()
         self._mp_panel = panel
@@ -353,16 +362,31 @@ class QTopPanel(QFrame):
             self._mp_splitter_sizes = self._mp_splitter.sizes()
             self._mp_splitter.insertWidget(self._mp_map_index, panel)
             self._mp_map.setVisible(False)
+            # Hide the info panel too so the mission panel owns the whole splitter
+            # column (no leftover strip, no live splitter handle to drag it away).
+            if self._mp_info_panel is not None:
+                self._mp_info_panel.setVisible(False)
+
+        # The old waiting dialog was WindowModal: it blocked the menu bar, toolbars
+        # and their shortcuts (New/Open/Save...). Loading a different game mid-mission
+        # would swap the game underneath the still-running poll thread. Reproduce that
+        # block by disabling those + the top-panel controls for the panel's lifetime.
+        self.setControls(False)
+        menu_bar = window.menuBar() if hasattr(window, "menuBar") else None
+        for w in [menu_bar, *window.findChildren(QToolBar)]:
+            if w is not None and w.isEnabled():
+                w.setEnabled(False)
+                self._mp_disabled.append(w)
+        for action in window.findChildren(QAction):
+            if action.isEnabled():
+                action.setEnabled(False)
+                self._mp_disabled_actions.append(action)
 
         overlay_parent = (
             window.centralWidget() if hasattr(window, "centralWidget") else window
         )
         panel.install_scrims(
-            [
-                self,
-                getattr(window, "ato_panel", None),
-                getattr(window, "info_panel", None),
-            ],
+            [self, getattr(window, "ato_panel", None)],
             overlay_parent,
         )
 
@@ -376,11 +400,24 @@ class QTopPanel(QFrame):
         self._mp_wait_thread = self.sim_controller.wait_for_debriefing(
             lambda d: DebriefingFileWrittenSignal.get_instance().sendDebriefing(d)
         )
+        # Stop the (non-daemon) poll thread if the app quits mid-mission, else it
+        # keeps polling state.json and blocks interpreter shutdown (orphaned process).
+        app = QApplication.instance()
+        if app is not None:
+            app.aboutToQuit.connect(self._mp_on_quit)
 
         self._mp_timer = QTimer(self)
         self._mp_timer.timeout.connect(self._mp_tick)
         self._mp_timer.start(1000)
         self._mp_tick()
+
+    def _mp_on_quit(self) -> None:
+        thread = getattr(self, "_mp_wait_thread", None)
+        if thread is not None:
+            thread.stop()
+        timer = getattr(self, "_mp_timer", None)
+        if timer is not None:
+            timer.stop()
 
     def _mp_on_debriefing(self, debriefing) -> None:
         try:
@@ -435,6 +472,11 @@ class QTopPanel(QFrame):
     def _mp_update_flights(self, panel: MissionProgressPanel) -> None:
         airborne = combat = waiting = 0
         for _, flight in self.game.db.flights.objects.items():
+            try:
+                if not flight.blue.is_blue:
+                    continue  # the panel reports own-force (BLUE) flights only
+            except Exception:
+                continue
             state = flight.state
             if state is None or not state.alive:
                 continue
@@ -519,18 +561,35 @@ class QTopPanel(QFrame):
             )
         except (RuntimeError, TypeError):
             pass
+        app = QApplication.instance()
+        if app is not None:
+            try:
+                app.aboutToQuit.disconnect(self._mp_on_quit)
+            except (RuntimeError, TypeError):
+                pass
         panel = getattr(self, "_mp_panel", None)
         if panel is not None:
             panel.remove_scrims()
             panel.setParent(None)
             panel.deleteLater()
             self._mp_panel = None
+        if getattr(self, "_mp_info_panel", None) is not None:
+            self._mp_info_panel.setVisible(True)
+            self._mp_info_panel = None
         if getattr(self, "_mp_map", None) is not None:
             self._mp_map.setVisible(True)
             if self._mp_splitter is not None and self._mp_splitter_sizes is not None:
                 self._mp_splitter.setSizes(self._mp_splitter_sizes)
         self._mp_map = None
         self._mp_splitter = None
+        # Re-enable the chrome we disabled while the panel was up.
+        for w in getattr(self, "_mp_disabled", []):
+            w.setEnabled(True)
+        self._mp_disabled = []
+        for action in getattr(self, "_mp_disabled_actions", []):
+            action.setEnabled(True)
+        self._mp_disabled_actions = []
+        self.setControls(True)
 
     def budget_update(self, game: Game):
         self.budgetBox.setGame(game)
