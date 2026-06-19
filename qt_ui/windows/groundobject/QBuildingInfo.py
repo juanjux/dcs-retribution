@@ -1,6 +1,7 @@
 import os
 from typing import Callable
 
+from PySide6.QtCore import Qt
 from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import QGroupBox, QLabel, QPushButton, QVBoxLayout
 
@@ -22,22 +23,30 @@ class QBuildingInfo(QGroupBox):
         self.init_ui()
 
     def init_ui(self):
-        self.header = QLabel()
-        path = os.path.join(
+        icon_path = os.path.join(
             "./resources/ui/units/buildings/" + self.building.icon + ".png"
         )
-        if not self.building.alive:
-            pixmap = QPixmap("./resources/ui/units/buildings/dead.png")
-        elif os.path.isfile(path):
-            pixmap = QPixmap(path)
-        else:
-            pixmap = QPixmap("./resources/ui/units/buildings/missing.png")
-        self.header.setPixmap(pixmap)
-        self.name = QLabel(self.building.short_name)
-        self.name.setProperty("style", "small")
+        # SceneryUnit.icon is always "missing", so a missing icon means there is
+        # no real picture: skip the header instead of showing the cyan "Missing
+        # Recon Picture" placeholder, leaving a compact name + value card.
+        has_real_icon = self.building.icon != "missing" and os.path.isfile(icon_path)
+
         layout = QVBoxLayout()
-        layout.addWidget(self.header)
-        layout.addWidget(self.name)
+        layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+
+        if not self.building.alive:
+            header = QLabel()
+            header.setPixmap(QPixmap("./resources/ui/units/buildings/dead.png"))
+            layout.addWidget(header)
+        elif has_real_icon:
+            header = QLabel()
+            header.setPixmap(QPixmap(icon_path))
+            layout.addWidget(header)
+
+        name_label = QLabel(self.building.short_name)
+        name_label.setProperty("style", "small")
+        name_label.setWordWrap(True)
+        layout.addWidget(name_label)
 
         if self.ground_object.category in REWARDS:
             income_label_text = (
