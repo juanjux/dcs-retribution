@@ -485,28 +485,28 @@ local unitPayloads = {
 					["num"] = 2,
 				},
 				[5] = {
-					["CLSID"] = "{SU30_RudraM1}",
+					["CLSID"] = "{E2C426E3-8B10-4E09-B733-9CDC26520F48}",
 					["num"] = 8,
 				},
 				[6] = {
-					["CLSID"] = "{SU30_RudraM1}",
+					["CLSID"] = "{E2C426E3-8B10-4E09-B733-9CDC26520F48}",
 					["num"] = 5,
 				},
 				[7] = {
-					["CLSID"] = "{SU30_SAAW}",
+					["CLSID"] = "{E2C426E3-8B10-4E09-B733-9CDC26520F48}",
 					["num"] = 10,
 				},
 				[8] = {
-					["CLSID"] = "{SU30_RudraM1}",
-					["num"] = 9,
+					["CLSID"] = "{E2C426E3-8B10-4E09-B733-9CDC26520F48}",
+					["num"] = 3,
 				},
 				[9] = {
-					["CLSID"] = "{SU30_RudraM1}",
-					["num"] = 4,
+					["CLSID"] = "{E2C426E3-8B10-4E09-B733-9CDC26520F48}",
+					["num"] = 9,
 				},
 				[10] = {
-					["CLSID"] = "{SU30_SAAW}",
-					["num"] = 3,
+					["CLSID"] = "{E2C426E3-8B10-4E09-B733-9CDC26520F48}",
+					["num"] = 4,
 				},
 				[11] = {
 					["CLSID"] = "{Su30_DERBY_ER}",
