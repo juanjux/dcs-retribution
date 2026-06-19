@@ -673,3 +673,217 @@ QCalendarWidget QTableView{
 .hidden {
     visibility: hidden;
 }
+
+
+/* ===== Mission-in-Progress panel (embedded waiting UI) ===== */
+/* =====================================================================
+   Mission-in-Progress command panel — QSS
+   Appends to the existing style-dcs.css. Palette & property-class
+   convention reuse the app theme (btn-primary / btn-success / btn-danger
+   already defined upstream — do not redefine them here).
+   Qt-safe only: no flexbox/grid/transforms. Borders, padding, gradients,
+   background, color, font only.
+   ===================================================================== */
+
+/* ---- the lit panel container ---- */
+QFrame[style="mission-panel"] {
+    background: #1D2731;
+    border: none;
+    border-left: 2px solid #3592C4;     /* in-progress accent (blue) */
+}
+QFrame[style="mission-panel"][state="complete"] {
+    border-left: 2px solid #82A466;     /* complete accent (green) */
+}
+
+/* header bar */
+QFrame[style="mip-header"] {
+    background: #14202B;
+    border-bottom: 1px solid #3B4656;
+}
+QLabel[style="mip-title"] {
+    color: #E2E8EC;
+    font-size: 20px;
+    font-weight: bold;
+    letter-spacing: 3px;
+}
+QLabel[style="mip-subtitle"] {
+    color: #8A98A3;
+    font-size: 11px;
+    text-transform: uppercase;
+}
+QLabel[style="mip-caption"] {
+    color: #8A98A3;
+    font-size: 10px;
+    text-transform: uppercase;
+}
+QLabel[style="mip-timer"] {
+    color: #3592C4;
+    font-size: 34px;
+    font-weight: bold;
+    font-family: "Consolas", "DejaVu Sans Mono", monospace;
+}
+QFrame[style="mission-panel"][state="complete"] QLabel[style="mip-timer"] {
+    color: #B7C0C6;                      /* frozen final time reads neutral */
+}
+
+/* stats strip (clocks + conditions) */
+QFrame[style="mip-stats"] {
+    background: #19242F;
+    border-bottom: 1px solid #2D3E50;
+}
+QLabel[style="mip-stat-label"] {
+    color: #6F7F8B;
+    font-size: 9px;
+    text-transform: uppercase;
+}
+QLabel[style="mip-stat-value"] {
+    color: #B7C0C6;
+    font-size: 15px;
+    font-family: "Consolas", "DejaVu Sans Mono", monospace;
+}
+QLabel[style="mip-chip"] {
+    background: #14202B;
+    border: 1px solid #3B4656;
+    color: #B7C0C6;
+    padding: 4px 9px;
+    font-size: 12px;
+}
+
+/* cards */
+QFrame[style="mip-card"] {
+    background: #14202B;
+    border: 1px solid #3B4656;
+}
+QLabel[style="mip-ratio"] {              /* rich-text "2.6 : 1" — colors set inline in the HTML */
+    font-size: 38px;
+    font-weight: bold;
+    font-family: "Consolas", "DejaVu Sans Mono", monospace;
+}
+
+/* scoreboard */
+QFrame[style="mip-scoreboard"] {
+    background: #14202B;
+    border: 1px solid #3B4656;
+}
+QWidget[style="mip-score-header"] {
+    background: #202C3A;
+    border-bottom: 1px solid #3B4656;
+}
+QLabel[style="mip-col-blue"] {
+    color: #3592C4;
+    font-size: 11px;
+    font-weight: bold;
+    letter-spacing: 1px;
+    background: rgba(53,146,196,0.10);
+    border-left: 1px solid #3B4656;
+    padding: 6px 0;
+}
+QLabel[style="mip-col-red"] {
+    color: #D84545;
+    font-size: 11px;
+    font-weight: bold;
+    letter-spacing: 1px;
+    background: rgba(216,69,69,0.10);
+    border-left: 1px solid #3B4656;
+    padding: 6px 0;
+}
+QLabel[style="mip-row-label"] {
+    color: #B7C0C6;
+    font-size: 13px;
+}
+QLabel[style="mip-num-blue"] {
+    color: #5FA8D6;
+    font-size: 20px;
+    font-weight: bold;
+    font-family: "Consolas", "DejaVu Sans Mono", monospace;
+    background: rgba(53,146,196,0.06);
+    border-left: 1px solid #1C2833;
+}
+QLabel[style="mip-num-red"] {
+    color: #E06A6A;
+    font-size: 20px;
+    font-weight: bold;
+    font-family: "Consolas", "DejaVu Sans Mono", monospace;
+    background: rgba(216,69,69,0.06);
+    border-left: 1px solid #1C2833;
+}
+
+/* flights counters */
+QWidget[style="mip-flights"] {
+    background: #202C3A;
+    border-top: 1px solid #3B4656;
+}
+QLabel[style="mip-counter-num"] {
+    color: #E2E8EC;
+    font-size: 18px;
+    font-weight: bold;
+    font-family: "Consolas", "DejaVu Sans Mono", monospace;
+}
+QLabel[style="mip-counter-label"] {
+    color: #8A98A3;
+    font-size: 11px;
+}
+
+/* ---- live events feed ---- */
+QFrame[style="mip-feed"] {
+    background: #19242F;
+    border-left: 1px solid #2D3E50;
+}
+QWidget[style="mip-feed-header"] {
+    border-bottom: 1px solid #2D3E50;
+}
+QListWidget[style="mip-feed-list"] {
+    background: #19242F;
+    border: none;
+    outline: 0;
+}
+QListWidget[style="mip-feed-list"]::item {
+    border: none;
+    padding: 0;
+}
+QListWidget[style="mip-feed-list"]::item:selected,
+QListWidget[style="mip-feed-list"]::item:hover {
+    background: transparent;            /* feed is read-only; no selection highlight */
+}
+
+/* per-event row — side color set via dynamic [side] property */
+QFrame[style="mip-event"] {
+    border-bottom: 1px solid #1C2833;
+    border-left: 3px solid #3B4656;
+}
+QFrame[style="mip-event"][side="blue"]    { border-left-color: #3592C4; }
+QFrame[style="mip-event"][side="red"]     { border-left-color: #D84545; }
+QFrame[style="mip-event"][side="neutral"] { border-left-color: #82A466; }
+
+QLabel[style="mip-event-text"] { color: #CFD8DE; font-size: 13px; }
+QLabel[style="mip-event-time"] {
+    color: #5A6B78;
+    font-size: 10px;
+    font-family: "Consolas", "DejaVu Sans Mono", monospace;
+}
+QLabel[style="mip-event-verb"] { font-size: 11px; font-weight: bold; letter-spacing: 1px; }
+QLabel[style="mip-event-verb"][side="blue"]    { color: #3592C4; }
+QLabel[style="mip-event-verb"][side="red"]     { color: #D84545; }
+QLabel[style="mip-event-verb"][side="neutral"] { color: #82A466; }
+
+QLabel[style="mip-feed-divider"] {       /* "—— MISSION ENDED ——" */
+    color: #82A466;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    background: rgba(130,164,102,0.08);
+    border-bottom: 1px solid #1C2833;
+    padding: 8px 0;
+}
+
+/* footer */
+QFrame[style="mip-footer"] {
+    background: #14202B;
+    border-top: 1px solid #3B4656;
+}
+QLabel[style="mip-footer-hint"] { color: #6F7F8B; font-size: 11px; }
+
+/* ---- dim scrim over the surrounding chrome ---- */
+QWidget[style="dim-scrim"] {
+    background: rgba(8, 12, 16, 0.74);
+}
