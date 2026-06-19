@@ -443,9 +443,7 @@ class MissionProgressPanel(QFrame):
         self.feed_list.setProperty("style", "mip-feed-list")
         self.feed_list.setSelectionMode(QListWidget.SelectionMode.NoSelection)
         self.feed_list.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.feed_list.setVerticalScrollMode(
-            QListWidget.ScrollMode.ScrollPerPixel
-        )
+        self.feed_list.setVerticalScrollMode(QListWidget.ScrollMode.ScrollPerPixel)
         lay.addWidget(self.feed_list, stretch=1)
         return feed
 
@@ -556,25 +554,21 @@ class MissionProgressPanel(QFrame):
     def ingest_debriefing(self, debriefing: Debriefing) -> None:
         """Update casualties from a fresh (cumulative) debriefing and prepend any
         new events to the feed since the previous poll."""
-        self.update_casualties(
-            debriefing.loss_counts(Player.BLUE), debriefing.loss_counts(Player.RED)
-        )
+        blue_counts = debriefing.loss_counts(Player.BLUE)
+        red_counts = debriefing.loss_counts(Player.RED)
+        self.update_casualties(blue_counts, red_counts)
 
         now = datetime.now().strftime("%H:%M:%S")
 
         # new blue air losses (we have the squadron + type for these)
         player_losses = debriefing.air_losses.player
         for loss in player_losses[self._shown_blue_air :]:
-            self.prepend_event(
-                ICON_AIR, self._air_text(loss), "LOST", "blue", now
-            )
+            self.prepend_event(ICON_AIR, self._air_text(loss), "LOST", "blue", now)
         self._shown_blue_air = len(player_losses)
 
         enemy_losses = debriefing.air_losses.enemy
         for loss in enemy_losses[self._shown_enemy_air :]:
-            self.prepend_event(
-                ICON_AIR, self._air_text(loss), "DESTROYED", "red", now
-            )
+            self.prepend_event(ICON_AIR, self._air_text(loss), "DESTROYED", "red", now)
         self._shown_enemy_air = len(enemy_losses)
 
         # base captures
@@ -583,14 +577,28 @@ class MissionProgressPanel(QFrame):
             if key in self._seen_captures:
                 continue
             self._seen_captures.add(key)
-            blue = getattr(getattr(capture, "captured_by_player", None), "is_blue", True)
+            blue = getattr(
+                getattr(capture, "captured_by_player", None), "is_blue", True
+            )
             side = "blue" if blue else "red"
             self.prepend_event(
                 ICON_CAPTURE, str(capture.control_point), "CAPTURED", side, now
             )
 
-        # ground/static losses (aggregate, no per-unit side attribution from DCS)
-        total_ground = len(debriefing.state_data.killed_ground_units)
+        # ground/static losses (aggregate, no per-unit side attribution from DCS).
+        # Count only categorised losses (matches the scoreboard); the raw
+        # killed_ground_units bucket includes thousands of untracked infantry/scenery
+        # deaths with no campaign effect, which would render a nonsensical feed number.
+        ground_keys = (
+            "front_line",
+            "convoy",
+            "cargo_ships",
+            "ground_objects",
+            "scenery",
+        )
+        total_ground = sum(
+            getattr(c, k, 0) for c in (blue_counts, red_counts) for k in ground_keys
+        )
         if total_ground > self._shown_ground:
             delta = total_ground - self._shown_ground
             self.prepend_event(
