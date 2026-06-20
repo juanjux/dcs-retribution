@@ -612,18 +612,17 @@ class MissionProgressPanel(QFrame):
                 now,
             )
 
-        # ground/static losses: per side + unit type, grouped per category so the
-        # feed shows e.g. "3x T-72 (front line)" with the correct side colour. The
-        # categorised lists (not the raw killed_ground_units bucket) match the
-        # scoreboard and exclude the thousands of untracked infantry/scenery deaths.
+        # ground/static losses: per side + unit type + killer/weapon when DCS
+        # reported one. The categorised lists (not the raw killed_ground_units bucket)
+        # match the scoreboard and exclude the thousands of untracked deaths.
         ground_losses = getattr(debriefing, "ground_losses", None)
         if ground_losses is not None:
-            self._ingest_ground_losses(ground_losses, now)
+            self._ingest_ground_losses(ground_losses, now, kill_info)
 
         if debriefing.state_data.mission_ended and not self._completed:
             self.set_complete(True)
 
-    def _ingest_ground_losses(self, gl, now: str) -> None:
+    def _ingest_ground_losses(self, gl, now: str, kill_info: dict) -> None:
         # (side, key, list, label, typed) — typed categories carry a unit type.
         categories = [
             (
@@ -673,6 +672,9 @@ class MissionProgressPanel(QFrame):
             self._shown_ground_by_cat[key] = len(items)
             if not new_items:
                 continue
+            # Build one row string per unit (type + killer/weapon when known), then
+            # collapse identical rows into "Nx ..." so we keep per-unit attribution
+            # without spamming duplicate lines.
             groups: dict[str, int] = {}
             for it in new_items:
                 name = (
@@ -680,11 +682,13 @@ class MissionProgressPanel(QFrame):
                     if typed
                     else None
                 ) or label.capitalize()
-                groups[name] = groups.get(name, 0) + 1
-            for name, count in groups.items():
-                text = f"{count}x {name}" if count > 1 else name
-                if typed:
-                    text = f"{text} ({label})"
+                row = f"{name} ({label})" if typed else name
+                killer = self._format_killer(kill_info.get(id(it)), "destroyed by")
+                if killer:
+                    row = f"{row} — {killer}"
+                groups[row] = groups.get(row, 0) + 1
+            for row, count in groups.items():
+                text = f"{count}x {row}" if count > 1 else row
                 self.prepend_event(ICON_GROUND, text, "DESTROYED", side, now)
 
     @staticmethod
@@ -721,13 +725,13 @@ class MissionProgressPanel(QFrame):
             return ac
 
     @staticmethod
-    def _format_killer(detail) -> Optional[str]:
-        """Readable 'shot down by ...' for a real shooter, or None.
+    def _format_killer(detail, verb: str = "shot down by") -> Optional[str]:
+        """Readable '<verb> ...' for a real shooter, or None.
 
         None means no shooter was credited (it crashed) OR the 'weapon' DCS
         reported is the initiator aircraft itself — i.e. a collision/ram, not a
-        shoot-down (e.g. an unarmed CH-47 'killing' a parked Apache, or F/A-18
-        'killing' F/A-18). Those read as CRASHED, not a bogus kill.
+        kill (e.g. an unarmed CH-47 'killing' a parked Apache, or F/A-18 'killing'
+        F/A-18). For air losses those read as CRASHED, not a bogus kill.
         """
         if not detail:
             return None
@@ -738,9 +742,9 @@ class MissionProgressPanel(QFrame):
         who = detail.get("initiator_player") or _prettify_dcs_name(initiator_type)
         weapon = _prettify_dcs_name(weapon_raw)
         if who and weapon:
-            return f"shot down by {who} ({weapon})"
+            return f"{verb} {who} ({weapon})"
         if who:
-            return f"shot down by {who}"
+            return f"{verb} {who}"
         if weapon:
             return f"hit by {weapon}"
         return None

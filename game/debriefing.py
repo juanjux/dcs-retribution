@@ -189,12 +189,13 @@ class Debriefing:
         self.kill_info_by_unit_id = self._index_kill_details()
 
     def _index_kill_details(self) -> Dict[int, Dict[str, Any]]:
-        """Map id(FlyingUnit) -> its S_EVENT_KILL detail (killer + weapon).
+        """Map id(loss object) -> its S_EVENT_KILL detail (killer + weapon), for both
+        air losses (FlyingUnit) and ground losses (FrontLineUnit/ConvoyUnit/...).
 
-        Keyed by id() (not the FlyingUnit itself) because FlyingUnit holds a Pilot,
-        which is an unhashable dataclass. The lookup side (the mission panel) keys by
-        id(loss); those loss objects are the same instances unit_map.flight() returns,
-        so identity matches. Wrapped defensively: this only feeds the UI feed, so a
+        Keyed by id() (not the object itself) because FlyingUnit holds a Pilot, an
+        unhashable dataclass. The lookup side (the mission panel) keys by id(loss);
+        those loss objects are the same instances unit_map resolves a name to, so
+        identity matches. Wrapped defensively: this only feeds the UI feed, so a
         problem here must never break turn processing/debriefing construction.
         """
         index: Dict[int, Dict[str, Any]] = {}
@@ -205,12 +206,33 @@ class Debriefing:
                 name = detail.get("target")
                 if not name:
                     continue
-                flying_unit = self.unit_map.flight(str(name))
-                if flying_unit is not None:
-                    index[id(flying_unit)] = detail
+                obj = self._resolve_killed_object(str(name))
+                if obj is not None:
+                    index[id(obj)] = detail
         except Exception:
             logging.exception("Failed to index kill details; killer attribution off")
         return index
+
+    def _resolve_killed_object(self, name: str) -> Optional[Any]:
+        """Resolve a killed unit name to its loss object, mirroring how
+        dead_aircraft/dead_ground_units resolve names, so id() lines up."""
+        um = self.unit_map
+        obj = um.flight(name)
+        if obj is not None:
+            return obj
+        obj = um.front_line_unit(name) or um.front_line_unit_from_tic_clone(name)
+        if obj is not None:
+            return obj
+        for getter in (
+            um.convoy_unit,
+            um.cargo_ship,
+            um.theater_units,
+            um.scenery_object,
+        ):
+            obj = getter(name)
+            if obj is not None:
+                return obj
+        return None
 
     def merge_simulation_results(self, results: SimulationResults) -> None:
         for air_loss in results.air_losses:
