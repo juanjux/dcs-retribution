@@ -36,6 +36,9 @@ from .sk60 import *
 from .su15 import *
 from .su30 import *
 from .su35s import *
+from .f15ex import *
+from .f15cge import *
+from .eurofighter import *
 from .su57 import *
 from .swedishmilitaryassetspack import *
 from .iranmilitaryassetspack import *

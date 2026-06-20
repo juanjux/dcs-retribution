@@ -1,0 +1,34 @@
+description:
+  "The Boeing F-15EX Eagle II is the latest, most advanced F-15 variant: a two-seat,
+  all-weather multirole fighter combining the proven Eagle airframe with fly-by-wire
+  controls, the AN/APG-82 AESA radar, the EPAWSS electronic-warfare suite and an open
+  mission-systems architecture. Its defining feature is unmatched payload: up to a
+  dozen air-to-air missiles (AIM-120, AIM-260 JATM, AIM-9X) for air dominance, plus a
+  deep air-to-ground arsenal (JDAM, SDB, AGM-88 HARM/AARGM, AGM-158 JASSM/LRASM,
+  Harpoon, MAKO hypersonic) that makes it a true long-range multirole platform."
+introduced: 2025
+manufacturer: Boeing
+origin: USA
+price: 30
+role: Multirole Fighter
+max_range: 1968
+variants:
+  F-15EX Eagle II: {}
+radios:
+  intra_flight: AN/ARC-210
+  inter_flight: AN/ARC-164
+tasks:
+  Intercept: 850
+  Fighter sweep: 820
+  BARCAP: 750
+  TARCAP: 730
+  Escort: 720
+  OCA/Aircraft: 600
+  Strike: 560
+  OCA/Runway: 540
+  DEAD: 520
+  SEAD: 520
+  SEAD Escort: 520
+  Anti-ship: 500
+  BAI: 480
+  CAS: 460

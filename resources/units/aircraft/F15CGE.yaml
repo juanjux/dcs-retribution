@@ -1,0 +1,24 @@
+description:
+  "The F-15C Golden Eagle is a mid-life-refresh upgrade of the classic F-15C air-
+  superiority fighter, bringing the AN/APG-63(V)3 AESA radar, modern datalink and
+  countermeasures to the Eagle while keeping its pure air-dominance focus. It carries
+  the latest beyond-visual-range missiles (AIM-120C/D, AIM-260 JATM) alongside the
+  AIM-9X, making it a dedicated, long-reach counter-air platform rather than a
+  multirole strike aircraft."
+introduced: 2021
+manufacturer: McDonnell Douglas / Boeing
+origin: USA
+price: 26
+role: Air Superiority Fighter
+max_range: 1967
+variants:
+  F-15C EG Golden Eagle: {}
+radios:
+  intra_flight: AN/ARC-210
+  inter_flight: AN/ARC-164
+tasks:
+  Intercept: 860
+  Fighter sweep: 830
+  BARCAP: 760
+  TARCAP: 740
+  Escort: 720

@@ -148,6 +148,12 @@ class GeneratorOptions(QtWidgets.QWizardPage):
         self.registerField("su30_flanker_h", self.su30_flanker_h)
         self.su35s_flanker_m = QtWidgets.QCheckBox()
         self.registerField("su35s_flanker_m", self.su35s_flanker_m)
+        self.f15ex = QtWidgets.QCheckBox()
+        self.registerField("f15ex", self.f15ex)
+        self.f15cge = QtWidgets.QCheckBox()
+        self.registerField("f15cge", self.f15cge)
+        self.eurofighter = QtWidgets.QCheckBox()
+        self.registerField("eurofighter", self.eurofighter)
         self.su57_felon = QtWidgets.QCheckBox()
         self.registerField("su57_felon", self.su57_felon)
         self.ov10a_bronco = QtWidgets.QCheckBox()
@@ -235,11 +241,14 @@ class GeneratorOptions(QtWidgets.QWizardPage):
             ),
             ("EA-6B Prowler (v2.9.4.102)", self.ea6b_prowler),
             ("E-7A Wedgetail (AI Only, EW Capable)", self.e7a_wedgetail),
+            ("Eurofighter Typhoon (v1.1.4 by Lechuzas Negras)", self.eurofighter),
             ("F-100 Super Sabre (v2.7.18.30765 patch 20.10.22)", self.f100_supersabre),
             ("F-104 Starfighter (v2.7.11.222.01)", self.f104_starfighter),
             ("F-105 Thunderchief (v2.7.12.23x)", self.f105_thunderchief),
             ("F-106 Delta Dart (v2.9.4.101)", self.f106_deltadart),
+            ("F-15C EG Golden Eagle (v1.5 by Spino)", self.f15cge),
             ("F-15D Baz (v1.0)", self.f15d_baz),
+            ("F-15EX Eagle II (v2.3 by Spino)", self.f15ex),
             ("F-15I Ra'am (v1.0 by IDF Mods Project)", self.f_15_idf),
             ("F-16I Sufa & F-16D (v3.6 by IDF Mods Project)", self.f_16_idf),
             ("F-22A Raptor (v2.0.0 released May 2025)", self.f22_raptor),
@@ -347,9 +356,7 @@ class GeneratorOptions(QtWidgets.QWizardPage):
         self.chinesemilitaryassetspack.setChecked(
             s.get("chinesemilitaryassetspack", False)
         )
-        self.iranmilitaryassetspack.setChecked(
-            s.get("iranmilitaryassetspack", False)
-        )
+        self.iranmilitaryassetspack.setChecked(s.get("iranmilitaryassetspack", False))
         self.russianmilitaryassetspack.setChecked(
             s.get("russianmilitaryassetspack", False)
         )

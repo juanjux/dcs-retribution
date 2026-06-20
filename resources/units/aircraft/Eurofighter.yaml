@@ -1,0 +1,33 @@
+description:
+  "The Eurofighter Typhoon is a twin-engine, delta-canard multirole fighter built by a
+  European consortium (Airbus, BAE Systems, Leonardo) and flown by the RAF, Luftwaffe,
+  Aeronautica Militare, Ejercito del Aire and others. Highly agile and equipped with
+  the CAPTOR radar and a modern defensive-aids suite, it excels at air superiority with
+  AIM-120, IRIS-T and ASRAAM, and is fully multirole: precision strike (Paveway, JDAM),
+  defence suppression (ALARM/HARM), anti-ship (RBS-15) and close air support."
+introduced: 2003
+manufacturer: Airbus / BAE Systems / Leonardo
+origin: Combined Joint Task Force Blue
+price: 28
+role: Multirole Fighter
+max_range: 1389
+variants:
+  Eurofighter Typhoon: {}
+radios:
+  intra_flight: R&S M3AR VHF
+  inter_flight: R&S M3AR UHF
+tasks:
+  Intercept: 850
+  Fighter sweep: 820
+  BARCAP: 750
+  TARCAP: 730
+  Escort: 720
+  OCA/Aircraft: 600
+  Strike: 560
+  OCA/Runway: 540
+  DEAD: 520
+  SEAD: 520
+  SEAD Escort: 520
+  Anti-ship: 500
+  BAI: 480
+  CAS: 460
