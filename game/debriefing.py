@@ -187,6 +187,9 @@ class Debriefing:
         self.ground_losses = self.dead_ground_units()
         self.base_captures = self.base_capture_events()
         self.kill_info_by_unit_id = self._index_kill_details()
+        # ids of air losses injected by the Retribution sim (no DCS kill record);
+        # they are real combat losses, so is_non_combat_loss() must not refund them.
+        self._sim_loss_ids: set[int] = set()
 
     def _index_kill_details(self) -> Dict[int, Dict[str, Any]]:
         """Map id(loss object) -> its S_EVENT_KILL detail (killer + weapon), for both
@@ -236,10 +239,28 @@ class Debriefing:
 
     def merge_simulation_results(self, results: SimulationResults) -> None:
         for air_loss in results.air_losses:
+            self._sim_loss_ids.add(id(air_loss))
             if air_loss.flight.squadron.player.is_blue:
                 self.air_losses.player.append(air_loss)
             else:
                 self.air_losses.enemy.append(air_loss)
+
+    def is_non_combat_loss(self, flying_unit: "FlyingUnit") -> bool:
+        """True if this air loss was a non-combat write-off: a crash, a collision,
+        or a death with no shooter credited by DCS — as opposed to being shot down
+        by a weapon or SAM. Retribution-sim combat losses (no DCS kill record) are
+        NOT treated as crashes."""
+        if id(flying_unit) in self._sim_loss_ids:
+            return False
+        detail = self.kill_info_by_unit_id.get(id(flying_unit))
+        if detail:
+            initiator_type = detail.get("initiator_type")
+            weapon = detail.get("weapon")
+            has_shooter = bool(detail.get("initiator_player") or initiator_type)
+            collision = bool(weapon and weapon == initiator_type)
+            if has_shooter and not collision:
+                return False  # shot down by a weapon / SAM
+        return True
 
     @property
     def front_line_losses(self) -> Iterator[FrontLineUnit]:

@@ -197,6 +197,18 @@ class Settings:
     )
 
     # CAMPAIGN DOCTRINE
+    ignore_non_combat_air_losses: bool = boolean_option(
+        "Non-combat (crash) aircraft losses don't count",
+        page=CAMPAIGN_DOCTRINE_PAGE,
+        section=GENERAL_SECTION,
+        default=False,
+        detail=(
+            "Aircraft lost without a credited shooter — AI crashes, collisions, "
+            "running out of fuel or hitting terrain — are not removed from the "
+            "squadron and their pilot survives. Only losses DCS attributes to a "
+            "weapon or SAM count. Applies to both coalitions."
+        ),
+    )
     desired_barcap_mission_duration: timedelta = minutes_option(
         "Desired BARCAP on-station time",
         page=CAMPAIGN_DOCTRINE_PAGE,

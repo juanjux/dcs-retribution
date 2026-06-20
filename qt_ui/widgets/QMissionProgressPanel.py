@@ -586,12 +586,12 @@ class MissionProgressPanel(QFrame):
         kill_info = getattr(debriefing, "kill_info_by_unit_id", {})
         player_losses = debriefing.air_losses.player
         for loss in player_losses[self._shown_blue_air :]:
-            self._emit_air_loss(loss, kill_info.get(id(loss)), "blue", "LOST", now)
+            self._emit_air_loss(loss, debriefing, "blue", "LOST", now)
         self._shown_blue_air = len(player_losses)
 
         enemy_losses = debriefing.air_losses.enemy
         for loss in enemy_losses[self._shown_enemy_air :]:
-            self._emit_air_loss(loss, kill_info.get(id(loss)), "red", "DESTROYED", now)
+            self._emit_air_loss(loss, debriefing, "red", "DESTROYED", now)
         self._shown_enemy_air = len(enemy_losses)
 
         # base captures
@@ -702,16 +702,24 @@ class MissionProgressPanel(QFrame):
         return str(unit_type)
 
     def _emit_air_loss(
-        self, loss, detail, side: str, killed_verb: str, now: str
+        self, loss, debriefing, side: str, killed_verb: str, now: str
     ) -> None:
         """One air-loss feed row. 'shot down by ...' + LOST/DESTROYED when DCS
-        reported a real shooter; otherwise CRASHED (no kill, or a collision)."""
+        credited a weapon/SAM; otherwise CRASHED (no shooter, or a collision). Uses
+        the debriefing's own classifier so the feed label matches what the campaign
+        counts under the 'crashes don't count' doctrine."""
+        detail = getattr(debriefing, "kill_info_by_unit_id", {}).get(id(loss))
         base = self._air_base_text(loss)
-        killer = self._format_killer(detail)
-        if killer:
-            self.prepend_event(ICON_AIR, f"{base} — {killer}", killed_verb, side, now)
-        else:
+        non_combat = getattr(debriefing, "is_non_combat_loss", None)
+        crashed = (
+            non_combat(loss) if non_combat else (self._format_killer(detail) is None)
+        )
+        if crashed:
             self.prepend_event(ICON_AIR, base, "CRASHED", side, now)
+        else:
+            killer = self._format_killer(detail)
+            text = f"{base} — {killer}" if killer else base
+            self.prepend_event(ICON_AIR, text, killed_verb, side, now)
 
     @staticmethod
     def _air_base_text(loss) -> str:
