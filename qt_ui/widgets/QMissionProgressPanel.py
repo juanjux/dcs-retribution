@@ -586,24 +586,12 @@ class MissionProgressPanel(QFrame):
         kill_info = getattr(debriefing, "kill_info_by_unit_id", {})
         player_losses = debriefing.air_losses.player
         for loss in player_losses[self._shown_blue_air :]:
-            self.prepend_event(
-                ICON_AIR,
-                self._air_text(loss, kill_info.get(id(loss))),
-                "LOST",
-                "blue",
-                now,
-            )
+            self._emit_air_loss(loss, kill_info.get(id(loss)), "blue", "LOST", now)
         self._shown_blue_air = len(player_losses)
 
         enemy_losses = debriefing.air_losses.enemy
         for loss in enemy_losses[self._shown_enemy_air :]:
-            self.prepend_event(
-                ICON_AIR,
-                self._air_text(loss, kill_info.get(id(loss))),
-                "DESTROYED",
-                "red",
-                now,
-            )
+            self._emit_air_loss(loss, kill_info.get(id(loss)), "red", "DESTROYED", now)
         self._shown_enemy_air = len(enemy_losses)
 
         # base captures
@@ -617,7 +605,11 @@ class MissionProgressPanel(QFrame):
             )
             side = "blue" if blue else "red"
             self.prepend_event(
-                ICON_CAPTURE, str(capture.control_point), "CAPTURED", side, now
+                ICON_CAPTURE,
+                str(capture.control_point),
+                f"CAPTURED BY {'BLUE' if blue else 'RED'}",
+                side,
+                now,
             )
 
         # ground/static losses: per side + unit type, grouped per category so the
@@ -705,26 +697,46 @@ class MissionProgressPanel(QFrame):
                 return str(value)
         return str(unit_type)
 
-    def _air_text(self, loss, detail=None) -> str:
+    def _emit_air_loss(
+        self, loss, detail, side: str, killed_verb: str, now: str
+    ) -> None:
+        """One air-loss feed row. 'shot down by ...' + LOST/DESTROYED when DCS
+        reported a real shooter; otherwise CRASHED (no kill, or a collision)."""
+        base = self._air_base_text(loss)
+        killer = self._format_killer(detail)
+        if killer:
+            self.prepend_event(ICON_AIR, f"{base} — {killer}", killed_verb, side, now)
+        else:
+            self.prepend_event(ICON_AIR, base, "CRASHED", side, now)
+
+    @staticmethod
+    def _air_base_text(loss) -> str:
         try:
             ac = loss.flight.unit_type.display_name
         except Exception:
             ac = "Aircraft"
         try:
-            text = f"{ac} from {loss.flight.squadron}"
+            return f"{ac} from {loss.flight.squadron}"
         except Exception:
-            text = ac
-        killer = self._format_killer(detail)
-        return f"{text} — {killer}" if killer else text
+            return ac
 
     @staticmethod
     def _format_killer(detail) -> Optional[str]:
+        """Readable 'shot down by ...' for a real shooter, or None.
+
+        None means no shooter was credited (it crashed) OR the 'weapon' DCS
+        reported is the initiator aircraft itself — i.e. a collision/ram, not a
+        shoot-down (e.g. an unarmed CH-47 'killing' a parked Apache, or F/A-18
+        'killing' F/A-18). Those read as CRASHED, not a bogus kill.
+        """
         if not detail:
             return None
-        who = detail.get("initiator_player") or _prettify_dcs_name(
-            detail.get("initiator_type")
-        )
-        weapon = _prettify_dcs_name(detail.get("weapon"))
+        initiator_type = detail.get("initiator_type")
+        weapon_raw = detail.get("weapon")
+        if weapon_raw and weapon_raw == initiator_type:
+            return None  # collision: the "weapon" is the aircraft itself
+        who = detail.get("initiator_player") or _prettify_dcs_name(initiator_type)
+        weapon = _prettify_dcs_name(weapon_raw)
         if who and weapon:
             return f"shot down by {who} ({weapon})"
         if who:
