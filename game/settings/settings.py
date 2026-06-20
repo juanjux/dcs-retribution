@@ -203,10 +203,11 @@ class Settings:
         section=GENERAL_SECTION,
         default=False,
         detail=(
-            "Aircraft lost without a credited shooter — AI crashes, collisions, "
-            "running out of fuel or hitting terrain — are not removed from the "
-            "squadron and their pilot survives. Only losses DCS attributes to a "
-            "weapon or SAM count. Applies to both coalitions."
+            "The AI has too high a tendency to crash into terrain or buildings. "
+            "This setting makes those losses not count as real ones: the aircraft "
+            "is not removed from the squadron and its pilot survives. Only losses "
+            "DCS attributes to a weapon or a SAM count as real in the campaign. "
+            "Applies to both coalitions."
         ),
     )
     desired_barcap_mission_duration: timedelta = minutes_option(
