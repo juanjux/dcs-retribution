@@ -13,6 +13,7 @@ ingest_debriefing() on each poll + a ~1s timer, and wires the footer buttons.
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import datetime, timedelta
 from typing import Callable, Optional
 
@@ -281,6 +282,11 @@ class MissionProgressPanel(QFrame):
         left_lay.setContentsMargins(22, 18, 22, 18)
         left_lay.setSpacing(16)
         left_lay.addWidget(self._build_exchange_card())
+        self.doctrine_note = _label(
+            "As configured, only weapon or SAM losses count", "mip-stat-label"
+        )
+        self.doctrine_note.setVisible(False)
+        left_lay.addWidget(self.doctrine_note)
         left_lay.addWidget(self._build_scoreboard(), stretch=1)
         lay.addWidget(left, stretch=3)
 
@@ -571,6 +577,32 @@ class MissionProgressPanel(QFrame):
         new events to the feed since the previous poll."""
         blue_counts = debriefing.loss_counts(Player.BLUE)
         red_counts = debriefing.loss_counts(Player.RED)
+
+        # When the "crashes don't count" doctrine is on, count only weapon/SAM air
+        # losses in the scoreboard so the panel matches what the campaign applies.
+        settings = getattr(getattr(debriefing, "game", None), "settings", None)
+        doctrine_on = bool(
+            getattr(settings, "ignore_non_combat_air_losses", False)
+        ) and hasattr(debriefing, "is_non_combat_loss")
+        self.doctrine_note.setVisible(doctrine_on)
+        if doctrine_on:
+            blue_counts = replace(
+                blue_counts,
+                aircraft=sum(
+                    1
+                    for loss in debriefing.air_losses.player
+                    if not debriefing.is_non_combat_loss(loss)
+                ),
+            )
+            red_counts = replace(
+                red_counts,
+                aircraft=sum(
+                    1
+                    for loss in debriefing.air_losses.enemy
+                    if not debriefing.is_non_combat_loss(loss)
+                ),
+            )
+
         self.update_casualties(blue_counts, red_counts)
 
         # DCS mission elapsed (from the Lua model_time); the campaign sim is paused
