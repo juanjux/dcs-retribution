@@ -1,0 +1,5 @@
+name: CM-802AKG
+year: 2012
+clsids:
+  - "DIS_CM-802AKG"   # CM802AKG
+  - "{CM_802AKG}"   # CM-802AKG
