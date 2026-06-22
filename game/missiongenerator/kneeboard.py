@@ -607,7 +607,9 @@ class SupportPage(KneeboardPage):
                 ]
             )
 
-        writer.table(comm_ladder, headers=["Callsign", "Task", "Type", "#A/C", "FREQ"])
+        # "#" not "#A/C": the count is a single digit, so the wider header padded the
+        # column and pushed the FREQ column off the right edge of the page.
+        writer.table(comm_ladder, headers=["Callsign", "Task", "Type", "#", "FREQ"])
 
         # AEW&C
         writer.heading("AEW&C")

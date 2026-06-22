@@ -16,6 +16,8 @@
 * **[Map]** Hovering a SAM threat or detection ring highlights its emitter — and hovering an emitter highlights its ring — making it easy to tell which site a ring belongs to. Can be disabled from the map's layer control.
 
 ## Fixes
+* **[Comms]** Fix COMM1/COMM2 being swapped in the kneeboard for the Super Hornet family (EA-18G, F/A-18E/F and their tanker variants): align their radio indices to the F/A-18C so intra-flight is COMM2 and ATC/package are on COMM1.
+* **[Kneeboard]** Stop the Support Info FREQ column being clipped now that it lists both COMM1 and COMM2 (the single-digit aircraft-count column no longer pads the row past the page edge).
 * **[Mission]** Reliably auto-detect end of mission, even when DCS wrote the final state.json before the wait dialog started watching
 * **[Performance]** Faster post-mission turn processing
 * **[AirWing]** Track per-squadron campaign aircraft stats (initial/destroyed/purchased, save-compatible) and expose pilot experience level and living/dead pilot views for the UI
