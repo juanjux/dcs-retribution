@@ -746,9 +746,16 @@ class SeadTaskPage(KneeboardPage):
         writer.title(f"{self.flight.callsign} {task} Target Info{custom_name_title}")
 
         waypoint_numbers = self._waypoint_number_by_position()
+        # Smaller table font + 1-char "#" header keep the full DMS Location
+        # on-page; at size 20 the longest SAM names (e.g. S-300 Big Bird SR)
+        # clipped the coordinates off the right edge.
+        table_font = ImageFont.truetype(
+            "courbd.ttf", 18, layout_engine=ImageFont.Layout.BASIC
+        )
         writer.table(
             [self.target_info_row(t, waypoint_numbers) for t in self.target_units],
-            headers=["STPT", "Description", "ALIC", "Location"],
+            headers=["#", "Description", "ALIC", "Location"],
+            font=table_font,
         )
 
         writer.write(path)
