@@ -12,6 +12,11 @@ price: 17
 role: Strike Fighter
 variants:
   Tornado IDS: {}
+  Tornado ECR (emulated):
+    tasks:
+      Jamming: 600
+    has_built_in_jamming: true
+    has_built_in_ecm: true
 tasks:
   Anti-ship: 80
   DEAD: 330

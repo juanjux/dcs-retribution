@@ -13,6 +13,7 @@ from dcs.task import (
 
 from game.ato import FlightType
 from game.data.doctrine import Doctrine
+from game.data.weapons import WeaponType
 from game.theater import NavalControlPoint
 from game.utils import nautical_miles, feet
 from .pydcswaypointbuilder import PydcsWaypointBuilder
@@ -61,14 +62,21 @@ class JoinPointBuilder(PydcsWaypointBuilder):
             FlightType.SEAD,
             FlightType.SEAD_ESCORT,
             FlightType.DEAD,
+            FlightType.EWAR,
         ]:
             settings = self.flight.coalition.game.settings
             ai_jammer = settings.plugin_option("ewrj.ai_jammer_enabled")
-            if settings.plugins.get("ewrj") and ai_jammer:
+            dedicated_ew = self.flight.flight_type == FlightType.EWAR
+            if settings.plugins.get("ewrj") and (ai_jammer or dedicated_ew):
                 self.offensive_jamming(waypoint, "start")
                 self.defensive_jamming(waypoint, "start")
 
-            if self.flight.flight_type == FlightType.SEAD_ESCORT:
+            if self.flight.flight_type == FlightType.SEAD_ESCORT or (
+                self.flight.flight_type == FlightType.EWAR
+                and self.flight.any_member_has_weapon_of_type(WeaponType.ARM)
+            ):
+                # SEAD escorts and EW jammers carrying anti-radiation missiles
+                # prosecute radar emitters (HARM) while escorting the package.
                 self.handle_sead_escort(doctrine, waypoint)
                 # Let the AI use ECM to preemptively defend themselves.
                 ecm_option = OptECMUsing(

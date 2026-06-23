@@ -205,6 +205,47 @@ local unitPayloads = {
 				[1] = 35,
 			},
 		},
+		[6] = {
+			["displayName"] = "Retribution Jamming (internal EW)",
+			["name"] = "Retribution Jamming",
+			["pylons"] = {
+				[1] = {
+					["CLSID"] = "<CLEAN>",
+					["num"] = 6,
+				},
+				[2] = {
+					["CLSID"] = "<CLEAN>",
+					["num"] = 5,
+				},
+				[3] = {
+					["CLSID"] = "<CLEAN>",
+					["num"] = 4,
+				},
+				[4] = {
+					["CLSID"] = "<CLEAN>",
+					["num"] = 3,
+				},
+				[5] = {
+					["CLSID"] = "<CLEAN>",
+					["num"] = 2,
+				},
+				[6] = {
+					["CLSID"] = "<CLEAN>",
+					["num"] = 1,
+				},
+				[7] = {
+					["CLSID"] = "PKT_7_62",
+					["num"] = 8,
+				},
+				[8] = {
+					["CLSID"] = "KORD_12_7",
+					["num"] = 7,
+				},
+			},
+			["tasks"] = {
+				[1] = 11,
+			},
+		},
 	},
 	["tasks"] = {
 	},

@@ -9,8 +9,11 @@ import dcs.lua
 from dcs import Mission, Point
 from dcs.coalition import Coalition
 from dcs.countries import country_dict
+from dcs.action import DoScript
 from dcs.point import MovingPoint
 from dcs.task import OptReactOnThreat
+from dcs.translation import String
+from dcs.triggers import TriggerStart
 from dcs.terrain import Airport
 from dcs.unit import Static
 
@@ -157,6 +160,29 @@ class MissionGenerator:
                 MissionGenerator.set_react_to_threat(
                     OptReactOnThreat.Values.EvadeFire, sp
                 )
+
+    def _inject_ewrj_package_groups(self, gen: AircraftGenerator) -> None:
+        """Inject a Lua map: each EW-package flight group id -> the list of group
+        ids in its package, so the EW-Jammer script can announce a jamming toggle
+        to the whole package (the "My package" message scope). Built from
+        ewrj_package_dict; self-initialising so trigger order does not matter."""
+        entries: list[str] = []
+        for groups in gen.ewrj_package_dict.values():
+            gids = [g.id for g in groups]
+            if not gids:
+                continue
+            gid_list = "{" + ", ".join(str(g) for g in gids) + "}"
+            for gid in gids:
+                entries.append(f"    [{gid}] = {gid_list},")
+        if not entries:
+            return
+        lua = (
+            "dcsRetribution = dcsRetribution or {}\n"
+            "dcsRetribution.ewrj_package_groups = {\n" + "\n".join(entries) + "\n}\n"
+        )
+        trigger = TriggerStart(comment="EWRJ package groups")
+        trigger.add_action(DoScript(String(lua)))
+        self.mission.triggerrules.triggers.append(trigger)
 
     @staticmethod
     def set_react_to_threat(
@@ -307,6 +333,7 @@ class MissionGenerator:
 
         if self.game.settings.plugins.get("ewrj"):
             self._configure_react_to_threat_for_ew_jamming_packages(aircraft_generator)
+            self._inject_ewrj_package_groups(aircraft_generator)
 
     def generate_destroyed_units(self) -> None:
         """Add destroyed units to the Mission"""

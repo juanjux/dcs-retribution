@@ -32,6 +32,8 @@ radios:
     intra_flight_radio_index: 1
     inter_flight_radio_index: 2
 utc_kneeboard: true
+has_built_in_ecm: true
+has_built_in_jamming: true
 # default_overrides:
 #   HelmetMountedDevice: 1
 #   InnerBoard: 0
@@ -41,3 +43,4 @@ tasks:
   SEAD: 600
   SEAD Escort: 550
   SEAD Sweep: 500
+  Jamming: 600

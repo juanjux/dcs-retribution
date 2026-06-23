@@ -20,7 +20,10 @@ role: Fighter-Bomber/Strike Fighter
 max_range: 300
 variants:
   Su-34 Fullback: {}
+has_built_in_jamming: true
+has_built_in_ecm: true
 tasks:
+  Jamming: 600
   Anti-ship: 100
   BAI: 800
   CAS: 800

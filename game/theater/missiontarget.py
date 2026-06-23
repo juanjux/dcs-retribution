@@ -42,9 +42,10 @@ class MissionTarget:
                 FlightType.ARMED_RECON,
                 FlightType.SWEEP,
                 # TODO: FlightType.ELINT,
-                # TODO: FlightType.EWAR,
                 # TODO: FlightType.RECON,
             ]
+            if self.coalition.game.settings.electronic_warfare_enabled:
+                yield FlightType.EWAR
 
     @property
     def strike_targets(self) -> list[TheaterUnit]:

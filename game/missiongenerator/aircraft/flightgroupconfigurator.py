@@ -179,6 +179,7 @@ class FlightGroupConfigurator:
         if self.flight.flight_type not in [
             FlightType.ESCORT,
             FlightType.SEAD_ESCORT,
+            FlightType.EWAR,
         ]:
             return
 
@@ -234,9 +235,10 @@ class FlightGroupConfigurator:
         has_jammer = (
             member.loadout.has_weapon_of_type(WeaponType.JAMMER) or offensive_jammer
         )
-        built_in_jammer = (
-            self.flight.squadron.aircraft.has_built_in_ecm or offensive_inbuilt
-        )
+        # Built-in jamming only (not plain self-protection ECM): aligns with the AI
+        # offensive-jamming gate and the changelog, so ECM-only jets (F/A-18C) are not
+        # offered the jamming menu when a pod is required.
+        built_in_jammer = offensive_inbuilt
         if jammer_required and not (has_jammer or built_in_jammer):
             return
         # Create the original ewrj_menu_trigger for player flight members
