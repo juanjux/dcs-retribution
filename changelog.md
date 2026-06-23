@@ -13,6 +13,7 @@
 * **[Options]** New option to spawn TACAN beacons at captured airfields
 * **[UX]** Show an "End of Mission Detected, processing Mission Data" busy dialog while turn results are processed, so the wait is not mistaken for a missed detection
 * **[Map]** Hovering a SAM threat or detection ring highlights its emitter — and hovering an emitter highlights its ring — making it easy to tell which site a ring belongs to. Can be disabled from the map's layer control.
+* **[Options]** New Campaign Doctrine option so AI non-combat (crash) air losses don't count: only losses DCS attributes to a weapon or SAM deplete a squadron, and the debriefing shows how many were not counted. Applies to both coalitions.
 
 ## Fixes
 * **[Mission]** Reliably auto-detect end of mission, even when DCS wrote the final state.json before the wait dialog started watching
