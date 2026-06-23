@@ -217,6 +217,39 @@ local unitPayloads = {
 				[1] = 34,
 			},
 		},
+		[7] = {
+			["displayName"] = "Retribution DEAD",
+			["name"] = "Retribution DEAD",
+			["pylons"] = {
+				[1] = {
+					["CLSID"] = "{APU-60-1_R_60M}",
+					["num"] = 2,
+				},
+				[2] = {
+					["CLSID"] = "{3468C652-E830-4E73-AFA9-B5F260AB7C3D}",
+					["num"] = 3,
+				},
+				[3] = {
+					["CLSID"] = "{A5BAEAB7-6FAF-4236-AF72-0FD900F493F9}",
+					["num"] = 4,
+				},
+				[4] = {
+					["CLSID"] = "{A5BAEAB7-6FAF-4236-AF72-0FD900F493F9}",
+					["num"] = 5,
+				},
+				[5] = {
+					["CLSID"] = "{3468C652-E830-4E73-AFA9-B5F260AB7C3D}",
+					["num"] = 6,
+				},
+				[6] = {
+					["CLSID"] = "{APU-60-1_R_60M}",
+					["num"] = 7,
+				},
+			},
+			["tasks"] = {
+				[1] = 31,
+			},
+		},
 	},
 	["unitType"] = "Su-17M4",
 }

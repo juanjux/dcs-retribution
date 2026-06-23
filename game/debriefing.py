@@ -122,6 +122,13 @@ class StateData:
     #: Mangled names of bases that were captured during the mission.
     base_capture_events: List[str]
 
+    #: Structured S_EVENT_KILL records ({target, initiator, initiator_type,
+    #: initiator_player, weapon}), used to attribute air losses in the UI feed.
+    kill_details: List[Dict[str, Any]] = field(default_factory=list)
+
+    #: DCS mission model time in seconds (timer.getTime()); None for older states.
+    model_time: Optional[float] = None
+
     @classmethod
     def from_json(cls, data: Dict[str, Any], unit_map: UnitMap) -> StateData:
         def clean_unit_list(unit_list: List[Any]) -> List[str]:
@@ -130,10 +137,10 @@ class StateData:
             #   is dropped on them when they've already dead.
             # - Normalise dead map objects (which are ints) to strings. The unit map
             #   only stores strings
-            units = set()
-            for unit in unit_list:
-                units.add(str(unit))
-            return list(units)
+            # dict.fromkeys dedups while preserving first-seen order, so the cumulative
+            # state re-parsed every poll yields a stable append-only prefix (consumers
+            # that diff by position, e.g. the mission panel event feed, rely on this).
+            return list(dict.fromkeys(str(unit) for unit in unit_list))
 
         killed_aircraft = []
         killed_ground_units = []
@@ -160,6 +167,8 @@ class StateData:
             killed_ground_units=killed_ground_units,
             destroyed_statics=data.get("destroyed_objects_positions", []),
             base_capture_events=data.get("base_capture_events", []),
+            kill_details=data.get("kill_details", []),
+            model_time=data.get("model_time"),
         )
 
 
@@ -177,13 +186,81 @@ class Debriefing:
         self.air_losses = self.dead_aircraft()
         self.ground_losses = self.dead_ground_units()
         self.base_captures = self.base_capture_events()
+        self.kill_info_by_unit_id = self._index_kill_details()
+        # ids of air losses injected by the Retribution sim (no DCS kill record);
+        # they are real combat losses, so is_non_combat_loss() must not refund them.
+        self._sim_loss_ids: set[int] = set()
+
+    def _index_kill_details(self) -> Dict[int, Dict[str, Any]]:
+        """Map id(loss object) -> its S_EVENT_KILL detail (killer + weapon), for both
+        air losses (FlyingUnit) and ground losses (FrontLineUnit/ConvoyUnit/...).
+
+        Keyed by id() (not the object itself) because FlyingUnit holds a Pilot, an
+        unhashable dataclass. The lookup side (the mission panel) keys by id(loss);
+        those loss objects are the same instances unit_map resolves a name to, so
+        identity matches. Wrapped defensively: this only feeds the UI feed, so a
+        problem here must never break turn processing/debriefing construction.
+        """
+        index: Dict[int, Dict[str, Any]] = {}
+        try:
+            for detail in self.state_data.kill_details:
+                if not isinstance(detail, dict):
+                    continue
+                name = detail.get("target")
+                if not name:
+                    continue
+                obj = self._resolve_killed_object(str(name))
+                if obj is not None:
+                    index[id(obj)] = detail
+        except Exception:
+            logging.exception("Failed to index kill details; killer attribution off")
+        return index
+
+    def _resolve_killed_object(self, name: str) -> Optional[Any]:
+        """Resolve a killed unit name to its loss object, mirroring how
+        dead_aircraft/dead_ground_units resolve names, so id() lines up."""
+        um = self.unit_map
+        obj = um.flight(name)
+        if obj is not None:
+            return obj
+        obj = um.front_line_unit(name) or um.front_line_unit_from_tic_clone(name)
+        if obj is not None:
+            return obj
+        for getter in (
+            um.convoy_unit,
+            um.cargo_ship,
+            um.theater_units,
+            um.scenery_object,
+        ):
+            obj = getter(name)
+            if obj is not None:
+                return obj
+        return None
 
     def merge_simulation_results(self, results: SimulationResults) -> None:
         for air_loss in results.air_losses:
+            self._sim_loss_ids.add(id(air_loss))
             if air_loss.flight.squadron.player.is_blue:
                 self.air_losses.player.append(air_loss)
             else:
                 self.air_losses.enemy.append(air_loss)
+
+    def is_non_combat_loss(self, flying_unit: "FlyingUnit") -> bool:
+        """True if this air loss was a non-combat write-off: a crash, a collision,
+        or a death with no shooter credited by DCS — as opposed to being shot down
+        by a weapon or SAM. Retribution-sim combat losses (no DCS kill record) are
+        NOT treated as crashes."""
+        if id(flying_unit) in self._sim_loss_ids:
+            return False
+        detail = self.kill_info_by_unit_id.get(id(flying_unit))
+        if detail:
+            initiator_type = detail.get("initiator_type")
+            weapon = detail.get("weapon")
+            has_shooter = bool(detail.get("initiator_player") or initiator_type)
+            collision = bool(weapon and weapon == initiator_type)
+            if has_shooter and not collision:
+                return False  # shot down by a weapon / SAM
+        return True
 
     @property
     def front_line_losses(self) -> Iterator[FrontLineUnit]:
@@ -344,8 +421,15 @@ class Debriefing:
 
     def dead_ground_units(self) -> GroundLosses:
         losses = GroundLosses()
+        untracked: List[str] = []
         for unit_name in self.state_data.killed_ground_units:
             front_line_unit = self.unit_map.front_line_unit(unit_name)
+            if front_line_unit is None:
+                # The TIC plugin respawns frontline units as renamed
+                # single-unit clones; map clone deaths back to their group.
+                front_line_unit = self.unit_map.front_line_unit_from_tic_clone(
+                    unit_name
+                )
             if front_line_unit is not None:
                 if front_line_unit.origin.captured.is_blue:
                     losses.player_front_line.append(front_line_unit)
@@ -398,13 +482,19 @@ class Debriefing:
                     losses.enemy_airfields.append(airfield)
                 continue
 
-            # Only logging as debug because we don't currently track infantry
-            # deaths, so we expect to see quite a few unclaimed dead ground
-            # units. We should start tracking those and covert this to a
-            # warning.
+            # We don't track infantry or map/scenery objects, so a mission can
+            # end with thousands of these unclaimed deaths. Collect them and log
+            # one summary instead of a line each: per-unit logging here floods
+            # the handlers (a file stat + flush per line, plus the log-window UI
+            # hook) and froze the debrief for ~20s on busy missions.
+            untracked.append(unit_name)
+
+        if untracked:
             logging.debug(
-                f"Death of untracked ground unit {unit_name} will "
-                "have no effect. This may be normal behavior."
+                "%d untracked ground unit deaths had no effect (untracked "
+                "infantry or map/scenery objects). First few: %s",
+                len(untracked),
+                ", ".join(untracked[:10]),
             )
 
         for unit_name in self.state_data.killed_aircraft:
