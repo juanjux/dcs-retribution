@@ -48,6 +48,7 @@ class SplitPointBuilder(PydcsWaypointBuilder):
             FlightType.SEAD,
             FlightType.SEAD_ESCORT,
             FlightType.DEAD,
+            FlightType.EWAR,
         ]:
             if self.flight.flight_type == FlightType.SEAD_ESCORT:
                 # Moved previous escort split tasks
@@ -56,6 +57,7 @@ class SplitPointBuilder(PydcsWaypointBuilder):
                     self.group.add_trigger_action(SwitchWaypoint(None, index))
             settings = self.flight.coalition.game.settings
             ai_jammer = settings.plugin_option("ewrj.ai_jammer_enabled")
-            if settings.plugins.get("ewrj") and ai_jammer:
+            dedicated_ew = self.flight.flight_type == FlightType.EWAR
+            if settings.plugins.get("ewrj") and (ai_jammer or dedicated_ew):
                 self.offensive_jamming(waypoint, "stop")
                 self.defensive_jamming(waypoint, "stop")

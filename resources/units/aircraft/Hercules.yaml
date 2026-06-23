@@ -12,6 +12,11 @@ max_range: 1000
 cabin_size: 24 # It should have more but we do not want so much for CTLD to be possible
 variants:
   C-130J-30 Super Hercules: {}
+  EC-130 Compass Call (emulated):
+    tasks:
+      Jamming: 600
+    has_built_in_jamming: true
+    has_built_in_ecm: true
 altitudes:
   cruise: 10000
   combat: 1000

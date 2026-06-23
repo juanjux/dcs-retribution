@@ -39,6 +39,7 @@ from dcs.task import (
 from dcs.unitgroup import FlyingGroup, ShipGroup
 
 from game.ato import Flight, FlightType, Package
+from game.data.weapons import WeaponType
 from game.ato.flightplans.aewc import AewcFlightPlan
 from game.ato.flightplans.formationattack import FormationAttackLayout
 from game.ato.flightplans.packagerefueling import PackageRefuelingFlightPlan
@@ -82,6 +83,8 @@ class AircraftBehavior:
             self.configure_sead(group, flight)
         elif self.task == FlightType.SEAD_ESCORT:
             self.configure_sead_escort(group, flight)
+        elif self.task == FlightType.EWAR:
+            self.configure_ewar(group, flight)
         elif self.task == FlightType.STRIKE:
             self.configure_strike(group, flight)
         elif self.task == FlightType.ANTISHIP:
@@ -461,6 +464,38 @@ class AircraftBehavior:
             # Guided includes ARMs and TALDs (among other things, but those are the useful
             # weapons for SEAD).
             rtb_winchester=OptRTBOnOutOfAmmo.Values.Guided,
+            restrict_jettison=True,
+            mission_uses_gun=False,
+        )
+
+    def configure_ewar(self, group: FlyingGroup[Any], flight: Flight) -> None:
+        # An EW jammer accompanies the package. The actual offensive/defensive jamming is
+        # fired by the join/split waypoint builders, so it is not configured here.
+        # Fallback tasks so non-fighter EW airframes (EC-130/C-130, Mi-8) that lack the
+        # preferred task don't crash MIZ generation (configure_task raises with no fallback).
+        if flight.any_member_has_weapon_of_type(WeaponType.ARM):
+            # Carries anti-radiation missiles: task it like a SEAD escort so it also
+            # prosecutes radar emitters (HARM) while jamming, instead of only self-defending.
+            self.configure_task(
+                flight, group, SEAD, [Escort, CAS, GroundAttack, Transport, Nothing]
+            )
+            roe = OptROE.Values.OpenFire
+            # Guided includes ARMs/HARMs, so it RTBs when out of anti-radiation missiles.
+            rtb_winchester = OptRTBOnOutOfAmmo.Values.Guided
+        else:
+            # No ARMs: keep a self-defense ROE so the jammer can defend itself without
+            # being drawn off to prosecute targets it cannot engage.
+            self.configure_task(
+                flight, group, Escort, [CAS, SEAD, GroundAttack, Transport, Nothing]
+            )
+            roe = OptROE.Values.ReturnFire
+            rtb_winchester = None
+        self.configure_behavior(
+            flight,
+            group,
+            react_on_threat=OptReactOnThreat.Values.EvadeFire,
+            roe=roe,
+            rtb_winchester=rtb_winchester,
             restrict_jettison=True,
             mission_uses_gun=False,
         )

@@ -13,7 +13,7 @@ from .bai import BaiFlightPlan
 from .barcap import BarCapFlightPlan
 from .cas import CasFlightPlan
 from .dead import DeadFlightPlan
-from .escort import EscortFlightPlan
+from .escort import EscortFlightPlan, EwarFlightPlan
 from .ferry import FerryFlightPlan
 from .ibuilder import IBuilder
 from .ocaaircraft import OcaAircraftFlightPlan
@@ -56,6 +56,7 @@ class FlightPlanBuilderTypes:
             FlightType.OCA_RUNWAY: OcaRunwayFlightPlan.builder_type(),
             FlightType.SEAD: SeadFlightPlan.builder_type(),
             FlightType.SEAD_ESCORT: EscortFlightPlan.builder_type(),
+            FlightType.EWAR: EwarFlightPlan.builder_type(),
             FlightType.SEAD_SWEEP: SeadSweepFlightPlan.builder_type(),
             FlightType.STRIKE: StrikeFlightPlan.builder_type(),
             FlightType.SWEEP: SweepFlightPlan.builder_type(),

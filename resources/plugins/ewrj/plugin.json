@@ -3,7 +3,7 @@
     "defaultValue": false,
     "specificOptions": [
         {
-            "nameInUI": "Require ECM pod",
+            "nameInUI": "Require ECM Pod (except for EW-specific planes and variants, like the EC-130)",
             "mnemonic": "ecm_required",
             "defaultValue": true
         },    
@@ -32,6 +32,22 @@
             "minimumValue": 0.0,
             "maximumValue": 5.0,
             "defaultValue": 0.6
+        },
+        {
+            "nameInUI": "Show 'counter measures pod ON/OFF' messages",
+            "mnemonic": "SHOW_POD_MESSAGES",
+            "defaultValue": false
+        },
+        {
+            "nameInUI": "Message audience",
+            "mnemonic": "MESSAGE_SCOPE",
+            "choices": ["Flight", "Package", "All OWNFOR"],
+            "defaultValue": "Package"
+        },
+        {
+            "nameInUI": "Also announce OPFOR (enemy) jamming",
+            "mnemonic": "SHOW_OPFOR_MESSAGES",
+            "defaultValue": false
         },
         {
             "nameInUI": "DEBUG",

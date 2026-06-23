@@ -10,8 +10,11 @@ origin: USA
 price: 11
 role: Carrier-based Electronic-warfare Aircraft
 gunfighter: false
+has_built_in_ecm: true
+has_built_in_jamming: true
 variants:
   EA-6B Prowler: {}
 tasks:
   SEAD: 460
   SEAD Escort: 460
+  Jamming: 600
