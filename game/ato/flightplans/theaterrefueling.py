@@ -2,12 +2,10 @@ from __future__ import annotations
 
 from typing import Type
 
-from game.ato.flighttype import FlightType
-from game.utils import nautical_miles
+from game.utils import Heading, meters, nautical_miles
 from .ibuilder import IBuilder
 from .patrolling import PatrollingLayout
 from .refuelingflightplan import RefuelingFlightPlan
-from .supportorbit import support_orbit_anchor
 from .waypointbuilder import WaypointBuilder
 
 
@@ -21,48 +19,29 @@ class Builder(IBuilder[TheaterRefuelingFlightPlan, PatrollingLayout]):
     def layout(self) -> PatrollingLayout:
         racetrack_half_distance = nautical_miles(20).meters
 
+        location = self.package.target
+
+        closest_boundary = self.threat_zones.closest_boundary(location.position)
+        heading_to_threat_boundary = Heading.from_degrees(
+            location.position.heading_between_point(closest_boundary)
+        )
+        distance_to_threat = meters(
+            location.position.distance_to_point(closest_boundary)
+        )
+        orbit_heading = heading_to_threat_boundary
+
+        # Station 70nm outside the threat zone.
         threat_buffer = nautical_miles(
             self.coalition.game.settings.tanker_threat_buffer_min_distance
         )
-
-        # Anchor on the front line and stand off into friendly airspace, centered
-        # on the fighting and parallel to the FLOT. See supportorbit for why this
-        # replaced the old per-CP anchoring (which could pin a tanker onto its
-        # own departure runway).
-        base_center, orbit_heading = support_orbit_anchor(
-            self.theater,
-            self.coalition.player,
-            self.threat_zones,
-            self.package.target,
-            threat_buffer,
-        )
-
-        # Deconflict multiple tankers: spread orbits laterally along the front
-        # so each covers a different slice of the strike corridor.
-        all_tankers = sorted(
-            [
-                f
-                for p in self.coalition.ato.packages
-                for f in p.flights
-                if f.flight_type is FlightType.REFUELING
-            ],
-            key=lambda f: str(f.id),
-        )
-        n = len(all_tankers)
-        try:
-            idx = next(i for i, f in enumerate(all_tankers) if f is self.flight)
-        except StopIteration:
-            idx = 0
-
-        lateral_m = (idx - (n - 1) / 2) * (racetrack_half_distance * 2)
-        if lateral_m >= 0:
-            racetrack_center = base_center.point_from_heading(
-                orbit_heading.right.degrees, lateral_m
-            )
+        if self.threat_zones.threatened(location.position):
+            orbit_distance = distance_to_threat + threat_buffer
         else:
-            racetrack_center = base_center.point_from_heading(
-                orbit_heading.left.degrees, -lateral_m
-            )
+            orbit_distance = distance_to_threat - threat_buffer
+
+        racetrack_center = location.position.point_from_heading(
+            orbit_heading.degrees, orbit_distance.meters
+        )
 
         racetrack_start = racetrack_center.point_from_heading(
             orbit_heading.right.degrees, racetrack_half_distance
