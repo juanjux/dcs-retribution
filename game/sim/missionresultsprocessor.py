@@ -55,6 +55,16 @@ class MissionResultsProcessor:
 
     def commit_air_losses(self, debriefing: Debriefing) -> None:
         for loss in debriefing.air_losses.losses:
+            if self.game.settings.ignore_non_combat_air_losses and (
+                debriefing.is_non_combat_loss(loss)
+            ):
+                # Campaign doctrine: a non-combat write-off (crash/collision/no
+                # credited shooter) does not deplete the squadron or kill the pilot.
+                logging.info(
+                    f"Ignoring non-combat loss of {loss.flight.unit_type} from "
+                    f"{loss.flight.squadron}"
+                )
+                continue
             if loss.pilot is not None and (
                 not loss.pilot.player
                 or not self.game.settings.invulnerable_player_pilots
