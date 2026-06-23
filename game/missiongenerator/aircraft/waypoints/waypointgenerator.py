@@ -1,4 +1,5 @@
 import itertools
+import logging
 import random
 from collections.abc import Iterator
 from datetime import datetime, timedelta
@@ -123,6 +124,8 @@ class WaypointGenerator:
         for idx, point in enumerate(filtered_points):
             self.builder_for_waypoint(point).build()
 
+        self._resolve_locked_speed_time_conflicts()
+
         # Set here rather than when the FlightData is created so they waypoints
         # have their TOTs and fuel minimums set. Once we're more confident in our fuel
         # estimation ability the minimum fuel amounts will be calculated during flight
@@ -137,6 +140,46 @@ class WaypointGenerator:
         if isinstance(self.flight.state, InFlight):
             kneeboard_waypoints = waypoints[self.flight.state.waypoint_index :]
         return mission_start_time, kneeboard_waypoints
+
+    def _resolve_locked_speed_time_conflicts(self) -> None:
+        """Unlock the speed on any waypoint that has a locked speed while sitting
+        between time-locked (TOT) waypoints.
+
+        DCS rejects that combination at mission start ("All waypoints (N-M) have
+        locked speed and surrounded by waypoints ... with locked time"): the
+        bounding TOTs already determine the segment's speed, so a locked speed in
+        between is contradictory. It happens e.g. on a carrier escort whose JOIN
+        TOT clamps to the mission start -- the waypoint then gets a locked speed
+        (because ETA == 0) and is trapped between TOT-locked neighbours. Keep the
+        times (needed to sync with the escorted package) and drop the speed lock
+        so DCS can honour them. Split/RTB legs keep their locked speed since no
+        TOT-locked waypoint follows them.
+        """
+        points = self.group.points
+        n = len(points)
+        eta_locked_before = [False] * n
+        seen = False
+        for i in range(n):
+            eta_locked_before[i] = seen
+            if getattr(points[i], "ETA_locked", False):
+                seen = True
+        eta_locked_after = False
+        for i in range(n - 1, -1, -1):
+            if (
+                getattr(points[i], "speed_locked", False)
+                and eta_locked_before[i]
+                and eta_locked_after
+            ):
+                points[i].speed_locked = False
+                logging.debug(
+                    "%s: unlocked speed on waypoint %d (%s); a locked speed "
+                    "between TOT-locked waypoints is rejected by DCS.",
+                    self.flight,
+                    i,
+                    getattr(points[i], "name", ""),
+                )
+            if getattr(points[i], "ETA_locked", False):
+                eta_locked_after = True
 
     def builder_for_waypoint(self, waypoint: FlightWaypoint) -> PydcsWaypointBuilder:
         builders = {

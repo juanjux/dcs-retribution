@@ -1,5 +1,8 @@
+import os
+import tempfile
 from collections.abc import Iterator
 from dataclasses import dataclass
+from pathlib import Path
 from shutil import copyfile
 from typing import Dict, Union, Any
 
@@ -24,6 +27,31 @@ from game.data.weapons import Pylon
 from game.persistency import payloads_dir
 from qt_ui.blocksignals import block_signals
 from qt_ui.windows.mission.flight.payload.QPylonEditor import QPylonEditor
+
+
+def _atomic_write_text(path: Path, text: str) -> None:
+    """Write text to path atomically.
+
+    A payload .lua is read by pydcs (during mission generation) at the same time
+    the user can save one here. Writing in place leaves a window where the file
+    is truncated, which makes the reader choke on a half-written number. Write to
+    a temp file in the same directory and os.replace() it into place so a reader
+    only ever sees the old or the new file, never a partial one.
+    """
+    directory = path.parent
+    fd, tmp = tempfile.mkstemp(dir=directory, prefix=f"{path.name}.", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(text)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp, path)
+    except BaseException:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
 
 
 class QLoadoutEditor(QGroupBox):
@@ -119,24 +147,28 @@ class QLoadoutEditor(QGroupBox):
                 pdict[next_key] = DcsPayload.from_flight_member(
                     self.flight_member, payload_name
                 ).to_dict()
-                with payload_file.open("w", encoding="utf-8") as f:
-                    f.write("local unitPayloads = ")
-                    f.write(lua.dumps(payloads["unitPayloads"], indent=1))
-                    f.write("\nreturn unitPayloads")
+                _atomic_write_text(
+                    payload_file,
+                    "local unitPayloads = "
+                    + lua.dumps(payloads["unitPayloads"], indent=1)
+                    + "\nreturn unitPayloads",
+                )
         else:
-            with payload_file.open("w", encoding="utf-8") as f:
-                payloads = {
-                    "name": f"{self.flight.unit_type.dcs_unit_type.id}",
-                    "payloads": {
-                        1: DcsPayload.from_flight_member(
-                            self.flight_member, payload_name
-                        ).to_dict(),
-                    },
-                    "unitType": f"{self.flight.unit_type.dcs_unit_type.id}",
-                }
-                f.write("local unitPayloads = ")
-                f.write(lua.dumps(payloads, indent=1))
-                f.write("\nreturn unitPayloads")
+            payloads = {
+                "name": f"{self.flight.unit_type.dcs_unit_type.id}",
+                "payloads": {
+                    1: DcsPayload.from_flight_member(
+                        self.flight_member, payload_name
+                    ).to_dict(),
+                },
+                "unitType": f"{self.flight.unit_type.dcs_unit_type.id}",
+            }
+            _atomic_write_text(
+                payload_file,
+                "local unitPayloads = "
+                + lua.dumps(payloads, indent=1)
+                + "\nreturn unitPayloads",
+            )
             self.flight.unit_type.dcs_unit_type.add_to_payload_cache(payload_file)
         self.saved.emit(payload_name)
         QMessageBox.information(

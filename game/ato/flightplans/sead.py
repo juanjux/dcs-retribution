@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import timedelta
 from typing import Type
 
+from game.theater import TheaterGroundObject
 from .formationattack import (
     FormationAttackBuilder,
     FormationAttackFlightPlan,
@@ -22,7 +23,17 @@ class SeadFlightPlan(FormationAttackFlightPlan):
 
 class Builder(FormationAttackBuilder[SeadFlightPlan, FormationAttackLayout]):
     def layout(self) -> FormationAttackLayout:
-        return self._build(FlightWaypointType.INGRESS_SEAD)
+        location = self.package.target
+        # Only ground objectives expose individual units with coordinates (the
+        # same list the SEAD kneeboard page renders). Against those, give each
+        # listed target its own waypoint; against e.g. naval groups the kneeboard
+        # lists no per-unit coordinates, so fall back to the single target area.
+        targets = (
+            self.strike_targets_for(location)
+            if isinstance(location, TheaterGroundObject)
+            else None
+        )
+        return self._build(FlightWaypointType.INGRESS_SEAD, targets)
 
     def build(self, dump_debug_info: bool = False) -> SeadFlightPlan:
         return SeadFlightPlan(self.flight, self.layout())

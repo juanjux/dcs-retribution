@@ -71,6 +71,7 @@ PRETENSE_PAGE = "Pretense"
 MISSION_GENERATOR_PAGE = "Mission Generator"
 
 GAMEPLAY_SECTION = "Gameplay"
+KNEEBOARD_SECTION = "Kneeboard"
 
 # TODO: Make sections a type and add headers.
 # This section had the header: "Disabling settings below may improve performance, but
@@ -193,6 +194,19 @@ class Settings:
     )
 
     # CAMPAIGN DOCTRINE
+    ignore_non_combat_air_losses: bool = boolean_option(
+        "Non-combat (crash) aircraft losses don't count",
+        page=CAMPAIGN_DOCTRINE_PAGE,
+        section=GENERAL_SECTION,
+        default=False,
+        detail=(
+            "The AI has too high a tendency to crash into terrain or buildings. "
+            "This setting makes those losses not count as real ones: the aircraft "
+            "is not removed from the squadron and its pilot survives. Only losses "
+            "DCS attributes to a weapon or a SAM count as real in the campaign. "
+            "Applies to both coalitions."
+        ),
+    )
     desired_barcap_mission_duration: timedelta = minutes_option(
         "Desired BARCAP on-station time",
         page=CAMPAIGN_DOCTRINE_PAGE,
@@ -881,6 +895,39 @@ class Settings:
         detail=(
             "Dark kneeboard for night missions. This will likely make the kneeboard on "
             "the pilot leg unreadable."
+        ),
+    )
+    generate_target_recon_kneeboard: bool = boolean_option(
+        "Generate target recon kneeboard pages",
+        MISSION_GENERATOR_PAGE,
+        KNEEBOARD_SECTION,
+        default=True,
+        detail=(
+            "Generate a target reconnaissance page for player flights with air-to-ground "
+            "tasks, showing aimpoints, threat rings, and target area context."
+        ),
+    )
+    generate_all_packages_kneeboard: bool = boolean_option(
+        "Generate friendly packages kneeboard page",
+        MISSION_GENERATOR_PAGE,
+        KNEEBOARD_SECTION,
+        default=True,
+        detail=(
+            "Append page(s) listing every friendly package with its TOT (strike "
+            "tasks) or patrol window (CAP, tanker, AWACS), for cross-package "
+            "coordination."
+        ),
+    )
+    target_recon_extra_threat_search_nmi: int = bounded_int_option(
+        "Extra threat search radius (nmi)",
+        MISSION_GENERATOR_PAGE,
+        KNEEBOARD_SECTION,
+        default=0,
+        min=0,
+        max=50,
+        detail=(
+            "Additional nautical miles beyond the default search radius to include "
+            "threats on the target recon kneeboard. 0 uses the default radius only."
         ),
     )
     never_delay_player_flights: bool = boolean_option(
