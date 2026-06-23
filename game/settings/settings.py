@@ -194,6 +194,19 @@ class Settings:
     )
 
     # CAMPAIGN DOCTRINE
+    ignore_non_combat_air_losses: bool = boolean_option(
+        "Non-combat (crash) aircraft losses don't count",
+        page=CAMPAIGN_DOCTRINE_PAGE,
+        section=GENERAL_SECTION,
+        default=False,
+        detail=(
+            "The AI has too high a tendency to crash into terrain or buildings. "
+            "This setting makes those losses not count as real ones: the aircraft "
+            "is not removed from the squadron and its pilot survives. Only losses "
+            "DCS attributes to a weapon or a SAM count as real in the campaign. "
+            "Applies to both coalitions."
+        ),
+    )
     desired_barcap_mission_duration: timedelta = minutes_option(
         "Desired BARCAP on-station time",
         page=CAMPAIGN_DOCTRINE_PAGE,
