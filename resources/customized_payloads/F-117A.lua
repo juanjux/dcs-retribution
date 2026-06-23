@@ -73,6 +73,23 @@ local unitPayloads = {
 				[1] = 33,
 			},
 		},
+		[6] = {
+			["displayName"] = "Retribution DEAD",
+			["name"] = "Retribution DEAD",
+			["pylons"] = {
+				[1] = {
+					["CLSID"] = "{51F9AAE5-964F-4D21-83FB-502E3BFE5F8A}",
+					["num"] = 1,
+				},
+				[2] = {
+					["CLSID"] = "{51F9AAE5-964F-4D21-83FB-502E3BFE5F8A}",
+					["num"] = 2,
+				},
+			},
+			["tasks"] = {
+				[1] = 31,
+			},
+		},
 	},
 	["unitType"] = "F-117A",
 }

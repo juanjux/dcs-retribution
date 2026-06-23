@@ -48,6 +48,9 @@ class ProcurementAi:
         self.manage_front_line = manage_front_line
         self.manage_aircraft = manage_aircraft
         self.threat_zones = self.game.threat_zone_for(self.is_player.opponent)
+        # Money spent per automated category during spend_budget, so the
+        # Finances dialog can show the player where their income actually went.
+        self.last_expenses: dict[str, float] = {}
 
     def calculate_ground_unit_budget_share(self) -> float:
         armor_investment = 0
@@ -96,15 +99,25 @@ class ProcurementAi:
         return ground_unit_share
 
     def spend_budget(self, budget: float) -> float:
+        # Record how much each automated step spends so the Finances dialog can
+        # show the player where their income actually goes (the auto-spend often
+        # consumes most of it before the player sees the balance).
+        self.last_expenses = {}
         if self.manage_runways:
+            before = budget
             budget = self.repair_runways(budget)
+            self.last_expenses["runways"] = before - budget
         if self.manage_front_line:
             armor_budget = budget * self.calculate_ground_unit_budget_share()
             budget -= armor_budget
-            budget += self.reinforce_front_line(armor_budget)
+            leftover = self.reinforce_front_line(armor_budget)
+            self.last_expenses["front_line"] = armor_budget - leftover
+            budget += leftover
 
         if self.manage_aircraft:
+            before = budget
             budget = self.purchase_aircraft(budget)
+            self.last_expenses["aircraft"] = before - budget
         return budget
 
     def repair_runways(self, budget: float) -> float:

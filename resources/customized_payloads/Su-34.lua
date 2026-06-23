@@ -338,6 +338,47 @@ local unitPayloads = {
 				[1] = 34,
 			},
 		},
+		[7] = {
+			["displayName"] = "Retribution DEAD",
+			["name"] = "Retribution DEAD",
+			["pylons"] = {
+				[1] = {
+					["CLSID"] = "{44EE8698-89F9-48EE-AF36-5FD31896A82F}",
+					["num"] = 1,
+				},
+				[2] = {
+					["CLSID"] = "{FBC29BFE-3D24-4C64-B81D-941239D12249}",
+					["num"] = 2,
+				},
+				[3] = {
+					["CLSID"] = "{40AB87E8-BEFB-4D85-90D9-B2753ACF9514}",
+					["num"] = 4,
+				},
+				[4] = {
+					["CLSID"] = "{B4C01D60-A8A3-4237-BD72-CA7655BC0FE9}",
+					["num"] = 5,
+				},
+				[5] = {
+					["CLSID"] = "{B4C01D60-A8A3-4237-BD72-CA7655BC0FE9}",
+					["num"] = 8,
+				},
+				[6] = {
+					["CLSID"] = "{40AB87E8-BEFB-4D85-90D9-B2753ACF9514}",
+					["num"] = 9,
+				},
+				[7] = {
+					["CLSID"] = "{FBC29BFE-3D24-4C64-B81D-941239D12249}",
+					["num"] = 11,
+				},
+				[8] = {
+					["CLSID"] = "{44EE8698-89F9-48EE-AF36-5FD31896A82A}",
+					["num"] = 12,
+				},
+			},
+			["tasks"] = {
+				[1] = 31,
+			},
+		},
 	},
 	["unitType"] = "Su-34",
 }

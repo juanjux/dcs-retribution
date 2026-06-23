@@ -32,8 +32,11 @@ radios:
     intra_flight_radio_index: 2
     inter_flight_radio_index: 1
 tasks:
+  DEAD: 390
   BAI: 830
   CAS: 830
   OCA/Aircraft: 830
   OCA/Runway: 390
   Strike: 390
+secondary_tasks:
+  - DEAD

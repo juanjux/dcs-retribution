@@ -12,6 +12,7 @@ max_range: 200
 variants:
   Mirage-F1EQ: {}
 tasks:
+  DEAD: 270
   BAI: 300
   BARCAP: 290
   CAS: 300
@@ -22,3 +23,5 @@ tasks:
   OCA/Runway: 270
   Strike: 270
   TARCAP: 290
+secondary_tasks:
+  - DEAD

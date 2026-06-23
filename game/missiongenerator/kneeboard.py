@@ -587,14 +587,15 @@ class BriefingPage(KneeboardPage):
         ]
 
     def format_frequency(self, frequency: RadioFrequency) -> str:
-        channel = self.flight.channel_for(frequency)
-        if channel is None:
+        channels = self.flight.channels_for(frequency)
+        if not channels:
             return str(frequency)
 
-        channel_name = self.flight.aircraft_type.channel_name(
-            channel.radio_id, channel.channel
+        names = " / ".join(
+            self.flight.aircraft_type.channel_name(c.radio_id, c.channel)
+            for c in channels
         )
-        return f"{channel_name}\n{frequency}"
+        return f"{names}\n{frequency}"
 
 
 class SupportPage(KneeboardPage):
@@ -665,7 +666,9 @@ class SupportPage(KneeboardPage):
                 ]
             )
 
-        writer.table(comm_ladder, headers=["Callsign", "Task", "Type", "#A/C", "FREQ"])
+        # "#" not "#A/C": the count is a single digit, so the wider header padded the
+        # column and pushed the FREQ column off the right edge of the page.
+        writer.table(comm_ladder, headers=["Callsign", "Task", "Type", "#", "FREQ"])
 
         # AEW&C
         writer.heading("AEW&C")
@@ -703,7 +706,6 @@ class SupportPage(KneeboardPage):
             comm_ladder.append(
                 [
                     tanker.callsign,
-                    "Tanker",
                     KneeboardPageWriter.wrap_line(tanker.variant, 21),
                     str(tanker.tacan) if tanker.tacan else "N/A",
                     self.format_frequency(tanker.freq),
@@ -713,7 +715,10 @@ class SupportPage(KneeboardPage):
 
         writer.table(
             comm_ladder,
-            headers=["Callsign", "Task", "Type", "TACAN", "FREQ", "TOT / TOS"],
+            # Drop the "Task" column (always "Tanker" in this table) and shorten
+            # TACAN to TCN (3-char code), so the wider FREQ column (now COMM1 +
+            # COMM2) and TOT/TOS no longer run off the page edge.
+            headers=["Callsign", "Type", "TCN", "FREQ", "TOT / TOS"],
         )
 
         writer.heading("JTAC")
@@ -730,21 +735,24 @@ class SupportPage(KneeboardPage):
                     self.format_frequency(jtac.freq),
                 ]
             )
-        writer.table(jtacs, headers=["Callsign", "Region", "Laser Code", "FREQ"])
+        # "Laser" instead of "Laser Code": the code is 4 digits, so the longer
+        # header padded the column and pushed the FREQ column off the page.
+        writer.table(jtacs, headers=["Callsign", "Region", "Laser", "FREQ"])
 
         writer.write(path)
 
     def format_frequency(self, frequency: Optional[RadioFrequency]) -> str:
         if frequency is None:
             return ""
-        channel = self.flight.channel_for(frequency)
-        if channel is None:
+        channels = self.flight.channels_for(frequency)
+        if not channels:
             return str(frequency)
 
-        channel_name = self.flight.aircraft_type.channel_name(
-            channel.radio_id, channel.channel
+        names = " / ".join(
+            self.flight.aircraft_type.channel_name(c.radio_id, c.channel)
+            for c in channels
         )
-        return f"{channel_name}\n{frequency}"
+        return f"{names}\n{frequency}"
 
     @staticmethod
     def _format_time(time: datetime.datetime | None) -> str:
@@ -772,6 +780,22 @@ class SeadTaskPage(KneeboardPage):
         if isinstance(self.flight.package.target, TheaterGroundObject):
             yield from self.flight.package.target.strike_targets
 
+    def _waypoint_number_by_position(self) -> Dict[Tuple[float, float], int]:
+        """STPT number of each per-target waypoint, keyed by its position.
+
+        DEAD/SEAD flights get one TARGET_POINT waypoint per target, built at the
+        target's position, so each listed target can show its assigned waypoint
+        number — the same "STPT" the strike task page shows. The number is the
+        index into the flight's waypoint list, matching the flight-plan page.
+        Targets without a matching waypoint (e.g. an old flight plan generated
+        before per-target waypoints existed) simply show a blank STPT.
+        """
+        numbers: Dict[Tuple[float, float], int] = {}
+        for idx, waypoint in enumerate(self.flight.waypoints):
+            if waypoint.waypoint_type == FlightWaypointType.TARGET_POINT:
+                numbers.setdefault((waypoint.position.x, waypoint.position.y), idx)
+        return numbers
+
     @staticmethod
     def alic_for(unit: TheaterUnit) -> str:
         try:
@@ -788,18 +812,30 @@ class SeadTaskPage(KneeboardPage):
         task = "DEAD" if self.flight.flight_type == FlightType.DEAD else "SEAD"
         writer.title(f"{self.flight.callsign} {task} Target Info{custom_name_title}")
 
+        waypoint_numbers = self._waypoint_number_by_position()
+        # Smaller table font + 1-char "#" header keep the full DMS Location
+        # on-page; at size 20 the longest SAM names (e.g. S-300 Big Bird SR)
+        # clipped the coordinates off the right edge.
+        table_font = ImageFont.truetype(
+            "courbd.ttf", 18, layout_engine=ImageFont.Layout.BASIC
+        )
         writer.table(
-            [self.target_info_row(t) for t in self.target_units],
-            headers=["Description", "ALIC", "Location"],
+            [self.target_info_row(t, waypoint_numbers) for t in self.target_units],
+            headers=["#", "Description", "ALIC", "Location"],
+            font=table_font,
         )
 
         writer.write(path)
 
-    def target_info_row(self, unit: TheaterUnit) -> List[str]:
+    def target_info_row(
+        self, unit: TheaterUnit, waypoint_numbers: Dict[Tuple[float, float], int]
+    ) -> List[str]:
         ll = unit.position.latlng()
         unit_type = unit.type
         name = unit.name if unit_type is None else unit_type.name
+        number = waypoint_numbers.get((unit.position.x, unit.position.y))
         return [
+            "" if number is None else str(number),
             name,
             self.alic_for(unit),
             ll.format_dms(include_decimal_seconds=True),

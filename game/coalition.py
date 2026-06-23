@@ -47,6 +47,10 @@ class Coalition:
         self.air_wing = AirWing(player, game, self.faction)
         self.armed_forces = ArmedForces(self.faction)
         self.transfers = PendingTransfers(game, player)
+        # Money the automated HQ spent per category last turn (front_line,
+        # runways, buildings, ground_objects, aircraft). Surfaced in the
+        # Finances dialog so the player sees where their income went.
+        self.last_turn_expenses: dict[str, float] = {}
 
         # Late initialized because the two coalitions in the game are mutually
         # dependent, so must be both constructed before this property can be set.
@@ -243,14 +247,16 @@ class Coalition:
             manage_front_line = True
             manage_aircraft = True
 
-        self.budget = ProcurementAi(
+        procurement = ProcurementAi(
             self.game,
             self.player,
             self.faction,
             manage_runways,
             manage_front_line,
             manage_aircraft,
-        ).spend_budget(self.budget)
+        )
+        self.budget = procurement.spend_budget(self.budget)
+        self.last_turn_expenses = procurement.last_expenses
 
     def add_procurement_request(self, request: AircraftProcurementRequest) -> None:
         self.procurement_requests.add(request)
