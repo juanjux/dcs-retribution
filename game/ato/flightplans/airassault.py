@@ -125,18 +125,14 @@ class Builder(FormationAttackBuilder[AirAssaultFlightPlan, AirAssaultLayout]):
             pickup.alt = altitude
             pickup_position = pickup.position
 
-        ingress = (
-            builder.ingress(
-                FlightWaypointType.INGRESS_AIR_ASSAULT,
-                self.package.waypoints.ingress,
-                self.package.target,
-            )
-            if not self.flight.is_hercules
-            else builder.ingress(
-                FlightWaypointType.INGRESS_AIR_ASSAULT,
-                self.package.waypoints.initial,
-                self.package.target,
-            )
+        # Ingress waypoint; for helos WaypointBuilder.ingress re-anchors this to
+        # 5 NM from the target, so join below uses ingress.position to stay
+        # coincident with it -- otherwise the route overshoots to the package IP
+        # and back (the zig-zag).
+        ingress = builder.ingress(
+            FlightWaypointType.INGRESS_AIR_ASSAULT,
+            self.package.waypoints.ingress,
+            self.package.target,
         )
 
         assault_area = builder.assault_area(self.package.target)
@@ -179,7 +175,7 @@ class Builder(FormationAttackBuilder[AirAssaultFlightPlan, AirAssaultLayout]):
             divert=builder.divert(self.flight.divert),
             bullseye=builder.bullseye(),
             hold=None,
-            join=builder.join(self.package.waypoints.ingress),
+            join=builder.join(ingress.position),
             split=builder.split(self.flight.arrival.position),
             refuel=None,
             custom_waypoints=list(),

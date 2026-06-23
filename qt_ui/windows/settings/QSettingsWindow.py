@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
     QDialog,
     QGridLayout,
     QGroupBox,
+    QHBoxLayout,
     QLabel,
     QListView,
     QPushButton,
@@ -27,6 +28,7 @@ from PySide6.QtWidgets import (
 
 import qt_ui.uiconstants as CONST
 from game.game import Game
+from game.theater import Player
 from game.persistency import settings_dir
 from game.server import EventStream
 from game.settings import (
@@ -467,12 +469,23 @@ class QSettingsWidget(QtWidgets.QWizardPage, SettingsContainer):
         self.cheat_options = CheatSettingsBox(self, self.applySettings)
         self.cheatLayout.addWidget(self.cheat_options)
 
-        self.moneyCheatBox = QGroupBox("Money Cheat")
-        self.moneyCheatBox.setDisabled(self.game is None)
-        self.moneyCheatBox.setAlignment(Qt.AlignmentFlag.AlignTop)
-        self.moneyCheatBoxLayout = QGridLayout()
-        self.moneyCheatBox.setLayout(self.moneyCheatBoxLayout)
+        # One box per coalition so money can be given/taken to OWNFOR and OPFOR.
+        # (OPFOR money used to be reachable only via the negative-aircraft exploit.)
+        money_row = QHBoxLayout()
+        money_row.addWidget(
+            self._build_money_cheat_box("OWNFOR (BLUE) Money Cheat", Player.BLUE)
+        )
+        money_row.addWidget(
+            self._build_money_cheat_box("OPFOR (RED) Money Cheat", Player.RED)
+        )
+        self.cheatLayout.addLayout(money_row, stretch=1)
 
+    def _build_money_cheat_box(self, title: str, player: Player) -> QGroupBox:
+        box = QGroupBox(title)
+        box.setDisabled(self.game is None)
+        box.setAlignment(Qt.AlignmentFlag.AlignTop)
+        layout = QGridLayout()
+        box.setLayout(layout)
         cheats_amounts = [25, 50, 100, 200, 500, 1000, -25, -50, -100, -200]
         for i, amount in enumerate(cheats_amounts):
             if amount > 0:
@@ -481,16 +494,16 @@ class QSettingsWidget(QtWidgets.QWizardPage, SettingsContainer):
             else:
                 btn = QPushButton("Cheat " + str(amount) + "M")
                 btn.setProperty("style", "btn-danger")
-            btn.clicked.connect(self.cheatLambda(amount))
-            self.moneyCheatBoxLayout.addWidget(btn, i / 2, i % 2)
-        self.cheatLayout.addWidget(self.moneyCheatBox, stretch=1)
+            btn.clicked.connect(self.cheatLambda(amount, player))
+            layout.addWidget(btn, i // 2, i % 2)
+        return box
 
-    def cheatLambda(self, amount):
-        return lambda: self.cheatMoney(amount)
+    def cheatLambda(self, amount, player):
+        return lambda: self.cheatMoney(amount, player)
 
-    def cheatMoney(self, amount):
-        logging.info("CHEATING FOR AMOUNT : " + str(amount) + "M")
-        self.game.blue.budget += amount
+    def cheatMoney(self, amount, player):
+        logging.info(f"CHEATING {player} FOR AMOUNT : {amount}M")
+        self.game.coalition_for(player).budget += amount
         GameUpdateSignal.get_instance().updateGame(self.game)
 
     def applySettings(self):
