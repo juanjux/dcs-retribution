@@ -9,7 +9,7 @@ from dcs.point import MovingPoint, PointAction
 from dcs.task import RunScript
 from dcs.unitgroup import FlyingGroup
 
-from game.ato import Flight, FlightWaypoint
+from game.ato import Flight, FlightType, FlightWaypoint
 from game.ato.flightwaypointtype import FlightWaypointType
 from game.ato.starttype import StartType
 from game.ato.traveltime import GroundSpeed
@@ -160,18 +160,17 @@ class PydcsWaypointBuilder:
             self.group.add_nav_target_point(self.waypoint.position, "IP")
 
     def defensive_jamming(self, waypoint: MovingPoint, action: str) -> None:
-        # Explodes incoming missiles within the jamming bubble through the EW-Jamming script
-        settings = self.flight.coalition.game.settings
-        ecm_required = settings.plugin_option("ewrj.ecm_required")
+        # The EW-Jammer script's defensive jamming physically defeats incoming radar
+        # missiles in a bubble -- a strong scripted shield, reserved for dedicated EW
+        # flights and aircraft carrying an actual jammer pod. Aircraft with only built-in
+        # ECM/jamming self-protect with DCS's own engine ECM (OptECMUsing) instead, so we
+        # don't stack a scripted missile-delete on top of it.
+        is_dedicated_ew = self.flight.flight_type == FlightType.EWAR
         for unit, member in zip(self.group.units, self.flight.iter_members()):
-            has_jammer = member.loadout.has_weapon_of_type(
+            has_pod = member.loadout.has_weapon_of_type(
                 WeaponType.JAMMER
             ) or member.loadout.has_weapon_of_type(WeaponType.OFFENSIVE_JAMMER)
-            built_in_jammer = (
-                self.flight.squadron.aircraft.has_built_in_ecm
-                or self.flight.squadron.aircraft.has_built_in_jamming
-            )
-            if ecm_required and not (has_jammer or built_in_jammer):
+            if not (is_dedicated_ew or has_pod):
                 continue
             if not member.is_player:
                 script_content = f'{action}IAdefjamming("{unit.name}")'
@@ -179,13 +178,21 @@ class PydcsWaypointBuilder:
                 waypoint.tasks.append(jamming_script)
 
     def offensive_jamming(self, waypoint: MovingPoint, action: str) -> None:
-        # Silences enemy radars through the EW-Jamming script
-        settings = self.flight.coalition.game.settings
-        ecm_required = settings.plugin_option("ewrj.ecm_required")
+        # The EW-Jammer script's offensive jamming scripts-off enemy radars -- a strong
+        # scripted effect. Restricted to dedicated EW flights, aircraft with built-in
+        # jamming (the EW-specific airframes such as Su-34/EC-130), or aircraft carrying an
+        # actual jammer pod -- matching the changelog. Aircraft with only built-in ECM
+        # (F/A-18C, Su-57) self-protect with DCS's own engine ECM (OptECMUsing) instead,
+        # so they never run scripted offensive jamming.
+        is_ew_capable = (
+            self.flight.flight_type == FlightType.EWAR
+            or self.flight.squadron.aircraft.has_built_in_jamming
+        )
         for unit, member in zip(self.group.units, self.flight.iter_members()):
-            has_jammer = member.loadout.has_weapon_of_type(WeaponType.OFFENSIVE_JAMMER)
-            built_in_jammer = self.flight.squadron.aircraft.has_built_in_jamming
-            if ecm_required and not (has_jammer or built_in_jammer):
+            has_pod = member.loadout.has_weapon_of_type(
+                WeaponType.JAMMER
+            ) or member.loadout.has_weapon_of_type(WeaponType.OFFENSIVE_JAMMER)
+            if not (is_ew_capable or has_pod):
                 continue
             if not member.is_player:
                 script_content = f'{action}EWjamm("{unit.name}")'

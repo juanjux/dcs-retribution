@@ -9,6 +9,7 @@
 * **[UX]** Press Delete with a package selected in the Packages list to cancel it, making it quick to clear several packages in a row.
 * **[UX]** Avoid having escorts from wondering off too far while chasing a target.
 * **[UX]** Improved fast-forward settings with the ability to skip combat.
+* **[Options]** New Campaign Doctrine option "Enable Electronic Warfare (jamming) flights": dedicated EW aircraft (EA-18G, EA-6B, Su-34, Tornado ECR, EC-130, ...) can be tasked as a "Jamming" escort that suppresses enemy SAM radars and defeats incoming radar-guided missiles, holding off at a threat-aware standoff with the package. Requires the "EW Jammer Script" LUA plugin. Applies to both coalitions.
 * **[Data]** Add Refueling/Recovery tasks to A-6E Intruder mod
 * **[Modding]** Add CurrentHill UK Assets Pack support (v1.1.2)
 * **[Layouts]** Add signature to layouts' binary file for automatic reloading of updated layouts.

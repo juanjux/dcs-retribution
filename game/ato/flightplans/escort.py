@@ -35,6 +35,19 @@ class EscortFlightPlan(FormationAttackFlightPlan):
             return super().split_time
 
 
+class EwarFlightPlan(EscortFlightPlan):
+    """Escort flight plan for dedicated EW jamming (FlightType.EWAR).
+
+    Identical to the escort plan except the near-target hold is replaced with a
+    threat-aware JAMMING HOLD at the ingress standoff (see EwarBuilder), so the
+    jammer stays with the package instead of orbiting inside the target's threat ring.
+    """
+
+    @staticmethod
+    def builder_type() -> Type[Builder]:
+        return EwarBuilder
+
+
 class Builder(FormationAttackBuilder[EscortFlightPlan, FormationAttackLayout]):
     def layout(self) -> FormationAttackLayout:
         non_formation_escort = False
@@ -127,3 +140,28 @@ class Builder(FormationAttackBuilder[EscortFlightPlan, FormationAttackLayout]):
 
     def build(self, dump_debug_info: bool = False) -> EscortFlightPlan:
         return EscortFlightPlan(self.flight, self.layout())
+
+
+class EwarBuilder(Builder):
+    def layout(self) -> FormationAttackLayout:
+        layout = super().layout()
+        # Replace the near-target ESCORT HOLD with a JAMMING HOLD at the threat-aware
+        # ingress standoff so the jammer holds with the package instead of orbiting
+        # inside the target's threat ring. Air-assault/transport escorts (which hold at
+        # the drop-off zone) are left untouched.
+        pf = self.package.primary_flight
+        is_air_assault = pf is not None and pf.flight_type in [
+            FlightType.AIR_ASSAULT,
+            FlightType.TRANSPORT,
+        ]
+        if layout.initial is not None and not is_air_assault:
+            # Anchor the hold on the ingress waypoint itself: the threat-aware IP for
+            # fixed-wing, or the helo's 5 NM re-anchored ingress. Using layout.ingress
+            # (not package.waypoints.ingress) keeps the route monotonic for both, so a
+            # player-flown helo jammer doesn't backtrack.
+            builder = WaypointBuilder(self.flight)
+            layout.initial = builder.jamming_hold(layout.ingress.position)
+        return layout
+
+    def build(self, dump_debug_info: bool = False) -> EscortFlightPlan:
+        return EwarFlightPlan(self.flight, self.layout())

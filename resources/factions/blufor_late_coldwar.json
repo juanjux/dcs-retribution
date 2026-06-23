@@ -4,6 +4,7 @@
   "authors": "Starfire",
   "description": "<p>Blufor 1980s late cold war faction featuring units from NATO and NATO-aligned nations.</p>",
   "aircrafts": [
+    "Tornado ECR (emulated)",
     "A-10A Thunderbolt II",
     "A-10C Thunderbolt II (Suite 3)",
     "A-10C Thunderbolt II (Suite 7)",

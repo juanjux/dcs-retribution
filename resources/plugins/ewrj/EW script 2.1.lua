@@ -51,8 +51,49 @@ ewrj_options = {
     -- Enable Defensive Debug
     ["DEBUG_DEFENSIVE"] = false,
     -- Enable Advanced Debug (Radar Lists)
-    ["DEBUG_ADVANCED"] = false
+    ["DEBUG_ADVANCED"] = false,
+    -- Show "counter measures pod ON/OFF" messages on screen
+    ["SHOW_POD_MESSAGES"] = false,
+    -- Audience for those messages: "Flight" / "Package" / "All OWNFOR"
+    ["MESSAGE_SCOPE"] = "Package",
+    -- Also announce OPFOR (enemy) jamming to the opposite coalition
+    ["SHOW_OPFOR_MESSAGES"] = false
 }
+
+-- Resolve the list of group ids in a jammer's package (for the "Package"
+-- audience). dcsRetribution.ewrj_package_groups is injected by DCS Retribution;
+-- fall back to just the jammer's own group if it is absent.
+function ewPackageGroups(jammer)
+    local u = Unit.getByName(jammer)
+    if not u then return {} end
+    local gid = u:getGroup():getID()
+    local map = dcsRetribution and dcsRetribution.ewrj_package_groups or {}
+    return map[gid] or {gid}
+end
+
+-- Show a pod ON/OFF message to the configured audience. Honors SHOW_POD_MESSAGES
+-- + MESSAGE_SCOPE (Flight / Package / All OWNFOR); SHOW_OPFOR_MESSAGES
+-- independently mirrors it to the opposite coalition (tagged [OPFOR]).
+function ewPodMessage(jammer, msg)
+    if not ewrj_options.SHOW_POD_MESSAGES then return end
+    local u = Unit.getByName(jammer)
+    if not u then return end
+    local coa = u:getCoalition()
+    local scope = ewrj_options.MESSAGE_SCOPE
+    if scope == "Flight" then
+        trigger.action.outTextForGroup(u:getGroup():getID(), msg, 5)
+    elseif scope == "All OWNFOR" then
+        trigger.action.outTextForCoalition(coa, msg, 5)
+    else
+        for _, gid in ipairs(ewPackageGroups(jammer)) do
+            trigger.action.outTextForGroup(gid, msg, 5)
+        end
+    end
+    if ewrj_options.SHOW_OPFOR_MESSAGES then
+        local other = (coa == coalition.side.RED) and coalition.side.BLUE or coalition.side.RED
+        trigger.action.outTextForCoalition(other, "[OPFOR] "..msg, 5)
+    end
+end
 -- Offensive jamming vs SAM radars (in check())
 --local OFFENSIVE_POWER = 1.6     -- 1.0 = stock, 1.4 = realistic-strong
 
@@ -785,7 +826,7 @@ getRadars()
 ---- START OFFENSIVE JAMMING ----
 --------------------------------- 
 function startEWjamm(jammer)
-    trigger.action.outText("OFFENSIVE COUNTER MEASURES POD ON "..jammer, 5)
+    ewPodMessage(jammer, "OFFENSIVE COUNTER MEASURES POD ON "..jammer)
     if ewrj_options.DEBUG then
         env.info("[EW DEBUG] Start Offensive Jamming: " .. jammer)
     end
@@ -847,7 +888,7 @@ end -- startEWjamm('Prowler1')
 --------------------------------
 function stopEWjamm(jammer)
     ActiveJammers[jammer] = nil
-    trigger.action.outText("OFFENSIVE COUNTER MEASURES POD OFF "..jammer,5)
+    ewPodMessage(jammer, "OFFENSIVE COUNTER MEASURES POD OFF "..jammer)
     if ewrj_options.DEBUG then
         env.info("[EW DEBUG] Stop Offensive Jamming: " .. jammer)
     end
@@ -986,7 +1027,7 @@ end
     end
     function startDjamming(jammer)
         switch[#switch+1]=jammer
-        trigger.action.outText("DEFENSIVE COUNTER MEASURES POD ON "..jammer,5)
+        ewPodMessage(jammer, "DEFENSIVE COUNTER MEASURES POD ON "..jammer)
         if ewrj_options.DEBUG then
             env.info("[EW DEBUG] Start Defensive Jamming: " ..jammer)
         end
@@ -1001,7 +1042,7 @@ end
             switch[i] = nil
         end
     end
-    trigger.action.outText("DEFENSIVE COUNTER MEASURES POD OFF "..jammer,5)
+    ewPodMessage(jammer, "DEFENSIVE COUNTER MEASURES POD OFF "..jammer)
     if ewrj_options.DEBUG then
         env.info("[EW DEBUG] Stop Defensive Jamming: " ..jammer)    
     end

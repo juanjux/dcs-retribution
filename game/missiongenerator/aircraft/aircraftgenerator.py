@@ -173,6 +173,7 @@ class AircraftGenerator:
                     if flight.flight_type in [
                         FlightType.ESCORT,
                         FlightType.SEAD_ESCORT,
+                        FlightType.EWAR,
                     ]:
                         splittrigger.add_action(AITaskPush(flight.group_id, 1))
                 if len(splittrigger.actions) > 0:
@@ -384,7 +385,6 @@ class AircraftGenerator:
                 not self.need_ecm
                 or flight.any_member_has_weapon_of_type(WeaponType.JAMMER)
                 or flight.any_member_has_weapon_of_type(WeaponType.OFFENSIVE_JAMMER)
-                or flight.squadron.aircraft.has_built_in_ecm
                 or flight.squadron.aircraft.has_built_in_jamming
             )
         ):

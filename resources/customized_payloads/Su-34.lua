@@ -379,6 +379,63 @@ local unitPayloads = {
 				[1] = 31,
 			},
 		},
+		[8] = {
+			["displayName"] = "Retribution Jamming (Khibiny internal EW)",
+			["name"] = "Retribution Jamming",
+			["pylons"] = {
+				[1] = {
+					["CLSID"] = "{FBC29BFE-3D24-4C64-B81D-941239D12249}",
+					["num"] = 1,
+				},
+				[2] = {
+					["CLSID"] = "{B4C01D60-A8A3-4237-BD72-CA7655BC0FE9}",
+					["num"] = 2,
+				},
+				[3] = {
+					["CLSID"] = "{X-31P}",
+					["num"] = 3,
+				},
+				[4] = {
+					["CLSID"] = "{X-31P}",
+					["num"] = 4,
+				},
+				[5] = {
+					["CLSID"] = "{B4C01D60-A8A3-4237-BD72-CA7655BC0FE9}",
+					["num"] = 5,
+				},
+				[6] = {
+					["CLSID"] = "{E8069896-8435-4B90-95C0-01A03AE6E400}",
+					["num"] = 6,
+				},
+				[7] = {
+					["CLSID"] = "{E8069896-8435-4B90-95C0-01A03AE6E400}",
+					["num"] = 7,
+				},
+				[8] = {
+					["CLSID"] = "{B4C01D60-A8A3-4237-BD72-CA7655BC0FE9}",
+					["num"] = 8,
+				},
+				[9] = {
+					["CLSID"] = "{X-31P}",
+					["num"] = 9,
+				},
+				[10] = {
+					["CLSID"] = "{X-31P}",
+					["num"] = 10,
+				},
+				[11] = {
+					["CLSID"] = "{B4C01D60-A8A3-4237-BD72-CA7655BC0FE9}",
+					["num"] = 11,
+				},
+				[12] = {
+					["CLSID"] = "{FBC29BFE-3D24-4C64-B81D-941239D12249}",
+					["num"] = 12,
+				},
+			},
+			["tasks"] = {
+				[1] = 11,
+			},
+		},
 	},
 	["unitType"] = "Su-34",
 }

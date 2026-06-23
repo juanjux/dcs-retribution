@@ -29,6 +29,7 @@ from .casingress import CasIngressBuilder
 from .deadingress import DeadIngressBuilder
 from .default import DefaultWaypointBuilder
 from .holdpoint import HoldPointBuilder
+from .jamminghold import JammingHoldBuilder
 from .joinpoint import JoinPointBuilder
 from .landingpoint import LandingPointBuilder
 from .landingzone import LandingZoneBuilder
@@ -78,6 +79,7 @@ class WaypointGenerator:
                 if self.flight.flight_type in [
                     FlightType.ESCORT,
                     FlightType.SEAD_ESCORT,
+                    FlightType.EWAR,
                 ]:
                     is_join = point.waypoint_type == FlightWaypointType.JOIN
                     join_passed = self.flight.state.has_passed_waypoint(point)
@@ -202,6 +204,7 @@ class WaypointGenerator:
             FlightWaypointType.INGRESS_SEAD_SWEEP: SeadSweepIngressBuilder,
             FlightWaypointType.INGRESS_STRIKE: StrikeIngressBuilder,
             FlightWaypointType.INGRESS_SWEEP: SweepIngressBuilder,
+            FlightWaypointType.JAMMING_HOLD: JammingHoldBuilder,
             FlightWaypointType.JOIN: JoinPointBuilder,
             FlightWaypointType.LANDING_POINT: LandingPointBuilder,
             FlightWaypointType.LOITER: HoldPointBuilder,

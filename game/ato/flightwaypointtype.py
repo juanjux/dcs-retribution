@@ -53,3 +53,4 @@ class FlightWaypointType(IntEnum):
     INGRESS_SEAD_SWEEP = 33
     INGRESS_ARMED_RECON = 34
     RECOVERY_TANKER = 35  # Tanker recovery point
+    JAMMING_HOLD = 36  # EWAR jammer standoff orbit (loiters until the package egresses)

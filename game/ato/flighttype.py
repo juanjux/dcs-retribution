@@ -58,6 +58,7 @@ class FlightType(Enum):
     FERRY = "Ferry"
     AIR_ASSAULT = "Air Assault"
     SEAD_SWEEP = "SEAD Sweep"  # Reintroduce legacy "engage-whatever-you-can-find" SEAD
+    EWAR = "Jamming"
     PRETENSE_CARGO = "Cargo Transport"  # For Pretense campaign AI cargo planes
     ARMED_RECON = "Armed Recon"
     RECOVERY = "Recovery"
@@ -97,11 +98,12 @@ class FlightType(Enum):
             FlightType.AIR_ASSAULT,
             FlightType.SEAD_SWEEP,
             FlightType.ARMED_RECON,
+            FlightType.EWAR,
         }
 
     @property
     def is_escort_type(self) -> bool:
-        return self in {FlightType.ESCORT, FlightType.SEAD_ESCORT}
+        return self in {FlightType.ESCORT, FlightType.SEAD_ESCORT, FlightType.EWAR}
 
     @property
     def entity_type(self) -> AirEntity:
@@ -114,6 +116,7 @@ class FlightType(Enum):
             FlightType.CAS: AirEntity.ATTACK_STRIKE,
             FlightType.DEAD: AirEntity.ATTACK_STRIKE,
             FlightType.ESCORT: AirEntity.ESCORT,
+            FlightType.EWAR: AirEntity.ELECTRONIC_COMBAT_JAMMER,
             FlightType.FERRY: AirEntity.UNSPECIFIED,
             FlightType.INTERCEPTION: AirEntity.FIGHTER,
             FlightType.OCA_AIRCRAFT: AirEntity.ATTACK_STRIKE,

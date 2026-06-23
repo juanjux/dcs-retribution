@@ -210,6 +210,20 @@ class Settings:
             "Applies to both coalitions."
         ),
     )
+    electronic_warfare_enabled: bool = boolean_option(
+        "Enable Electronic Warfare (jamming) flights",
+        page=CAMPAIGN_DOCTRINE_PAGE,
+        section=GENERAL_SECTION,
+        default=False,
+        detail=(
+            "Enables the 'Jamming' flight task for dedicated electronic-warfare "
+            "aircraft (EA-18G, EA-6B, Su-34, Tornado ECR, etc.): they accompany a "
+            "package, jam enemy SAM radars and defeat incoming radar-guided "
+            "missiles. REQUIRES the 'EW Jammer Script 2.0' plugin to be enabled in "
+            "the LUA plugins section — without it the flights fly but do not jam. "
+            "Applies to both coalitions."
+        ),
+    )
     desired_barcap_mission_duration: timedelta = minutes_option(
         "Desired BARCAP on-station time",
         page=CAMPAIGN_DOCTRINE_PAGE,
