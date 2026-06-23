@@ -1,4 +1,4 @@
-# Retribution v1.6.0
+# Retribution-juanjux v1.6.0 
 
 ## Features/Improvements
 * **[Loadouts]** Aircraft where DEAD isn't a natural role (A-10, F-35, Su-57, Su-35S, strategic bombers, etc.) can now fly DEAD when assigned manually, with a proper standoff loadout, without DEAD being auto-assigned to them by default. Aircraft yamls gain an optional `secondary_tasks` list for this.
@@ -34,6 +34,9 @@
 * **[AirWing]** Squadron list shows living-pilot, aircraft and unassigned counts; squadron dialog shows each pilot's experience level, lists killed-in-action pilots separately and hides the redundant "Active" status
 * **[AirWing]** Squadron dialog shows the aircraft type, an aircraft inventory (initial/current/destroyed/purchased), and buy/sell aircraft controls with price, on-order count and available parking slots
 * **[AirWing]** Air Wing list shows a "transfer ordered to X" indicator, and Airfield Command lists the units transferring into the base next turn
+* **[AirWing]** Insufficient-parking warnings are consolidated into a single non-modal dialog that names the missing parking type and links each squadron to its dialog
+* **[BaseMenu]** Base intel summary shows aircraft occupied/transferring/free and a per-parking-type breakdown (shared / fixed-wing-exclusive / rotary-wing-exclusive / ground spawns), fixing the misleading "0 fixed-wing only parking" at bases whose slots are all shared
+* **[Map]** Carrier/LHA control points now show their ship group on the map like other naval groups: the tooltip lists the carrier and escorts (with [DEAD] markers for losses), the surviving escorts' air-defense rings are drawn, and the status marker turns yellow while any ship survives instead of red as soon as the carrier itself is sunk.
 * **[UI]** Avoid a crash dialog ("'QWidgetItem' object has no attribute 'width'") when a list using the two-column row delegate relayouts with a malformed style option under PySide6 6.4.x.
 * **[Kneeboard]** Flight-plan kneeboard now matches the in-game waypoint numbering for flights that start in the air
 * **[App]** Fix Retribution sometimes staying alive in the background after the window is closed.
