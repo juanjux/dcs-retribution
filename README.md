@@ -122,8 +122,9 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
 
 These are adapted from the [**414Ret** fork](https://github.com/bradyccox/414Ret)
 (414th Joint Fighter Group), with thanks to its authors — 414Ret bundles many
-more features; listed here are the ones incorporated into this fork. They are
-currently on `master` (being integrated; not all PR'd yet). TIC vendors Grendel's
+more features; listed here are the ones incorporated into this fork, each
+crediting the original 414Ret author (the recent additions land via attributed
+PRs on `juanjux-dev`, so any can be reverted cleanly). TIC vendors Grendel's
 TIC script (MIT).
 
 - **Troops In Contact (TIC)** — a dynamic frontline: ground forces actually fight
@@ -147,6 +148,16 @@ TIC script (MIT).
   `[CH] Iran 2020` faction (upstream ships the UK CurrentHill pack, not Iran).
 - Selected crash fixes (flight-exit, AWACS/tanker orbit deconfliction, malformed
   mod payloads).
+- **Unified map-layers panel** — the scattered map layer toggles consolidated into
+  one dark, grouped, collapsible panel with presets.
+- **Support orbits behind the FLOT** — AI AWACS and tankers anchor on the front
+  line and hold back instead of drifting forward over it.
+- **DEAD reachability gate** — the planner no longer optimistically marks a SAM
+  "cleared" when the assigned flight cannot actually reach it.
+- **Weapons coverage refresh** — more modern PGMs and air-to-air missiles across
+  factions, without the era date-gating (our introduction years are kept).
+- **Player despawns aren't combat losses** — leaving an aircraft mid-mission no
+  longer depletes your squadron in the debrief.
 
 ---
 
