@@ -22,6 +22,7 @@
 * **[Plugins]** Update EW Script to version 2.1
 * **[Modding]** Add CurrentHill UK Assets Pack support (v1.1.2)
 * **[Modding]** Add support for Su-35S mod (v2.0.27b)
+* **[Modding]** Add support for the Eurofighter Typhoon mod (by Lechuzas Negras).
 * **[Data]** Add Refueling/Recovery tasks to A-6E Intruder mod
 * **[Layouts]** Add signature to layouts' binary file for automatic reloading of updated layouts.
 
