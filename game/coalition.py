@@ -242,10 +242,14 @@ class Coalition:
             manage_runways = self.game.settings.automate_runway_repair
             manage_front_line = self.game.settings.automate_front_line_reinforcements
             manage_aircraft = self.game.settings.automate_aircraft_reinforcements
+            manage_ground_objects = self.game.settings.automate_ground_object_repairs
+            manage_buildings = self.game.settings.automate_building_repairs
         else:
             manage_runways = True
             manage_front_line = True
             manage_aircraft = True
+            manage_ground_objects = self.game.settings.automate_ground_object_repairs
+            manage_buildings = self.game.settings.automate_building_repairs
 
         procurement = ProcurementAi(
             self.game,
@@ -254,6 +258,8 @@ class Coalition:
             manage_runways,
             manage_front_line,
             manage_aircraft,
+            manage_ground_objects,
+            manage_buildings,
         )
         self.budget = procurement.spend_budget(self.budget)
         self.last_turn_expenses = procurement.last_expenses

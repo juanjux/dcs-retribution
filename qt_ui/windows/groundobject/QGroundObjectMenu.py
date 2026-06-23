@@ -14,7 +14,6 @@ from PySide6.QtWidgets import (
     QCheckBox,
 )
 from dcs import Point
-
 from game.config import REWARDS
 from game.data.building_data import FORTIFICATION_BUILDINGS
 from game.server import EventStream
@@ -135,14 +134,22 @@ class QGroundObjectMenu(QDialog):
                     QLabel(f"<b>Unit {str(unit.display_name)}</b>"), i, 0
                 )
 
-                if not unit.alive and unit.repairable and self.cp.captured.is_blue:
-                    price = unit.unit_type.price if unit.unit_type else 0
-                    repair = QPushButton(f"Repair [{price}M]")
-                    repair.setProperty("style", "btn-success")
-                    repair.clicked.connect(
-                        lambda u=unit, p=price: self.repair_unit(u, p)
-                    )
-                    self.intelLayout.addWidget(repair, i, 1)
+                if not unit.alive and unit.repairable:
+                    if unit.repair_turns_remaining is not None:
+                        repair_label = QLabel(
+                            "Repairing (" f"{unit.repair_turns_remaining} turns)"
+                        )
+                        self.intelLayout.addWidget(repair_label, i, 1)
+                    elif self.cp.captured.is_blue:
+                        price = unit.unit_type.price if unit.unit_type else 0
+                        repair = QPushButton(f"Repair [{price}M]")
+                        repair.setProperty("style", "btn-success")
+                        repair.clicked.connect(
+                            lambda u=unit, p=price: self.repair_unit(u, p)
+                        )
+                        self.intelLayout.addWidget(repair, i, 1)
+                    else:
+                        self.intelLayout.addWidget(QLabel("Destroyed"), i, 1)
                 i += 1
 
         stretch = QVBoxLayout()
@@ -158,7 +165,9 @@ class QGroundObjectMenu(QDialog):
         for static in self.ground_object.statics:
             if static not in FORTIFICATION_BUILDINGS:
                 self.buildingsLayout.addWidget(
-                    QBuildingInfo(static, self.ground_object), j / 3, j % 3
+                    QBuildingInfo(static, self.ground_object, self.repair_building),
+                    j / 3,
+                    j % 3,
                 )
                 j = j + 1
 
@@ -262,24 +271,59 @@ class QGroundObjectMenu(QDialog):
     def update_total_value(self):
         if not self.ground_object.purchasable:
             return
-        self.total_value = self.ground_object.value
+        self.total_value = self.ground_object.value + self.pending_repair_value()
         if self.sell_all_button is not None:
             self.sell_all_button.setText("Disband (+$" + str(self.total_value) + "M)")
+
+    def pending_repair_value(self) -> int:
+        total = 0
+        for unit in self.ground_object.units:
+            if unit.alive:
+                continue
+            if unit.repair_turns_remaining is None:
+                continue
+            if unit.unit_type is None:
+                continue
+            total += unit.unit_type.price
+        return total
 
     def repair_unit(self, unit, price):
         if self.game.blue.budget > price:
             self.game.blue.budget -= price
-            unit.alive = True
+            repair_turns = self.game.settings.ground_object_repair_turns
+            if repair_turns == 0:
+                unit.alive = True
+                destroyed_units = self.game.get_destroyed_units()
+                for d in list(destroyed_units):
+                    p = Point(d["x"], d["z"], self.game.theater.terrain)
+                    if p.distance_to_point(unit.position) < 15:
+                        destroyed_units.remove(d)
+                        logging.info("Removed destroyed units " + str(d))
+                logging.info(f"Repaired unit: {unit.unit_name}")
+            else:
+                unit.repair_turns_remaining = repair_turns
+                logging.info(f"Scheduled unit repair: {unit.unit_name}")
             GameUpdateSignal.get_instance().updateGame(self.game)
 
-            # Remove destroyed units in the vicinity
-            destroyed_units = self.game.get_destroyed_units()
-            for d in destroyed_units:
-                p = Point(d["x"], d["z"], self.game.theater.terrain)
-                if p.distance_to_point(unit.position) < 15:
-                    destroyed_units.remove(d)
-                    logging.info("Removed destroyed units " + str(d))
-            logging.info(f"Repaired unit: {unit.unit_name}")
+        self.update_game()
+
+    def repair_building(self, unit, price):
+        if self.game.blue.budget > price:
+            self.game.blue.budget -= price
+            repair_turns = self.game.settings.building_repair_turns
+            if repair_turns == 0:
+                unit.alive = True
+                destroyed_units = self.game.get_destroyed_units()
+                for d in list(destroyed_units):
+                    p = Point(d["x"], d["z"], self.game.theater.terrain)
+                    if p.distance_to_point(unit.position) < 15:
+                        destroyed_units.remove(d)
+                        logging.info("Removed destroyed units " + str(d))
+                logging.info(f"Repaired building: {unit.unit_name}")
+            else:
+                unit.repair_turns_remaining = repair_turns
+                logging.info(f"Scheduled building repair: {unit.unit_name}")
+            GameUpdateSignal.get_instance().updateGame(self.game)
 
         self.update_game()
 
