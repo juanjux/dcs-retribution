@@ -43,6 +43,19 @@ class HalfPlaneThreat:
         return FakePoint(self.threshold, p.y)
 
 
+class NoNearbyThreat:
+    """Threat zone far away so only the front-standoff term drives placement."""
+
+    def threatened(self, p: FakePoint) -> bool:
+        return False
+
+    def distance_to_threat(self, p: FakePoint) -> Distance:
+        return nautical_miles(10_000)
+
+    def closest_boundary(self, p: FakePoint) -> FakePoint:
+        return FakePoint(p.x, p.y)
+
+
 def _theater_with_front() -> tuple[SimpleNamespace, SimpleNamespace]:
     # FLOT centered at origin; blue to the west (-x), red to the east (+x).
     front = SimpleNamespace(
@@ -90,6 +103,31 @@ def test_red_support_sits_on_red_side_clear_of_threat() -> None:
     assert abs(center.y) < 1
     assert not threat.threatened(center)  # type: ignore[arg-type]
     assert threat.distance_to_threat(center).meters >= buffer.meters - 1  # type: ignore[arg-type]
+
+
+def test_ai_support_sits_deeper_than_player() -> None:
+    # With no nearby threat, depth is driven purely by the front-standoff term:
+    # blue holds forward at 1x the buffer, red holds deep at the AI factor.
+    from game.ato.flightplans.supportorbit import AI_SUPPORT_DEPTH_FACTOR
+
+    theater, _ = _theater_with_front()
+    threat = NoNearbyThreat()
+    buffer = nautical_miles(40)
+
+    blue_tgt = SimpleNamespace(position=FakePoint(-100_000, 0.0))
+    red_tgt = SimpleNamespace(position=FakePoint(100_000, 0.0))
+    blue_center, _ = support_orbit_anchor(
+        theater, SimpleNamespace(is_blue=True), threat, blue_tgt, buffer  # type: ignore[arg-type]
+    )
+    red_center, _ = support_orbit_anchor(
+        theater, SimpleNamespace(is_blue=False), threat, red_tgt, buffer  # type: ignore[arg-type]
+    )
+
+    blue_behind = abs(blue_center.x)  # distance from FLOT (origin) toward blue
+    red_behind = abs(red_center.x)  # distance from FLOT toward red
+    assert blue_behind == nautical_miles(40).meters
+    assert red_behind == nautical_miles(40 * AI_SUPPORT_DEPTH_FACTOR).meters
+    assert red_behind > blue_behind
 
 
 def test_no_front_falls_back_to_target_anchor() -> None:

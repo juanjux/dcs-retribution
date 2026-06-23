@@ -30,6 +30,15 @@ if TYPE_CHECKING:
     from game.threatzones import ThreatZones
 
 
+# AI (enemy) support orbits sit this many *buffers* behind the FLOT, so red
+# tankers/AWACS hold deep in friendly airspace instead of loitering near the
+# front like the player's do. The player coalition uses 1x (kept forward for
+# coverage). With the default buffers (AEWC 80 NM / tanker 70 NM) this puts AI
+# support ~200/175 NM back; with a smaller campaign buffer it scales down.
+# Whatever the depth, the orbit is still pushed clear of the enemy threat zone.
+AI_SUPPORT_DEPTH_FACTOR = 2.5
+
+
 def _relevant_front(
     theater: ConflictTheater, target: MissionTarget
 ) -> Optional[FrontLine]:
@@ -72,20 +81,28 @@ def support_orbit_anchor(
         )
         center = anchor
 
-    # Push the orbit into friendly airspace until it is at least threat_buffer
-    # from the enemy threat zone. This honors the "min distance to threat zone"
-    # setting while keeping the orbit centered on the front.
     away_from_enemy = toward_enemy.opposite
+
+    # Base standoff behind the front: the player holds forward at 1x the buffer
+    # for coverage; the AI holds deep (AI_SUPPORT_DEPTH_FACTOR x) so red
+    # tankers/AWACS don't loiter near the FLOT.
+    factor = 1.0 if player.is_blue else AI_SUPPORT_DEPTH_FACTOR
+    base_push = threat_buffer * factor
+    if base_push > meters(0):
+        center = center.point_from_heading(away_from_enemy.degrees, base_push.meters)
+
+    # Then guarantee it is at least threat_buffer clear of the enemy threat zone,
+    # pushing further into friendly airspace if the base standoff left it exposed.
     distance_to_threat = threat_zones.distance_to_threat(center)
     if threat_zones.threatened(center):
         # Inside the threat zone: get clear, then add the buffer.
-        push = distance_to_threat + threat_buffer
+        extra = distance_to_threat + threat_buffer
     elif distance_to_threat < threat_buffer:
-        push = threat_buffer - distance_to_threat
+        extra = threat_buffer - distance_to_threat
     else:
-        push = meters(0)
+        extra = meters(0)
 
-    if push > meters(0):
-        center = center.point_from_heading(away_from_enemy.degrees, push.meters)
+    if extra > meters(0):
+        center = center.point_from_heading(away_from_enemy.degrees, extra.meters)
 
     return center, toward_enemy
