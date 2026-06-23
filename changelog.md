@@ -29,6 +29,7 @@
 * **[UI]** Avoid a crash dialog ("'QWidgetItem' object has no attribute 'width'") when a list using the two-column row delegate relayouts with a malformed style option under PySide6 6.4.x.
 
 ## Fixes
+* **[Mission Generation]** Fix the generated mission being rejected by DCS with "locked speed ... surrounded by waypoints ... with locked time" (e.g. carrier escorts).
 * **[AirWing]** Squadron transfer-destination parking now accounts for already-ordered incoming transfers, matching the Airfield Command hangar count
 * **[UI]** Use Qt's non-native file dialogs (`AA_DontUseNativeDialogs`) so opening a file picker no longer freezes the whole app. The native Windows dialog deadlocks on a synchronous Win32 message when the embedded web map (QtWebEngine) is alive — e.g. clicking "Manually submit" on the modal "waiting for mission result" window hung Retribution ("Not Responding").
 * **[Mission Generation]** Anti-Ship flights now attack the carrier group the flight plan routes to instead of the control point's first ground object, so strikes against carrier groups no longer leave the AI without a target (it would fly to the ingress point and turn back without engaging).
