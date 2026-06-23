@@ -59,7 +59,7 @@ The authoritative, up-to-date list is the
 
 ### Missions, AI & tasking
 - **Campaign Doctrine: "non-combat (crash) air losses don't count"** — AI
-  crashes/collisions DCS doesn't credit to a weapon or SAM (which happen a lot because the AI is stupid) no longer deplete a
+  crashes/collisions DCS not credited to a weapon or SAM (which happen a lot because DCS AI is stupid) no longer deplete a
   squadron or kill the pilot; backed by per-loss kill attribution and shown in
   the debriefing.
 - **Best standoff/PGM loadouts for AI DEAD flights**, per airframe.
