@@ -225,6 +225,42 @@ QPushButton:disabled{
     background:#d6d6d6;
 }
 
+/* ── Finances dialog: income / expense / net hierarchy ─────────── */
+QLabel[style="green"]   { color: #8FBF6A; font-weight: 700; }   /* income  */
+QLabel[style="expense"] { color: #E06C5E; font-weight: 700; }   /* spending */
+QLabel[style="muted"]   { color: #7E8C99; }                     /* 0 / OFF / sub-text */
+QLabel[style="balance"] { color: #3592C4; font-weight: 700; }   /* current balance */
+
+QLabel[style="net"]     { font-size: 18px; font-weight: 800; color: #8FBF6A; }
+QLabel[style="net-neg"] { font-size: 18px; font-weight: 800; color: #E06C5E; }
+
+/* Summary band: a darker recessed box to set it apart from the detail. */
+QFrame[style="summary-box"] {
+    background-color: #1D2731;
+    border: 1px solid #435466;
+    border-radius: 3px;
+}
+QFrame[style="summary-box"] QLabel { background: transparent; }
+
+/* Clickable ON / OFF pills that toggle each auto-spending setting. */
+QPushButton[style="pill-on"] {
+    border: 1px solid #5C863F; color: #8FBF6A; background: transparent;
+    padding: 2px 10px; font-weight: 700;
+}
+QPushButton[style="pill-on"]:hover { background: #243024; }
+QPushButton[style="pill-off"] {
+    border: 1px solid #435466; color: #7E8C99; background: transparent;
+    padding: 2px 10px; font-weight: 700;
+}
+QPushButton[style="pill-off"]:hover { background: #28323C; }
+
+/* Collapsible building-category header (arrow + title, no button chrome). */
+QPushButton[style="disclosure"] {
+    border: none; background: transparent; color: #B7C0C6;
+    font-weight: 700; text-align: left; padding: 3px 2px;
+}
+QPushButton[style="disclosure"]:hover { color: #ffffff; }
+
 /*QLabel*/
 QLabel{
     border: none;
