@@ -73,6 +73,14 @@ def run_ui(game: Optional[Game], ui_flags: UiFlags) -> None:
 
     app = QApplication(sys.argv)
 
+    # Use Qt's own (non-native) file/colour/font dialogs everywhere. The native
+    # Windows dialogs can deadlock when opened while the embedded QtWebEngine map
+    # is alive: the platform plugin issues a synchronous Win32 SendMessage that
+    # never returns, freezing the whole app. This bit us opening the "submit
+    # manually" file picker from the modal "waiting for mission result" dialog,
+    # but every native dialog launched over the map is at risk.
+    app.setAttribute(Qt.ApplicationAttribute.AA_DontUseNativeDialogs)
+
     # init the theme and load the stylesheet based on the theme index
     liberation_theme.init()
     with open(

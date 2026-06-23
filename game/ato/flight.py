@@ -83,6 +83,13 @@ class Flight(
         self.custom_name = custom_name
         self.group_id: int = 0
 
+        # Transient (not persisted): when set, the next time this flight
+        # transitions out of WaitingForStart the simulation halts. Used by
+        # the pre-launch mismatch dialog so the user can opt to "halt
+        # fast-forward at this flight's start" when the configured stop
+        # condition targets a state this flight's start type would skip.
+        self.halt_sim_on_spawn = False
+
         self.frequency = frequency
         if self.unit_type.dcs_unit_type.tacan:
             self.tacan = channel
@@ -164,12 +171,16 @@ class Flight(
         # we will need to persist the flight state, but for now keep it out of save
         # compat (it also contains a generator that cannot be pickled).
         del state["state"]
+        # halt_sim_on_spawn is a transient per-mission opt-in; never persist
+        # so that an old save can't carry a stale halt request into a new run.
+        state.pop("halt_sim_on_spawn", None)
         return state
 
     def __setstate__(self, state: dict[str, Any]) -> None:
         state["state"] = Uninitialized(self, state["squadron"].settings)
         if "use_same_loadout_for_all_members" not in state:
             state["use_same_loadout_for_all_members"] = True
+        state.setdefault("halt_sim_on_spawn", False)
         self.__dict__.update(state)
         if isinstance(self.roster, FlightRoster):
             self.roster = FlightMembers.from_roster(self, self.roster)
