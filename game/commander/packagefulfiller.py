@@ -38,6 +38,7 @@ class PackageFulfiller:
         self.coalition = coalition
         self.theater = theater
         self.flight_db = flight_db
+        self.settings = settings
         self.player_missions_asap = settings.auto_ato_player_missions_asap
         self.default_start_type = settings.default_start_type
 
@@ -140,6 +141,7 @@ class PackageFulfiller:
                 list(flight.flight_plan.escorted_waypoints())
             ):
                 threats[EscortType.Sead] = True
+                threats[EscortType.Ewar] = True
         return threats
 
     def can_plan_escort(self, type: EscortType) -> bool:
@@ -155,6 +157,10 @@ class PackageFulfiller:
                     return True
         elif type == EscortType.Refuel:
             return self.air_wing_can_plan(FlightType.REFUELING)
+        elif type == EscortType.Ewar:
+            return self.settings.electronic_warfare_enabled and self.air_wing_can_plan(
+                FlightType.EWAR
+            )
         return False
 
     def plan_mission(

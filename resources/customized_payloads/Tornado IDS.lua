@@ -208,6 +208,47 @@ local unitPayloads = {
 				[1] = 32,
 			},
 		},
+		[6] = {
+			["name"] = "Retribution Jamming",
+			["displayName"] = "Retribution Jamming (pod emulated by Sky-Shadow ECM Pod)",
+			["pylons"] = {
+				[1] = {
+					["CLSID"] = "{8C3F26A2-FA0F-11d5-9190-00A0249B6F00}",
+					["num"] = 1,
+				},
+				[2] = {
+					["CLSID"] = "{EF124821-F9BB-4314-A153-E0E2FE1162C4}",
+					["num"] = 2,
+				},
+				[3] = {
+					["CLSID"] = "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}",
+					["num"] = 3,
+				},
+				[4] = {
+					["CLSID"] = "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}",
+					["num"] = 10,
+				},
+				[5] = {
+					["CLSID"] = "{EF124821-F9BB-4314-A153-E0E2FE1162C4}",
+					["num"] = 11,
+				},
+				[6] = {
+					["CLSID"] = "{8C3F26A2-FA0F-11d5-9190-00A0249B6F00}",
+					["num"] = 12,
+				},
+				[7] = {
+					["CLSID"] = "{B06DD79A-F21E-4EB9-BD9D-AB3844618C93}",
+					["num"] = 4,
+				},
+				[8] = {
+					["CLSID"] = "{B06DD79A-F21E-4EB9-BD9D-AB3844618C93}",
+					["num"] = 9,
+				},
+			},
+			["tasks"] = {
+				[1] = 11,
+			},
+		},
 	},
 	["unitType"] = "Tornado IDS",
 }
