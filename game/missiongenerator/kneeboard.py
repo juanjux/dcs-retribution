@@ -772,6 +772,22 @@ class SeadTaskPage(KneeboardPage):
         if isinstance(self.flight.package.target, TheaterGroundObject):
             yield from self.flight.package.target.strike_targets
 
+    def _waypoint_number_by_position(self) -> Dict[Tuple[float, float], int]:
+        """STPT number of each per-target waypoint, keyed by its position.
+
+        DEAD/SEAD flights get one TARGET_POINT waypoint per target, built at the
+        target's position, so each listed target can show its assigned waypoint
+        number — the same "STPT" the strike task page shows. The number is the
+        index into the flight's waypoint list, matching the flight-plan page.
+        Targets without a matching waypoint (e.g. an old flight plan generated
+        before per-target waypoints existed) simply show a blank STPT.
+        """
+        numbers: Dict[Tuple[float, float], int] = {}
+        for idx, waypoint in enumerate(self.flight.waypoints):
+            if waypoint.waypoint_type == FlightWaypointType.TARGET_POINT:
+                numbers.setdefault((waypoint.position.x, waypoint.position.y), idx)
+        return numbers
+
     @staticmethod
     def alic_for(unit: TheaterUnit) -> str:
         try:
@@ -788,18 +804,30 @@ class SeadTaskPage(KneeboardPage):
         task = "DEAD" if self.flight.flight_type == FlightType.DEAD else "SEAD"
         writer.title(f"{self.flight.callsign} {task} Target Info{custom_name_title}")
 
+        waypoint_numbers = self._waypoint_number_by_position()
+        # Smaller table font + 1-char "#" header keep the full DMS Location
+        # on-page; at size 20 the longest SAM names (e.g. S-300 Big Bird SR)
+        # clipped the coordinates off the right edge.
+        table_font = ImageFont.truetype(
+            "courbd.ttf", 18, layout_engine=ImageFont.Layout.BASIC
+        )
         writer.table(
-            [self.target_info_row(t) for t in self.target_units],
-            headers=["Description", "ALIC", "Location"],
+            [self.target_info_row(t, waypoint_numbers) for t in self.target_units],
+            headers=["#", "Description", "ALIC", "Location"],
+            font=table_font,
         )
 
         writer.write(path)
 
-    def target_info_row(self, unit: TheaterUnit) -> List[str]:
+    def target_info_row(
+        self, unit: TheaterUnit, waypoint_numbers: Dict[Tuple[float, float], int]
+    ) -> List[str]:
         ll = unit.position.latlng()
         unit_type = unit.type
         name = unit.name if unit_type is None else unit_type.name
+        number = waypoint_numbers.get((unit.position.x, unit.position.y))
         return [
+            "" if number is None else str(number),
             name,
             self.alic_for(unit),
             ll.format_dms(include_decimal_seconds=True),
