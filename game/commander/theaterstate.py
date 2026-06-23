@@ -3,10 +3,12 @@ from __future__ import annotations
 import dataclasses
 import itertools
 import math
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional, TYPE_CHECKING, Union, Dict
+
+from shapely.geometry import LineString, Point as ShapelyPoint
 
 from game.commander.battlepositions import BattlePositions
 from game.commander.objectivefinder import ObjectiveFinder
@@ -30,9 +32,11 @@ from game.theater.theatergroundobject import (
     VehicleGroupGroundObject,
 )
 from game.threatzones import ThreatZones
+from game.utils import nautical_miles
 
 if TYPE_CHECKING:
     from game import Game
+    from game.ato import Flight
     from game.coalition import Coalition
     from game.transfers import Convoy, CargoShip
 
@@ -61,6 +65,14 @@ class TheaterState(WorldState["TheaterState"]):
     enemy_air_defenses: list[IadsGroundObject]
     threatening_air_defenses: list[Union[IadsGroundObject, NavalGroundObject]]
     detecting_air_defenses: list[Union[IadsGroundObject, NavalGroundObject]]
+    # SAMs a planned DEAD can't actually reach (shielded behind another live
+    # radar SAM). Kept so we neither re-task an unreachable DEAD every planning
+    # loop nor optimistically clear the SAM for dependent strike gating.
+    unreachable_air_defenses: set[IadsGroundObject]
+    # Immutable turn-start radar-SAM rings (center + radius m), ground truth.
+    # Reachability is judged against this, never the within-turn list that
+    # earlier optimistic DEAD clears have already pruned.
+    initial_radar_sam_rings: list[tuple[TheaterGroundObject, ShapelyPoint, float]]
     enemy_convoys: list[Convoy]
     enemy_shipping: list[CargoShip]
     enemy_ships: list[NavalGroundObject]
@@ -97,6 +109,35 @@ class TheaterState(WorldState["TheaterState"]):
             self.detecting_air_defenses.remove(target)
         self.enemy_ships.remove(target)
         self._rebuild_threat_zones()
+
+    def dead_can_reach(
+        self, target: IadsGroundObject, flights: Iterable[Flight]
+    ) -> bool:
+        """Whether a DEAD package's route reaches ``target`` un-shielded.
+
+        Returns ``False`` if any of the package's routed waypoints pass through
+        another live radar SAM's ring (the target's own ring is excluded). Such
+        a SAM sits behind a belt no SEAD reaches, so the DEAD would be turned
+        around by threat-reaction ROE before it could employ -- meaning we must
+        not optimistically treat the target as destroyed (which would clear the
+        threat gate and task strikers straight into the live belt).
+        """
+        rings = [
+            (center, radius)
+            for tgo, center, radius in self.initial_radar_sam_rings
+            if tgo is not target
+        ]
+        if not rings:
+            return True
+        for flight in flights:
+            waypoints = list(flight.flight_plan.waypoints)
+            if len(waypoints) < 2:
+                continue
+            route = LineString([(w.position.x, w.position.y) for w in waypoints])
+            for center, radius in rings:
+                if route.distance(center) < radius:
+                    return False
+        return True
 
     def has_battle_position(self, target: VehicleGroupGroundObject) -> bool:
         return target in self.enemy_battle_positions[target.control_point]
@@ -146,6 +187,11 @@ class TheaterState(WorldState["TheaterState"]):
             # IADS threats so that DegradeIads will consider it a threat later.
             threatening_air_defenses=self.threatening_air_defenses,
             detecting_air_defenses=self.detecting_air_defenses,
+            # Shared by reference (persistent), like the threat lists above: an
+            # unreachable verdict must be visible to every branch this turn.
+            unreachable_air_defenses=self.unreachable_air_defenses,
+            # Immutable turn-start snapshot; shared by reference is safe.
+            initial_radar_sam_rings=self.initial_radar_sam_rings,
             vulnerable_control_points=self.vulnerable_control_points,
             control_point_priority_queue=self.control_point_priority_queue,
             priority_cp=self.priority_cp,
@@ -190,6 +236,17 @@ class TheaterState(WorldState["TheaterState"]):
         aewc_targets = [cp for cp in finder.friendly_control_points() if cp.is_carrier]
         aewc_targets.append(finder.farthest_friendly_control_point())
 
+        enemy_air_defenses = list(finder.enemy_air_defenses())
+        enemy_ships = list(finder.enemy_ships())
+        # Snapshot the real (turn-start) radar-SAM rings once. Reachability of a
+        # DEAD against a deep SAM is judged against this fixed picture so that
+        # earlier optimistic kills this turn don't make a shielded SAM look
+        # reachable.
+        initial_radar_sam_rings = ThreatZones.radar_sam_rings(
+            itertools.chain(enemy_air_defenses, enemy_ships),
+            nautical_miles(game.settings.max_threat_range),
+        )
+
         return TheaterState(
             context=context,
             barcaps_needed={
@@ -202,12 +259,14 @@ class TheaterState(WorldState["TheaterState"]):
             aewc_targets=list(aewc_targets),
             refueling_targets=[finder.closest_friendly_control_point()],
             recovery_targets={cp: 0 for cp in finder.friendly_naval_control_points()},
-            enemy_air_defenses=list(finder.enemy_air_defenses()),
+            enemy_air_defenses=enemy_air_defenses,
             threatening_air_defenses=[],
             detecting_air_defenses=[],
+            unreachable_air_defenses=set(),
+            initial_radar_sam_rings=initial_radar_sam_rings,
             enemy_convoys=list(finder.convoys()),
             enemy_shipping=list(finder.cargo_ships()),
-            enemy_ships=list(finder.enemy_ships()),
+            enemy_ships=enemy_ships,
             enemy_battle_positions=battle_postitions,
             oca_targets=list(
                 finder.oca_targets(
