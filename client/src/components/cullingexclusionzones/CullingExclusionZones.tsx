@@ -28,6 +28,12 @@ const CullingExclusionCircles = (props: CullingExclusionCirclesProps) => {
   );
 };
 
+// Raw-layer variant (no LayersControl.Overlay) for the custom map layers panel.
+export function CullingExclusionLayer() {
+  const data = useAppSelector(selectUnculledZones).zones;
+  return <CullingExclusionCircles zones={data} />;
+}
+
 export default function CullingExclusionZones() {
   const data = useAppSelector(selectUnculledZones).zones;
 

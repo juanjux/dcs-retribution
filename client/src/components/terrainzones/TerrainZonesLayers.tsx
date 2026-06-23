@@ -28,6 +28,30 @@ function TerrainZoneLayer(props: TerrainZoneLayerProps) {
   );
 }
 
+// Self-contained, raw-layer variants (no LayersControl.Overlay) so the custom
+// map layers panel can render and toggle them directly.
+export function InclusionZonesLayer() {
+  const zones = useAppSelector(selectMapZones).mapZones;
+  if (!zones) return null;
+  return (
+    <TerrainZoneLayer zones={zones.inclusion} color="#969696" fillColor="#4b4b4b" />
+  );
+}
+
+export function ExclusionZonesLayer() {
+  const zones = useAppSelector(selectMapZones).mapZones;
+  if (!zones) return null;
+  return (
+    <TerrainZoneLayer zones={zones.exclusion} color="#969696" fillColor="#303030" />
+  );
+}
+
+export function SeaZonesLayer() {
+  const zones = useAppSelector(selectMapZones).mapZones;
+  if (!zones) return null;
+  return <TerrainZoneLayer zones={zones.sea} color="#344455" fillColor="#344455" />;
+}
+
 export default function TerrainZonesLayers() {
   const zones = useAppSelector(selectMapZones).mapZones;
   var exclusion = <></>;
