@@ -260,7 +260,10 @@ class Squadron:
 
     def return_all_pilots_and_aircraft(self) -> None:
         self.available_pilots = list(self.active_pilots)
-        self.untasked_aircraft = self.owned_aircraft
+        # Aircraft already sold this turn (negative pending) must not return to the
+        # taskable pool; otherwise a turn re-initialisation would let the same units
+        # be sold (and flown) again, refunding their price every time.
+        self.untasked_aircraft = self.owned_aircraft + min(0, self.pending_deliveries)
 
     @staticmethod
     def send_on_leave(pilot: Pilot) -> None:

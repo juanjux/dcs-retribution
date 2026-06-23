@@ -14,8 +14,11 @@ role: Stealth Air-Superiority Fighter
 variants:
   Su-57 Felon: {}
 tasks:
+  DEAD: 560
   BARCAP: 560
   Escort: 560
   Fighter sweep: 560
   Intercept: 560
   TARCAP: 560
+secondary_tasks:
+  - DEAD

@@ -21,3 +21,5 @@ tasks:
   OCA/Aircraft: 370
   OCA/Runway: 630
   Strike: 640
+secondary_tasks:
+  - DEAD

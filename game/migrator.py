@@ -154,7 +154,7 @@ class Migrator:
                     if f.squadron == s:
                         count += f.count
                 s.return_all_pilots_and_aircraft()
-                new_claim = min(count, s.owned_aircraft)
+                new_claim = min(count, s.untasked_aircraft)
                 s.claim_inventory(new_claim)
                 for i in range(new_claim):
                     s.claim_available_pilot()
@@ -186,8 +186,17 @@ class Migrator:
                     s.owned_aircraft < 0
                     or s.location.unclaimed_parking(parking_type) < 0
                 ):
+                    # unclaimed_parking + owned is the capacity available to this
+                    # squadron alone; clamp an overfull squadron down to it. The
+                    # min() guards the negative-owned case: a negative count must
+                    # collapse to 0, not balloon up to the whole airfield.
                     s.owned_aircraft = max(
-                        0, s.location.unclaimed_parking(parking_type) + s.owned_aircraft
+                        0,
+                        min(
+                            s.owned_aircraft,
+                            s.location.unclaimed_parking(parking_type)
+                            + s.owned_aircraft,
+                        ),
                     )
 
                 if self.is_liberation:

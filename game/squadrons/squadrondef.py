@@ -105,7 +105,8 @@ class SquadronDef:
             aircraft=unit_type,
             livery=data.get("livery"),
             livery_set=data.get("livery_set", []),
-            auto_assignable_mission_types=set(unit_type.iter_task_capabilities()),
+            auto_assignable_mission_types=set(unit_type.iter_task_capabilities())
+            - unit_type.secondary_tasks,
             radio_presets=radio_presets,
             operating_bases=OperatingBases.from_yaml(unit_type, data.get("bases", {})),
             female_pilot_percentage=female_pilot_percentage,

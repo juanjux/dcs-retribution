@@ -637,10 +637,15 @@ class GenericCarrierGenerator(GroundObjectGenerator):
                     tacan = self.tacan_registry.alloc_for_band(
                         TacanBand.X, TacanUsage.TransmitReceive
                     )
+                    # Persist back so subsequent turns reuse the same channel
+                    # and the UI (base dialog, tooltip) reflects the value
+                    # instead of "AUTO".
+                    self.control_point.tacan = tacan
                 else:
                     tacan = self.control_point.tacan
                 if self.control_point.tcn_name is None:
                     tacan_callsign = self.tacan_callsign()
+                    self.control_point.tcn_name = tacan_callsign
                 else:
                     tacan_callsign = self.control_point.tcn_name
                 link4 = None
@@ -1410,21 +1415,46 @@ class PortableTacanGenerator:
         assigner = RunwayAssigner(self.game.conditions)
         runway_data = assigner.get_preferred_runway(self.game.theater, airport)
         if runway_data.tacan is not None:
+            # Built-in TACAN from the terrain. Reflect it on the airfield so the
+            # base dialog, map tooltip and other UI surfaces show it just like
+            # they do for portable beacons; no portable beacon needs to be
+            # placed.
+            self.airfield.tacan = runway_data.tacan
+            self.airfield.tcn_name = runway_data.tacan_callsign
             return
 
-        # Allocate a TACAN channel from the X band.
-        try:
-            tacan = self.tacan_registry.alloc_for_band(
-                TacanBand.X, TacanUsage.TransmitReceive
-            )
-        except OutOfTacanChannelsError:
-            logging.warning(
-                "No TACAN channels available for portable beacon at %s",
-                self.airfield.name,
-            )
+        # No built-in beacon. If the portable-TACAN feature is disabled, leave
+        # this airfield without a TACAN at all -- don't allocate or place
+        # anything.
+        if not self.game.settings.generate_portable_tacans:
             return
 
-        callsign = self._derive_callsign(self.airfield.name)
+        # Re-use a previously assigned TACAN channel and callsign for this
+        # airfield if it has one (set by the player from the base dialog, or
+        # auto-allocated on an earlier turn). Otherwise allocate fresh and
+        # persist the choice on the airfield so it stays stable across turns
+        # and is visible in tooltips/briefings even before the next mission
+        # generation.
+        if self.airfield.tacan is not None:
+            tacan = self.airfield.tacan
+        else:
+            try:
+                tacan = self.tacan_registry.alloc_for_band(
+                    TacanBand.X, TacanUsage.TransmitReceive
+                )
+            except OutOfTacanChannelsError:
+                logging.warning(
+                    "No TACAN channels available for portable beacon at %s",
+                    self.airfield.name,
+                )
+                return
+            self.airfield.tacan = tacan
+
+        if self.airfield.tcn_name is not None:
+            callsign = self.airfield.tcn_name
+        else:
+            callsign = self._derive_callsign(self.airfield.name)
+            self.airfield.tcn_name = callsign
 
         # Place the portable TACAN beacon near the airport reference point.
         position = airport.position.point_from_heading(
@@ -1432,7 +1462,7 @@ class PortableTacanGenerator:
         )
         group = self.mission.vehicle_group(
             country=self.country,
-            name=f"{self.airfield.name} TACAN",
+            name=f"{self.airfield.name} TACAN {tacan} ({callsign})",
             _type=VehicleFortification.TACAN_beacon,
             position=position,
             group_size=1,
@@ -1615,13 +1645,11 @@ class TgoGenerator:
                     )
                 generator.generate()
 
-            # Place portable TACAN beacons at blue airfields without built-in
-            # TACAN, if the setting is enabled.
-            if (
-                self.game.settings.generate_portable_tacans
-                and isinstance(cp, Airfield)
-                and cp.captured.is_blue
-            ):
+            # Reflect built-in airfield TACAN (and, if the setting is on,
+            # place portable beacons at airfields without a built-in TACAN) so
+            # the UI surfaces (base dialog, map tooltip, briefing) can show
+            # the channel everywhere.
+            if isinstance(cp, Airfield) and cp.captured.is_blue:
                 portable_tacan_gen = PortableTacanGenerator(
                     self.m,
                     self.game,

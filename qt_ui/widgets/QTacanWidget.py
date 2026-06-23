@@ -1,6 +1,7 @@
 from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
+    QMessageBox,
     QPushButton,
     QWidget,
 )
@@ -39,10 +40,13 @@ class QTacanWidget(QWidget):
         self.reset_tacan_btn.clicked.connect(self.reset_tacan)
 
     def _get_label_text(self) -> str:
-        c = "AUTO" if self.ct.tacan is None else self.ct.tacan
+        if self.ct.tacan is None:
+            return "<b>TACAN: AUTO</b>"
         cs = self.ct.tcn_name
         cs = "" if cs is None else f" ({cs})"
-        return f"<b>TACAN: {c}{cs}</b>"
+        is_auto = getattr(self.ct, "tacan_is_auto", False)
+        prefix = "AUTO " if is_auto else ""
+        return f"<b>TACAN: {prefix}{self.ct.tacan}{cs}</b>"
 
     def open_tacan_dialog(self) -> None:
         self.tacan_dialog = QTacanDialog(self, self.ct)
@@ -53,11 +57,36 @@ class QTacanWidget(QWidget):
         channel = self.tacan_dialog.tacan_input.value()
         band = self.tacan_dialog.band_input.currentText()
         band = TacanBand.X if band == "X" else TacanBand.Y
+        candidate = TacanChannel(number=channel, band=band)
+
+        # Warn before letting the user double-book a TACAN that is already in
+        # use elsewhere (another base/carrier, or a flight). Skip the warning
+        # when the user "re-saves" the same channel this container already
+        # owns — that's not a new collision.
+        if candidate != self.ct.tacan and candidate in self.gm.allocated_tacan:
+            reply = QMessageBox.question(
+                self,
+                "TACAN already in use",
+                (
+                    f"TACAN channel {candidate} is already assigned elsewhere "
+                    "in this mission (another base, carrier or flight). "
+                    "Assigning it here will double-book the channel.\n\n"
+                    "Use it anyway?"
+                ),
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
+            )
+            if reply != QMessageBox.StandardButton.Yes:
+                return
+
         self._try_remove()
-        self.ct.tacan = TacanChannel(number=channel, band=band)
+        self.ct.tacan = candidate
         self.gm.allocated_tacan.append(self.ct.tacan)
         if cs := self.tacan_dialog.callsign_input.text():
             self.ct.tcn_name = cs.upper()
+        # User-chosen channel: lock it in so the auto-allocator reuses it and
+        # the UI no longer labels it 'AUTO'.
+        self.ct.tacan_is_auto = False
         self.channel.setText(self._get_label_text())
         self.check_channel()
 
@@ -65,6 +94,9 @@ class QTacanWidget(QWidget):
         self._try_remove()
         self.ct.tacan = None
         self.ct.tcn_name = None
+        # Back to auto: the next mission generation will allocate a fresh
+        # channel and the dialog will read 'AUTO' or 'AUTO (94X)' afterwards.
+        self.ct.tacan_is_auto = True
         self.channel.setText(self._get_label_text())
         self._reset_color_and_tooltip()
 

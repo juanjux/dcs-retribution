@@ -102,7 +102,12 @@ function PrimaryMarker(props: PrimaryMarkerProps) {
             true
           )
         : ReactDOMServer.renderToString(
-            <LocationTooltipText name={props.controlPoint.name} />
+            <LocationTooltipText
+              name={props.controlPoint.name}
+              tacan={props.controlPoint.tacan}
+              atcFrequency={props.controlPoint.atc_frequency}
+              units={props.controlPoint.units}
+            />
           )
     );
   });

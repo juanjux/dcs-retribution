@@ -265,6 +265,51 @@ local unitPayloads = {
 				[1] = 11,
 			},
 		},
+		[7] = {
+			["displayName"] = "Retribution DEAD",
+			["name"] = "Retribution DEAD",
+			["pylons"] = {
+				[1] = {
+					["CLSID"] = "{6D21ECEA-F85B-4E8D-9D51-31DC9B8AA4EF}",
+					["num"] = 6,
+				},
+				[2] = {
+					["CLSID"] = "{444BA8AE-82A7-4345-842E-76154EFCCA46}",
+					["num"] = 3,
+				},
+				[3] = {
+					["CLSID"] = "{444BA8AE-82A7-4345-842E-76154EFCCA46}",
+					["num"] = 8,
+				},
+				[4] = {
+					["CLSID"] = "{F376DBEE-4CAE-41BA-ADD9-B2910AC95DEC}",
+					["num"] = 4,
+				},
+				[5] = {
+					["CLSID"] = "{F376DBEE-4CAE-41BA-ADD9-B2910AC95DEC}",
+					["num"] = 7,
+				},
+				[6] = {
+					["CLSID"] = "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}",
+					["num"] = 2,
+				},
+				[7] = {
+					["CLSID"] = "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}",
+					["num"] = 9,
+				},
+				[8] = {
+					["CLSID"] = "{C8E06185-7CD6-4C90-959F-044679E90751}",
+					["num"] = 1,
+				},
+				[9] = {
+					["CLSID"] = "{C8E06185-7CD6-4C90-959F-044679E90751}",
+					["num"] = 10,
+				},
+			},
+			["tasks"] = {
+				[1] = 31,
+			},
+		},
 	},
 	["unitType"] = "F-16A",
 }
