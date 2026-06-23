@@ -464,6 +464,8 @@ class QTopPanel(QFrame):
 
         panel = MissionProgressPanel()
         self._mp_panel = panel
+        if self.game is not None:
+            panel.set_doctrine(self.game.settings.ignore_non_combat_air_losses)
 
         if self._mp_splitter is not None and self._mp_map is not None:
             self._mp_map_index = self._mp_splitter.indexOf(self._mp_map)
@@ -477,6 +479,11 @@ class QTopPanel(QFrame):
             # GPU acceleration stays on (software GL makes the map unusable).
             self._mp_map.setParent(None)
             self._mp_map.hide()
+            # Reparenting/hiding does NOT kill the QtWebEngine renderer process, and
+            # the live renderer's desktop-GL compositing is the peer the GUI thread's
+            # wglSwapLayerBuffers swap deadlocks on. Discard it so the renderer stops
+            # while the panel is up (it reloads when the map is shown again).
+            self._mp_map.discard_renderer()
             self._mp_splitter.insertWidget(self._mp_map_index, panel)
             # Hide the info panel too so the mission panel owns the whole splitter
             # column (no leftover strip, no live splitter handle to drag it away).
@@ -698,6 +705,9 @@ class QTopPanel(QFrame):
             self._mp_info_panel.setVisible(True)
             self._mp_info_panel = None
         if getattr(self, "_mp_map", None) is not None:
+            # Reactivate the renderer we discarded in _begin_mission_panel (reloads
+            # the map when it becomes visible again).
+            self._mp_map.restore_renderer()
             # Re-attach the detached map into its old splitter slot (the panel was
             # already removed above, so the index lines up with the original layout).
             # Show it BEFORE setSizes, else the still-hidden widget gets 0px.

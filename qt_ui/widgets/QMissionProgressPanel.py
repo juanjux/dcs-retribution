@@ -270,6 +270,13 @@ class MissionProgressPanel(QFrame):
             grid.addWidget(value_lbl, 2, col)
         return w
 
+    def set_doctrine(self, on: bool) -> None:
+        """Show/hide the crash-doctrine banner from the campaign setting, set at panel
+        creation so it does not depend on the first debriefing poll arriving (which may
+        be ~15s away or lack a game reference)."""
+        self._doctrine_on = bool(on)
+        self.doctrine_note.setVisible(self._doctrine_on)
+
     # ---- main row -------------------------------------------------------- #
     def _build_main_row(self) -> QWidget:
         row = QWidget()
@@ -283,9 +290,13 @@ class MissionProgressPanel(QFrame):
         left_lay.setSpacing(16)
         left_lay.addWidget(self._build_exchange_card())
         self.doctrine_note = _label(
-            "As configured, only weapon or SAM losses count", "mip-stat-label"
+            "Campaign doctrine: crash / non-combat losses are NOT counted — "
+            "only weapon & SAM kills deplete squadrons.",
+            "mip-doctrine-note",
         )
+        self.doctrine_note.setWordWrap(True)
         self.doctrine_note.setVisible(False)
+        self._doctrine_on = False
         left_lay.addWidget(self.doctrine_note)
         left_lay.addWidget(self._build_scoreboard(), stretch=1)
         lay.addWidget(left, stretch=3)
@@ -584,7 +595,9 @@ class MissionProgressPanel(QFrame):
         doctrine_on = bool(
             getattr(settings, "ignore_non_combat_air_losses", False)
         ) and hasattr(debriefing, "is_non_combat_loss")
-        self.doctrine_note.setVisible(doctrine_on)
+        # Banner visibility is driven by the campaign setting (set_doctrine, at panel
+        # creation); the debriefing detection only ever adds to it, never hides it.
+        self.doctrine_note.setVisible(self._doctrine_on or doctrine_on)
         if doctrine_on:
             blue_counts = replace(
                 blue_counts,
@@ -709,12 +722,12 @@ class MissionProgressPanel(QFrame):
             # without spamming duplicate lines.
             groups: dict[str, int] = {}
             for it in new_items:
-                name = (
+                resolved = (
                     self._unit_type_name(getattr(it, "unit_type", None))
                     if typed
-                    else None
-                ) or label.capitalize()
-                row = f"{name} ({label})" if typed else name
+                    else self._loss_type_name(it)
+                )
+                row = f"{resolved} ({label})" if resolved else label.capitalize()
                 killer = self._format_killer(kill_info.get(id(it)), "destroyed by")
                 if killer:
                     row = f"{row} — {killer}"
@@ -733,6 +746,29 @@ class MissionProgressPanel(QFrame):
                 return str(value)
         return str(unit_type)
 
+    def _loss_type_name(self, it) -> Optional[str]:
+        # Dig the real unit type out of the various loss-object shapes so ground objects,
+        # SAM components and ships show their type instead of a generic "Ground object".
+        tu = getattr(it, "theater_unit", None)
+        if tu is not None:
+            name = self._unit_type_name(getattr(tu, "unit_type", None))
+            if name:
+                return name
+            dcs_type = getattr(tu, "type", None)
+            return (
+                getattr(dcs_type, "name", None)
+                or getattr(dcs_type, "id", None)
+                or getattr(tu, "name", None)
+            )
+        gu = getattr(it, "ground_unit", None)
+        if gu is not None:
+            dcs_type = getattr(gu, "type", None)
+            return getattr(dcs_type, "name", None) or getattr(gu, "name", None)
+        units = getattr(it, "units", None)
+        if isinstance(units, dict) and units:
+            return ", ".join(self._unit_type_name(u) or str(u) for u in units)
+        return self._unit_type_name(getattr(it, "unit_type", None))
+
     def _emit_air_loss(
         self, loss, debriefing, side: str, killed_verb: str, now: str
     ) -> None:
@@ -747,6 +783,9 @@ class MissionProgressPanel(QFrame):
             non_combat(loss) if non_combat else (self._format_killer(detail) is None)
         )
         if crashed:
+            settings = getattr(getattr(debriefing, "game", None), "settings", None)
+            if getattr(settings, "ignore_non_combat_air_losses", False):
+                base = f"{base} — not counted"
             self.prepend_event(ICON_AIR, base, "CRASHED", side, now)
         else:
             killer = self._format_killer(detail)

@@ -710,7 +710,6 @@ QCalendarWidget QTableView{
     visibility: hidden;
 }
 
-
 /* ===== Mission-in-Progress panel (embedded waiting UI) ===== */
 /* =====================================================================
    Mission-in-Progress command panel — QSS
@@ -771,6 +770,15 @@ QLabel[style="mip-stat-label"] {
     color: #6F7F8B;
     font-size: 9px;
     text-transform: uppercase;
+}
+QLabel[style="mip-doctrine-note"] {
+    color: #E0B84A;
+    font-size: 12px;
+    font-weight: bold;
+    background: #2A2410;
+    border: 1px solid #6E5A1E;
+    border-radius: 4px;
+    padding: 6px 10px;
 }
 QLabel[style="mip-stat-value"] {
     color: #B7C0C6;

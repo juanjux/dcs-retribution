@@ -319,5 +319,34 @@ class ThreatZones:
         )
 
     @staticmethod
+    def radar_sam_rings(
+        air_defenses: Iterable[TheaterGroundObject],
+        max_threat_range: Distance,
+    ) -> list[tuple[TheaterGroundObject, ShapelyPoint, float]]:
+        """Per-SAM radar threat circles (center + radius in meters).
+
+        Mirrors the radar-SAM range logic in :meth:`for_threats` (same
+        ``radar_only`` range, >3 NM floor, and ``max_threat_range`` cap) but
+        keeps each site separate instead of unioning them, so a caller can
+        reason about reachability while *excluding* a specific target SAM (which
+        a unioned ``radar_sam_threats`` polygon cannot do).
+        """
+        rings: list[tuple[TheaterGroundObject, ShapelyPoint, float]] = []
+        for tgo in air_defenses:
+            radius = meters(0)
+            for group in tgo.groups:
+                group_range = min(
+                    group.max_threat_range(radar_only=True), max_threat_range
+                )
+                if group_range > radius:
+                    radius = group_range
+            # Any system with a shorter range than this is not worth avoiding.
+            if radius > nautical_miles(3):
+                rings.append(
+                    (tgo, ShapelyPoint(tgo.position.x, tgo.position.y), radius.meters)
+                )
+        return rings
+
+    @staticmethod
     def dcs_to_shapely_point(point: DcsPoint) -> ShapelyPoint:
         return ShapelyPoint(point.x, point.y)

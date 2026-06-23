@@ -111,8 +111,8 @@ class FinancesLayout(QGridLayout):
         self.addWidget(QHorizontalSeparationLine(), next(self.row), 0, 1, 3)
 
 
-#: Automated-spending categories shown in the dialog, in display order. Each is
-#: (last_turn_expenses key, label, the settings flag that toggles it for blue).
+#: Auto-spend categories: (last_turn_expenses key, label, settings flag). A row is
+#: shown only if its flag exists in the running build.
 _EXPENSE_CATEGORIES = [
     ("front_line", "Front line reinforcement", "automate_front_line_reinforcements"),
     ("aircraft", "Aircraft purchases", "automate_aircraft_reinforcements"),
@@ -353,6 +353,9 @@ class QFinancesMenu(QDialog):
             row += 1
 
         for key, label, flag in _EXPENSE_CATEGORIES:
+            # Only show categories whose automation exists in this build.
+            if not hasattr(type(settings), flag):
+                continue
             enabled = bool(getattr(settings, flag, False))
             grid.addWidget(_label(label), row, 0)
 

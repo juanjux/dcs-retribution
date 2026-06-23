@@ -24,9 +24,7 @@ class LossGrid(QGridLayout):
     def __init__(self, debriefing: Debriefing, player: Player) -> None:
         super().__init__()
 
-        self.add_loss_rows(
-            debriefing.air_losses.by_type(player), lambda u: u.display_name
-        )
+        self.add_air_loss_rows(debriefing, player)
         self.add_loss_rows(
             debriefing.front_line_losses_by_type(player), lambda u: str(u)
         )
@@ -55,6 +53,41 @@ class LossGrid(QGridLayout):
                 name = unit_type.id
             self.addWidget(QLabel(name), row, 0)
             self.addWidget(QLabel(str(count)), row, 1)
+
+    def add_air_loss_rows(self, debriefing: Debriefing, player: Player) -> None:
+        # Air losses, flagging how many didn't count when the "crashes don't
+        # count" doctrine is on, so the debrief matches what the campaign applied.
+        doctrine_on = bool(
+            getattr(debriefing.game.settings, "ignore_non_combat_air_losses", False)
+        )
+        losses = (
+            debriefing.air_losses.player
+            if player.is_blue
+            else debriefing.air_losses.enemy
+        )
+        not_counted: Dict[object, int] = {}
+        if doctrine_on:
+            for loss in losses:
+                if debriefing.is_non_combat_loss(loss):
+                    unit_type = loss.flight.unit_type
+                    not_counted[unit_type] = not_counted.get(unit_type, 0) + 1
+        for unit_type, count in debriefing.air_losses.by_type(player).items():
+            row = self.rowCount()
+            try:
+                name = unit_type.display_name
+            except AttributeError:
+                name = unit_type.id
+            self.addWidget(QLabel(name), row, 0)
+            self.addWidget(QLabel(str(count)), row, 1)
+            nc = not_counted.get(unit_type, 0)
+            if nc:
+                self.addWidget(
+                    QLabel(
+                        f"({nc} not counted because of crashed-do-not-count setting)"
+                    ),
+                    row,
+                    2,
+                )
 
 
 class ScrollingCasualtyReportContainer(QGroupBox):

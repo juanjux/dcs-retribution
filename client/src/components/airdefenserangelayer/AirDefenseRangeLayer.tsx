@@ -7,7 +7,11 @@ import {
   setHoveredEmitter,
 } from "../../api/mapSlice";
 import { useAppDispatch, useAppSelector } from "../../app/hooks";
-import { LatLng } from "../../api/liberationApi";
+import {
+  LatLng,
+  useOpenNewTgoPackageDialogMutation,
+  useOpenTgoInfoDialogMutation,
+} from "../../api/liberationApi";
 import { Fragment } from "react";
 import { Circle, CircleMarker, LayerGroup, Tooltip } from "react-leaflet";
 
@@ -20,6 +24,11 @@ interface RangeCirclesProps {
   detection_ranges: number[];
   blue: boolean;
   detection?: boolean;
+  // When set, clicking the ring opens the emitter's info dialog (same as
+  // clicking its map icon). Lets you reach a SAM site whose icon is buried
+  // under another. Off for carrier/LHA rings, whose emitterId is a
+  // control-point id rather than a TGO id.
+  selectable?: boolean;
 }
 
 export function colorFor(blue: boolean, detection: boolean) {
@@ -62,11 +71,24 @@ const RangeCircles = (props: RangeCirclesProps) => {
     (state) => highlighted && selectHoveredEmitterSource(state) === "ring",
   );
 
+  const [openTgoInfoDialog] = useOpenTgoInfoDialogMutation();
+  const [openNewPackageDialog] = useOpenNewTgoPackageDialogMutation();
+
   const hover = {
     mouseover: () =>
       dispatch(setHoveredEmitter({ id: props.emitterId, source: "ring" })),
     mouseout: () => dispatch(setHoveredEmitter(null)),
   };
+  // The ring mirrors the emitter icon's clicks, so you can reach a site whose
+  // icon is buried under another: left-click opens its info dialog, right-click
+  // starts a new package against it.
+  const ringHandlers = props.selectable
+    ? {
+        ...hover,
+        click: () => openTgoInfoDialog({ tgoId: props.emitterId }),
+        contextmenu: () => openNewPackageDialog({ tgoId: props.emitterId }),
+      }
+    : hover;
 
   return (
     <>
@@ -99,7 +121,7 @@ const RangeCircles = (props: RangeCirclesProps) => {
             opacity={0}
             weight={18}
             className="air-defense-ring-hit"
-            eventHandlers={hover}
+            eventHandlers={ringHandlers}
           >
             <Tooltip sticky className="tooltip-delayed">
               <b>{props.name}</b>
@@ -157,6 +179,7 @@ export const AirDefenseRangeLayer = (props: AirDefenseRangeLayerProps) => {
             position={tgo.position}
             threat_ranges={tgo.threat_ranges}
             detection_ranges={tgo.detection_ranges}
+            selectable
             {...props}
           />
         );

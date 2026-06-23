@@ -14,6 +14,19 @@ destroyed_objects_positions = {} -- will be added via S_EVENT_DEAD event
 mission_ended = false
 dirty_state = false -- Track if state has changed and needs writing
 
+-- Player-despawn loss guard (414th): a player dropping to spectator — or the
+-- mission ending with players still airborne — makes DCS fire S_EVENT_CRASH/DEAD
+-- for that aircraft, which would otherwise be counted as a combat loss and attrit
+-- the airframe even though the pilot survived (2026-06-20: GERBIL F-14s recorded
+-- lost while alive at mission end). We mark a unit when its player LEAVES the seat
+-- and suppress the despawn crash/dead/lost that immediately follows. A real
+-- shootdown fires the crash/dead while the player is still in the seat (BEFORE the
+-- leave), so it is still recorded. Ejections are tracked separately and NEVER
+-- suppressed — an ejection is a real loss of the airframe.
+player_left_units = {} -- unit name -> mission time of S_EVENT_PLAYER_LEAVE_UNIT
+ejected_units = {}     -- unit name -> true; ejected = real loss, never suppress
+PLAYER_LEAVE_GRACE_S = 5 -- a crash within this long after a leave = the despawn
+
 local function ends_with(str, ending)
    return ending == "" or str:sub(-#ending) == ending
 end
@@ -170,15 +183,48 @@ write_state_error_handling = function()
 end
 
 activeWeapons = {}
-local function onEvent(event)
-    if event.id == world.event.S_EVENT_CRASH and event.initiator then
-        crash_events[#crash_events + 1] = event.initiator.getName(event.initiator)
-        dirty_state = true
+
+-- True if `name` is a player jet that just LEFT the seat (and did not eject) — i.e.
+-- this crash/dead/lost is the despawn after the player went to spectator or the
+-- mission ended, not a kill. The mark is NOT consumed: a single despawn can fire
+-- CRASH *and* DEAD *and* UNIT_LOST for the same unit, and all three must be
+-- suppressed, so we gate purely on the time window (a leave+re-occupy+real-loss
+-- inside PLAYER_LEAVE_GRACE_S seconds is not physically possible).
+local function is_player_despawn(name)
+    if name == nil or ejected_units[name] then
+        return false
     end
-   
+    local left_at = player_left_units[name]
+    return left_at ~= nil and (timer.getTime() - left_at) <= PLAYER_LEAVE_GRACE_S
+end
+
+local function onEvent(event)
+    -- Track player seat-leaves and ejections first so the loss handlers below can
+    -- tell a despawn (player left, survived) from a real shootdown.
+    if event.id == world.event.S_EVENT_EJECTION and event.initiator
+       and event.initiator.getName then
+        ejected_units[event.initiator.getName(event.initiator)] = true
+    end
+
+    if event.id == world.event.S_EVENT_PLAYER_LEAVE_UNIT and event.initiator
+       and event.initiator.getName then
+        player_left_units[event.initiator.getName(event.initiator)] = timer.getTime()
+    end
+
+    if event.id == world.event.S_EVENT_CRASH and event.initiator then
+        local name = event.initiator.getName(event.initiator)
+        if not is_player_despawn(name) then
+            crash_events[#crash_events + 1] = name
+            dirty_state = true
+        end
+    end
+
     if event.id == world.event.S_EVENT_UNIT_LOST and event.initiator then
-        unit_lost_events[#unit_lost_events + 1] = event.initiator.getName(event.initiator)
-        dirty_state = true
+        local name = event.initiator.getName(event.initiator)
+        if not is_player_despawn(name) then
+            unit_lost_events[#unit_lost_events + 1] = name
+            dirty_state = true
+        end
     end
 	
 	if event.id == world.event.S_EVENT_KILL and event.target then
@@ -203,21 +249,24 @@ local function onEvent(event)
     end
 
     if event.id == world.event.S_EVENT_DEAD and event.initiator and event.initiator.getName then
-        dead_events[#dead_events + 1] = event.initiator.getName(event.initiator)
-        local position = event.initiator.getPosition(event.initiator)
-        local destruction = {}
-        destruction.x = position.p.x
-        destruction.y = position.p.y
-        destruction.z = position.p.z
-        destruction.type = event.initiator:getTypeName()
-        destruction.orientation = mist.getHeading(event.initiator) * 57.3
-        -- Only track actual units/buildings, not debris/crash models
-        if destruction.type ~= nil and 
-           string.find(destruction.type, "GENERIC_CRASH_MODEL") == nil and
-           string.find(destruction.type, "_CRASH") == nil then
-            destroyed_objects_positions[#destroyed_objects_positions + 1] = destruction
+        local name = event.initiator.getName(event.initiator)
+        if not is_player_despawn(name) then
+            dead_events[#dead_events + 1] = name
+            local position = event.initiator.getPosition(event.initiator)
+            local destruction = {}
+            destruction.x = position.p.x
+            destruction.y = position.p.y
+            destruction.z = position.p.z
+            destruction.type = event.initiator:getTypeName()
+            destruction.orientation = mist.getHeading(event.initiator) * 57.3
+            -- Only track actual units/buildings, not debris/crash models
+            if destruction.type ~= nil and
+               string.find(destruction.type, "GENERIC_CRASH_MODEL") == nil and
+               string.find(destruction.type, "_CRASH") == nil then
+                destroyed_objects_positions[#destroyed_objects_positions + 1] = destruction
+            end
+            dirty_state = true
         end
-        dirty_state = true
     end
 
     if event.id == world.event.S_EVENT_MISSION_END then
