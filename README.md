@@ -85,6 +85,11 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   ([#3](https://github.com/juanjux/dcs-retribution/pull/3))
 - *(WIP on `master`, not yet PR'd)* **Electronic Warfare / "Jamming"** flight
   task for dedicated EW aircraft (EA-18G, EA-6B, Su-34, …).
+- *(WIP on `master`, not yet PR'd)* **Automated ground-object / building repair**
+  — the HQ can repair damaged SAM sites, vehicle groups and buildings each turn,
+  with tunable budgets and priorities.
+- *(WIP on `master`, not yet PR'd)* **Movable ships** — reposition non-carrier
+  naval groups on the campaign map.
 
 ### Modding & data
 - **Anubis C-130 Hercules** — `suppress_ballute` crash fix and an air-assault
@@ -112,6 +117,36 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   ([#13](https://github.com/juanjux/dcs-retribution/pull/13))
 - The sell-aircraft exploit that corrupted squadron counts is fixed.
   ([#5](https://github.com/juanjux/dcs-retribution/pull/5))
+
+## From the 414Ret fork
+
+These are adapted from the [**414Ret** fork](https://github.com/bradyccox/414Ret)
+(414th Joint Fighter Group), with thanks to its authors — 414Ret bundles many
+more features; listed here are the ones incorporated into this fork. They are
+currently on `master` (being integrated; not all PR'd yet). TIC vendors Grendel's
+TIC script (MIT).
+
+- **Troops In Contact (TIC)** — a dynamic frontline: ground forces actually fight
+  along the FLOT (with ambient fire) instead of behaving as two static walls.
+- **Mission Impact debrief summary** — bases captured/lost, runway damage and a
+  both-sides loss overview above the casualty tables.
+- **AI routes around the ground battle** — the active front line becomes a
+  navmesh routing hazard, so transit flights detour around it.
+- **Frontline units spread along the line** instead of stacking laterally.
+- **Package context bar** — a one-line ATO summary (primary task, flight count,
+  player slots, real TOT, departure bases).
+- **Flight-creation context** — live explanatory text when picking task /
+  aircraft / squadron, with informative squadron tooltips.
+- **Bulk flight altitude** — an "apply to all" en-route altitude control; the
+  per-waypoint altitude steps by 1000 ft instead of 1 ft.
+- **Building-card cleanup** — drops the "Missing Recon Picture" placeholder for
+  tidier ground-object cards.
+- **Self-documenting plugin options** — per-plugin description text and cleaned
+  labels on the LUA plugins options page.
+- **CurrentHill Iran pack** — Shahed-136, IRGCN fast-attack craft and a
+  `[CH] Iran 2020` faction (upstream ships the UK CurrentHill pack, not Iran).
+- Selected crash fixes (flight-exit, AWACS/tanker orbit deconfliction, malformed
+  mod payloads).
 
 ---
 
