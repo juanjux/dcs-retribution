@@ -19,6 +19,7 @@ from game.ato.flighttype import FlightType
 from game.ato.package import Package
 from game.game import Game
 from game.radio.RadioFrequencyContainer import RadioFrequencyContainer
+from game.radio.TacanContainer import TacanContainer
 from game.radio.radios import RadioFrequency
 from game.radio.tacan import TacanChannel
 from game.server import EventStream
@@ -620,6 +621,10 @@ class GameModel:
                 allocated_icls.add(cp.icls_channel)
             elif isinstance(cp, RadioFrequencyContainer):
                 allocated_freqs.add(cp.frequency)
+            # Airfields are TacanContainers too (built-in/portable TACAN); pick
+            # them up so the manual-assign dialog can warn on duplicates.
+            if isinstance(cp, TacanContainer) and not isinstance(cp, NavalControlPoint):
+                allocated_tacan.add(cp.tacan)
         allocated_freqs.remove(None)
         allocated_tacan.remove(None)
         allocated_icls.remove(None)

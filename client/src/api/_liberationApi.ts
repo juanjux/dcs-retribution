@@ -363,6 +363,8 @@ export type ControlPoint = {
   mobile: boolean;
   destination?: LatLng;
   sidc: string;
+  tacan?: string | null;
+  atc_frequency?: string | null;
   units: string[];
   threat_ranges: number[];
   detection_ranges: number[];
