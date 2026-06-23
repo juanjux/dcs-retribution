@@ -11,6 +11,7 @@
 * **[UX]** Avoid having escorts from wondering off too far while chasing a target.
 * **[UX]** Improved fast-forward settings with the ability to skip combat.
 * **[UX]** Show an "End of Mission Detected, processing Mission Data" busy dialog while turn results are processed, so the wait is not mistaken for a missed detection
+* **[UX]** The info panel now reports finished repairs for runways and all repairable ground objects/buildings (both coalitions), plus per-base "in progress, N turns remaining" lines for your own repairs each turn.
 * **[UI]** Reworked the Finances dialog to show gross income, the HQ's automated per-category spending and the resulting net per turn, with a collapsible income breakdown and in-dialog automation toggles.
 * **[Map]** Hovering a SAM threat or detection ring highlights its emitter — and hovering an emitter highlights its ring — making it easy to tell which site a ring belongs to. Can be disabled from the map's layer control.
 * **[Map]** New "Red/Blue: destroyed (non-repairable)" layer toggles (below the ruler) to hide fully destroyed, non-rebuildable ground objects (buildings, ships, ...) per coalition. Repairable objects (air defenses, vehicle groups) are never hidden. Both shown by default.
