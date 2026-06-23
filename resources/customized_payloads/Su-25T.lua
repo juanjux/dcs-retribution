@@ -284,6 +284,47 @@ local unitPayloads = {
 				[1] = 34,
 			},
 		},
+		[7] = {
+			["displayName"] = "Retribution DEAD",
+			["name"] = "Retribution DEAD",
+			["pylons"] = {
+				[1] = {
+					["CLSID"] = "{44EE8698-89F9-48EE-AF36-5FD31896A82D}",
+					["num"] = 1,
+				},
+				[2] = {
+					["CLSID"] = "{CBC29BFE-3D24-4C64-B81D-941239D12249}",
+					["num"] = 2,
+				},
+				[3] = {
+					["CLSID"] = "{E8D4652F-FD48-45B7-BA5B-2AE05BB5A9CF}",
+					["num"] = 3,
+				},
+				[4] = {
+					["CLSID"] = "{E2C426E3-8B10-4E09-B733-9CDC26520F48}",
+					["num"] = 5,
+				},
+				[5] = {
+					["CLSID"] = "{E2C426E3-8B10-4E09-B733-9CDC26520F48}",
+					["num"] = 7,
+				},
+				[6] = {
+					["CLSID"] = "{E8D4652F-FD48-45B7-BA5B-2AE05BB5A9CF}",
+					["num"] = 9,
+				},
+				[7] = {
+					["CLSID"] = "{CBC29BFE-3D24-4C64-B81D-941239D12249}",
+					["num"] = 10,
+				},
+				[8] = {
+					["CLSID"] = "{44EE8698-89F9-48EE-AF36-5FD31896A82C}",
+					["num"] = 11,
+				},
+			},
+			["tasks"] = {
+				[1] = 31,
+			},
+		},
 	},
 	["unitType"] = "Su-25T",
 }
