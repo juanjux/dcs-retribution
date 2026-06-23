@@ -24,6 +24,11 @@ class TgoJs(BaseModel):
     threat_ranges: list[float]  # TODO: Event stream
     detection_ranges: list[float]  # TODO: Event stream
     dead: bool  # TODO: Event stream
+    # Whether the group can be rebuilt or repaired, so the map's "destroyed
+    # (non-repairable)" layer must NOT hide it even when dead: re-purchasable
+    # groups (SAM/EWR/armor), or buildings the building-repair feature can rebuild.
+    # (Wire name kept as `purchasable` for the JS client; value is tgo.repairable.)
+    purchasable: bool
     sidc: str  # TODO: Event stream
     task: Optional[GroupTask]
 
@@ -32,8 +37,19 @@ class TgoJs(BaseModel):
 
     @staticmethod
     def for_tgo(tgo: TheaterGroundObject) -> TgoJs:
-        threat_ranges = [group.max_threat_range().meters for group in tgo.groups]
-        detection_ranges = [group.max_detection_range().meters for group in tgo.groups]
+        # Only include non-zero ranges: a zero-radius circle renders as a stray
+        # dot (normally hidden under the unit icon, but visible once the icon is
+        # hidden by the destroyed-object layers). Matches ControlPointJs.
+        threat_ranges = [
+            meters
+            for meters in (group.max_threat_range().meters for group in tgo.groups)
+            if meters > 0
+        ]
+        detection_ranges = [
+            meters
+            for meters in (group.max_detection_range().meters for group in tgo.groups)
+            if meters > 0
+        ]
         if tgo.control_point.captured.is_blue:
             blue = True
         else:
@@ -49,6 +65,7 @@ class TgoJs(BaseModel):
             threat_ranges=threat_ranges,
             detection_ranges=detection_ranges,
             dead=tgo.is_dead,
+            purchasable=tgo.repairable,
             sidc=str(tgo.sidc()),
             task=tgo.groups[0].ground_object.task if tgo.groups else None,
         )
