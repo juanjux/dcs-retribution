@@ -1,4 +1,8 @@
-import { Tgo } from "../../api/liberationApi";
+import {
+  Tgo,
+  useOpenNewTgoPackageDialogMutation,
+  useOpenTgoInfoDialogMutation,
+} from "../../api/liberationApi";
 import { selectTgos } from "../../api/tgosSlice";
 import {
   selectHighlightEmitters,
@@ -58,10 +62,18 @@ const TgoRangeCircles = (props: TgoRangeCirclesProps) => {
     (state) => highlighted && selectHoveredEmitterSource(state) === "ring",
   );
 
-  const hover = {
+  const [openInfoDialog] = useOpenTgoInfoDialogMutation();
+  const [openNewPackageDialog] = useOpenNewTgoPackageDialogMutation();
+
+  // The ring mirrors the emitter icon's clicks, so you can reach a SAM site
+  // whose icon is buried under another marker: left-click opens its info
+  // dialog, right-click starts a new package against it.
+  const handlers = {
     mouseover: () =>
       dispatch(setHoveredEmitter({ id: props.tgo.id, source: "ring" })),
     mouseout: () => dispatch(setHoveredEmitter(null)),
+    click: () => openInfoDialog({ tgoId: props.tgo.id }),
+    contextmenu: () => openNewPackageDialog({ tgoId: props.tgo.id }),
   };
 
   return (
@@ -95,7 +107,7 @@ const TgoRangeCircles = (props: TgoRangeCirclesProps) => {
             opacity={0}
             weight={18}
             className="air-defense-ring-hit"
-            eventHandlers={hover}
+            eventHandlers={handlers}
           >
             <Tooltip sticky className="tooltip-delayed">
               <b>{props.tgo.name}</b>
