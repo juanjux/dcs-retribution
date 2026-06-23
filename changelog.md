@@ -1,6 +1,7 @@
 # Retribution v1.6.0
 
 ## Features/Improvements
+* **[Comms]** Preset radio channels (ATC, AWACS, tanker, package, JTAC) are also mirrored onto COMM2 on aircraft with a second radio (e.g. F/A-18C, F-16), so you can monitor two nets at once; the kneeboard shows both channels.
 * **[Cheat]** The money cheat can give or take money to both OWNFOR and OPFOR (previously OWNFOR only).
 * **[UX]** Hovering a friendly flight's route line on the map highlights it in yellow, and clicking it selects that flight's package (and the flight) in the ATO sidebar.
 * **[UX]** Press Delete with a package selected in the Packages list to cancel it, making it quick to clear several packages in a row.
@@ -20,6 +21,8 @@
 * **[Map]** New "Red/Blue: destroyed (non-repairable)" layer toggles (below the ruler) to hide fully destroyed, non-rebuildable ground objects (buildings, ships, ...) per coalition. Repairable objects (air defenses, vehicle groups) are never hidden. Both shown by default.
 
 ## Fixes
+* **[Comms]** Fix COMM1/COMM2 being swapped in the kneeboard for the Super Hornet family (EA-18G, F/A-18E/F and their tanker variants): align their radio indices to the F/A-18C so intra-flight is COMM2 and ATC/package are on COMM1.
+* **[Kneeboard]** Stop the Support Info FREQ column being clipped now that it lists both COMM1 and COMM2 (the single-digit aircraft-count column no longer pads the row past the page edge).
 * **[Mission]** Reliably auto-detect end of mission, even when DCS wrote the final state.json before the wait dialog started watching
 * **[Mission]** Fix a crash when choosing "Fix TOTs automatically" in the past-start-times dialog at Take Off: the automatic fix called `TotEstimator.earliest_tot()` without the required current-time argument and raised a `TypeError`.
 * **[Performance]** Faster post-mission turn processing

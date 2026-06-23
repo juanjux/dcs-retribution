@@ -6,6 +6,7 @@ from typing import Any, Optional, TYPE_CHECKING
 if TYPE_CHECKING:
     from game.missiongenerator.aircraft.flightdata import FlightData
     from game.missiongenerator.missiondata import MissionData
+    from game.radio.radios import RadioFrequency
 
 
 class RadioChannelAllocator:
@@ -57,45 +58,64 @@ class CommonRadioChannelAllocator(RadioChannelAllocator):
         if self.inter_flight_radio_index is None:
             return
 
+        # The ordered set of inter-flight preset frequencies (departure ATC,
+        # AWACS, JTAC, package, arrival ATC, tankers, divert ATC).
+        frequencies = self._inter_flight_frequencies(flight, mission_data)
+
         # For cases where the inter-flight and intra-flight radios share presets
         # (the JF-17 only has one set of channels, even though it can use two
         # channels simultaneously), start assigning inter-flight channels at 2.
         radio_id = self.inter_flight_radio_index
-        if self.intra_flight_radio_index == radio_id:
-            first_channel = 2
-        else:
-            first_channel = 1
+        first_channel = 2 if self.intra_flight_radio_index == radio_id else 1
+        self._assign_sequential(flight, radio_id, first_channel, frequencies)
 
-        last_channel = flight.num_radio_channels(radio_id)
-        channel_alloc = iter(range(first_channel, last_channel + 1))
+        # Mirror the same presets onto the second radio (COMM2) when the
+        # aircraft has a distinct one, so a pilot can monitor two nets at once
+        # (e.g. the package on COMM1 and AWACS on COMM2). Channel 1 there holds
+        # the intra-flight frequency (which DCS also clobbers), so start at 2.
+        comm2_id = self.intra_flight_radio_index
+        if (
+            comm2_id is not None
+            and comm2_id != radio_id
+            and flight.num_radio_channels(comm2_id) > 1
+        ):
+            self._assign_sequential(flight, comm2_id, 2, frequencies)
 
+    @staticmethod
+    def _inter_flight_frequencies(
+        flight: FlightData, mission_data: MissionData
+    ) -> list[RadioFrequency]:
+        frequencies: list[RadioFrequency] = []
         if flight.departure.atc is not None:
-            flight.assign_channel(radio_id, next(channel_alloc), flight.departure.atc)
-
+            frequencies.append(flight.departure.atc)
         # TODO: If there ever are multiple AWACS, limit to mission relevant.
-        for awacs in mission_data.awacs:
-            flight.assign_channel(radio_id, next(channel_alloc), awacs.freq)
-
-        for jtac in mission_data.jtacs:
-            flight.assign_channel(radio_id, next(channel_alloc), jtac.freq)
-
+        frequencies.extend(awacs.freq for awacs in mission_data.awacs)
+        frequencies.extend(jtac.freq for jtac in mission_data.jtacs)
         if (freq := flight.package.frequency) is not None:
-            flight.assign_channel(radio_id, next(channel_alloc), freq)
-
+            frequencies.append(freq)
         if flight.arrival != flight.departure and flight.arrival.atc is not None:
-            flight.assign_channel(radio_id, next(channel_alloc), flight.arrival.atc)
+            frequencies.append(flight.arrival.atc)
+        # TODO: Skip incompatible tankers.
+        frequencies.extend(tanker.freq for tanker in mission_data.tankers)
+        if flight.divert is not None and flight.divert.atc is not None:
+            frequencies.append(flight.divert.atc)
+        return frequencies
 
-        try:
-            # TODO: Skip incompatible tankers.
-            for tanker in mission_data.tankers:
-                flight.assign_channel(radio_id, next(channel_alloc), tanker.freq)
-
-            if flight.divert is not None and flight.divert.atc is not None:
-                flight.assign_channel(radio_id, next(channel_alloc), flight.divert.atc)
-        except StopIteration:
-            # Any remaining channels are nice-to-haves, but not necessary for
-            # the few aircraft with a small number of channels available.
-            pass
+    @staticmethod
+    def _assign_sequential(
+        flight: FlightData,
+        radio_id: int,
+        first_channel: int,
+        frequencies: list[RadioFrequency],
+    ) -> None:
+        channels = iter(range(first_channel, flight.num_radio_channels(radio_id) + 1))
+        for frequency in frequencies:
+            try:
+                flight.assign_channel(radio_id, next(channels), frequency)
+            except StopIteration:
+                # Any remaining channels are nice-to-haves, but not necessary
+                # for the few aircraft with a small number of channels.
+                break
 
     @classmethod
     def from_cfg(cls, cfg: dict[str, Any]) -> CommonRadioChannelAllocator:

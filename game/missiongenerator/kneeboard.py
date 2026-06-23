@@ -587,14 +587,15 @@ class BriefingPage(KneeboardPage):
         ]
 
     def format_frequency(self, frequency: RadioFrequency) -> str:
-        channel = self.flight.channel_for(frequency)
-        if channel is None:
+        channels = self.flight.channels_for(frequency)
+        if not channels:
             return str(frequency)
 
-        channel_name = self.flight.aircraft_type.channel_name(
-            channel.radio_id, channel.channel
+        names = " / ".join(
+            self.flight.aircraft_type.channel_name(c.radio_id, c.channel)
+            for c in channels
         )
-        return f"{channel_name}\n{frequency}"
+        return f"{names}\n{frequency}"
 
 
 class SupportPage(KneeboardPage):
@@ -665,7 +666,9 @@ class SupportPage(KneeboardPage):
                 ]
             )
 
-        writer.table(comm_ladder, headers=["Callsign", "Task", "Type", "#A/C", "FREQ"])
+        # "#" not "#A/C": the count is a single digit, so the wider header padded the
+        # column and pushed the FREQ column off the right edge of the page.
+        writer.table(comm_ladder, headers=["Callsign", "Task", "Type", "#", "FREQ"])
 
         # AEW&C
         writer.heading("AEW&C")
@@ -703,7 +706,6 @@ class SupportPage(KneeboardPage):
             comm_ladder.append(
                 [
                     tanker.callsign,
-                    "Tanker",
                     KneeboardPageWriter.wrap_line(tanker.variant, 21),
                     str(tanker.tacan) if tanker.tacan else "N/A",
                     self.format_frequency(tanker.freq),
@@ -713,7 +715,10 @@ class SupportPage(KneeboardPage):
 
         writer.table(
             comm_ladder,
-            headers=["Callsign", "Task", "Type", "TACAN", "FREQ", "TOT / TOS"],
+            # Drop the "Task" column (always "Tanker" in this table) and shorten
+            # TACAN to TCN (3-char code), so the wider FREQ column (now COMM1 +
+            # COMM2) and TOT/TOS no longer run off the page edge.
+            headers=["Callsign", "Type", "TCN", "FREQ", "TOT / TOS"],
         )
 
         writer.heading("JTAC")
@@ -730,21 +735,24 @@ class SupportPage(KneeboardPage):
                     self.format_frequency(jtac.freq),
                 ]
             )
-        writer.table(jtacs, headers=["Callsign", "Region", "Laser Code", "FREQ"])
+        # "Laser" instead of "Laser Code": the code is 4 digits, so the longer
+        # header padded the column and pushed the FREQ column off the page.
+        writer.table(jtacs, headers=["Callsign", "Region", "Laser", "FREQ"])
 
         writer.write(path)
 
     def format_frequency(self, frequency: Optional[RadioFrequency]) -> str:
         if frequency is None:
             return ""
-        channel = self.flight.channel_for(frequency)
-        if channel is None:
+        channels = self.flight.channels_for(frequency)
+        if not channels:
             return str(frequency)
 
-        channel_name = self.flight.aircraft_type.channel_name(
-            channel.radio_id, channel.channel
+        names = " / ".join(
+            self.flight.aircraft_type.channel_name(c.radio_id, c.channel)
+            for c in channels
         )
-        return f"{channel_name}\n{frequency}"
+        return f"{names}\n{frequency}"
 
     @staticmethod
     def _format_time(time: datetime.datetime | None) -> str:
