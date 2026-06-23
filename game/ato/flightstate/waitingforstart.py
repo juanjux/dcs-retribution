@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING
 
@@ -47,6 +48,21 @@ class WaitingForStart(AtDeparture):
         else:
             new_state = Navigating(self.flight, self.settings, waypoint_index=0)
         self.flight.set_state(new_state)
+
+        # Opt-in halt requested before run_to_first_contact (set by the
+        # pre-launch mismatch dialog when the user chose "halt at this
+        # flight's start" instead of changing the flight's start_type).
+        # Halt now that the flight has reached its actual spawn state.
+        if getattr(self.flight, "halt_sim_on_spawn", False):
+            self.flight.halt_sim_on_spawn = False
+            logging.info(
+                "Halting fast-forward at %s spawn for %s (start type %s) "
+                "as requested by the pre-launch mismatch dialog.",
+                new_state.description,
+                self.flight,
+                self.start_type.name,
+            )
+            events.complete_simulation()
 
     @property
     def is_waiting_for_start(self) -> bool:

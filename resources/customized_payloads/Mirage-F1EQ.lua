@@ -184,24 +184,16 @@ local unitPayloads = {
 					["num"] = 1,
 				},
 				[3] = {
-					["CLSID"] = "{BLG66_BELOUGA}",
+					["CLSID"] = "{X-29T}",
 					["num"] = 5,
 				},
 				[4] = {
-					["CLSID"] = "{BLG66_BELOUGA}",
+					["CLSID"] = "{X-29T}",
 					["num"] = 3,
 				},
 				[5] = {
 					["CLSID"] = "PTB-1200-F1",
 					["num"] = 4,
-				},
-				[6] = {
-					["CLSID"] = "{BLG66_BELOUGA}",
-					["num"] = 6,
-				},
-				[7] = {
-					["CLSID"] = "{BLG66_BELOUGA}",
-					["num"] = 2,
 				},
 			},
 			["tasks"] = {

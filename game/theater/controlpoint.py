@@ -1409,7 +1409,7 @@ class NavalControlPoint(
         else:
             yield from [
                 FlightType.ANTISHIP,
-                FlightType.SEAD_ESCORT,
+                FlightType.SEAD,
             ]
         yield from super().mission_types(for_player)
         if self.is_friendly(for_player):
@@ -1488,9 +1488,15 @@ class NavalControlPoint(
 
     @property
     def status(self) -> ControlPointStatus:
-        if not self.runway_is_operational():
+        # Reflect unit survival of the carrier group on the map symbol, the
+        # same way naval groups do: green when intact, yellow while anything
+        # survives (e.g. the carrier itself sunk but escorts remain), red only
+        # once the whole group is gone. This is purely cosmetic;
+        # runway_is_operational() still governs whether the carrier can launch.
+        main_tgo = self.find_main_tgo()
+        if main_tgo.is_dead:
             return ControlPointStatus.Destroyed
-        if self.find_main_tgo().dead_units:
+        if main_tgo.dead_units:
             return ControlPointStatus.Damaged
         return ControlPointStatus.Functional
 

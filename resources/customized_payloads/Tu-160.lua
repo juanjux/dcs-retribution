@@ -76,6 +76,23 @@ local unitPayloads = {
 			["tasks"] = {
 			},
 		},
+		[6] = {
+			["displayName"] = "Retribution DEAD",
+			["name"] = "Retribution DEAD",
+			["pylons"] = {
+				[1] = {
+					["CLSID"] = "{0290F5DE-014A-4BB1-9843-D717749B1DED}",
+					["num"] = 1,
+				},
+				[2] = {
+					["CLSID"] = "{0290F5DE-014A-4BB1-9843-D717749B1DED}",
+					["num"] = 2,
+				},
+			},
+			["tasks"] = {
+				[1] = 31,
+			},
+		},
 	},
 	["unitType"] = "Tu-160",
 }

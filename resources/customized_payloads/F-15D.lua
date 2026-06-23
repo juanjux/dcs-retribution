@@ -422,6 +422,59 @@ local unitPayloads = {
 				[2] = 32,
 			},
 		},
+		[9] = {
+			["displayName"] = "Retribution DEAD",
+			["name"] = "Retribution DEAD",
+			["pylons"] = {
+				[1] = {
+					["CLSID"] = "{Python 5}",
+					["num"] = 11,
+				},
+				[2] = {
+					["CLSID"] = "{GBU-31}",
+					["num"] = 10,
+				},
+				[3] = {
+					["CLSID"] = "{I-Derby ER}",
+					["num"] = 9,
+				},
+				[4] = {
+					["CLSID"] = "{I-Derby ER}",
+					["num"] = 8,
+				},
+				[5] = {
+					["CLSID"] = "{I-Derby ER}",
+					["num"] = 7,
+				},
+				[6] = {
+					["CLSID"] = "{E1F29B21-F291-4589-9FD8-3272EEC69506}",
+					["num"] = 6,
+				},
+				[7] = {
+					["CLSID"] = "{ELL - 8222SB}",
+					["num"] = 5,
+				},
+				[8] = {
+					["CLSID"] = "{I-Derby ER}",
+					["num"] = 4,
+				},
+				[9] = {
+					["CLSID"] = "{I-Derby ER}",
+					["num"] = 3,
+				},
+				[10] = {
+					["CLSID"] = "{GBU-31}",
+					["num"] = 2,
+				},
+				[11] = {
+					["CLSID"] = "{Python 5}",
+					["num"] = 1,
+				},
+			},
+			["tasks"] = {
+				[1] = 31,
+			},
+		},
 	},
 	["tasks"] = {
 	},
