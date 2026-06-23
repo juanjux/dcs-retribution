@@ -58,6 +58,12 @@ from game.utils import (
     kph,
     nautical_miles,
 )
+from game.dcs.payload_loading import install_resilient_payload_loading
+
+# Make pydcs tolerate a single unparseable payload .lua (common with hand-written
+# third-party mod files) instead of dropping every payload for the airframe.
+# Installed here because this module is imported before any payload is loaded.
+install_resilient_payload_loading()
 
 if TYPE_CHECKING:
     from game.missiongenerator.aircraft.flightdata import FlightData

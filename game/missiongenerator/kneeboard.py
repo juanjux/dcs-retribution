@@ -50,11 +50,22 @@ from game.utils import Distance, UnitSystem, meters, mps, pounds
 from game.weather.weather import Weather
 from .aircraft.flightdata import FlightData
 from .briefinggenerator import CommInfo, JtacInfo, MissionInfoGenerator
+from .kneeboard_page import KneeboardPage
+from .kneeboard_recon import airport_imagery as _airport_imagery
+from .kneeboard_recon import generate_recon_pages
+from .kneeboard_recon.atis import (
+    THUNDERSTORM_PRESSURE_DROP_INHG,
+    compute_qfe_inhg,
+    has_thunderstorm_cells,
+    wind_from_deg,
+)
 from .missiondata import AwacsInfo, TankerInfo
 from ..persistency import kneeboards_dir
 
 if TYPE_CHECKING:
+    from dcs.terrain.terrain import Terrain
     from game import Game
+    from game.theater.conflicttheater import ConflictTheater
 
 
 class KneeboardPageWriter:
@@ -188,14 +199,6 @@ class KneeboardPageWriter:
             else:
                 output = combo
         return "".join(segments + [output]).strip()
-
-
-class KneeboardPage:
-    """Base class for all kneeboard pages."""
-
-    def write(self, path: Path) -> None:
-        """Writes the kneeboard page to the given path."""
-        raise NotImplementedError
 
 
 @dataclass(frozen=True)
@@ -343,12 +346,14 @@ class BriefingPage(KneeboardPage):
         weather: Weather,
         start_time: datetime.datetime,
         dark_kneeboard: bool,
+        theater: Optional["ConflictTheater"] = None,
     ) -> None:
         self.flight = flight
         self.bullseye = bullseye
         self.weather = weather
         self.start_time = start_time
         self.dark_kneeboard = dark_kneeboard
+        self.theater = theater
         self.flight_plan_font = ImageFont.truetype(
             "courbd.ttf",
             16,
@@ -424,15 +429,18 @@ class BriefingPage(KneeboardPage):
             f"Temperature: {round(self.weather.atmospheric.temperature_celsius)} °C at sea level"
         )
         writer.text(f"QNH: {qnh_in_hg} inHg / {qnh_mm_hg} mmHg / {qnh_hpa} hPa")
+        qfe_line = self._format_departure_qfe()
+        if qfe_line is not None:
+            writer.text(qfe_line)
         writer.text(
             f"Turbulence: {round(self.weather.atmospheric.turbulence_per_10cm)} per 10cm at ground level."
         )
         writer.text(
-            f"Wind: {self.weather.wind.at_0m.direction}°"
+            f"Wind: {wind_from_deg(self.weather.wind.at_0m.direction)}°"
             f" / {round(mps(self.weather.wind.at_0m.speed).knots)}kts (0ft)"
-            f" ; {self.weather.wind.at_2000m.direction}°"
+            f" ; {wind_from_deg(self.weather.wind.at_2000m.direction)}°"
             f" / {round(mps(self.weather.wind.at_2000m.speed).knots)}kts (~6500ft)"
-            f" ; {self.weather.wind.at_8000m.direction}°"
+            f" ; {wind_from_deg(self.weather.wind.at_8000m.direction)}°"
             f" / {round(mps(self.weather.wind.at_8000m.speed).knots)}kts (~26000ft)"
         )
         c = self.weather.clouds
@@ -488,6 +496,57 @@ class BriefingPage(KneeboardPage):
             writer.table(codes, ["#", "Laser Code"])
 
         writer.write(path)
+
+    def _format_departure_qfe(self) -> Optional[str]:
+        """Return "QFE: ..." line for the departure field, or None.
+
+        Looks up the departure airport via the theater's controlpoints
+        (matched by airfield name), reads the OSM/DEM-derived elevation
+        from ``resources/airport_imagery/<terrain>.json``, and reduces
+        QNH to QFE via the ISA barometric formula. Returns None when no
+        theater was provided, no matching control point exists, or no
+        elevation was shipped for the airport.
+        """
+        if self.theater is None:
+            return None
+        dep = self.flight.departure
+        airport = None
+        for cp in self.theater.controlpoints:
+            dcs_ap = getattr(cp, "dcs_airport", None)
+            if dcs_ap is None:
+                continue
+            if cp.full_name == dep.airfield_name or dcs_ap.name == dep.airfield_name:
+                airport = dcs_ap
+                break
+        if airport is None:
+            return None
+        # Shared helper with the recon ATIS pipeline so both consumers walk
+        # the same lookup chain (load → for_airport → elevation_m). When
+        # this lookup changes (alt source for elevation, new key for
+        # matching airports), both surfaces update together.
+        elevation_m = _airport_imagery.field_elevation_for_airport(
+            self.theater.terrain, airport
+        )
+        if elevation_m is None:
+            return None
+
+        qnh_inhg = self.weather.atmospheric.qnh.inches_hg
+        qfe_inhg = compute_qfe_inhg(qnh_inhg, elevation_m)
+        qfe_hpa = qfe_inhg * 33.86389
+        elev_ft = elevation_m * 3.28084
+        line = (
+            f"QFE ({dep.airfield_name}, field elev {elev_ft:.0f} ft): "
+            f"{qfe_inhg:.2f} inHg / {qfe_hpa:.1f} hPa"
+        )
+        if has_thunderstorm_cells(self.weather.clouds):
+            qfe_low = compute_qfe_inhg(
+                qnh_inhg - THUNDERSTORM_PRESSURE_DROP_INHG, elevation_m
+            )
+            line += (
+                f" (~{qfe_low:.2f} in CB cells — local QNH may drop "
+                "~3 mb inside storm cores)"
+            )
+        return line
 
     def airfield_info_row(
         self, row_title: str, runway: Optional[RunwayData]
@@ -845,8 +904,244 @@ class NotesPage(KneeboardPage):
         writer.write(path)
 
 
+def _abbreviated_target_name(name: str) -> str:
+    """Shorten verbose target prefixes so long names fit the kneeboard tables.
+
+    Front-line objectives are named "Front line <CP A>/<CP B>", wide enough to
+    overflow the packages list and crowd the map labels; "Front" is
+    unambiguous in context.
+    """
+    return name.replace("Front line ", "Front ")
+
+
+class AllPackagesPage(KneeboardPage):
+    """Lists every friendly package with its timing, for cross-package coordination.
+
+    Strike-type packages show their target and TOT; CAP / tanker / AWACS packages
+    show their patrol window instead. Rendered in a smaller font and split across
+    several pages when there are more packages than fit on one.
+    """
+
+    HEADERS = ["Task", "Target", "TOT / Window"]
+
+    def __init__(
+        self,
+        rows: List[List[str]],
+        page_no: int,
+        total_pages: int,
+        dark_kneeboard: bool,
+    ) -> None:
+        self.rows = rows
+        self.page_no = page_no
+        self.total_pages = total_pages
+        self.dark_kneeboard = dark_kneeboard
+
+    def write(self, path: Path) -> None:
+        writer = KneeboardPageWriter(dark_theme=self.dark_kneeboard)
+        suffix = f" ({self.page_no}/{self.total_pages})" if self.total_pages > 1 else ""
+        writer.title(f"Friendly Packages{suffix}")
+        # A little smaller than the default table font so more packages fit.
+        font = ImageFont.truetype(
+            "courbd.ttf", 18, layout_engine=ImageFont.Layout.BASIC
+        )
+        writer.table(self.rows, headers=self.HEADERS, font=font)
+        writer.write(path)
+
+
+class PackagesMapPage(KneeboardPage):
+    """A theater map with each attack package's target labelled.
+
+    Draws the theater coastline (filled land over sea, from the recon module's
+    landmap) so the pilot can see where the attack packages on the previous
+    page are headed. Control points are marked for orientation: airfields,
+    carriers and LHAs get a distinct shape (square / diamond / triangle) and a
+    haloed name label, while FOBs and other points stay as plain dots. All are
+    coloured by side (blue friendly, red enemy). Overlapping labels are stacked
+    downward (and flipped left near the right edge).
+    """
+
+    FRIENDLY = (40, 90, 200)
+    ENEMY = (200, 45, 45)
+    NEUTRAL = (110, 110, 110)
+    TARGET = (255, 140, 0)
+
+    def __init__(
+        self,
+        targets: List[Tuple[str, float, float]],
+        control_points: List[Tuple[float, float, str, str, str]],
+        terrain: "Terrain",
+        dark_kneeboard: bool,
+    ) -> None:
+        self.targets = targets
+        self.control_points = control_points
+        self.terrain = terrain
+        self.dark_kneeboard = dark_kneeboard
+
+    def write(self, path: Path) -> None:
+        from dcs.mapping import Point as DcsPoint
+        from .kneeboard_recon.basemap import render_landmap_basemap
+        from .kneeboard_recon.extent import MapExtent, aspect_correct
+        from .kneeboard_recon.projection import Projector
+
+        writer = KneeboardPageWriter(dark_theme=self.dark_kneeboard)
+        writer.title("Package Targets Map")
+        label_font = ImageFont.truetype(
+            "courbd.ttf", 13, layout_engine=ImageFont.Layout.BASIC
+        )
+        writer.text(
+            "Orange = package targets; airfields, carriers & LHAs are named "
+            "(blue = friendly, red = enemy).",
+            font=label_font,
+        )
+
+        points = [(x, y) for _, x, y in self.targets]
+        points += [(x, y) for x, y, *_ in self.control_points]
+        xs = [p[0] for p in points]
+        ys = [p[1] for p in points]
+        margin = writer.page_margin
+        top = writer.y + 8
+        avail_w = writer.image_size[0] - 2 * margin
+        avail_h = writer.image_size[1] - top - margin
+
+        # World bounding box of everything shown, plus an 8% margin.
+        pad = 0.08 * max(max(xs) - min(xs), max(ys) - min(ys), 1.0)
+        extent = MapExtent(
+            min_x=min(xs) - pad,
+            max_x=max(xs) + pad,
+            min_y=min(ys) - pad,
+            max_y=max(ys) + pad,
+            terrain=self.terrain,
+        )
+
+        # Size the rendered map to the area-of-operations aspect rather than
+        # stretching it to fill the near-square page. A wide, short theater
+        # (carriers far offshore + inland targets) would otherwise be aspect-
+        # padded with ~half a page of empty sea above and below, squashing the
+        # actual front into the middle. Fit to the binding axis, then centre the
+        # strip so it reads as a deliberate map rather than a cut-off frame.
+        # Page-x (width) <- DCS y (east); page-y (height) <- DCS x (north).
+        content_ew = max(extent.span_y_m, 1.0)
+        content_ns = max(extent.span_x_m, 1.0)
+        map_w = avail_w
+        map_h = round(map_w * content_ns / content_ew)
+        if map_h > avail_h:
+            map_h = avail_h
+            map_w = round(map_h * content_ew / content_ns)
+        off_x = margin + (avail_w - map_w) // 2
+        off_y = top + (avail_h - map_h) // 2
+
+        extent = aspect_correct(extent, map_w, map_h)
+        writer.image.paste(
+            render_landmap_basemap(extent, map_w, map_h, dark=self.dark_kneeboard),
+            (off_x, off_y),
+        )
+
+        projector = Projector(extent=extent, pixel_width=map_w, pixel_height=map_h)
+
+        def to_px(x: float, y: float) -> Tuple[int, int]:
+            px, py = projector.project(DcsPoint(x, y, self.terrain))
+            return off_x + px, off_y + py
+
+        draw = writer.draw
+        base_labels: List[Tuple[str, int, int, Tuple[int, int, int]]] = []
+        for x, y, side, kind, name in self.control_points:
+            px, py = to_px(x, y)
+            color = (
+                self.FRIENDLY
+                if side == "friendly"
+                else self.ENEMY if side == "enemy" else self.NEUTRAL
+            )
+            if kind == "airbase":
+                draw.rectangle(
+                    (px - 4, py - 4, px + 4, py + 4), fill=color, outline=(0, 0, 0)
+                )
+            elif kind == "carrier":
+                draw.polygon(
+                    [(px, py - 5), (px + 5, py), (px, py + 5), (px - 5, py)],
+                    fill=color,
+                    outline=(0, 0, 0),
+                )
+            elif kind == "lha":
+                draw.polygon(
+                    [(px, py - 5), (px + 5, py + 4), (px - 5, py + 4)],
+                    fill=color,
+                    outline=(0, 0, 0),
+                )
+            else:
+                draw.ellipse([px - 3, py - 3, px + 3, py + 3], fill=color)
+                continue
+            base_labels.append((name, px, py, color))
+
+        placed: List[Tuple[float, float, float, float]] = []
+
+        def overlaps(box: Tuple[float, float, float, float]) -> bool:
+            ax0, ay0, ax1, ay1 = box
+            return any(
+                ax0 < bx1 and bx0 < ax1 and ay0 < by1 and by0 < ay1
+                for bx0, by0, bx1, by1 in placed
+            )
+
+        label_h = 15
+        right_edge = off_x + map_w
+        bottom_edge = off_y + map_h - label_h
+        for name, x, y in self.targets:
+            px, py = to_px(x, y)
+            draw.ellipse(
+                [px - 5, py - 5, px + 5, py + 5], fill=self.TARGET, outline=(0, 0, 0)
+            )
+            tw = label_font.getlength(name)
+            lx = px - 8 - tw if px + 8 + tw > right_edge else px + 8
+            ly = py - 7
+            # Stack overlapping labels downward so clustered targets stay legible.
+            while overlaps((lx, ly, lx + tw, ly + label_h)) and ly < bottom_edge:
+                ly += label_h
+            placed.append((lx, ly, lx + tw, ly + label_h))
+            # White plate behind the label so it reads against the map.
+            draw.rectangle(
+                (lx - 1, ly, lx + tw + 1, ly + label_h), fill=(255, 255, 255)
+            )
+            draw.text((lx, ly), name, font=label_font, fill=(0, 0, 0))
+
+        # Base names: a white halo instead of a solid plate, in the base's side
+        # colour, so they read apart from the boxed black-on-white target labels.
+        base_font = ImageFont.truetype(
+            "courbd.ttf", 12, layout_engine=ImageFont.Layout.BASIC
+        )
+        for name, px, py, color in base_labels:
+            tw = base_font.getlength(name)
+            lx = px - 8 - tw if px + 8 + tw > right_edge else px + 8
+            ly = py - 6
+            while overlaps((lx, ly, lx + tw, ly + label_h)) and ly < bottom_edge:
+                ly += label_h
+            placed.append((lx, ly, lx + tw, ly + label_h))
+            draw.text(
+                (lx, ly),
+                name,
+                font=base_font,
+                fill=color,
+                stroke_width=2,
+                stroke_fill=(255, 255, 255),
+            )
+
+        writer.write(path)
+
+
 class KneeboardGenerator(MissionInfoGenerator):
     """Creates kneeboard pages for each client flight in the mission."""
+
+    #: Tasks shown with a patrol window (start - end) instead of a single TOT.
+    PATROL_TASKS = frozenset(
+        {
+            FlightType.BARCAP,
+            FlightType.TARCAP,
+            FlightType.REFUELING,
+            FlightType.AEWC,
+        }
+    )
+    #: Rows-per-page for the packages list. Tuned to fill the 1080px-tall
+    #: kneeboard at the 18px table font: ~50 rows reach the bottom margin, so 46
+    #: leaves a small safety gap while wasting far less space than the old 30.
+    PACKAGES_PER_PAGE = 46
 
     def __init__(self, mission: Mission, game: "Game") -> None:
         super().__init__(mission, game)
@@ -923,6 +1218,7 @@ class KneeboardGenerator(MissionInfoGenerator):
                 self.game.conditions.weather,
                 zoned_time,
                 self.dark_kneeboard,
+                theater=self.game.theater,
             ),
             SupportPage(
                 flight,
@@ -943,4 +1239,138 @@ class KneeboardGenerator(MissionInfoGenerator):
         if (target_page := self.generate_task_page(flight)) is not None:
             pages.append(target_page)
 
+        # Recon overview + detail + airfield-departure pages (gated by settings).
+        if self.game.settings.generate_target_recon_kneeboard:
+            extra_radius_m = (
+                self.game.settings.target_recon_extra_threat_search_nmi * 1852.0
+            )
+            pages.extend(
+                generate_recon_pages(
+                    flight=flight,
+                    game=self.game,
+                    weather=self.game.conditions.weather,
+                    extra_threat_search_m=extra_radius_m,
+                    dark=self.dark_kneeboard,
+                )
+            )
+
+        # Friendly-packages coordination list, then the target map, go last (in
+        # that order), gated by settings.
+        if self.game.settings.generate_all_packages_kneeboard:
+            pages.extend(self.generate_all_packages_pages(flight))
+            pages.extend(self.generate_packages_map_page(flight))
+
         return pages
+
+    def _to_kneeboard_time(
+        self, time: Optional[datetime.datetime], utc: bool
+    ) -> Optional[datetime.datetime]:
+        """Apply the same UTC/local convention the rest of the kneeboard uses."""
+        if time is None:
+            return None
+        if utc:
+            return time.replace(tzinfo=self.game.theater.timezone).astimezone(
+                datetime.timezone.utc
+            )
+        return time
+
+    def generate_all_packages_pages(self, flight: FlightData) -> List[KneeboardPage]:
+        """One row per friendly package (target + TOT, or patrol window), paginated."""
+        utc = flight.aircraft_type.utc_kneeboard
+        ato = self.game.coalition_for(flight.friendly).ato
+        entries: List[Tuple[datetime.datetime, List[str]]] = []
+        for package in ato.packages:
+            if not package.flights:
+                continue
+            target = (
+                _abbreviated_target_name(package.target.name)[:40]
+                if package.target is not None
+                else ""
+            )
+            primary = package.primary_flight
+            flight_plan = primary.flight_plan if primary is not None else None
+            start = getattr(flight_plan, "patrol_start_time", None)
+            end = getattr(flight_plan, "patrol_end_time", None)
+            if package.primary_task in self.PATROL_TASKS and start and end:
+                timing = (
+                    f"{SupportPage._format_time(self._to_kneeboard_time(start, utc))}"
+                    f" - {SupportPage._format_time(self._to_kneeboard_time(end, utc))}"
+                )
+                sort_key = start
+            else:
+                tot = package.time_over_target
+                if tot is not None and tot != datetime.datetime.min:
+                    timing = SupportPage._format_time(self._to_kneeboard_time(tot, utc))
+                    sort_key = tot
+                else:
+                    timing = ""
+                    sort_key = datetime.datetime.max
+            entries.append((sort_key, [package.package_description, target, timing]))
+
+        entries.sort(key=lambda entry: entry[0])
+        rows = [row for _, row in entries]
+        if not rows:
+            return []
+
+        chunks = [
+            rows[i : i + self.PACKAGES_PER_PAGE]
+            for i in range(0, len(rows), self.PACKAGES_PER_PAGE)
+        ]
+        return [
+            AllPackagesPage(chunk, index + 1, len(chunks), self.dark_kneeboard)
+            for index, chunk in enumerate(chunks)
+        ]
+
+    def generate_packages_map_page(self, flight: FlightData) -> List[KneeboardPage]:
+        """A schematic theater map labelling where each friendly package is headed."""
+        player = flight.friendly
+        ato = self.game.coalition_for(player).ato
+        targets: List[Tuple[str, float, float]] = []
+        seen: set[str] = set()
+        for package in ato.packages:
+            if not package.flights or package.target is None:
+                continue
+            # Attack packages only -- skip the support patrols (CAP, AWACS,
+            # tankers) that loiter rather than head to a target. Strike, CAS,
+            # DEAD/SEAD, BAI, anti-ship, OCA, air assault and recon all show.
+            if package.primary_task in self.PATROL_TASKS:
+                continue
+            if package.target.name in seen:
+                continue
+            seen.add(package.target.name)
+            pos = package.target.position
+            targets.append(
+                (_abbreviated_target_name(package.target.name)[:40], pos.x, pos.y)
+            )
+        if not targets:
+            return []
+
+        control_points: List[Tuple[float, float, str, str, str]] = []
+        for cp in self.game.theater.controlpoints:
+            if cp.captured == player:
+                side = "friendly"
+            elif cp.captured.is_neutral:
+                side = "neutral"
+            else:
+                side = "enemy"
+            # Fixed bases that can host aircraft get a distinct icon + name;
+            # FOBs and off-map spawns stay anonymous dots to avoid clutter.
+            if cp.is_carrier:
+                kind = "carrier"
+            elif cp.is_lha:
+                kind = "lha"
+            elif cp.category == "airfield":
+                kind = "airbase"
+            else:
+                kind = "dot"
+            name = cp.name[:24] if kind != "dot" else ""
+            control_points.append((cp.position.x, cp.position.y, side, kind, name))
+
+        return [
+            PackagesMapPage(
+                targets,
+                control_points,
+                self.game.theater.terrain,
+                self.dark_kneeboard,
+            )
+        ]
