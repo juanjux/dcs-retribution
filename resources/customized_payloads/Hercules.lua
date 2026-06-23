@@ -8,10 +8,6 @@ local unitPayloads = {
 					["CLSID"] = "Herc_GBU-43/B(MOAB)",
 					["num"] = 11,
 				},
-				[2] = {
-					["CLSID"] = "Herc_Soldier_Squad",
-					["num"] = 12,
-				},
 			},
 			["tasks"] = {
 				[1] = 31,
@@ -21,10 +17,6 @@ local unitPayloads = {
 			["name"] = "STRIKE",
 			["pylons"] = {
 				[1] = {
-					["CLSID"] = "Herc_Soldier_Squad",
-					["num"] = 12,
-				},
-				[2] = {
 					["CLSID"] = "Herc_GBU-43/B(MOAB)",
 					["num"] = 11,
 				},
@@ -40,10 +32,6 @@ local unitPayloads = {
 					["CLSID"] = "Herc_GBU-43/B(MOAB)",
 					["num"] = 11,
 				},
-				[2] = {
-					["CLSID"] = "Herc_Soldier_Squad",
-					["num"] = 12,
-				},
 			},
 			["tasks"] = {
 				[1] = 31,
@@ -53,10 +41,6 @@ local unitPayloads = {
 			["name"] = "OCA",
 			["pylons"] = {
 				[1] = {
-					["CLSID"] = "Herc_Soldier_Squad",
-					["num"] = 12,
-				},
-				[2] = {
 					["CLSID"] = "Herc_GBU-43/B(MOAB)",
 					["num"] = 11,
 				},
@@ -72,10 +56,6 @@ local unitPayloads = {
 					["CLSID"] = "Herc_GBU-43/B(MOAB)",
 					["num"] = 11,
 				},
-				[2] = {
-					["CLSID"] = "Herc_Soldier_Squad",
-					["num"] = 12,
-				},
 			},
 			["tasks"] = {
 				[1] = 31,
@@ -87,10 +67,6 @@ local unitPayloads = {
 				[1] = {
 					["CLSID"] = "Herc_GBU-43/B(MOAB)",
 					["num"] = 11,
-				},
-				[2] = {
-					["CLSID"] = "Herc_Soldier_Squad",
-					["num"] = 12,
 				},
 			},
 			["tasks"] = {
@@ -109,10 +85,6 @@ local unitPayloads = {
 			["name"] = "RUNWAY_STRIKE",
 			["pylons"] = {
 				[1] = {
-					["CLSID"] = "Herc_Soldier_Squad",
-					["num"] = 12,
-				},
-				[2] = {
 					["CLSID"] = "Herc_GBU-43/B(MOAB)",
 					["num"] = 11,
 				},
@@ -155,10 +127,6 @@ local unitPayloads = {
 			["name"] = "Retribution Air Assault",
 			["pylons"] = {
 				[1] = {
-					["CLSID"] = "Herc_Soldier_Squad",
-					["num"] = 12,
-				},
-				[2] = {
 					["CLSID"] = "Herc_JATO",
 					["num"] = 1,
 				},
