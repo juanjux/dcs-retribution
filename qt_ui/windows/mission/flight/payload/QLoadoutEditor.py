@@ -127,6 +127,58 @@ class QLoadoutEditor(QGroupBox):
         if not payload_name_input.exec_():
             return
         payload_name = payload_name_input.textValue()
+        payload_file = self._persist_payload(payload_name)
+        self.saved.emit(payload_name)
+        QMessageBox.information(
+            QWidget(),
+            "Payload Saved",
+            f"Payload for {self.flight.unit_type.dcs_unit_type.id} was successfully saved.\n"
+            f"Location: {payload_file}",
+        )
+
+    def save_as_task_default(self) -> None:
+        """Save the current loadout as the default for this aircraft + flight type.
+
+        Retribution picks a flight's default loadout by looking up payloads named
+        "Retribution <TASK>" / "Liberation <TASK>" (Loadout.default_loadout_names_for),
+        so persist the current loadout under the highest-priority such name. New
+        flights of this aircraft + task then use it. Any existing payload of that
+        name is overwritten; "Create Backup" can restore the originals.
+        """
+        from game.ato.loadouts import Loadout
+
+        names = list(Loadout.default_loadout_names_for(self.flight.flight_type))
+        if not names:
+            QMessageBox.warning(
+                QWidget(),
+                "Set as default",
+                "No default loadout name is defined for this mission type.",
+            )
+            return
+        default_name = names[0]
+        ac_id = self.flight.unit_type.dcs_unit_type.id
+        task = self.flight.flight_type.value
+        reply = QMessageBox.question(
+            QWidget(),
+            "Set as default loadout",
+            f"Save the current loadout as the default for {ac_id} on {task} "
+            f'missions?\n\nIt is stored as the payload "{default_name}" '
+            f"(overwriting any existing one), so new {task} flights for this "
+            f'aircraft use it. Use "Create Backup" first if you want to keep the '
+            f"original payloads.",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+        payload_file = self._persist_payload(default_name)
+        QMessageBox.information(
+            QWidget(),
+            "Default loadout saved",
+            f'"{default_name}" is now the default loadout for {ac_id} on {task} '
+            f"missions.\nLocation: {payload_file}",
+        )
+
+    def _persist_payload(self, payload_name: str) -> Path:
         ac_type = self.flight.unit_type.dcs_unit_type
         ac_id = ac_type.id
         payloads_folder = payloads_dir()
@@ -155,13 +207,13 @@ class QLoadoutEditor(QGroupBox):
                 )
         else:
             payloads = {
-                "name": f"{self.flight.unit_type.dcs_unit_type.id}",
+                "name": f"{ac_id}",
                 "payloads": {
                     1: DcsPayload.from_flight_member(
                         self.flight_member, payload_name
                     ).to_dict(),
                 },
-                "unitType": f"{self.flight.unit_type.dcs_unit_type.id}",
+                "unitType": f"{ac_id}",
             }
             _atomic_write_text(
                 payload_file,
@@ -169,14 +221,8 @@ class QLoadoutEditor(QGroupBox):
                 + lua.dumps(payloads, indent=1)
                 + "\nreturn unitPayloads",
             )
-            self.flight.unit_type.dcs_unit_type.add_to_payload_cache(payload_file)
-        self.saved.emit(payload_name)
-        QMessageBox.information(
-            QWidget(),
-            "Payload Saved",
-            f"Payload for {self.flight.unit_type.dcs_unit_type.id} was successfully saved.\n"
-            f"Location: {payload_file}",
-        )
+            ac_type.add_to_payload_cache(payload_file)
+        return payload_file
 
     def _create_backup_if_needed(self, ac_id):
         backup_file = payloads_dir(backup=True) / f"{ac_id}.lua"
