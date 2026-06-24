@@ -7,6 +7,7 @@ clsids:
   - "{BRU-32 GBU-10}"   # GBU-10
   - "{CFT_L_GBU_10_x_2}"   # GBU-10 * 2
   - "{CFT_R_GBU_10_x_2}"   # GBU-10 * 2
+  - "Herc_Ammo_GBU_10_bombs"   # Ammo GBU-10*6 [15340lb]
   - "{F111C_GBU10}"   # GBU-10 2000 lb TV Guided Bomb
   - "{JAS39_GBU10}"   # GBU-10 2000 lb Laser-guided Bomb
   - "{51F9AAE5-964F-4D21-83FB-502E3BFE5F8A}"   # GBU-10 - 2000lb Laser Guided Bomb

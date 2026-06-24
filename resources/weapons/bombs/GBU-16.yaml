@@ -6,6 +6,7 @@ clsids:
   - "DIS_GBU_16"   # GBU-16
   - "{BRU-32 GBU-16}"   # GBU-16
   - "{BRU-42A_3*GBU-16}"   # 3 GBU-16
+  - "Herc_Ammo_GBU_16_bombs"   # Ammo GBU-16*10 [12408lb]
   - "{F111C_GBU16}"   # GBU-16 1000 lb TV Guided Bomb
   - "{JAS39_GBU16}"   # GBU-16 1000 lb Laser-guided Bomb
   - "{0D33DDAE-524F-4A4E-B5B8-621754FE3ADE}"   # GBU-16 - 1000lb Laser Guided Bomb

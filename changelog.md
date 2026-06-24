@@ -43,6 +43,7 @@
 * **[Modding]** Add support for Su-35S mod (v2.0.27b)
 * **[Data]** Add Refueling/Recovery tasks to A-6E Intruder mod
 * **[Layouts]** Add signature to layouts' binary file for automatic reloading of updated layouts.
+* **[Mission Generator]** New campaign setting "Default laser code for Player flights" controls whether newly-created player flights are assigned a unique allocated TGP/weapon laser code (the new default, matching existing behavior) or stay on 1688. When a code is allocated it is applied to both the TGP/kneeboard code and the weapon code by default, so LGBs home on the player's own code without extra clicks; both remain independently overridable in the payload tab.
 * **[Engine]** Support for DCS 2.9.27 including F-100D and F-14A (Export).
 * **[Options]** Add new option to fast forward until player is at the IP.
 

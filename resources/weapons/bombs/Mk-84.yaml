@@ -9,6 +9,7 @@ clsids:
   - "{CFT_R_MK84AR_x_2}"   # Mk-84 AIR * 2
   - "{CFT_L_BDU56AR_x_2}"   # Mk-84 AIR TP * 2
   - "{CFT_R_BDU56AR_x_2}"   # Mk-84 AIR TP * 2
+  - "Herc_Ammo_Mk_84_bombs"   # Ammo Mk-84*8 [15735b]
   - "{JAS39_MK84}"   # Mk-84 2000 lb GP Bomb
   - "{AB8B8299-F1CC-4359-89B5-2172E0CF4A5A}"   # Mk-84 - 2000lb GP Bomb LD
   - "{BRUL657_2*MK-84}"   # Pylon 3,4 Mk-84 - 2000lb GP Bomb LD

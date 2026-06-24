@@ -7,6 +7,7 @@ clsids:
   - "{BRU42A_2_L*M117}"   # BRU-42A - 2 x M117
   - "{BRU42A_2_R*M117}"   # BRU-42A - 2 x M117
   - "{BRU42A_3*M117}"   # BRU-42A - 3 x M117
+  - "Herc_Ammo_M117_bombs"   # Ammo M117*16 [11968lb]
   - "{00F5DAC4-0466-4122-998F-B1A298E34113}"   # M117 - 750lb GP Bomb LD
   - "{B52H_BAY_M117}"   # 27 x M117 - 750lb GP Bomb LD
   - "{B58F99BA-5480-4572-8602-28B0449F5260}"   # 27 x M117 - 750lb GP Bombs LD

@@ -8,6 +8,7 @@ clsids:
   - "{CFT_R_CBU_87_x_6}"   # CBU-87 * 6
   - "{BRU42A_2_L*CBU87}"   # BRU-42A - 2 x CBU-87
   - "{BRU42A_2_R*CBU87}"   # BRU-42A - 2 x CBU-87
+  - "Herc_Ammo_CBU_87_bombs"   # Ammo CBU-87*10 [9460lb]
   - "{CBU-87}"   # CBU-87 - 202 x CEM Cluster Bomb
   - "{B52H_BAY_6x_CBU87}"   # 6 x CBU-87 - 202 x CEM Cluster Bomb
   - "{HB_F4E_CBU-87_2x}"   # 2x CBU-87 - 202 x CEM Cluster Bomb (TER)

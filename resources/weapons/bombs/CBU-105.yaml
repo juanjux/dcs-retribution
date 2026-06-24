@@ -4,6 +4,7 @@ fallback: CBU-97
 clsids:
   - "{CFT_L_CBU_105_x_3}"   # CBU-105 * 3
   - "{CFT_R_CBU_105_x_3}"   # CBU-105 * 3
+  - "Herc_Ammo_CBU_105_bombs"   # Ammo CBU-105*10 [11022lb]
   - "{CBU_105}"   # CBU-105 - 10 x SFW, CBU with WCMD
   - "{HSAB_8x_CBU105_L}"   # HSAB - 8 x CBU-105 - 10 x SFW, CBU with WCMD
   - "{HSAB_8x_CBU105_R}"   # HSAB - 8 x CBU-105 - 10 x SFW, CBU with WCMD

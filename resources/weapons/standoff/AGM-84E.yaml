@@ -2,6 +2,7 @@ name: AGM-84E SLAM
 year: 1990
 fallback: AGM-65G
 clsids:
+  - "Herc_Ammo_AGM_84E_missiles"   # Ammo AGM-84E*8 [11651lb]
   - "{AF42E6DF-9A60-46D8-A9A0-1708B241AADB}"   # AGM-84E Harpoon/SLAM (Stand-Off Land-Attack Missile)
   - "{AGM_84E}"   # AGM-84E Harpoon/SLAM (Stand-Off Land-Attack Missile)
   - "{SUPERHORNET_PYLON_03_MB_SM_1X_AGM-84E}"   #  [ STA 03	  | SUU79 | LAU117 ] - 1x AGM-84E Harpoon/SLAM (Stand-Off Land-Attack Missile)

@@ -20,6 +20,7 @@ clsids:
   - "{BRU42A_2_R*MK83}"   # BRU-42A - 2 x Mk-83
   - "{BRU42A_3*MK83}"   # BRU-42A - 3 x Mk-83
   - "{JAS39_MK83}"   # Mk-83 1000 lb GP Bomb
+  - "Herc_Ammo_Mk_83_bombs"   # Ammo Mk-83*10 [9834lb]
   - "{BRU42A_2_L*MK83AIR}"   # BRU-42A - 2 x Mk-83AIR
   - "{BRU42A_2_R*MK83AIR}"   # BRU-42A - 2 x Mk-83AIR
   - "{BRU42A_3*MK83AIR}"   # BRU-42A - 3 x Mk-83AIR

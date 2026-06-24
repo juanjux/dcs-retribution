@@ -14,6 +14,7 @@ clsids:
   - "{BRU-42A_2*GBU-12_SIDE_RIGHT}"   # 2 GBU-12 *-*
   - "{BRU42A_2_L*GBU12}"   # BRU-42A - 2 x GBU-12
   - "{BRU42A_2_R*GBU12}"   # BRU-42A - 2 x GBU-12
+  - "Herc_Ammo_GBU_12_bombs"   # Ammo GBU-12*16 [9680lb]
   - "{F111C_GBU12}"   # GBU-12 500 lb TV Guided Bomb
   - "{JAS39_GBU12}"   # GBU-12 500 lb Laser-guided Bomb
   - "{DB769D48-67D7-42ED-A2BE-108D566C8B1E}"   # GBU-12 - 500lb Laser Guided Bomb

@@ -2,6 +2,7 @@ name: Kh-29L
 year: 1980
 fallback: Kh-25ML
 clsids:
+  - "Herc_Ammo_KH29L_missiles"   # Ammo Kh-29L*10 [16434lb]
   - "{SU30_KH29L}"   # KH-29L (AS-14 Kedge), Semi-Act Laser
   - "{X-29L}"   # Kh-29L (AS-14 Kedge) - 657kg, ASM, Semi-Act Laser
   - "{3468C652-E830-4E73-AFA9-B5F260AB7C3D}"   # Kh-29L (AS-14 Kedge) - 657kg, ASM, Semi-Act Laser

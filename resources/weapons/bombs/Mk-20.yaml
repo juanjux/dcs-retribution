@@ -43,6 +43,7 @@ clsids:
   - "{BRU42A_3*CBU99_mod6}"   # BRU-42A - 3 x CBU-99
   - "DIS_MK_20_DUAL_GDJ_II19_L"   # GDJ-II19 - 2 x Mk-20
   - "DIS_MK_20_DUAL_GDJ_II19_R"   # GDJ-II19 - 2 x Mk-20
+  - "Herc_Ammo_MK20_bombs"   # Ammo MK20*20 [9768lb]
   - "{BRU41A_4_L*MK20_ROCKEYE}"   # BRU-41A - 4 x Mk-20 Rockeye
   - "{BRU41A_4_R*MK20_ROCKEYE}"   # BRU-41A - 4 x Mk-20 Rockeye
   - "{BRU41A_6*MK20_ROCKEYE}"   # BRU-41A - 6 x Mk-20 Rockeye
