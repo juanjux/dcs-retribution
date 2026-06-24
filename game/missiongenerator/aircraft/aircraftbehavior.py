@@ -13,6 +13,7 @@ from dcs.task import (
     FighterSweep,
     GroundAttack,
     Nothing,
+    OptECMUsing,
     OptROE,
     OptRTBOnBingoFuel,
     OptRTBOnOutOfAmmo,
@@ -499,6 +500,12 @@ class AircraftBehavior:
             restrict_jettison=True,
             mission_uses_gun=False,
         )
+        # Engine ECM: emit built-in ECM continuously so the DCS engine degrades
+        # enemy radar lock -- the realistic, radar-selective part of jamming (IR and
+        # gun/CIWS defenses are unaffected). Complements the ewrj plugin's scripted
+        # suppression. Modest effect: mod jets like the CJS EA-18G carry only a
+        # self-protection jammer (AN/ALQ-165), not a high-power standoff pod.
+        group.points[0].tasks.append(OptECMUsing(value=OptECMUsing.Values.AlwaysUse))
 
     def configure_transport(self, group: FlyingGroup[Any], flight: Flight) -> None:
         self.configure_task(flight, group, Transport)
