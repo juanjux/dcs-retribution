@@ -125,8 +125,6 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   ([#22](https://github.com/juanjux/dcs-retribution/pull/22))
 - Player ground-start flights no longer spawn in the air.
   ([#19](https://github.com/juanjux/dcs-retribution/pull/19))
-- Take-off no longer hangs when the fast-forward stop condition is unreachable.
-  ([#24](https://github.com/juanjux/dcs-retribution/pull/24))
 - DCS no longer rejects missions with a locked-speed waypoint between TOT-locked
   waypoints.
   ([#13](https://github.com/juanjux/dcs-retribution/pull/13))
