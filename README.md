@@ -59,9 +59,11 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
 - **Plugin drop-down options** — plugin settings can offer choice (combo-box) options.
   ([#2](https://github.com/juanjux/dcs-retribution/pull/2))
 - **Set loadout as default** — in the Edit Flight payload tab, a "Set as default
-  for plane and mission" button saves the selected loadout as the default for that
-  aircraft and mission type, so new flights of that type use it.
-  ([#49](https://github.com/juanjux/dcs-retribution/pull/49))
+  for plane and mission" button makes the selected named payload the default for
+  that aircraft and mission type, so new flights of that type start with it. It
+  remembers your choice by name — it does not rename or overwrite any payload.
+  ([#49](https://github.com/juanjux/dcs-retribution/pull/49),
+  [#51](https://github.com/juanjux/dcs-retribution/pull/51))
 
 ### Kneeboards
 - **Friendly-packages list** plus a **package-targets map** page.
