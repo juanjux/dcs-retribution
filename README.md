@@ -65,11 +65,9 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
 - **DEAD/SEAD target page** — one waypoint per target with an STPT column.
   ([#18](https://github.com/juanjux/dcs-retribution/pull/18))
 - **COMM2 presets** mirrored from COMM1 on twin-radio aircraft (plus an
-  F/A-18-family COMM1/COMM2 fix), clearer auto-assigned **TACAN** codes, and an
-  in-air-start **waypoint numbering** fix.
+  F/A-18-family COMM1/COMM2 fix) and clearer auto-assigned **TACAN** codes.
   ([#12](https://github.com/juanjux/dcs-retribution/pull/12),
-  [#20](https://github.com/juanjux/dcs-retribution/pull/20),
-  [#14](https://github.com/juanjux/dcs-retribution/pull/14))
+  [#20](https://github.com/juanjux/dcs-retribution/pull/20))
 
 ### Missions, AI & tasking
 - **Campaign Doctrine: "non-combat (crash) air losses don't count"** — AI
@@ -87,9 +85,6 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   or remove aircraft (shown only when opened from the Cheats tab), handy for
   testing mod aircraft without spending money.
   ([#41](https://github.com/juanjux/dcs-retribution/pull/41))
-- **Escort hold fix** — escorts of an AWACS/tanker now hold on the protected
-  flight's racetrack instead of a far-away point, so they actually protect it.
-  ([#42](https://github.com/juanjux/dcs-retribution/pull/42))
 - **Electronic Warfare / "Jamming"** flight task for dedicated EW aircraft
   (EA-18G, EA-6B, Su-34, EC-130, …) that suppresses enemy radars. Offensive
   jamming **degrades** air defenses (via the engine's ECM) rather than silencing
@@ -111,9 +106,6 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   ([#47](https://github.com/juanjux/dcs-retribution/pull/47))
 
 ### Modding & data
-- **Anubis C-130 Hercules** — `suppress_ballute` crash fix and an air-assault
-  zig-zag ingress (C-130 and helos).
-  ([#9](https://github.com/juanjux/dcs-retribution/pull/9))
 - *(WIP on `master`, not yet PR'd)* **F-15EX, F-15C EG (Golden Eagle) and
   Eurofighter Typhoon** mod aircraft.
 
@@ -137,6 +129,14 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
 - Air-assault troop drop-off zones are kept on land — coastal objectives no longer
   drop the troops into the sea.
   ([#48](https://github.com/juanjux/dcs-retribution/pull/48))
+- Kneeboard waypoint numbering is correct for in-air-start flights.
+  ([#14](https://github.com/juanjux/dcs-retribution/pull/14))
+- Escorts of an AWACS/tanker hold on the protected flight's racetrack instead of a
+  far-away point, so they actually protect it.
+  ([#42](https://github.com/juanjux/dcs-retribution/pull/42))
+- **Anubis C-130 Hercules** — `suppress_ballute` crash fix and an air-assault
+  zig-zag ingress (C-130 and helos).
+  ([#9](https://github.com/juanjux/dcs-retribution/pull/9))
 
 ## From the 414Ret fork
 
