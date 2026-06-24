@@ -137,45 +137,43 @@ class QLoadoutEditor(QGroupBox):
         )
 
     def save_as_task_default(self) -> None:
-        """Save the current loadout as the default for this aircraft + flight type.
+        """Make the selected payload the default for this aircraft + flight type.
 
-        Retribution picks a flight's default loadout by looking up payloads named
-        "Retribution <TASK>" / "Liberation <TASK>" (Loadout.default_loadout_names_for),
-        so persist the current loadout under the highest-priority such name. New
-        flights of this aircraft + task then use it. Any existing payload of that
-        name is overwritten; "Create Backup" can restore the originals.
+        Records a mapping (aircraft, flight type) -> payload name that
+        Loadout.default_for_task_and_aircraft consults first, so new flights of
+        this aircraft + task start with this payload. The payload itself is NOT
+        renamed or overwritten — this only changes which named payload is picked
+        as the default. Custom (unsaved) loadouts must be saved + named first.
         """
-        from game.ato.loadouts import Loadout
+        from game.ato.loadouts import set_default_loadout_override
 
-        names = list(Loadout.default_loadout_names_for(self.flight.flight_type))
-        if not names:
+        if self.isChecked() or self.flight_member.loadout.is_custom:
             QMessageBox.warning(
                 QWidget(),
                 "Set as default",
-                "No default loadout name is defined for this mission type.",
+                'Save this as a named payload first ("Save Payload"), then select '
+                "it from the list and set it as the default.",
             )
             return
-        default_name = names[0]
+        payload_name = self.flight_member.loadout.name
         ac_id = self.flight.unit_type.dcs_unit_type.id
-        task = self.flight.flight_type.value
+        task = self.flight.flight_type
         reply = QMessageBox.question(
             QWidget(),
             "Set as default loadout",
-            f"Save the current loadout as the default for {ac_id} on {task} "
-            f'missions?\n\nIt is stored as the payload "{default_name}" '
-            f"(overwriting any existing one), so new {task} flights for this "
-            f'aircraft use it. Use "Create Backup" first if you want to keep the '
-            f"original payloads.",
+            f'Make "{payload_name}" the default loadout for {ac_id} on '
+            f"{task.value} missions?\n\nNew {task.value} flights for this aircraft "
+            f"will start with this payload. No existing payload is modified.",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
         if reply != QMessageBox.StandardButton.Yes:
             return
-        payload_file = self._persist_payload(default_name)
+        set_default_loadout_override(ac_id, task, payload_name)
         QMessageBox.information(
             QWidget(),
-            "Default loadout saved",
-            f'"{default_name}" is now the default loadout for {ac_id} on {task} '
-            f"missions.\nLocation: {payload_file}",
+            "Default loadout set",
+            f'"{payload_name}" is now the default loadout for {ac_id} on '
+            f"{task.value} missions.",
         )
 
     def _persist_payload(self, payload_name: str) -> Path:
