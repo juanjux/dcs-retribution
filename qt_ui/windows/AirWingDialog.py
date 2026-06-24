@@ -307,7 +307,9 @@ class AirWingTabs(QTabWidget):
         )
 
     def open_awcd(self):
-        AirWingConfigurationDialog(self.game_model.game, True, self).exec_()
+        AirWingConfigurationDialog(
+            self.game_model.game, True, self, cheat=True
+        ).exec_()
         events = GameUpdateEvents().begin_new_turn()
         EventStream.put_nowait(events)
         self.game_model.ato_model.on_sim_update(events)

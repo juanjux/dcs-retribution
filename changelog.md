@@ -14,6 +14,7 @@
 * **[UX]** Avoid having escorts from wondering off too far while chasing a target.
 * **[UX]** Improved fast-forward settings with the ability to skip combat.
 * **[UX]** Show an "End of Mission Detected, processing Mission Data" busy dialog while turn results are processed, so the wait is not mistaken for a missed detection
+* **[UX]** The info panel now reports finished repairs for runways and all repairable ground objects/buildings (both coalitions), plus per-base "in progress, N turns remaining" lines for your own repairs each turn.
 * **[UI]** Reworked the Finances dialog to show gross income, the HQ's automated per-category spending and the resulting net per turn, with a collapsible income breakdown and in-dialog automation toggles.
 * **[Map]** Hovering a SAM threat or detection ring highlights its emitter — and hovering an emitter highlights its ring — making it easy to tell which site a ring belongs to. Can be disabled from the map's layer control.
 * **[Map]** New "Red/Blue: destroyed (non-repairable)" layer toggles (below the ruler) to hide fully destroyed, non-rebuildable ground objects (buildings, ships, ...) per coalition. Repairable objects (air defenses, vehicle groups) are never hidden. Both shown by default.
@@ -36,6 +37,7 @@
 * **[AirWing]** Airfield Command shows idle aircraft per squadron (e.g. "20 (10 idle)") with a "transfer ordered to X" indicator, lets you open a squadron's dialog by clicking its name, and lays the count below the name so long text no longer adds a horizontal scrollbar
 * **[BaseMenu]** Base intel summary shows aircraft occupied/transferring/free and a per-parking-type breakdown (shared / fixed-wing-exclusive / rotary-wing-exclusive / ground spawns), fixing the misleading "0 fixed-wing only parking" at bases whose slots are all shared
 * **[Plugins]** Update EW Script to version 2.1
+* **[Plugins]** EW offensive jamming now degrades enemy air defenses (via engine ECM) instead of forcing them to weapon-hold — jammed SAM sites and naval groups keep defending (SAMs degraded; CIWS/AAA still fire optically at incoming missiles).
 * **[Modding]** Add CurrentHill UK Assets Pack support (v1.1.2)
 * **[Modding]** Add support for Su-35S mod (v2.0.27b)
 * **[Data]** Add Refueling/Recovery tasks to A-6E Intruder mod
@@ -64,6 +66,7 @@
 * **[Flight Plans]** Player flights with a ground start (Cold/Warm/Runway) no longer spawn in the air when their computed startup time falls before mission start (e.g. due to a long player startup estimate); they now wait and start on the ground at mission start.
 * **[Flight Plans]** Stabilized waypoint solver debug GeoJSON coordinate precision to avoid platform-specific floating point drift in debug output.
 * **[Fast-forward]** Detect when the configured "Fast forward until" stop condition is unreachable for a player flight's start type (e.g. "Player startup time" with a runway or air start, which skip the Startup state) and prompt before launching the mission: per mismatched flight, the user can either downgrade the flight's start type to match the setting, or halt fast-forward at the flight's actual spawn instead, for this mission only. A hard tick ceiling also caps any remaining unreachable case as a back-stop, so the app can no longer hang on Take Off.
+* **[Flight Plans]** Escorts assigned to an AWACS or tanker now hold on that flight's racetrack orbit instead of at the far-away target-relative escort-hold point, so they actually co-locate with and protect it.
 * **[App]** Fix Retribution sometimes staying alive in the background after the window is closed.
 * **[Performance]** Improved robustness w.r.t. state.json handling to avoid corruption and thus save loss.
 * **[Performance]** Faster post-mission turn processing
