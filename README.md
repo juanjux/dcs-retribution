@@ -114,12 +114,12 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   Eurofighter Typhoon** mod aircraft.
 
 ### Fixes
-- App process lifecycle — no longer lingers as a background process after the
-  window is closed, and relaunching the executable no longer spawns orphaned
-  duplicate processes (single-instance guard).
+- App process lifecycle [upstream PR](https://github.com/dcs-retribution/dcs-retribution/pull/832)
+  — no longer lingers as a background process after the window is closed, and
+  relaunching the executable no longer spawns orphaned duplicate processes
+  (single-instance guard).
   ([#15](https://github.com/juanjux/dcs-retribution/pull/15),
-  [#50](https://github.com/juanjux/dcs-retribution/pull/50),
-  [upstream PR](https://github.com/dcs-retribution/dcs-retribution/pull/832))
+  [#50](https://github.com/juanjux/dcs-retribution/pull/50))
 - Qt non-native dialogs avoid a QtWebEngine file-dialog deadlock.
   ([#17](https://github.com/juanjux/dcs-retribution/pull/17))
 - Robust payload handling — unparseable payload files are skipped; loadouts are
