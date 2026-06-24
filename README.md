@@ -105,6 +105,10 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   ([#43](https://github.com/juanjux/dcs-retribution/pull/43))
 - **Movable ships** — reposition non-carrier naval groups on the campaign map.
   ([#30](https://github.com/juanjux/dcs-retribution/pull/30))
+- **Naval groups always defend** — ships are generated on a hot (RED) alarm state
+  so fleets actually fight back (radars/SAM/CIWS/AAA) instead of sitting passive
+  with radars off when the performance "red alert state" toggle is off.
+  ([#47](https://github.com/juanjux/dcs-retribution/pull/47))
 
 ### Modding & data
 - **Anubis C-130 Hercules** — `suppress_ballute` crash fix and an air-assault
@@ -130,6 +134,9 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   ([#13](https://github.com/juanjux/dcs-retribution/pull/13))
 - The sell-aircraft exploit that corrupted squadron counts is fixed.
   ([#5](https://github.com/juanjux/dcs-retribution/pull/5))
+- Air-assault troop drop-off zones are kept on land — coastal objectives no longer
+  drop the troops into the sea.
+  ([#48](https://github.com/juanjux/dcs-retribution/pull/48))
 
 ## From the 414Ret fork
 
