@@ -38,6 +38,7 @@
 * **[Flight Plans]** Stabilized waypoint solver debug GeoJSON coordinate precision to avoid platform-specific floating point drift in debug output.
 * **[Mission Generation]** Assign plane-specific laser codes to LGB weapons when building the mission
 * **[Engine]** Fixed a bug where squadrons could transfer to enemy owned control points
+* **[Mission Generation]** Air assault drop-off zones are kept on land, so coastal objectives no longer drop the troops into the sea.
 
 # Retribution v1.5.0
 
