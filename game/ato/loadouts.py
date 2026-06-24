@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import copy
 import datetime
+import json
 import logging
 from collections.abc import Iterable
+from pathlib import Path
 from typing import Iterator, Optional, TYPE_CHECKING, Type, Dict, Any
 
 from dcs.unittype import FlyingType
@@ -12,11 +14,48 @@ from game.ato.flighttype import FlightType
 from game.data.weapons import Pylon, Weapon, WeaponType
 from game.dcs.aircrafttype import AircraftType
 from game.factions.faction import Faction
-from game.persistency import prefer_liberation_payloads
+from game.persistency import payloads_dir, prefer_liberation_payloads
 
 if TYPE_CHECKING:
     from .flight import Flight
     from game.theater import MissionTarget
+
+
+# Default-loadout overrides: the payload editor's "Set as default" button lets a
+# user mark a specific named payload as the default for an aircraft + flight type.
+# Stored globally (all campaigns) next to the DCS payload files, keyed by aircraft
+# id then FlightType name. default_for_task_and_aircraft consults these before the
+# "Retribution <task>" name conventions. This only changes WHICH named payload is
+# picked as default; it never renames or overwrites a payload.
+_DEFAULT_LOADOUT_OVERRIDES_FILE = "retribution_default_loadouts.json"
+
+
+def _default_loadout_overrides_path() -> Path:
+    return payloads_dir() / _DEFAULT_LOADOUT_OVERRIDES_FILE
+
+
+def load_default_loadout_overrides() -> Dict[str, Dict[str, str]]:
+    try:
+        with _default_loadout_overrides_path().open(encoding="utf-8") as f:
+            data = json.load(f)
+    except (OSError, ValueError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def get_default_loadout_override(aircraft_id: str, task: FlightType) -> Optional[str]:
+    return load_default_loadout_overrides().get(aircraft_id, {}).get(task.name)
+
+
+def set_default_loadout_override(
+    aircraft_id: str, task: FlightType, payload_name: str
+) -> None:
+    data = load_default_loadout_overrides()
+    data.setdefault(aircraft_id, {})[task.name] = payload_name
+    path = _default_loadout_overrides_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2)
 
 
 class Loadout:
@@ -321,9 +360,17 @@ class Loadout:
             )
             return cls.empty_loadout()
 
+        # A user-chosen default (set via the payload editor's "Set as default"
+        # button) takes priority over the "Retribution <task>" name conventions.
+        # If its payload is missing or invalid we fall through to the conventions.
+        names = list(cls.default_loadout_names_for(task))
+        override = get_default_loadout_override(dcs_unit_type.id, task)
+        if override:
+            names = [override] + [n for n in names if n != override]
+
         # Iterate through each possible payload type for a given aircraft.
         # Some aircraft have custom loadouts that aren't in the standard set.
-        for name in cls.default_loadout_names_for(task):
+        for name in names:
             payload = dcs_unit_type.loadout_by_name(name)
             if payload is not None:
                 if target:
