@@ -83,13 +83,28 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   ([#4](https://github.com/juanjux/dcs-retribution/pull/4))
 - **Money cheat for both coalitions** (OWNFOR + OPFOR).
   ([#3](https://github.com/juanjux/dcs-retribution/pull/3))
-- *(WIP on `master`, not yet PR'd)* **Electronic Warfare / "Jamming"** flight
-  task for dedicated EW aircraft (EA-18G, EA-6B, Su-34, …).
-- *(WIP on `master`, not yet PR'd)* **Automated ground-object / building repair**
-  — the HQ can repair damaged SAM sites, vehicle groups and buildings each turn,
-  with tunable budgets and priorities.
-- *(WIP on `master`, not yet PR'd)* **Movable ships** — reposition non-carrier
-  naval groups on the campaign map.
+- **Air Wing cheat** — per-squadron aircraft count with free +/- controls to add
+  or remove aircraft (shown only when opened from the Cheats tab), handy for
+  testing mod aircraft without spending money.
+  ([#41](https://github.com/juanjux/dcs-retribution/pull/41))
+- **Escort hold fix** — escorts of an AWACS/tanker now hold on the protected
+  flight's racetrack instead of a far-away point, so they actually protect it.
+  ([#42](https://github.com/juanjux/dcs-retribution/pull/42))
+- **Electronic Warfare / "Jamming"** flight task for dedicated EW aircraft
+  (EA-18G, EA-6B, Su-34, EC-130, …) that suppresses enemy radars. Offensive
+  jamming **degrades** air defenses (via the engine's ECM) rather than silencing
+  them, so jammed SAM sites and fleets keep defending (CIWS/AAA included).
+  ([#28](https://github.com/juanjux/dcs-retribution/pull/28),
+  [#44](https://github.com/juanjux/dcs-retribution/pull/44))
+- **Automated ground-object / building repair** — the HQ repairs damaged SAM
+  sites, vehicle groups and buildings each turn, with tunable budgets and priorities.
+  ([#29](https://github.com/juanjux/dcs-retribution/pull/29))
+- **Repair reporting in the turn panel** — shows what each side finished repairing
+  this turn (all object types, not just runways), and your side's in-progress
+  repairs with turns remaining.
+  ([#43](https://github.com/juanjux/dcs-retribution/pull/43))
+- **Movable ships** — reposition non-carrier naval groups on the campaign map.
+  ([#30](https://github.com/juanjux/dcs-retribution/pull/30))
 
 ### Modding & data
 - **Anubis C-130 Hercules** — `suppress_ballute` crash fix and an air-assault
