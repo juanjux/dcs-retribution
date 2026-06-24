@@ -1077,6 +1077,65 @@ class ControlPoint(MissionTarget, SidcDescribable, ABC):
                 else:
                     unit.repair_turns_remaining = turns_remaining - 1
 
+    @staticmethod
+    def _max_pending_repair_turns(ground_object: TheaterGroundObject) -> Optional[int]:
+        """Highest repair_turns_remaining among the object's still-dead units.
+
+        The object is only fully back in service once every pending unit has
+        finished, so the object-level estimate is the slowest of them. Returns
+        None when nothing is currently under repair.
+        """
+        turns: list[int] = [
+            unit.repair_turns_remaining
+            for unit in ground_object.units
+            if not unit.alive and unit.repair_turns_remaining is not None
+        ]
+        return max(turns) if turns else None
+
+    def report_repairs(
+        self,
+        game: Game,
+        runway_was_repairing: bool,
+        ground_objects_repairing: Iterable[TheaterGroundObject],
+    ) -> None:
+        """Surface this turn's repair progress in the info panel.
+
+        Finished repairs (completed this turn) are reported for both coalitions.
+        For the player's own bases we additionally report repairs that started or
+        continued this turn, with the number of turns remaining.
+
+        Args:
+            runway_was_repairing: Whether the runway was under repair before this
+                turn was processed.
+            ground_objects_repairing: Ground objects that had pending repairs
+                before this turn was processed.
+        """
+        if self.captured.is_neutral:
+            return
+        is_player = self.captured.is_blue
+        who = "We have" if is_player else "OPFOR has"
+
+        runway_status = self.runway_status
+        if runway_was_repairing and runway_status is not None:
+            if runway_status.repair_turns_remaining is None and not runway_status.damaged:
+                game.message(f"{who} finished repairing the runway at {self}")
+            elif is_player and runway_status.repair_turns_remaining is not None:
+                game.message(
+                    f"Runway repair at {self} in progress, "
+                    f"{runway_status.repair_turns_remaining} turns remaining"
+                )
+
+        for ground_object in ground_objects_repairing:
+            if not ground_object.has_pending_repairs:
+                game.message(f"{who} finished repairs at {ground_object.obj_name}")
+            elif is_player:
+                turns_remaining = ControlPoint._max_pending_repair_turns(ground_object)
+                if turns_remaining is not None:
+                    game.message(
+                        f"Repairs at {ground_object.obj_name} in progress, "
+                        f"{turns_remaining} turns remaining"
+                    )
+
     def process_turn(self, game: Game, events: GameUpdateEvents) -> None:
         # We're running at the end of the turn, so the time right now is irrelevant, and
         # we don't know what time the next turn will start yet. It doesn't actually
@@ -1086,11 +1145,26 @@ class ControlPoint(MissionTarget, SidcDescribable, ABC):
 
         self.release_parking_slots()
 
+        # Snapshot repair state before processing so we can tell which repairs
+        # finished this turn (reported for both sides) from those still in
+        # progress (reported for the player only).
         runway_status = self.runway_status
+        runway_was_repairing = (
+            runway_status is not None
+            and runway_status.repair_turns_remaining is not None
+        )
+        ground_objects_repairing = [
+            ground_object
+            for ground_object in self.ground_objects
+            if self._max_pending_repair_turns(ground_object) is not None
+        ]
+
         if runway_status is not None:
             runway_status.process_turn()
 
         self.process_ground_object_repairs(game, events)
+
+        self.report_repairs(game, runway_was_repairing, ground_objects_repairing)
 
         # Process movements for ships control points group
         if self.target_position is not None:
