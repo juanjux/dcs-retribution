@@ -697,7 +697,11 @@ function samON(groupsam)
         return
     end
 
-    _controller:setOption(AI.Option.Ground.id.ROE,     AI.Option.Ground.val.ROE.OPEN_FIRE)
+    if _group:getCategory() == Group.Category.SHIP then
+        _controller:setOption(AI.Option.Naval.id.ROE, AI.Option.Naval.val.ROE.OPEN_FIRE)
+    else
+        _controller:setOption(AI.Option.Ground.id.ROE,     AI.Option.Ground.val.ROE.OPEN_FIRE)
+    end
     if ewrj_options.DEBUG then
         trigger.action.outText(groupsam.." SAM SWITCHING ON", 5)
         env.info("[EW DEBUG] SAM has switched ON: " .. groupsam)
@@ -731,12 +735,21 @@ function samOFF(groupsam)
 
     -- REALISM: offensive jamming must DEGRADE, not SILENCE. We do NOT force
     -- WEAPON_HOLD anymore (that muted the whole group: search radar AND the
-    -- optical last-ditch guns like naval CIWS / ZSU-23-4 AAA = a whole fleet
-    -- going dark, unrealistic). A successful jam instead drops the group to
+    -- optical last-ditch guns). A successful jam instead drops a GROUND group to
     -- RETURN_FIRE: it stops proactively engaging but still defends when shot at,
-    -- and its optical guns still swat incoming missiles. How often this triggers
-    -- is scaled down by OFFENSIVE_POWER so suppression is intermittent.
-    _controller:setOption(AI.Option.Ground.id.ROE, AI.Option.Ground.val.ROE.RETURN_FIRE)
+    -- scaled by OFFENSIVE_POWER so suppression is intermittent.
+    -- SHIPS are different: on a naval group RETURN_FIRE also gates point-defense
+    -- (CIWS / last-ditch SAM go fully silent and the fleet eats the whole
+    -- anti-ship salvo, as in-game testing confirmed), and ENGAGE_AIR_WEAPONS
+    -- (default true) does NOT override that ROE gate. So a jammed ship stays
+    -- OPEN_FIRE via the Naval option namespace and keeps point-defending; the jam
+    -- still degrades its long-range radar SAMs through the engine ECM and SARH
+    -- launcher-jamming, not by muting its guns.
+    if _group:getCategory() == Group.Category.SHIP then
+        _controller:setOption(AI.Option.Naval.id.ROE, AI.Option.Naval.val.ROE.OPEN_FIRE)
+    else
+        _controller:setOption(AI.Option.Ground.id.ROE, AI.Option.Ground.val.ROE.RETURN_FIRE)
+    end
     if ewrj_options.DEBUG then
         trigger.action.outText(groupsam.." SAM JAMMED (degraded -> return fire)", 5)
         env.info("[EW DEBUG] SAM jammed (ROE -> RETURN_FIRE, degraded): " .. groupsam)
@@ -757,10 +770,16 @@ function samPEEK(groupsam)
     -- The "peek" state: a jammed-but-checking radar drops to RETURN_FIRE
     -- (reactive only) so it never goes fully silent (WEAPON_HOLD) but is
     -- degraded while the jam check keeps succeeding.
-    controller:setOption(
-        AI.Option.Ground.id.ROE,
-        AI.Option.Ground.val.ROE.RETURN_FIRE
-    )
+    if group:getCategory() == Group.Category.SHIP then
+        -- Ships keep point-defending; see samOFF() for why RETURN_FIRE is wrong
+        -- for naval groups (it silences CIWS/last-ditch SAM).
+        controller:setOption(AI.Option.Naval.id.ROE, AI.Option.Naval.val.ROE.OPEN_FIRE)
+    else
+        controller:setOption(
+            AI.Option.Ground.id.ROE,
+            AI.Option.Ground.val.ROE.RETURN_FIRE
+        )
+    end
     if ewrj_options.DEBUG then
         trigger.action.outText(groupsam.." SAM is PEEKING (return fire)", 5)
         env.info("[EW DEBUG] "..groupsam.." radar PEEK (ROE -> RETURN_FIRE)")
