@@ -26,7 +26,7 @@
 * **[Options]** New Campaign Doctrine option "Enable Electronic Warfare (jamming) flights": dedicated EW aircraft (EA-18G, EA-6B, Su-34, Tornado ECR, EC-130, ...) can be tasked as a "Jamming" escort that suppresses enemy SAM radars and defeats incoming radar-guided missiles, holding off at a threat-aware standoff with the package. Requires the "EW Jammer Script" LUA plugin. Applies to both coalitions.
 * **[Cheat]** The money cheat can give or take money to both OWNFOR and OPFOR (previously OWNFOR only).
 * **[Plugins]** Update EW Script to version 2.1
-* **[Plugins]** EW offensive jamming now degrades enemy air defenses (via engine ECM) instead of forcing them to weapon-hold — jammed SAM sites and naval groups keep defending (SAMs degraded; CIWS/AAA still fire optically at incoming missiles).
+* **[Plugins]** EW offensive jamming now degrades enemy air defenses instead of silencing them: a successful jam drops the radar's group to return-fire (intermittently, scaled down by the new `OFFENSIVE_POWER` multiplier) rather than weapon-hold, so jammed SAM sites and naval groups keep defending — SAMs are degraded and the optical guns (naval CIWS, AAA) still swat incoming missiles.
 * **[Modding]** Add CurrentHill UK Assets Pack support (v1.1.2)
 * **[Modding]** Add support for Su-35S mod (v2.0.27b)
 * **[Data]** Add Refueling/Recovery tasks to A-6E Intruder mod
