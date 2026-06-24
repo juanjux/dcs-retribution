@@ -369,7 +369,7 @@ class GroundObjectGenerator:
                 if frequency:
                     ship_group.set_frequency(frequency.hertz)
                 ship_group.units[0].name = unit.unit_name
-                self.set_alarm_state(ship_group)
+                self.set_alarm_state(ship_group, force_red=True)
                 NavalForcePainter(faction, ship_group.units[0]).apply_livery()
             else:
                 ship_unit = self.m.ship(unit.unit_name, unit.type)
@@ -401,8 +401,12 @@ class GroundObjectGenerator:
         if eplrs_enabled and unit_type.eplrs:
             group.points[0].tasks.append(EPLRS(group.id))
 
-    def set_alarm_state(self, group: MovingGroup[Any]) -> None:
-        if self.game.settings.perf_red_alert_state:
+    def set_alarm_state(
+        self, group: MovingGroup[Any], force_red: bool = False
+    ) -> None:
+        # Ships pass force_red so they always defend; the perf toggle only exists
+        # to let ground SAMs start "dark" for Skynet IADS, not to disarm fleets.
+        if force_red or self.game.settings.perf_red_alert_state:
             group.points[0].tasks.append(OptAlarmState(2))
         else:
             group.points[0].tasks.append(OptAlarmState(1))
