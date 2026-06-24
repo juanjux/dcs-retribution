@@ -11,6 +11,8 @@ kill_events = {} -- killed units will be added via S_EVENT_KILL
 kill_details = {} -- structured S_EVENT_KILL records {target, initiator, weapon} for the UI feed
 base_capture_events = {}
 destroyed_objects_positions = {} -- will be added via S_EVENT_DEAD event
+took_off = {}   -- unit name -> true (S_EVENT_TAKEOFF); a ground-start unit absent here was destroyed parked
+death_time = {} -- unit name -> first death-event mission time (s), for indirect-kill timing
 mission_ended = false
 dirty_state = false -- Track if state has changed and needs writing
 
@@ -63,6 +65,8 @@ function write_state()
         ["mission_ended"] = mission_ended,
         ["destroyed_objects_positions"] = destroyed_objects_positions,
         ["model_time"] = timer.getTime(),
+        ["took_off"] = took_off,
+        ["death_time"] = death_time,
     }
     local ok, write_error = pcall(function()
         fp:write(json:encode(game_state))
@@ -199,6 +203,34 @@ local function is_player_despawn(name)
 end
 
 local function onEvent(event)
+    -- Indirect-kill attribution data (consumed by the debriefing): which units
+    -- took off, and the first death-event time of each unit. pcall-guarded so a
+    -- missing accessor never breaks the mission.
+    if event.id == world.event.S_EVENT_TAKEOFF and event.initiator then
+        pcall(function()
+            local n = event.initiator:getName()
+            if n and not took_off[n] then took_off[n] = true; dirty_state = true end
+        end)
+    end
+    if event.id == world.event.S_EVENT_KILL and event.target then
+        pcall(function()
+            local n = event.target:getName()
+            if n and death_time[n] == nil then death_time[n] = timer.getTime(); dirty_state = true end
+        end)
+    end
+    if event.initiator and (event.id == world.event.S_EVENT_CRASH
+        or event.id == world.event.S_EVENT_DEAD
+        or event.id == world.event.S_EVENT_UNIT_LOST) then
+        pcall(function()
+            local n = event.initiator:getName()
+            -- Skip player-despawns (same guard as the loss lists) so death_time
+            -- only holds genuine deaths.
+            if n and death_time[n] == nil and not is_player_despawn(n) then
+                death_time[n] = timer.getTime(); dirty_state = true
+            end
+        end)
+    end
+
     -- Track player seat-leaves and ejections first so the loss handlers below can
     -- tell a despawn (player left, survived) from a real shootdown.
     if event.id == world.event.S_EVENT_EJECTION and event.initiator
