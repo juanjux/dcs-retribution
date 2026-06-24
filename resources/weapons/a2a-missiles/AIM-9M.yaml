@@ -13,6 +13,7 @@ clsids:
   - "{GD_F100_CATM-9M_x1_Right}"   # 1x Captive AIM-9M for ACM
   - "{GD_F100_CATM-9M_x1_Left}"   # 1x Captive AIM-9M for ACM
   - "{GD_F100_CATM-9M_x2}"   # 2x Captive AIM-9M for ACM
+  - "Herc_Ammo_AIM9M_missiles"   # Ammo AIM-9M*30 [7128lb]
   - "LAU-127_CATM-9M"   # LAU-127 Captive AIM-9M for ACM
   - "LAU-127_AIM-9M"   # LAU-127 AIM-9M Sidewinder IR AAM
   - "{HB_A6E_LAU7_AIM9M}"   # LAU-7 with AIM-9M Sidewinder IR AAM

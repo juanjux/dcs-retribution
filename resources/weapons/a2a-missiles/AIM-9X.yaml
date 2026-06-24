@@ -3,6 +3,7 @@ year: 2003
 fallback: AIM-9M
 clsids:
   - "{AIM-9XX}"   # AIM-9XX
+  - "Herc_Ammo_AIM9X_missiles"   # Ammo AIM-9X*30 [5676lb]
   - "{5CE2FF2A-645A-4197-B48D-8720AC69394F}"   # AIM-9X Sidewinder IR AAM
   - "{JAS39_AIM-9X}"   # AIM-9X Sidewinder IR AAM
   - "LAU-127_AIM-9X"   # LAU-127 AIM-9X Sidewinder IR AAM

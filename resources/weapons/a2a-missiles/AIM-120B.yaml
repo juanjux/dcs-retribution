@@ -2,6 +2,7 @@ name: AIM-120B
 year: 1994
 fallback: AIM-7MH
 clsids:
+  - "Herc_Ammo_AIM120B_missiles"   # Ammo AIM-120B*24 [11193lb]
   - "{JAS39_AIM120B}"   # AIM-120B AMRAAM Active Rdr AAM
   - "{C8E06185-7CD6-4C90-959F-044679E90751}"   # AIM-120B AMRAAM - Active Radar AAM
   - "{LAU-115 - AIM-120B}"   # LAU-115 with 1 x LAU-127 AIM-120B AMRAAM - Active Radar AAM

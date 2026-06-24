@@ -4,6 +4,7 @@ fallback: FAB-250 M62
 clsids:
   - "{FAB_500_DUAL_L}"   # 2 x FAB-500
   - "{FAB_500_DUAL_R}"   # 2 x FAB-500
+  - "Herc_Ammo_FAB500_bombs"   # Ammo FAB-500*10 [11000lb]
   - "{Su30_FAB500M54}"   # FAB-500 M54 - 474kg, freefall
   - "{Su30_FAB500M62}"   # FAB-500 M62 - 474kg, freefall
   - "{Su30_FAB500M62NV}"   # FAB-500M62 NV, 500kg Parachute

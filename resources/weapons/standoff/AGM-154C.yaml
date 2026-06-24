@@ -3,6 +3,7 @@ year: 2005
 fallback: AGM-154A JSOW
 clsids:
   - "{B2_AGM-154C*8}"   # B2 AGM-154C*8
+  - "Herc_Ammo_AGM_154C_missiles"   # Ammo AGM-154C*10 [10648lb]
   - "{9BCC2A2B-5708-4860-B1F1-053A18442067}"   # AGM-154C - JSOW Unitary BROACH
   - "{SUPERHORNET_PYLON_02_MB_JS_1X_AGM-154C}"   #  [ STA 03	  | SUU79 | BRU32   ] - 1x AGM-154C - JSOW Unitary BROACH
   - "{SUPERHORNET_PYLON_03_MB_JS_1X_AGM-154C}"   #  [ STA 03	  | SUU79 | BRU32   ] - 1x AGM-154C - JSOW Unitary BROACH

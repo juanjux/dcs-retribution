@@ -6,6 +6,7 @@ clsids:
   - "{Su30_FAB250M62}"   # FAB-250 M62 - 227kg, freefall
   - "{FAB_250_M62}"   # FAB-250M-62 - 250 kg GP Bomb LD
   - "{AB_FAB-250-M62_BDZ-UMK2-B}"   # FAB-250M-62 - 250 kg GP Bomb LD
+  - "Herc_Ammo_FAB250_bombs"   # Ammo FAB-250*20 [11000lb]
   - "{B0241BD2-5628-47E0-954C-A8675B7E698E}"   # 24 x FAB-250 - 250kg GP Bombs LD
   - "{Su30_MBD3-U6-68-250}"   # MBD3-U6-68 with 6 x FAB-250 - 250kg
   - "{FAB-250-M54}"   # FAB-250 M54 - 235 kg, bomb, parachute

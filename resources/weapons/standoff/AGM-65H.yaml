@@ -2,6 +2,7 @@ name: AGM-65H
 year: 2002
 fallback: 3xAGM-65D
 clsids:
+  - "Herc_Ammo_AGM_65H_missiles"   # Ammo AGM-65H*10 [4570lb]
   - "{JAS39_AGM_65H}"   # AGM-65H TV Guided Missile
   - "{HB_F4E_AGM-65H_LAU117}"   # AGM-65H - Maverick H (CCD Imp ASM) (LAU-117)
   - "{HB_F4EAGM-65H_LAU88_1x}"   # 1x AGM-65H - Maverick H (CCD Imp ASM) (LAU-88)

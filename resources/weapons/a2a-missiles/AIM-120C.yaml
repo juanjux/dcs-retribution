@@ -2,6 +2,7 @@ name: AIM-120C
 year: 1996
 fallback: AIM-120B
 clsids:
+  - "Herc_Ammo_AIM120C_missiles"   # Ammo AIM-120C*24 [10665lb]
   - "{AIM-120C-7}"   # AIM-120C7 - Active Radar AAM
   - "{AIM-120C-8}"   # AIM-120C8 - Active Radar AAM
   - "{LAU_115_2xAIM-120C-7}"   # 2x AIM-120C7 - Active Radar AAM

@@ -69,6 +69,8 @@ clsids:
   - "{M2KC_RAFAUT_MK82S}"   # AUF2 MK-82 Snakeyes x 2
   - "{JAS39_BRU33_MK82}"   # 2 x Mk-82 500 lb GP Bomb
   - "{BCE4E030-38E9-423E-98ED-24BE3DA87C32}"   # Mk-82 - 500lb GP Bomb LD
+  - "Herc_Ammo_Mk_82_bombs"   # Ammo Mk-82*20 [10560lb]
+  - "Herc_Ammo_Mk_82AIR_bombs"   # Ammo Mk-82AIR*20 [11044lb]
   - "{BRU41A_4_L*MK82_SNAKEYE}"   # BRU-41A - 4 x Mk-82 Snakeye
   - "{BRU41A_4_R*MK82_SNAKEYE}"   # BRU-41A - 4 x Mk-82 Snakeye
   - "{BRU41A_6*MK82_SNAKEYE}"   # BRU-41A - 6 x Mk-82 Snakeye
@@ -88,6 +90,7 @@ clsids:
   - "{HB_A6E_MK82_TER_2x_RIGHT}"   # 2x Mk-82 - 500lb GP Bomb LD (TER)
   - "{HB_A6E_MK82_TER_2x_LEFT}"   # 2x Mk-82 - 500lb GP Bomb LD (TER)
   - "{GD_F100_TER_MK-82_x2}"   # 2x Mk-82 - 500lb GP Bomb LD (TER)
+  - "Herc_Ammo_Mk_82Snake_bombs"   # Ammo Mk-82Snakeye*20 [11880lb]
   - "{HB_F4E_MK-82_2x}"   # 2x Mk-82 - 500lb GP Bomb LD (TER)
   - "{HB_A6E_MK82_MER_3x_RIGHT}"   # 3x Mk-82 - 500lb GP Bomb LD (MER)
   - "{HB_A6E_MK82_MER_3x_LEFT}"   # 3x Mk-82 - 500lb GP Bomb LD (MER)

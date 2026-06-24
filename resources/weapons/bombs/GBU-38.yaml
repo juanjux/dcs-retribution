@@ -8,6 +8,7 @@ clsids:
   - "{BRU-70A_2*GBU-38_SIDE_LEFT}"   # 2 GBU-38 *-*
   - "{BRU-70A_2*GBU-38_SIDE_RIGHT}"   # 2 GBU-38 *-*
   - "{B2_GBU-38*40}"   # B2 GBU-38*40
+  - "Herc_Ammo_GBU_38_bombs"   # Ammo GBU-38*10 [6028lb]
   - "{JAS39_GBU38}"   # GBU-38 500 lb TV Guided Glide-Bomb
   - "{SU30_GBU_38}"   # GBU-38 - JDAM, 500lb GPS Guided Bomb
   - "{JAS39_BRU33_GBU38}"   # 2 x GBU-38 500 lb TV Guided Glide-Bomb
