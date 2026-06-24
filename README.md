@@ -116,8 +116,6 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   Eurofighter Typhoon** mod aircraft.
 
 ### Fixes
-  ([#15](https://github.com/juanjux/dcs-retribution/pull/15),
-  [#50](https://github.com/juanjux/dcs-retribution/pull/50))
 - Qt non-native dialogs avoid a QtWebEngine file-dialog deadlock.
   ([#17](https://github.com/juanjux/dcs-retribution/pull/17))
 - Robust payload handling — unparseable payload files are skipped; loadouts are
