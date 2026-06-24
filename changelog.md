@@ -6,6 +6,7 @@
 * **[AI]** Optimistic DEAD "site cleared" assumptions are now gated on whether the flight can actually reach the target, so the planner stops clearing SAMs it can't prosecute (adapted from the 414Ret fork).
 * **[Loadouts]** Weapons coverage refresh: many modern PGMs and air-to-air missiles are now available across factions, without the era date-gating (coverage adapted from the 414Ret fork; our existing introduction years are kept).
 * **[Mission Generation]** Player despawns (leaving an aircraft) no longer count as combat losses in the debriefing (adapted from the 414Ret fork).
+* **[Kneeboard]** Use a light-grey daytime kneeboard background instead of near-white, to avoid glare under HDR / Auto-HDR while staying readable in daylight.
 * **[UX]** Hovering a friendly flight's route line on the map highlights it in yellow, and clicking it selects that flight's package (and the flight) in the ATO sidebar.
 * **[UX]** Press Delete with a package selected in the Packages list to cancel it, making it quick to clear several packages in a row.
 * **[UX]** Avoid having escorts from wondering off too far while chasing a target.
@@ -31,6 +32,8 @@
 * **[Modding]** Add support for Su-35S mod (v2.0.27b)
 * **[Data]** Add Refueling/Recovery tasks to A-6E Intruder mod
 * **[Layouts]** Add signature to layouts' binary file for automatic reloading of updated layouts.
+* **[Engine]** Support for DCS 2.9.27 including F-100D and F-14A (Export).
+* **[Options]** Add new option to fast forward until player is at the IP.
 
 ## Fixes
 * **[Mission]** Reliably auto-detect end of mission, even when DCS wrote the final state.json before the wait dialog started watching
