@@ -163,14 +163,16 @@ TIC script (MIT).
   mod payloads).
 - **Unified map-layers panel** — the scattered map layer toggles consolidated into
   one dark, grouped, collapsible panel with presets.
-- **Support orbits behind the FLOT** — AI AWACS and tankers anchor on the front
-  line and hold back instead of drifting forward over it.
+  ([#38](https://github.com/juanjux/dcs-retribution/pull/38), porting 414Ret #96/#98)
 - **DEAD reachability gate** — the planner no longer optimistically marks a SAM
   "cleared" when the assigned flight cannot actually reach it.
+  ([#37](https://github.com/juanjux/dcs-retribution/pull/37), porting 414Ret #83)
 - **Weapons coverage refresh** — more modern PGMs and air-to-air missiles across
   factions, without the era date-gating (our introduction years are kept).
+  ([#35](https://github.com/juanjux/dcs-retribution/pull/35), porting 414Ret #82)
 - **Player despawns aren't combat losses** — leaving an aircraft mid-mission no
   longer depletes your squadron in the debrief.
+  ([#34](https://github.com/juanjux/dcs-retribution/pull/34), porting 414Ret #64)
 
 ---
 
