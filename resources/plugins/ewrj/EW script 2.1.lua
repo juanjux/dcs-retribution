@@ -1218,22 +1218,32 @@ local function checkMis(mis)
         mis.debugLogged = true
     end
     ---------------------------------------------------
-    -- SARH "launcher jammed => missile dies" code ----
+    -- "launcher jammed => missile guidance breaks" code
     ---------------------------------------------------
-    if mis.launcherGroupName and (mis.guidance == 3) then
+    -- SARH (guidance 3) rides the launcher's radar, so jamming that radar breaks
+    -- it outright. ARH (guidance 4, e.g. HHQ-9) has its own terminal seeker, so
+    -- jamming the launcher only defeats it intermittently -- roll once per missile.
+    if mis.launcherGroupName and (mis.guidance == 3 or mis.guidance == 4) then
         local rec = JammedLaunchers and JammedLaunchers[mis.launcherGroupName]
         if rec and rec.untilT and timer.getTime() < rec.untilT then
-            if ewrj_options.DEBUG_OFFENSIVE then
-                env.info(string.format(
-                    "[EW DEBUG - OFFENSIVE] KILL missile (guidance=%s): launcher group jammed (%s) by %s (%.1fs left)",
-                    tostring(mis.guidance),
-                    tostring(mis.launcherGroupName),
-                    tostring(rec.by),
-                    rec.untilT - timer.getTime()
-                ))
+            local kill = (mis.guidance == 3)
+            if mis.guidance == 4 and not mis.arhJamRolled then
+                mis.arhJamRolled = true
+                kill = math.random() < 0.5   -- ARH: ~50% chance the jam breaks it
             end
-            removeMis(mis.uid)
-            return
+            if kill then
+                if ewrj_options.DEBUG_OFFENSIVE then
+                    env.info(string.format(
+                        "[EW DEBUG - OFFENSIVE] KILL missile (guidance=%s): launcher group jammed (%s) by %s (%.1fs left)",
+                        tostring(mis.guidance),
+                        tostring(mis.launcherGroupName),
+                        tostring(rec.by),
+                        rec.untilT - timer.getTime()
+                    ))
+                end
+                removeMis(mis.uid)
+                return
+            end
         end
     end
 
