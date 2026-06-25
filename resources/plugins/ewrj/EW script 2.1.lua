@@ -1226,10 +1226,14 @@ local function checkMis(mis)
     if mis.launcherGroupName and (mis.guidance == 3 or mis.guidance == 4) then
         local rec = JammedLaunchers and JammedLaunchers[mis.launcherGroupName]
         if rec and rec.untilT and timer.getTime() < rec.untilT then
-            local kill = (mis.guidance == 3)
-            if mis.guidance == 4 and not mis.arhJamRolled then
-                mis.arhJamRolled = true
-                kill = math.random() < 0.5   -- ARH: ~50% chance the jam breaks it
+            local kill = false
+            if not mis.jamRolled then
+                mis.jamRolled = true
+                -- SARH rides the launcher's illumination, so jamming that radar
+                -- almost always breaks it; ARH has its own terminal seeker, so it
+                -- is only partly defeated. Rolled once per missile.
+                local p = (mis.guidance == 3) and 0.9 or 0.5
+                kill = math.random() < p
             end
             if kill then
                 if ewrj_options.DEBUG_OFFENSIVE then
