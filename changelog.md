@@ -19,6 +19,7 @@
 * **[Options]** Add new option to fast forward until player is at the IP.
 
 ## Fixes
+* **[App]** Upgrade PySide6/Qt to 6.8.3. On 6.4.x QtWebEngine composited the embedded map through the native desktop-OpenGL driver, whose context cleanup could deadlock (e.g. nvoglv64.dll DrvValidateVersion / WaitForSingleObject during window destroy) when a fullscreen GPU application — most notably DCS itself — took over the GPU, freezing Retribution. Qt 6.8 composites the web view via Direct3D 11 instead, so no native-GL context is created and the deadlock is gone (still hardware-accelerated). This also resolves the intermittent "Not Responding" freeze when a dialog/panel is shown over the map, which had the same root cause.
 * **[Mission]** Reliably auto-detect end of mission, even when DCS wrote the final state.json before the wait dialog started watching
 * **[Performance]** Faster post-mission turn processing
 * **[AirWing]** Track per-squadron campaign aircraft stats (initial/destroyed/purchased, save-compatible) and expose pilot experience level and living/dead pilot views for the UI
