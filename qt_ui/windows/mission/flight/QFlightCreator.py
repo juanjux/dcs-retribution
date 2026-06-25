@@ -19,7 +19,7 @@ from game import Game
 from game.ato.flight import Flight
 from game.ato.flightroster import FlightRoster
 from game.ato.flightmember import apply_default_player_laser_code
-from game.ato.loadouts import Loadout
+from game.ato.loadouts import Loadout, get_default_loadout_override
 from game.ato.package import Package
 from game.ato.starttype import StartType
 from game.squadrons.squadron import Squadron
@@ -339,10 +339,16 @@ class QFlightCreator(QDialog):
             self.loadout_selector.setDisabled(False)
         for loadout in Loadout.iter_for_aircraft(ac_type):
             self.loadout_selector.addItem(loadout.name, loadout)
-        for loadout in Loadout.default_loadout_names_for(
-            self.task_selector.currentData()
-        ):
-            index = self.loadout_selector.findText(loadout)
+        task = self.task_selector.currentData()
+        # A user-set default (per aircraft + task, set with the payload editor's
+        # "Set as default" button) wins over the "Retribution <task>" name
+        # conventions, mirroring Loadout.default_for_task_and_aircraft.
+        override = get_default_loadout_override(ac_type.dcs_unit_type.id, task)
+        candidates = ([override] if override else []) + list(
+            Loadout.default_loadout_names_for(task)
+        )
+        for name in candidates:
+            index = self.loadout_selector.findText(name)
             if index != -1:
                 self.loadout_selector.setCurrentIndex(index)
                 break
