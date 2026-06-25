@@ -116,6 +116,14 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   Eurofighter Typhoon** mod aircraft.
 
 ### Fixes
+- **No freeze when DCS (or any fullscreen GPU app) starts** — upgraded to
+  PySide6/Qt **6.8.3**, which composites the embedded map via **Direct3D 11**
+  instead of the native desktop-OpenGL driver. On Qt 6.4 that GL driver could
+  deadlock (in `nvoglv64.dll` during window destroy) when DCS took over the GPU —
+  open Retribution, then launch DCS → 100% hang. Same root also caused the
+  intermittent "Not Responding" freeze with a dialog/panel over the map. Still
+  hardware-accelerated (D3D11), not software rendering.
+  ([#52](https://github.com/juanjux/dcs-retribution/pull/52))
 - Qt non-native dialogs avoid a QtWebEngine file-dialog deadlock.
   ([#17](https://github.com/juanjux/dcs-retribution/pull/17))
 - Robust payload handling — unparseable payload files are skipped; loadouts are
