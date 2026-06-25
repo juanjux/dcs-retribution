@@ -128,10 +128,6 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   ([#19](https://github.com/juanjux/dcs-retribution/pull/19))
 - The sell-aircraft exploit that corrupted squadron counts is fixed.
   ([#5](https://github.com/juanjux/dcs-retribution/pull/5))
-- Air-assault troop drop-off zones are kept on land — coastal objectives no longer
-  drop the troops into the sea.
-  ([#48](https://github.com/juanjux/dcs-retribution/pull/48),
-  [upstream PR](https://github.com/dcs-retribution/dcs-retribution/pull/838))
 - Kneeboard waypoint numbering is correct for in-air-start flights.
   ([#14](https://github.com/juanjux/dcs-retribution/pull/14))
 - Escorts of an AWACS/tanker hold on the protected flight's racetrack instead of a
