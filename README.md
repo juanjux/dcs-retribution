@@ -121,9 +121,6 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
 - Robust payload handling — unparseable payload files are skipped; loadouts are
   written atomically.
   ([#21](https://github.com/juanjux/dcs-retribution/pull/21))
-- Carrier SEAD mission-type fix (no duplicate SEAD Escort; the SEAD task is present).
-  ([#22](https://github.com/juanjux/dcs-retribution/pull/22),
-  [upstream PR](https://github.com/dcs-retribution/dcs-retribution/pull/833))
 - Player ground-start flights no longer spawn in the air.
   ([#19](https://github.com/juanjux/dcs-retribution/pull/19))
 - DCS no longer rejects missions with a locked-speed waypoint between TOT-locked
