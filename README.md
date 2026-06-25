@@ -128,7 +128,8 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   ([#19](https://github.com/juanjux/dcs-retribution/pull/19))
 - DCS no longer rejects missions with a locked-speed waypoint between TOT-locked
   waypoints.
-  ([#13](https://github.com/juanjux/dcs-retribution/pull/13))
+  ([#13](https://github.com/juanjux/dcs-retribution/pull/13),
+  [upstream PR](https://github.com/dcs-retribution/dcs-retribution/pull/835))
 - The sell-aircraft exploit that corrupted squadron counts is fixed.
   ([#5](https://github.com/juanjux/dcs-retribution/pull/5))
 - Air-assault troop drop-off zones are kept on land — coastal objectives no longer
