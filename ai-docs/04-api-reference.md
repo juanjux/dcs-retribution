@@ -53,7 +53,7 @@ models (JSON). Reads never mutate; writes only succeed at a turn/planning bounda
 
 | Op | REST | MCP | Service → engine |
 |----|------|-----|------------------|
-| **start** — role, context, API list, workflow | `GET /start` | resource `retribution://start` (and/or a `prompt`) | static + `service.bootstrap_doc()` |
+| **start** — role, first steps, endpoint catalog, workflow (points to howtoplay) | `GET /start` | resource `retribution://start` (and/or a `prompt`) | static doc — **draft in [`start.md`](start.md)** |
 | **howtoplay** — the commander's briefing (once/session): role, game concepts, package composition doctrine, fair-play rules, advising the human, and the "your turn" trigger | `GET /howtoplay` | resource `retribution://howtoplay` | static doc — **draft written in [`howtoplay.md`](howtoplay.md)** |
 | **settings** — current settings + each explained | `GET /settings` | resource `retribution://settings` | `Settings` (`game/settings/settings.py:93`) + descriptions |
 | **human_notes** — player's freeform rules/notes | `GET /human_notes` | resource `retribution://human_notes` | stored in `Settings`/save ([`05`](05-context-and-persistence.md)) |
