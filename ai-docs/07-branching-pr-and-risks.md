@@ -105,6 +105,10 @@ WIP **not present in `dev`**. But the PR goes to `dev`. So the feature must be
   and fills them by **buying** — never the free aircraft +/-. It cannot change the
   faction's allowed airframes (asks the human). See [`04`](04-api-reference.md) §G.
 - **`stored_context`:** stored **in the save** (new `Game` field + migrator backfill).
+- **Turn trigger (v1):** the **human says "your turn" in chat**; the `/howtoplay`
+  briefing makes the LLM teach the player this on first contact (incl. the first
+  turn). OPFOR plans **first**, then the human reviews. Long-poll / eventstream
+  `new_turn` push remain documented as future upgrades. See [`04`](04-api-reference.md) §E.
 - **PR:** **one** PR to `dev`.
 
 ## Open decisions for juanjux
@@ -117,10 +121,6 @@ WIP **not present in `dev`**. But the PR goes to `dev`. So the feature must be
    model choice + token budget.
 3. **MCP mount** — into the existing FastAPI app (one port) vs. sibling port (same
    process). Recommend one app if the lifespan wires cleanly.
-4. **Turn-trigger mechanism** — how the AI learns its planning window opened
-   ([`04`](04-api-reference.md) §E): human-says-so (simplest), **long-poll
-   `wait_for_opfor_turn`** (recommended for agent loops), eventstream `new_turn`
-   push (desktop only), or polling. Likely support human + long-poll first. Tied to
-   the **turn-order integration**: OPFOR plans first (engine pauses the OPFOR window
-   with a timeout→scripted fallback), then the human reviews/plans — confirm this
-   ordering is how you want it to play.
+
+*(The turn-trigger mechanism is resolved for v1 — human says "your turn"; see
+Decisions above. Long-poll / eventstream push are future upgrades, not blockers.)*

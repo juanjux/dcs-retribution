@@ -38,8 +38,8 @@ models (JSON). Reads never mutate; writes only succeed at a turn/planning bounda
 
 1. `GET /start` → this workflow + role/context (or `/howtoplay` for depth).
 2. `GET /howtoplay` once per session → game concepts + how to advise the human (§H).
-3. Wait for the turn (`wait_for_opfor_turn` / eventstream `new_turn` / human says so
-   — see §E), then `planning_dialog(show)` and post a first `set_planning_status`.
+3. Wait for the player to say **"your turn"** in chat (v1 trigger — see §E; teach
+   them this on first contact), then `planning_dialog(show)` + a first `set_planning_status`.
 4. `GET /settings`, `GET /human_notes`, `GET /stored_context` → rules & memory.
 5. `GET /turn_context` (+ `GET /prev_turns?n=1`) → the situation. Image-capable
    models can also pull `GET /map/image`. (Update `set_planning_status` per phase.)
@@ -54,7 +54,7 @@ models (JSON). Reads never mutate; writes only succeed at a turn/planning bounda
 | Op | REST | MCP | Service → engine |
 |----|------|-----|------------------|
 | **start** — role, context, API list, workflow | `GET /start` | resource `retribution://start` (and/or a `prompt`) | static + `service.bootstrap_doc()` |
-| **howtoplay** — game concepts (once/session): wings/packages/roles, ground combat, buying/selling/transfers, air-wing config, **and how to advise the human in chat for out-of-scope/cheat actions** (see §H) | `GET /howtoplay` | resource `retribution://howtoplay` | static doc (markdown) |
+| **howtoplay** — the commander's briefing (once/session): role, game concepts, package composition doctrine, fair-play rules, advising the human, and the "your turn" trigger | `GET /howtoplay` | resource `retribution://howtoplay` | static doc — **draft written in [`howtoplay.md`](howtoplay.md)** |
 | **settings** — current settings + each explained | `GET /settings` | resource `retribution://settings` | `Settings` (`game/settings/settings.py:93`) + descriptions |
 | **human_notes** — player's freeform rules/notes | `GET /human_notes` | resource `retribution://human_notes` | stored in `Settings`/save ([`05`](05-context-and-persistence.md)) |
 
@@ -215,28 +215,32 @@ so it can prune/replace its own notes via the deletes above.
 
 Flow: the player finishes a mission → accepts in the dashboard → a new turn starts
 → **OPFOR plans first** (so the player can review red's plan and, while the AI is
-learning, flag anything that looks wrong) → then the player plans and advances. So
-the AI must know when its planning window opens. Mechanisms (support the simple
-ones first; **the trigger mechanism is an open design choice** — see [`07`](07-branching-pr-and-risks.md)):
+learning, flag anything that looks wrong) → then the player plans and advances.
 
-| Mechanism | How | Notes |
-|-----------|-----|-------|
-| **Human says so (simplest)** | player tells the AI in chat "your turn" (or clicks a *Plan OPFOR* button that pings the agent) | zero infra; fits the human-in-the-loop review workflow |
-| **Long-poll (recommended for agents)** | `GET /opfor/next` blocks until the OPFOR window opens, then returns the turn context | clean agent loop (wait→plan→submit→wait); works for REST and as an MCP tool; web-LLM friendly |
-| **Push via existing eventstream** | subscribe to the `/eventstream` websocket and watch **`new_turn`** (`GameUpdateEventsJs.new_turn`, `eventstream/models.py:47`) | the signal already exists; for clients that can hold a websocket (desktop agents) |
-| **Poll** | `GET /turn_status` → turn #, phase, whose-turn | simple fallback; inelegant |
+**Decided (for now): the human says "your turn" in chat.** This is the v1 trigger —
+zero infra, and it fits the human-in-the-loop review workflow. The `/howtoplay`
+briefing instructs the LLM to teach the player this on first contact (including the
+very first turn, since they may be new to the feature). The mechanisms below stay
+documented as **future** upgrades.
+
+| Mechanism | How | Status |
+|-----------|-----|--------|
+| **Human says so** | player tells the AI in chat "your turn" | **v1 — use this** |
+| **Long-poll** | `GET /opfor/next` blocks until the OPFOR window opens, returns the turn context | future: clean agent loop, web-LLM friendly |
+| **Push via existing eventstream** | watch `/eventstream` for **`new_turn`** (`GameUpdateEventsJs.new_turn`, `eventstream/models.py:47`) | future: the signal already exists; desktop clients that hold a websocket |
+| **Poll** | `GET /turn_status` → turn #, phase, whose-turn | future fallback |
 
 | Op | REST | MCP | Service → engine |
 |----|------|-----|------------------|
-| **turn status** | `GET /turn_status` | tool `turn_status()` | `game.turn`, phase flag, whose-turn / is-OPFOR-window |
-| **wait for OPFOR turn** | `GET /opfor/next` (long-poll) | tool `wait_for_opfor_turn()` | blocks until the OPFOR window opens; returns `turn_context` |
-| **signal planning done** | `POST /opfor/done` | tool `opfor_planning_done()` | releases the handshake → the human can review red's plan / proceed |
+| **turn status** (handy even in v1) | `GET /turn_status` | tool `turn_status()` | `game.turn`, phase flag, whose-turn / is-OPFOR-window |
+| **signal planning done** | `POST /opfor/done` | tool `opfor_planning_done()` | the AI tells the system it's finished → the human reviews red's plan / proceeds |
+| **wait for OPFOR turn** *(future)* | `GET /opfor/next` (long-poll) | tool `wait_for_opfor_turn()` | blocks until the OPFOR window opens; returns `turn_context` |
 
-> Engine side: turn initialization must **pause at the OPFOR window** and wait for
-> the AI to finish (with a **timeout → scripted-commander fallback**), then hand
-> control to the human to review. That ordering (OPFOR first, then human) is the
-> turn-handshake integration — see [`03`](03-opfor-planner.md) and the open
-> decision in [`07`](07-branching-pr-and-risks.md).
+> Engine side: turn initialization should **leave the OPFOR window open** for the AI
+> and not auto-advance, with a **timeout → scripted-commander fallback** if the AI
+> never plays. In v1 the human gates the flow (they say "your turn", then review,
+> then advance), so a strict engine pause isn't required at first. OPFOR-first
+> ordering — see [`03`](03-opfor-planner.md).
 
 ### The planning dialog (status + keep-alive)
 

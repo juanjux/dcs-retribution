@@ -50,6 +50,7 @@ exactly one live game, in the running app.
 | 5 | [`05-context-and-persistence.md`](05-context-and-persistence.md) | Where stored_context / human_notes / AI-intel (map visibility) / prev-turn data live |
 | 6 | [`06-implementation-plan.md`](06-implementation-plan.md) | Phased plan, file layout, deps, registration (desktop URL vs web connector), testing |
 | 7 | [`07-branching-pr-and-risks.md`](07-branching-pr-and-risks.md) | Branch strategy (master → dev PR), isolation, risks, open decisions |
+| — | [`howtoplay.md`](howtoplay.md) | The OPFOR commander's briefing — the actual draft document served by `GET /howtoplay` (the LLM's playbook) |
 
 ## Key facts (verified against `master` @ `7f063a0`)
 
