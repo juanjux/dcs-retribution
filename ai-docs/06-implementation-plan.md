@@ -15,7 +15,7 @@ game/
                          #   map-visibility/intel filter)
     views.py             # pydantic read DTOs (operational picture, intel filter)
     planner.py           # write ops → PackageFulfiller / PurchaseAdapter / stances
-    opforbrain.py        # the LLM hook for TheaterCommander (L2/L3, see 03)
+    opforbrain.py        # engine-driven LLM (Mode B, later — see 03)
     schemas.py           # pydantic specs/intents/DTOs
   server/
     retributionai/routes.py + models.py   # NEW REST shims → service
@@ -37,14 +37,15 @@ Add to `requirements.txt` (v2 is in alpha as of 2026-06; beta 2026-06-30, stable
 mcp[cli]<2
 ```
 
-The LLM is **the client** (Claude Code / claude.ai). The server does **not** call
-an LLM API for L0/L1/L2-manual. Only the *autonomous* OPFOR brain (L3, runs inside
-the engine with no human in the loop) needs an Anthropic API path (`anthropic`
-SDK) from `opforbrain.py` — keep it behind a setting and out of `game/mcp/`.
+The LLM is **the client** (Claude Code / claude.ai) in v1 (Mode A) — the server
+does **not** call an LLM API. Only the later **engine-driven** OPFOR brain (Mode B,
+runs inside the engine with no human in the loop) needs an Anthropic API path
+(`anthropic` SDK) from `opforbrain.py` — keep it behind a setting and out of
+`game/mcp/`.
 
 ## Phases
 
-### Phase 0 — Service layer + read context  *(foundation, L0 advisor)*
+### Phase 0 — Service layer + read context  *(foundation)*
 - `game/agent/service.py` + `views.py`: `turn_context` (OWNFOR limited per
   `map_coalition_visibility`, see [`05`](05-context-and-persistence.md)),
   `prev_turns`, `get_packages`, `settings`, `human_notes`, `howtoplay`, the `start`
@@ -58,7 +59,7 @@ SDK) from `opforbrain.py` — keep it behind a setting and out of `game/mcp/`.
 - Setting **"Allow OPFOR AI control"** + the help text/URL ([`00`](00-vision-and-scope.md)).
 - **Deliverable:** paste `…/start?token=…` into Claude Code → it reads context.
 
-### Phase 2 — Write path  *(L1 assisted apply)*
+### Phase 2 — Write path / executor  *(the AI authors a full turn)*
 - `game/agent/planner.py`: `create_packages` (PackageFulfiller; **assign pilots**,
   reject pilotless seats), buy/sell + transfers (PurchaseAdapter / `PendingTransfers`),
   stances, `schedule_all`, **move ships / waypoints** (reuse tgos/waypoints routes),
@@ -88,14 +89,22 @@ SDK) from `opforbrain.py` — keep it behind a setting and out of `game/mcp/`.
   player.
 - **Deliverable:** red references prior turns and its own strategy notes.
 
-### Phase 5 — Engine hook (the "decent opponent")  *(L2 → L3)*
-- `game/agent/opforbrain.py`: wire the LLM into `TheaterCommander.plan_missions`
-  behind `settings.opfor_llm_*`, with the scripted commander as fallback/gap-fill
-  ([`03`](03-opfor-planner.md)). L2 (strategy/ordering) first, then L3 (autonomous).
-- **Deliverable:** toggling the setting makes red concentrate/adapt; never empty.
+### Phase 5 — Autonomous wiring + fallback (Mode A — the "decent opponent")
+- When `settings.opfor_ai_enabled`, **suppress the engine's auto-planning of red**
+  (leave the ATO for the AI to author via the API), and add the **fallback**: if
+  red's turn is still empty when the human advances (AI didn't play / errored), run
+  the scripted `TheaterCommander` so the turn is never empty ([`03`](03-opfor-planner.md)).
+- **Deliverable:** with the setting on, red is planned entirely by the LLM via the
+  API like a human player; with it off (or on failure) the scripted commander runs.
 
-### Phase 6 — Polish
-- Settings group (enable, autonomy level, AI-intel = mirror `map_coalition_visibility`, model, token, budget caps).
+### Phase 6 — Engine-driven brain (Mode B, optional/later)
+- `game/agent/opforbrain.py`: an **embedded** LLM (Anthropic API) called from
+  `TheaterCommander.plan_missions`, reusing the same executor + fallback, for
+  hands-off play. Behind its own setting + model/token budget.
+
+### Phase 7 — Polish
+- Settings group (enable OPFOR-AI, AI-intel = mirror `map_coalition_visibility`,
+  + for Mode B: model, token/budget caps).
 - Status surface (what red planned / why) — reuse turn/finances panels.
 - Tunnel/exposure docs for the web-LLM connector flow. (No map-edit/cheat tools —
   the API stays to player-legal actions; see the guiding principle in [`04`](04-api-reference.md).)

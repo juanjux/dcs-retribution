@@ -92,24 +92,30 @@ cheater.
 - **Cheats / god-mode** — out by the core constraint above. (Moving movable ships
   and dragging waypoints are player actions, so they're **in**, not cheats.)
 
-## Autonomy levels (ship incrementally)
+## Full autonomy — the AI plays like a human player
 
-| Level | Behaviour | Use |
-|-------|-----------|-----|
-| **L0 — Advisor** | LLM reads context and returns a written plan; nothing applied. | Safest first milestone; eyeball plan quality. |
-| **L1 — Assisted apply** | LLM POSTs discrete packages/buys/stances via the API. | Validates the write path end-to-end. |
-| **L2 — Strategy hook** | LLM sets high-level strategy (objective priorities, per-front stance, budget split, task emphasis); the HTN fulfils the details. | Lowest-risk "decent opponent"; reuses all fulfilment. |
-| **L3 — Autonomous OPFOR** | At red's planning step the LLM plans the whole red turn; the scripted commander fills gaps. | The end-state vision. |
+**Decision: no intermediate "levels" — go straight to full autonomy.** The AI
+plans the **whole** red turn exactly as the human plans theirs: it authors the
+entire OPFOR plan (packages, flights, buys, stances, transfers, ship/waypoint
+moves) through the API. We do **not** build a half-measure where the LLM only nudges
+the scripted planner — that wastes time and reuses the weak HTN as the brain.
 
-See [`03-opfor-planner.md`](03-opfor-planner.md) for how L2/L3 hook into the engine.
+- **v1 (client-driven):** the chat LLM fills red's plan via the API during the
+  OPFOR window (human says "your turn"). The engine doesn't auto-plan red; it leaves
+  the turn for the AI, like it leaves blue's turn for the human.
+- **later (engine-driven):** the engine itself calls an embedded LLM at red's
+  planning step — same executor, for hands-off play.
+
+See [`03-opfor-planner.md`](03-opfor-planner.md) for both modes.
+*(For development only, you can run "review-only" — generate a plan but apply
+nothing — to vet quality. That's a test aid, not a product mode.)*
 
 ## The fallback guarantee
 
-**An OPFOR turn must never come out empty.** If the LLM is unavailable, times out,
-errors, or leaves a front unplanned, the scripted `TheaterCommander` runs (whole
-turn or gap-fill). This keeps the game playable regardless of the agent and makes
-the feature safe behind a setting. The hook wraps `TheaterCommander.plan_missions`
-and falls back to the original path on any failure.
+**An OPFOR turn must never come out empty.** If the AI is disabled, unavailable,
+errors, times out, or leaves red's turn empty, the scripted `TheaterCommander`
+runs as **fallback**. This keeps the game playable regardless of the agent and
+makes the feature safe behind a setting.
 
 ## Success criteria
 

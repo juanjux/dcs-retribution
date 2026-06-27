@@ -42,7 +42,7 @@ exactly one live game, in the running app.
 
 | # | Doc | What it covers |
 |---|-----|----------------|
-| 0 | [`00-vision-and-scope.md`](00-vision-and-scope.md) | Goal, the "decent OPFOR" thesis, the user-facing UX, autonomy levels, fallback |
+| 0 | [`00-vision-and-scope.md`](00-vision-and-scope.md) | Goal, the "decent OPFOR" thesis, the user-facing UX, full-autonomy model, fallback |
 | 1 | [`01-architecture.md`](01-architecture.md) | The live dual-transport server: one service layer, REST + MCP, auth, exposure, concurrency |
 | 2 | [`02-codebase-map.md`](02-codebase-map.md) | Engine reference (`file:line`) for every subsystem the feature touches |
 | 3 | [`03-opfor-planner.md`](03-opfor-planner.md) | **The centerpiece** — the scripted commander and exactly where/how the LLM plugs in |

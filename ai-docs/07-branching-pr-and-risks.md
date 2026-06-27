@@ -79,14 +79,14 @@ WIP **not present in `dev`**. But the PR goes to `dev`. So the feature must be
 
 | Risk | Mitigation |
 |------|-----------|
-| **Plan quality** — incoherent/illegal red turns | Reuse fulfilment (can't emit invalid missions); scripted **fallback** fills gaps; start at L2 before L3 |
+| **Plan quality** — incoherent/illegal red turns | Reuse fulfilment (can't emit invalid missions); scripted **fallback** if red's turn is empty; rich context + memory so the LLM plans well |
 | **Exposure** — port forwarded for a web LLM is internet-reachable | Mandatory long **token** (URL + header); bind localhost by default; tunnel terminates TLS; document clearly |
 | **Concurrency** — UI/sim/API touch one `Game` | Writes only at the planning boundary (sim paused); lock around `initialize_turn`+ATO; push `GameUpdateEvents` after |
 | **Logic duplication** across REST/MCP | Single `game/agent/service.py`; transports are thin shims; parity test |
 | **MCP mount/lifespan** quirks in the existing server | Verified pattern; sibling-port fallback; pin `mcp<2` |
 | **Save-compat** — new persisted fields (`stored_context`, after-action) | Default + `Migrator`/`__setstate__` backfill |
 | **`dev` PR drags in master-only code** | Isolation rules above; degrade gracefully on the kill-attribution dependency |
-| **Latency/cost** of LLM planning (L3) | Cache turn_context; cap actions; budget/token caps in settings; L2 is cheaper |
+| **Latency/cost** of LLM planning | Mode A: the client (the user's own agent) bears it. Mode B (engine-driven): cache turn_context, cap actions, token/budget caps in settings |
 
 ## Decisions already made (juanjux)
 
@@ -105,6 +105,11 @@ WIP **not present in `dev`**. But the PR goes to `dev`. So the feature must be
   and fills them by **buying** — never the free aircraft +/-. It cannot change the
   faction's allowed airframes (asks the human). See [`04`](04-api-reference.md) §G.
 - **`stored_context`:** stored **in the save** (new `Game` field + migrator backfill).
+- **Autonomy:** **full autonomy only — no intermediate "strategy hook" level.** The
+  AI plans the whole red turn like a human player. **Mode A (client-driven)** ships
+  first: when OPFOR-AI is on, the engine doesn't auto-plan red — the chat LLM fills
+  red via the API; the scripted commander is **fallback** if red's turn is empty.
+  **Mode B (engine-driven, embedded LLM)** is a later optional add-on. See [`03`](03-opfor-planner.md).
 - **Turn trigger (v1):** the **human says "your turn" in chat**; the `/howtoplay`
   briefing makes the LLM teach the player this on first contact (incl. the first
   turn). OPFOR plans **first**, then the human reviews. Long-poll / eventstream
@@ -113,13 +118,11 @@ WIP **not present in `dev`**. But the PR goes to `dev`. So the feature must be
 
 ## Open decisions for juanjux
 
-1. **Default autonomy level** behind the setting — **L2** (strategy hook; LLM sets
-   priorities, HTN fulfils) is the recommended first "decent opponent"; **L3**
-   (autonomous) is the vision. Ship L2 first?
-2. **Which LLM drives autonomous OPFOR (L3)?** For L0–L2-manual the client is the
-   LLM (no API key). L3 (engine-driven, no human) needs an Anthropic API path +
-   model choice + token budget.
-3. **MCP mount** — into the existing FastAPI app (one port) vs. sibling port (same
+1. **Which LLM drives engine-driven OPFOR (Mode B)?** Mode A (v1) needs no key —
+   the chat client is the LLM. Mode B (engine calls an embedded LLM, hands-off)
+   needs an Anthropic API path + model choice + token/budget caps. (Only relevant
+   when you build Mode B.)
+2. **MCP mount** — into the existing FastAPI app (one port) vs. sibling port (same
    process). Recommend one app if the lifespan wires cleanly.
 
 *(The turn-trigger mechanism is resolved for v1 — human says "your turn"; see
