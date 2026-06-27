@@ -126,7 +126,7 @@ def plan_missions(self, now, tracer):
 | Fly a package (task, target, size, escorts) | `PackageFulfiller.plan_mission(ProposedMission(...))` → `coalition.ato.add_package` (see [`02`](02-codebase-map.md)) |
 | Set a front-line stance | the corresponding primitive task / `CombatStance` on the `FrontLine` |
 | Buy aircraft / ground units | `AircraftPurchaseAdapter.buy` / `GroundUnitPurchaseAdapter.buy` |
-| Reposition a ship / edit the map | theater mutation (see [`04`](04-mcp-tools.md)) |
+| Reposition a ship / edit the map | theater mutation (see [`04`](04-api-reference.md)) |
 
 Because every intent routes through code that validates target/task
 compatibility and builds the flight plan, a malformed intent fails *that intent*
@@ -186,12 +186,13 @@ and let the engine do what it's good at — **valid execution**.
 
 ## Suggested build order for the hook
 
-1. **Read path first.** Implement `GameView.operational_picture()` and expose it
-   as an MCP resource/tool. Eyeball it; make sure it's a faithful, compact
+1. **Read path first.** Implement the turn-context read in `game/agent/service.py`
+   and expose it via the API (REST `GET` + MCP resource — see
+   [`04`](04-api-reference.md)). Eyeball it; make sure it's a faithful, compact
    snapshot. (Enables L0 advisor.)
 2. **Executor next.** Implement `apply(intent, …)` over `PackageFulfiller` +
-   `PurchaseAdapter` + stances, exposed as MCP write tools. Drive it by hand from
-   Claude Code against a save. (L1.)
+   `PurchaseAdapter` + stances in the service layer, exposed as REST `POST` + MCP
+   write tools. Drive it by hand from Claude Code against the live game. (L1.)
 3. **Strategy hook.** Wire L2a (LLM-chosen method ordering) into
    `PlanNextAction`/`TheaterCommander`. (First "decent opponent".)
 4. **Autonomous + fallback.** Wire `OpforBrain.plan_missions` into

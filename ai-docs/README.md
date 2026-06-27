@@ -1,64 +1,71 @@
-# `ai-docs/` — MCP feature design (branch `experiment-mcp`)
+# `ai-docs/` — MCP/REST OPFOR-AI feature design (branch `experiment-mcp`)
 
 > **Status:** Design / planning only. **No production code has been written yet.**
-> This directory is the complete hand-off package for implementing an **MCP
-> (Model Context Protocol) server** for DCS Retribution.
+> This directory is the complete hand-off package for a second Claude Code session
+> (running on juanjux's desktop) to implement the feature. Read the docs in order.
 >
-> It was produced on branch `experiment-mcp` (cut from `master`) so that a second
-> Claude Code session (running on juanjux's desktop) can pick up implementation
-> with full context. Read the docs in order.
+> Produced on branch `experiment-mcp` (cut from `master`).
 
-## What this feature is
+## The feature in one paragraph
 
-An MCP server that lets an LLM agent (Claude, etc.) **read** the campaign state
-(savegames, live game, logs, the map) and **plan turns** for either coalition —
-but **especially OPFOR (red)**, so a human can play against a competent,
-adaptive opponent instead of the current rule-based commander.
+A setting **"Allow OPFOR AI control"** lets an external LLM plan the enemy's
+(OPFOR / red) turns, so the human plays against a competent, adaptive opponent
+instead of the rigid scripted commander. When enabled, Retribution exposes its
+**live game** over a small HTTP API. The user points an LLM at a single URL; the
+LLM reads the turn context, plans red's missions/purchases, and writes them back —
+**without ever touching the disk**. The same API is reachable two ways from one
+shared service layer:
 
-The scripted commander (`game/commander/`, an HTN planner) is rigid: it walks a
-**fixed, hardcoded task-priority list every turn** with no awareness of the
-strategic situation or the player's behaviour. The core idea of this feature is
-to **replace (or augment) the commander's "brain" with an LLM**, while reusing
-the engine's existing "hands" (package building, flight planning, procurement)
-so we inherit all validation and mission generation for free.
+- **REST** — for desktop agents (Claude Code, etc.): just GET/POST the endpoints
+  (curl). No MCP config files, no connectors. Paste the URL and go.
+- **MCP over HTTP** — for **web** LLMs (claude.ai custom connector) so they can
+  **POST** (create packages), which plain web-browsing can't do.
+
+The scripted commander stays as a **fallback** so an OPFOR turn is never empty.
+
+## The model (architecture in a nutshell)
+
+```
+Qt process  ── holds the ONE live Game ──
+  └─ FastAPI app (game/server/, already runs in a background thread)
+       ├─ existing map/render routers (unchanged)
+       ├─ NEW REST routers   ─┐
+       │   /retribution-ai/*  │   both transports call the SAME
+       └─ NEW MCP sub-app    ─┤── service layer ──▶ engine (GameContext.require())
+           mounted at /mcp   ─┘   game/agent/service.py  (single source of truth)
+```
+
+No file juggling, no headless bootstrap, no "one game per process" — there is
+exactly one live game, in the running app.
 
 ## Read in this order
 
 | # | Doc | What it covers |
 |---|-----|----------------|
-| 0 | [`00-vision-and-scope.md`](00-vision-and-scope.md) | The goal, the "decent OPFOR" thesis, scope, non-goals, autonomy levels |
-| 1 | [`01-architecture.md`](01-architecture.md) | Architecture options + recommendation, the layered design, state/concurrency, transport, security |
-| 2 | [`02-codebase-map.md`](02-codebase-map.md) | Annotated reference of every relevant subsystem, with `file:line` |
-| 3 | [`03-opfor-planner.md`](03-opfor-planner.md) | **The centerpiece** — how the scripted commander works and exactly where/how to hook the LLM |
-| 4 | [`04-mcp-tools.md`](04-mcp-tools.md) | Catalog of read + plan/write MCP tools & resources, with backing engine APIs |
-| 5 | [`05-headless-bootstrap-and-saves.md`](05-headless-bootstrap-and-saves.md) | How to load a save headless, init sequence, the pickle save format, gotchas |
-| 6 | [`06-implementation-plan.md`](06-implementation-plan.md) | Phased plan (MVP → full), file layout to add, deps, testing |
-| 7 | [`07-branching-pr-and-risks.md`](07-branching-pr-and-risks.md) | Branch strategy (master → dev PR), what to isolate, risks, open decisions for juanjux |
+| 0 | [`00-vision-and-scope.md`](00-vision-and-scope.md) | Goal, the "decent OPFOR" thesis, the user-facing UX, autonomy levels, fallback |
+| 1 | [`01-architecture.md`](01-architecture.md) | The live dual-transport server: one service layer, REST + MCP, auth, exposure, concurrency |
+| 2 | [`02-codebase-map.md`](02-codebase-map.md) | Engine reference (`file:line`) for every subsystem the feature touches |
+| 3 | [`03-opfor-planner.md`](03-opfor-planner.md) | **The centerpiece** — the scripted commander and exactly where/how the LLM plugs in |
+| 4 | [`04-api-reference.md`](04-api-reference.md) | The endpoint/tool catalog (turn_context, packages, prev_turns, stored_context, …), REST **and** MCP, one backing each |
+| 5 | [`05-context-and-persistence.md`](05-context-and-persistence.md) | Where stored_context / human_notes / fog-of-war / prev-turn data live |
+| 6 | [`06-implementation-plan.md`](06-implementation-plan.md) | Phased plan, file layout, deps, registration (desktop URL vs web connector), testing |
+| 7 | [`07-branching-pr-and-risks.md`](07-branching-pr-and-risks.md) | Branch strategy (master → dev PR), isolation, risks, open decisions |
 
-## How this was researched
+## Key facts (verified against `master` @ `7f063a0`)
 
-Every `file:line` reference in these docs was read first-hand or via a parallel
-recon pass over the codebase at commit `7f063a0` (`master`, 2026-06-27). The
-references are accurate as of that commit; if the desktop session is on a newer
-`master`, re-grep the symbol names before relying on exact line numbers (the
-**symbol names** are the stable contract, the line numbers are a convenience).
+- **The engine already supports the exact hook:** `Game.initialize_turn(events,
+  for_red=True, for_blue=False)` (`game/game.py:398`) re-plans **only OPFOR**,
+  leaving the player's plan intact — documented in its own docstring. The LLM
+  plugs in at `TheaterCommander.plan_missions` (`game/commander/theatercommander.py:95`).
+- **The server already exists:** `game/server/` runs a FastAPI app in-process on a
+  thread (`qt_ui/main.py:522`), bound to the live `Game` via `GameContext`
+  (`game/server/dependencies.py:13`), with a Qt-UI action bridge
+  (`QtContext`/`QtCallbacks`) and `X-API-Key` auth. We extend it; we don't invent it.
+- **Reuse, don't rebuild:** create missions via `PackageFulfiller.plan_mission(...)`
+  and buy via the `PurchaseAdapter` classes — validation, flight planning and
+  budgeting come for free.
+- **FastMCP composes with the existing FastAPI app:** mount `mcp.streamable_http_app()`
+  and run `mcp.session_manager.run()` in the app lifespan (verified 2026-06).
+  Pin `mcp[cli]<2` (v2 is in alpha).
 
-## TL;DR of the conclusions
-
-- **The engine already supports the exact hook we need.** `Game.initialize_turn(
-  events, for_red=True, for_blue=False)` (`game/game.py:398`) re-plans **only
-  OPFOR** without touching the player's plan — its own docstring documents this
-  case. The LLM plugs in at `TheaterCommander.plan_missions`
-  (`game/commander/theatercommander.py:95`).
-- **Reuse, don't rebuild.** Create packages/flights via
-  `PackageFulfiller.plan_mission(...)` and procure via the `PurchaseAdapter`
-  classes. These give us validation, flight-plan generation and budget handling
-  for free.
-- **Headless works.** A `Game` can be loaded from a save without Qt
-  (`persistency.load_game` + `Migrator`), so an MCP can run standalone against
-  save files. The live Qt game is reachable via the existing in-process FastAPI
-  `GameContext`.
-- **Recommended shape:** a thin **agent-core layer** (pure Python, operates on a
-  `Game`) used by **both** a standalone stdio MCP server (for offline planning /
-  development) **and** an in-process mount (for planning the live game). The
-  scripted commander stays as a fallback/baseline so OPFOR turns are never empty.
+Line numbers are accurate as of `7f063a0`; **symbol names are the stable contract.**

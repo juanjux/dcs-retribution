@@ -1,161 +1,154 @@
 # 01 — Architecture
 
-## The three integration options
+## One service layer, two transports, one live game
 
-The codebase gives us three distinct ways to wire an MCP server to the game.
-They are not mutually exclusive — the recommendation is a layered design that
-supports all of them behind one core.
-
-### Option A — Standalone headless MCP (operates on save files)
-
-A separate Python process runs an MCP server. On request it loads a `.retribution`
-save into an in-memory `Game` (`persistency.load_game` + `Migrator`), exposes
-read/plan tools, mutates the `Game`, and writes the save back.
-
-- **Pros:** Simplest to build and test. No Qt, no live coupling. Perfectly
-  scriptable. Ideal for development, CI, and batch "plan N saves" experiments.
-- **Cons:** Operates on *files*, not the game the user is actively playing. The
-  user would: save in Qt → run the agent → reload in Qt. Loading multiple saves
-  in one long-lived process is unsafe (process-global state; see
-  [`05-headless-bootstrap-and-saves.md`](05-headless-bootstrap-and-saves.md)).
-
-### Option B — MCP talks to the running game over the existing FastAPI server
-
-The Qt app already runs a FastAPI server **in-process on a background thread**
-(`qt_ui/main.py:522` → `Server(...).run_in_thread()`), bound to the live `Game`
-via `GameContext` (`game/server/dependencies.py:13`). An external MCP process
-could be an HTTP client of that API.
-
-- **Pros:** Drives the **live** game the user is playing.
-- **Cons:** The existing API is a **read/render API for the web map** plus a
-  thin Qt-callback bridge — it has very few write endpoints and is not designed
-  for planning. We'd have to add a large write surface to it. Auth is a
-  per-process random `X-API-Key` (`game/server/security.py`), and CORS is locked
-  to `file://` (the Qt webview). Doable but indirect.
-
-### Option C — MCP mounted in-process, sharing `GameContext`
-
-Mount the MCP server inside the Qt process (as its own thread / ASGI sub-app),
-reading the live `Game` directly through `GameContext.require()` — no HTTP
-indirection, no second process holding a separate `Game`.
-
-- **Pros:** Plans the **live** game with **direct object access** (full power of
-  the Python API, not a REST subset). Reuses the existing server bootstrap.
-- **Cons:** Must run inside the Qt process; requires care around threading
-  (mutations vs. the sim thread and the Qt main thread — see *Concurrency*).
-
-## Recommended design: one core, two front-ends
-
-Build a thin **agent-core layer** that is pure Python and operates on a `Game`
-object. Everything else is an adapter around it.
+The whole feature is built on **infrastructure that already exists**. The Qt app
+already runs a FastAPI server in-process on a background thread
+(`qt_ui/main.py:522` → `Server(...).run_in_thread()`), bound to the **live `Game`**
+via `GameContext` (`game/server/dependencies.py:13`). We add to it.
 
 ```
-                ┌───────────────────────────────────────────────┐
-                │  game/agent/   (NEW — pure Python, no Qt, no    │
-                │  MCP/HTTP deps)                                 │
-                │                                                 │
-                │  • GameView      read-models (state → pydantic) │
-                │  • GamePlanner   write/plan ops (wraps          │
-                │                  PackageFulfiller, PurchaseAdapter, │
-                │                  initialize_turn, theater edits) │
-                │  • OpforBrain    LLM hook for TheaterCommander  │
-                └───────────────▲───────────────▲────────────────┘
-                                │               │
-            ┌───────────────────┘               └─────────────────────┐
-            │                                                          │
- ┌──────────┴───────────┐                              ┌──────────────┴───────────┐
- │ game/mcp/ (NEW)        │                              │ in-process mount (later)  │
- │ FastMCP server         │                              │ same FastMCP app started   │
- │ • stdio transport      │                              │ from qt_ui alongside the   │
- │ • loads saves (Opt A)  │                              │ existing Server, sharing   │
- │   OR connects to live  │                              │ GameContext (Opt C)        │
- └────────────────────────┘                             └────────────────────────────┘
+Qt process (exactly ONE live Game)
+└─ FastAPI app  (game/server/app.py — already started in a thread)
+     ├─ existing map/render routers + /eventstream            (unchanged)
+     ├─ NEW REST routers     /retribution-ai/*   ─┐
+     │      (desktop agents curl GET/POST)         │  both delegate to the
+     └─ NEW MCP sub-app      mounted at /mcp      ─┤  SAME service layer
+            (web LLMs via connector; enables POST)─┘
+                                                   │
+                                                   ▼
+                              game/agent/service.py   ← single source of truth
+                              (pure Python; operates on GameContext.require())
+                                                   │
+                                                   ▼
+                 engine: PackageFulfiller, PurchaseAdapter, initialize_turn,
+                         ObjectiveFinder, theater, debrief, QtCallbacks…
 ```
 
-**Why this layering wins:**
+**The non-duplication rule:** all logic lives in `game/agent/service.py`. A REST
+route handler and the matching MCP tool are each a 3-line shim that calls the same
+service function. Add an operation once; both transports get it.
 
-- The **agent-core** has no MCP/HTTP/Qt dependencies, so it is unit-testable and
-  reusable. The OPFOR LLM hook lives here and is used by the engine's planning
-  path *directly* — it does not require the MCP server to be running at all.
-- The **MCP server** is a thin adapter: each tool is a few lines calling
-  agent-core. Start with **Option A (stdio, save files)** as the MVP, then add
-  **Option C (in-process, live game)** by pointing the same tools at
-  `GameContext.require()` instead of a loaded save.
-- This keeps the dependency on the `mcp` package **isolated to `game/mcp/`** —
-  important for the eventual `dev` PR (see [`07`](07-branching-pr-and-risks.md)).
+### Why two transports
 
-### Where the `Game` comes from (the one abstraction the core needs)
+| | REST (`/retribution-ai/*`) | MCP over HTTP (`/mcp`) |
+|---|---|---|
+| Audience | Desktop agents (Claude Code) | Web LLMs (claude.ai connector); any MCP client |
+| Setup | Paste URL; agent curls it. **No config files.** | Add URL as a custom connector once. |
+| Reads | GET | tools/resources |
+| **Writes** | POST (agent can curl arbitrary POST) | **tools** (this is the reason MCP exists here — a web LLM can't POST via plain browsing, but it *can* call an MCP tool) |
 
-Give agent-core a single `GameSource` seam:
+Same data, same operations, served from the same service layer.
+
+## How the two transports compose (verified 2026-06)
+
+FastMCP can be mounted into the existing FastAPI/Starlette app, sharing the
+process and the live `Game`:
 
 ```python
-# game/agent/source.py  (sketch)
-class GameSource(Protocol):
-    def get(self) -> Game: ...        # the live Game to read/plan
-    def save(self) -> None: ...       # persist (autosave or to savepath)
+# game/server/app.py (sketch of the additions)
+from contextlib import asynccontextmanager, AsyncExitStack
+from mcp.server.fastmcp import FastMCP
 
-class SaveFileSource:                 # Option A
-    def __init__(self, path: str): ...  # load_game + Migrator on first get()
-class GameContextSource:              # Option C
-    def get(self) -> Game: return GameContext.require()
+mcp = FastMCP("DCS Retribution OPFOR AI", stateless_http=True, json_response=True)
+# ... register MCP tools/resources in game/mcp/, all delegating to game/agent/service ...
+
+@asynccontextmanager
+async def lifespan(app):
+    async with AsyncExitStack() as stack:
+        await stack.enter_async_context(mcp.session_manager.run())   # REQUIRED
+        yield
+
+app = FastAPI(lifespan=lifespan)
+app.include_router(...)                     # existing routers
+app.include_router(retribution_ai_router)   # NEW REST
+app.mount("/mcp", mcp.streamable_http_app())  # NEW MCP (endpoint ends up at /mcp)
 ```
 
-The MCP tools and `OpforBrain` only ever touch `GameSource`, so the same code
-serves offline and live use.
+- `mcp.session_manager.run()` **must** be in the host app's lifespan or the MCP
+  endpoint won't work. The existing `app` has no lifespan today, so this is new.
+- `stateless_http=True, json_response=True` keep it simple (no long-lived SSE
+  session needed; one request/response per tool call).
+- If wiring the lifespan into the existing thread-started uvicorn is awkward, the
+  fallback is to run the MCP app as a **sibling** on a second port in the same
+  process — non-duplication still holds because both call `game/agent/service`.
+  Prefer the single-app mount; document whichever you pick.
 
-## Transport & client registration
+> The service layer is the contract; whether the two transports share one ASGI
+> app or run as siblings is an implementation detail.
 
-Use the official Python SDK's **FastMCP** (`from mcp.server.fastmcp import
-FastMCP`). For a local desktop tool driven by Claude Code / Claude Desktop,
-**stdio is the right default transport**: the client launches the server as a
-subprocess, no ports, no auth to manage.
+## New code layout
 
-- **Claude Code:** a project `.mcp.json` (or `claude mcp add`) with a `command`
-  that runs the server module in the repo's venv.
-- **Claude Desktop:** an `mcpServers` entry in `claude_desktop_config.json`.
+```
+game/
+  agent/                 # NEW — pure Python, no mcp/http/Qt deps where avoidable
+    __init__.py
+    service.py           # the single source of truth: turn_context, packages,
+                         #   prev_turns, stored_context, settings, human_notes,
+                         #   show_planning_dialog, howtoplay, fog-of-war filter
+    views.py             # pydantic read-models (DTOs returned to the LLM)
+    planner.py           # write ops over PackageFulfiller / PurchaseAdapter / stances
+    opforbrain.py        # the LLM hook used by TheaterCommander (see 03)
+    schemas.py           # pydantic: package/flight specs, plan intents, DTOs
+  server/
+    retributionai/       # NEW REST routers (thin shims → game/agent/service)
+      routes.py
+      models.py
+  mcp/                   # NEW — FastMCP tools/resources (thin shims → service)
+    __init__.py
+    server.py            # FastMCP instance + tool/resource registration
+```
 
-(Exact snippets in [`06-implementation-plan.md`](06-implementation-plan.md).)
+Only `game/mcp/` (and the mount in `game/server/app.py`) import `mcp`. Keeping the
+dependency isolated matters for the eventual `dev` PR ([`07`](07-branching-pr-and-risks.md)).
 
-For the **live in-process (Option C)** case, `streamable-http` mounted on a local
-port is the alternative, because the server's lifetime is the Qt app's, not the
-client's — the client connects to an already-running server rather than spawning
-one. Keep the per-process `X-API-Key` pattern there.
+## The bootstrap URL & "start" document
 
-> **SDK version caveat (as of 2026-06):** `mcp` **v2 is in alpha** (beta target
-> 2026-06-30, stable 2026-07-27). Pin **`mcp[cli]<2`** for now unless the desktop
-> session deliberately wants v2. Confirm the current version at implementation
-> time.
+`GET /retribution-ai/start` (and the MCP equivalent resource/prompt) returns the
+**bootstrap document** the LLM reads first: what DCS World and Retribution are, the
+LLM's role as OPFOR planner, the list of operations, and the recommended workflow
+(read `howtoplay` once → read `turn_context` + `prev_turns` + `stored_context` →
+plan → POST packages/buys → optionally update `stored_context`). It's served from
+`game/agent/service.py` so REST and MCP return identical content.
 
-## State & concurrency
+The **Settings panel** shows this URL (with the token) and one line each for the
+desktop-paste and web-connector flows.
 
-- **Long-lived `Game` across tool calls.** In FastMCP, hold the `GameSource` (and
-  for Option A the loaded `Game`) in the **lifespan context**, retrieved via
-  `ctx.request_context.lifespan_context`. Do **not** reload the save per call.
-- **One game per process (Option A).** Loading a save runs `Game.on_load()`,
-  which mutates **process-global** state (`game.naming.namegen`,
-  `ObjectiveDistanceCache`, theater globals — see
-  [`05`](05-headless-bootstrap-and-saves.md)). Loading a second save in the same
-  process clobbers the first. Policy: one `Game` per server process; to switch
-  saves, restart or isolate in a subprocess.
-- **Live game threading (Option C).** The Qt UI, the FastAPI server thread, and
-  the sim (`GameLoopTimer` uses a real `threading.Timer`) can all touch the
-  `Game`. Mutating tools must run when the sim is **paused/at a turn boundary**.
-  Serialise planning mutations (a lock around `initialize_turn` / ATO edits) and
-  prefer applying plans **at the turn-planning step**, not mid-sim. The ATO's
-  transient `FlightState` is not pickled and is reset on load, so plan at turn
-  boundaries to stay safe.
-- **Events.** Every mutating turn/sim method takes a `GameUpdateEvents` instance
-  (`game/sim/gameupdateevents.py`). Headless, create a throwaway one and ignore
-  it. Live (Option C), push it onto `EventStream` so the web map UI refreshes
-  (mirror what `pass_turn` does at `game/game.py:367`).
+## Auth & exposure (bake in from day 1)
 
-## Security
+- **Token, always.** Reuse the per-process `X-API-Key` pattern
+  (`game/server/security.py`) but also accept it as a **URL query token** so the
+  user can hand a single clickable URL to an agent: `…/start?token=<KEY>`. The
+  moment the port is exposed, the URL is the only thing standing between the
+  internet and the player's game — make the token mandatory and long.
+- **Localhost vs. exposed.** `127.0.0.1` works for a desktop agent on the same
+  machine over plain HTTP (no TLS needed locally). For a **web** LLM the user must
+  expose the port (port-forward or a tunnel like cloudflared/ngrok); the tunnel
+  terminates TLS, so we don't need self-signed certs in-app. Document this; don't
+  bind to `0.0.0.0` by default.
+- **CORS:** the existing app locks CORS to `file://`. The new MCP/REST surface for
+  external agents needs its own allowance; scope it as tightly as the chosen
+  client requires.
 
-- **stdio (Option A):** no network surface; the client owns the subprocess. The
-  main risk is that **loading a pickle save executes arbitrary class resolution**
-  (`MigrationUnpickler.find_class`) — only load trusted saves. Document this.
-- **http (Option C):** keep `X-API-Key` and bind to localhost only. Never widen
-  CORS beyond what the map UI needs.
-- Map/economy **cheats** (base capture, money) are gated behind `Settings` flags;
-  expose them through the MCP only when the corresponding cheat setting is on, so
-  the agent can't silently rewrite the game state the user didn't opt into.
+## Concurrency (simpler than it sounds here)
+
+The Qt UI, the server thread, and the sim (`GameLoopTimer`, a real
+`threading.Timer`) all touch the one `Game`. But the feature's **writes happen at
+one safe moment: the OPFOR-planning step**, between missions, when the sim isn't
+advancing flights. So:
+
+- Allow **mutating** calls (POST packages, buys, `plan_opfor_turn`) only when the
+  game is at a turn/planning boundary (sim paused); reject mid-sim with a clear
+  error. Reads are always fine.
+- Put a lock around the planning mutations (`initialize_turn` + ATO edits) so a UI
+  action and an API call can't interleave.
+- Push a `GameUpdateEvents` onto `EventStream` after mutations so the web map UI
+  refreshes (mirror `Game.pass_turn`, `game/game.py:367`).
+
+## Security note on inputs
+
+External LLM input only ever flows through the service layer, which routes it into
+**validated engine calls** (task/target compatibility, range, inventory, budget).
+A malformed request fails that one operation; it cannot corrupt the turn. Never
+`eval`/`pickle` anything from the API. (Pickle only appears in normal save/load,
+not in this API.)

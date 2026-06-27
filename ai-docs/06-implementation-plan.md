@@ -1,188 +1,177 @@
 # 06 — Implementation Plan
 
 A phased plan the desktop Claude Code can execute. Each phase is independently
-useful and testable. Ship them in order.
+useful and testable. The model is **live, in-process, dual-transport** (REST +
+MCP over one service layer) — see [`01`](01-architecture.md).
 
-## New code layout
-
-Keep the MCP dependency isolated and the core reusable:
+## File layout (recap)
 
 ```
 game/
-  agent/                  # NEW — pure Python, no mcp/http/Qt deps
-    __init__.py
-    bootstrap.py          # headless setup()+load_game()+Migrator() (see 05)
-    source.py             # GameSource: SaveFileSource | GameContextSource (see 01)
-    views.py              # GameView → pydantic read-models (operational picture)
-    planner.py            # GamePlanner → write/plan ops over PackageFulfiller/PurchaseAdapter
-    opforbrain.py         # OpforBrain: LLM hook used by TheaterCommander (see 03)
-    schemas.py            # pydantic: Intent/Action/Plan + read DTOs
-  mcp/                    # NEW — the MCP adapter (isolated mcp[cli] dependency)
-    __init__.py
-    server.py             # FastMCP app: tools/resources wrapping game/agent
-    __main__.py           # `python -m game.mcp` entrypoint (stdio)
-tests/
-  agent/                  # unit tests for views/planner/bootstrap against a fixture save
-ai-docs/                  # this folder
+  agent/                 # NEW — single source of truth (pure Python)
+    service.py           # all operations (turn_context, packages, prev_turns,
+                         #   stored_context, settings, human_notes,
+                         #   show_planning_dialog, howtoplay, fog filter)
+    views.py             # pydantic read DTOs (operational picture, fog filter)
+    planner.py           # write ops → PackageFulfiller / PurchaseAdapter / stances
+    opforbrain.py        # the LLM hook for TheaterCommander (L2/L3, see 03)
+    schemas.py           # pydantic specs/intents/DTOs
+  server/
+    retributionai/routes.py + models.py   # NEW REST shims → service
+    app.py               # EDIT: add lifespan(mcp.session_manager.run()),
+                         #   include REST router, mount MCP at /mcp
+    security.py          # EDIT: accept token via ?token= as well as X-API-Key
+  mcp/server.py          # NEW — FastMCP tools/resources (shims → service)
 ```
 
-Rationale: only `game/mcp/` imports `mcp`. `game/agent/` is plain Python and is
-what the engine's OPFOR hook and the tests use — so the *gameplay* feature works
-even if the MCP server isn't running, and the `dev` PR can be split cleanly
-([`07`](07-branching-pr-and-risks.md)).
+Only `game/mcp/` and the mount in `game/server/app.py` import `mcp`. Keep it
+isolated for the `dev` PR ([`07`](07-branching-pr-and-risks.md)).
 
 ## Dependencies
 
-Add to `requirements.txt` (pin for now — **v2 is in alpha as of 2026-06**, beta
-2026-06-30, stable 2026-07-27):
+Add to `requirements.txt` (v2 is in alpha as of 2026-06; beta 2026-06-30, stable
+2026-07-27):
 
 ```
 mcp[cli]<2
 ```
 
-The LLM client itself is **the MCP client** (Claude Code / Claude Desktop) — the
-server does **not** call an LLM API for L0/L1/L2-manual. For the *autonomous*
-OPFOR brain (L3) that runs inside the engine without a human in the loop, you'll
-additionally need an Anthropic API path (`anthropic` SDK) invoked from
-`opforbrain.py`; keep that behind a setting and out of the MCP package.
+The LLM is **the client** (Claude Code / claude.ai). The server does **not** call
+an LLM API for L0/L1/L2-manual. Only the *autonomous* OPFOR brain (L3, runs inside
+the engine with no human in the loop) needs an Anthropic API path (`anthropic`
+SDK) from `opforbrain.py` — keep it behind a setting and out of `game/mcp/`.
 
 ## Phases
 
-### Phase 0 — Headless bootstrap + read-only core  *(foundation)*
-- `game/agent/bootstrap.py` (the [`05`](05-headless-bootstrap-and-saves.md) sequence) + `source.py`.
-- `game/agent/views.py`: `GameView.operational_picture()` and the per-area read DTOs.
-- Test: load a fixture `.retribution` save headless, assert the picture matches.
-- **Deliverable:** can load a real save outside Qt and dump a faithful state JSON.
+### Phase 0 — Service layer + read context  *(foundation, L0 advisor)*
+- `game/agent/service.py` + `views.py`: `turn_context` (with `fog_of_war` filter),
+  `prev_turns`, `get_packages`, `settings`, `human_notes`, `howtoplay`, the `start`
+  doc.
+- Pure functions over `GameContext.require()`.
+- **Deliverable:** can produce a faithful turn-context JSON for the live game.
 
-### Phase 1 — Standalone MCP server (Option A), read tools only  *(L0 advisor)*
-- `game/mcp/server.py` with FastMCP: session tools (B), read tools/resources (B–D),
-  lifespan holding the `GameSource`.
-- stdio transport; register in Claude Code / Desktop (snippets below).
-- **Deliverable:** from Claude Code, "load save X and describe red's situation".
+### Phase 1 — REST transport + auth  *(desktop agents, no config files)*
+- `game/server/retributionai/routes.py`: thin GET shims for the Phase-0 reads.
+- `security.py`: accept `?token=`; settings shows the URL with the token.
+- Setting **"Allow OPFOR AI control"** + the help text/URL ([`00`](00-vision-and-scope.md)).
+- **Deliverable:** paste `…/start?token=…` into Claude Code → it reads context.
 
-### Phase 2 — Write/plan tools (the executor)  *(L1 assisted apply)*
-- `game/agent/planner.py`: `plan_package` (PackageFulfiller), buy/sell
-  (PurchaseAdapter), stances, `schedule_all`, turn control (`initialize_turn`/
-  `pass_turn`), `get_plan_diff`.
-- Wire as MCP write tools (E–H). Structured errors at the boundary.
-- **Deliverable:** from Claude Code, drive a full red turn against a save by hand,
-  save it, load in Qt, verify it plays.
+### Phase 2 — Write path  *(L1 assisted apply)*
+- `game/agent/planner.py`: `create_packages` (PackageFulfiller), buy/sell
+  (PurchaseAdapter), stances, `schedule_all`. Structured per-item results/errors.
+- REST `POST` routes for them. Gate writes to the planning boundary (sim paused).
+- `show_planning_dialog` via the `QtCallbacks` bridge.
+- **Deliverable:** from Claude Code, plan a full red turn over REST; the human
+  advances the turn in Qt and it plays.
 
-### Phase 3 — Strategy hook in the engine  *(L2 — first "decent opponent")*
-- `game/agent/opforbrain.py` L2a: LLM-chosen method ordering/subset for
-  `PlanNextAction`; integrate at `TheaterCommander.plan_missions` behind
-  `settings.opfor_llm_*`.
-- **Deliverable:** toggling the setting makes red concentrate/adapt; scripted
-  fallback intact.
+### Phase 3 — MCP transport  *(web LLMs can POST)*
+- `game/mcp/server.py`: FastMCP instance; register tools/resources that **call the
+  same `game/agent/service` functions** (no logic duplication).
+- Mount into `app.py` (`mcp.streamable_http_app()` at `/mcp` + lifespan running
+  `mcp.session_manager.run()`).
+- **Deliverable:** add the `/mcp` URL as a claude.ai custom connector and plan red
+  from the web LLM (reads + writes).
 
-### Phase 4 — Autonomous OPFOR + live mount  *(L3 + Option C)*
-- `OpforBrain.plan_missions` full intent loop + scripted gap-fill/fallback.
-- Add `GameContextSource` + in-process mount of the FastMCP app from `qt_ui`
-  alongside the existing `Server` (streamable-http, localhost, `X-API-Key`), so the
-  agent plans the **live** game.
-- Add player-intel context (last debrief + blue ATO) for adaptivity.
-- **Deliverable:** play a campaign in Qt where red turns are planned by the LLM.
+### Phase 4 — Memory + adaptivity
+- `stored_context` (new `Game` field + migrator backfill) and `human_notes`
+  (Settings); `prev_turns` after-action history if not already retained
+  ([`05`](05-context-and-persistence.md)).
+- Feed last debrief + blue ATO (fog-filtered) into the context so red reacts to the
+  player.
+- **Deliverable:** red references prior turns and its own strategy notes.
 
-### Phase 5 — Polish
-- A `Settings` group for the feature (enable, autonomy level, model, budget caps).
-- A thin status surface (what red planned, why) — reuse the turn/finances panels.
-- Map-edit tools (G) behind cheat flags.
+### Phase 5 — Engine hook (the "decent opponent")  *(L2 → L3)*
+- `game/agent/opforbrain.py`: wire the LLM into `TheaterCommander.plan_missions`
+  behind `settings.opfor_llm_*`, with the scripted commander as fallback/gap-fill
+  ([`03`](03-opfor-planner.md)). L2 (strategy/ordering) first, then L3 (autonomous).
+- **Deliverable:** toggling the setting makes red concentrate/adapt; never empty.
 
-## Client registration snippets
+### Phase 6 — Polish
+- Settings group (enable, autonomy level, fog_of_war, model, token, budget caps).
+- Status surface (what red planned / why) — reuse turn/finances panels.
+- Map-edit tools (F in [`04`](04-api-reference.md)) behind cheat flags + tunnel docs.
 
-**Claude Code** — project `.mcp.json` (or `claude mcp add retribution -- <cmd>`):
+## Minimal server wiring (current FastMCP API, verified 2026-06)
 
-```jsonc
-{
-  "mcpServers": {
-    "retribution": {
-      "command": "python",
-      "args": ["-m", "game.mcp"],
-      "cwd": "/path/to/dcs-retribution",      // run from repo root (see 05)
-      "env": { "RETRIBUTION_SAVE": "/path/to/save.retribution" }  // optional default
-    }
-  }
-}
+```python
+# game/server/app.py (additions)
+import contextlib
+from fastapi import FastAPI
+from mcp.server.fastmcp import FastMCP
+from game.mcp.server import mcp          # FastMCP instance, tools delegate to game/agent/service
+from game.server.retributionai.routes import router as ai_router
+
+@contextlib.asynccontextmanager
+async def lifespan(app: FastAPI):
+    async with contextlib.AsyncExitStack() as stack:
+        await stack.enter_async_context(mcp.session_manager.run())   # REQUIRED for /mcp
+        yield
+
+app = FastAPI(lifespan=lifespan)
+# ... existing include_router(...) calls ...
+app.include_router(ai_router)                       # REST: /retribution-ai/*
+app.mount("/mcp", mcp.streamable_http_app())        # MCP endpoint at /mcp
 ```
-
-Use the project venv's interpreter for `command` (e.g. the absolute path to
-`.venv/Scripts/python.exe` on Windows). The server should read the save path from
-an env var or a `load_savegame` tool call.
-
-**Claude Desktop** — `claude_desktop_config.json` (`mcpServers` block, same shape):
-
-```jsonc
-{
-  "mcpServers": {
-    "retribution": {
-      "command": "C:/path/to/dcs-retribution/.venv/Scripts/python.exe",
-      "args": ["-m", "game.mcp"],
-      "cwd": "C:/path/to/dcs-retribution"
-    }
-  }
-}
-```
-
-## Minimal server skeleton (current FastMCP API, verified 2026-06)
 
 ```python
 # game/mcp/server.py
-from contextlib import asynccontextmanager
-from dataclasses import dataclass
-from collections.abc import AsyncIterator
+from mcp.server.fastmcp import FastMCP
+from game.agent import service
 
-from mcp.server.fastmcp import FastMCP, Context
+mcp = FastMCP("DCS Retribution OPFOR AI", stateless_http=True, json_response=True)
 
-from game.agent.bootstrap import bootstrap_headless
-from game.agent.source import SaveFileSource
-from game.agent.views import GameView
-from game.agent.schemas import OperationalPicture
-
-@dataclass
-class AppCtx:
-    source: SaveFileSource
-
-@asynccontextmanager
-async def lifespan(server: FastMCP) -> AsyncIterator[AppCtx]:
-    bootstrap_headless()                       # logging, mods, persistency.setup, payloads
-    yield AppCtx(source=SaveFileSource())      # holds the loaded Game across calls
-
-mcp = FastMCP("DCS Retribution", lifespan=lifespan)
+@mcp.resource("retribution://turn_context/{side}")
+def turn_context(side: str):
+    return service.turn_context(side)               # SAME function the REST route calls
 
 @mcp.tool()
-def load_savegame(path: str, ctx: Context) -> str:
-    ctx.request_context.lifespan_context.source.load(path)
-    return f"loaded {path}"
-
-@mcp.resource("retribution://state/operational/{side}")
-def operational_picture(side: str) -> OperationalPicture:        # pydantic → structured output
-    game = mcp.get_context().request_context.lifespan_context.source.get()
-    return GameView(game, side).operational_picture()
-
-# ...read tools (B–D), write tools (E–H)...
-
-if __name__ == "__main__":
-    mcp.run()        # stdio by default
+def create_packages(side: str, packages: list[dict]) -> dict:
+    return service.create_packages(side, packages)  # SAME function the REST POST calls
+# ...rest of tools/resources, all delegating to service...
 ```
 
 ```python
-# game/mcp/__main__.py
-from game.mcp.server import mcp
-mcp.run()
+# game/server/retributionai/routes.py  (the REST half — same backing)
+from fastapi import APIRouter, Depends
+from game.server.security import ApiKeyManager
+from game.agent import service
+
+router = APIRouter(prefix="/retribution-ai", dependencies=[Depends(ApiKeyManager.verify)])
+
+@router.get("/turn_context")
+def turn_context(side: str = "red"):
+    return service.turn_context(side)
+
+@router.post("/packages")
+def create_packages(body: dict):
+    return service.create_packages(body["side"], body["packages"])
 ```
 
-> Note: pin the FastMCP API to the installed `mcp` version at implementation time
-> (the lifespan/`Context` signatures shifted between minor releases). The shapes
-> above match `mcp` 1.x.
+> Pin the FastMCP API to the installed `mcp` version (lifespan/`Context`/
+> `streamable_http_app` signatures shifted across minors). The above matches `mcp`
+> 1.x. If mounting into the thread-started uvicorn fights you, run the MCP app on a
+> sibling port in the same process — non-duplication still holds (shared service).
+
+## Client setup (what the Settings panel tells the user)
+
+- **Desktop agent (Claude Code):** "Paste this URL to your agent:
+  `http://127.0.0.1:8322/retribution-ai/start?token=<KEY>`." The agent GETs it and
+  follows the workflow. **No config files.** (Optionally also document
+  `claude mcp add --transport http http://127.0.0.1:8322/mcp` for MCP-native use.)
+- **Web LLM (claude.ai):** "Expose the port (tunnel) and add this as a custom
+  connector: `https://<your-tunnel>/mcp`." The connector gives it read+write tools.
 
 ## Testing strategy
 
-- **Fixture save:** commit a small `.retribution` save under `tests/` (or generate
-  one in a fixture via `create_game` + `begin_turn_0`) and assert read-model shape.
-- **Round-trip:** load → `plan_opfor_turn` → `save_game` → reload → assert the red
-  ATO is non-empty and references valid targets/squadrons.
-- **Fallback:** force the LLM path to raise and assert the scripted commander still
-  produces a red plan (the [`00`](00-vision-and-scope.md) guarantee).
-- **No-Qt import test:** importing `game.agent.*` and `game.mcp.*` must not import
-  PySide6 (guards headless purity and keeps the `dev` PR clean).
-- Keep `mypy`/`black`/`pre-commit` green (the repo enforces them).
+- **Live-game fixture:** build a `Game` in a test via `create_game` +
+  `begin_turn_0` (as `qt_ui/main.py:283` does), point the service at it, assert
+  `turn_context` shape and that `create_packages` yields a non-empty, valid red ATO.
+- **Round-trip:** `create_packages` → assert packages reference valid
+  targets/squadrons and flight plans build.
+- **Fallback:** force the LLM hook to raise; assert the scripted commander still
+  fills red ([`00`](00-vision-and-scope.md) guarantee).
+- **Transport parity:** the same operation via REST and via MCP returns equal
+  results (guards against logic drifting out of the service layer).
+- **No-Qt purity:** `game/agent/*` importable without PySide6 (keeps the `dev` PR
+  clean; the Qt-callback bits stay behind a thin interface).
+- Keep `mypy` / `black` / `pre-commit` green.

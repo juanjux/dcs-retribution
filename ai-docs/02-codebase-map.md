@@ -234,8 +234,10 @@ C reuses it.
 
 - **Saves:** pickle (`.retribution`/`.liberation`), `persistency.load_game(path)`
   (`game/persistency.py:417`) + `Migrator(game, is_liberation)` (`game/migrator.py:28`);
-  `save_game(game)` (`:428`), `autosave(game)` (`:454`). Full detail in
-  [`05-headless-bootstrap-and-saves.md`](05-headless-bootstrap-and-saves.md).
+  `save_game(game)` (`:428`), `autosave(game)` (`:454`). The feature runs against
+  the **live** game (no headless load needed); saves matter only as the natural
+  home for the `stored_context` scratchpad + `human_notes` — see
+  [`05-context-and-persistence.md`](05-context-and-persistence.md).
 - **Logging:** `logging_config.init_logging(version)` (`game/logging_config.py:11`)
   writes to **`./logs/`** (created relative to cwd), config from
   `resources/default_logging.yaml` (or `resources/logging.yaml` if present). An MCP
