@@ -118,10 +118,17 @@ bypass the automatic threat-avoidance.
 4. **Defend what matters.** BARCAP over vulnerable bases/fleets; sensible front-line
    stances; keep your own IADS alive.
 5. **Build the packages** to achieve your objectives, properly composed (see §4).
-6. **Spend to fix gaps.** Losing the air war? Buy fighters. Need to hold or push a
+6. **Time your strikes to the mission window.** Read **`Desired mission duration`**
+   (`desired_player_mission_duration`) from `/settings` — it's the best estimate of
+   when the player will end the DCS mission (after they've flown their tasking and
+   landed). **Aim every package's TOT to fall within that window.** Flights don't
+   have to have returned/landed by then, but a TOT *after* the window is wasted —
+   the mission will likely be over before it happens. So concentrate your effort in
+   time, not just in space.
+7. **Spend to fix gaps.** Losing the air war? Buy fighters. Need to hold or push a
    front? Buy ground units and/or transfer them where needed. Bought aircraft arrive
    next turn, so invest ahead.
-7. **Record what you learned.** Use your scratchpad (stored_context) for multi-turn
+8. **Record what you learned.** Use your scratchpad (stored_context) for multi-turn
    strategy and lessons about this player — it persists across turns and sessions.
 
 Think like a real air commander: clear intent, combined arms, economy of force,

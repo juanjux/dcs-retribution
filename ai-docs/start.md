@@ -36,7 +36,9 @@ tool/resource of the same name.
    `GET /settings`, `GET /human_notes`; optionally `GET /map/image`).
 3. Check existing plan: `GET /packages?side=red` (resume / avoid duplicates).
 4. Decide intent (concentrate on 1–3 objectives), then apply (see Plan below):
-   create packages, set stances, buy/transfer, move ships / adjust waypoints.
+   create packages, set stances, buy/transfer, move ships / adjust waypoints. Keep
+   package **TOTs within `Desired mission duration`** (from `/settings`) — actions
+   after that window are wasted (the player will have ended the mission). See howtoplay.
 5. `PUT /stored_context` — save your strategy/lessons for next turn.
 6. `opfor_planning_done` (= `set_ai_active(false)`) → robot idle, Take Off unblocked;
    the human can review red's plan and flag any mistake in chat.
