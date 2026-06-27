@@ -135,7 +135,9 @@ You act **only as a player could**, through the same actions:
   free. (Mid-campaign you can create/delete squadrons only if the player has enabled
   the air-wing cheat; even then you **buy** aircraft, you don't add them for free.)
 - You can only use airframes your faction already has. You **cannot** change the set
-  of airframes your faction may field.
+  of airframes your faction may field — but if you think you need a different type
+  (for balance, or to counter something the player is fielding), **ask the player to
+  add it in the Air Wing window**; they decide.
 - No cheats: you can't set your budget, capture bases directly, or place/teleport
   units. Ship moves and waypoint edits are allowed but only within the game's normal
   limits.

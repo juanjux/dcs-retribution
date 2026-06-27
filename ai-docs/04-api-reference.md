@@ -319,7 +319,8 @@ human-only.
 Constraints:
 - **Aircraft must be in the faction's set** (`faction.all_aircrafts`) and the base
   must `can_operate(aircraft)`. To **change which airframes the faction may field**,
-  the AI must **ask the human in chat** — it cannot edit the faction's aircraft set.
+  the AI must **ask the human to add it in the Air Wing window** — it cannot edit
+  the faction's aircraft set itself.
 - `max_size` (initial strength) is honoured at **turn 0**; mid-campaign a new
   squadron starts at 0 and is filled by **buying**.
 - **Gate:** turn-0 config always; mid-campaign only with `enable_air_wing_adjustments`.
@@ -344,7 +345,7 @@ the AI's lever for anything outside its player-legal action set:
 - "The game AI bugged and lost 10 aircraft to crashes without the *ignore non-combat
   losses* option — consider enabling it and restoring those airframes."
 - "OPFOR can't counter the F-22 with its current airframes — consider adding a
-  capable type to red's faction."
+  capable type to red's faction in the Air Wing window."
 - enabling/disabling a setting, applying a cheat, fixing an engine glitch, etc.
 
 This "ask/advise the human" pattern is **documented in `/howtoplay`** so the LLM
