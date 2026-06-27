@@ -160,10 +160,12 @@ GroundUnitPurchaseAdapter(control_point, coalition, game).buy(unit_type, 6)  # a
 
 ## Theater / map / control points / ground objects — `game/theater/`
 
-The map data model — used **read-only** here (for `turn_context`). The feature
-does **not** edit the map (no repositioning/placing/capturing); see the guiding
-principle in [`04`](04-api-reference.md). Mutation entry points are noted only as
-engine reference.
+The map data model — read for `turn_context`, plus the **player-legal spatial
+moves** the feature does support: **moving movable ships** and **dragging
+flight/package waypoints** (both via existing server routes; see the server
+section below and [`04`](04-api-reference.md)). What's **not** supported is
+cheat-level editing (capturing bases, placing/teleporting units, editing TGO unit
+composition).
 
 - `ControlPoint` (`game/theater/controlpoint.py:369`, a `MissionTarget`): subtypes
   `Airfield` (`:1334`), `NavalControlPoint` (`:1496`), `Carrier` (`:1618`),
@@ -186,8 +188,25 @@ engine reference.
   in the terrain's projected (meter) CRS. Convert to map lat/lng with
   `Point(x, y, terrain).latlng()` → `LatLng(lat, lng)` (see `game/server/leaflet.py:66`).
   Going the other way (lat/lng → internal) uses `dcs` mapping helpers. Read tools
-  should emit lat/lng (matching the web map); the feature reads positions, it does
-  not write them.
+  emit lat/lng (matching the web map).
+- **Player-legal spatial moves (existing server routes the AI reuses):**
+  - **Move a ship/naval group:** `PUT /tgos/{id}/destination` (`set_tgo_destination`,
+    `game/server/tgos/routes.py`) sets `tgo.target_position` — an **end-of-turn**
+    reposition, checked against `ShipGroundObject.destination_in_range` /
+    `max_move_distance` and not-over-land. `GET /tgos/{id}/destination-in-range`
+    validates; clear route sets `target_position = None`. `TgoJs.moveable` /
+    `target_position` (`game/server/tgos/models.py:35`) expose which groups move.
+    (Naval *control points* have an analogous `cp.target_position` route,
+    `game/server/controlpoints/routes.py`.)
+  - **Adjust a flight/package waypoint:** `POST /waypoints/{flight_id}/{idx}/position`
+    (`set_waypoint_position`, `game/server/waypoints/routes.py:49`) sets the waypoint
+    to a lat/lng; for the **primary flight** it cascades join/ingress/split/refuel to
+    the package and sibling flights (`update_package_waypoints_if_primary_flight`,
+    `:87`). Read waypoints via `GET /waypoints/{flight_id}` (`:38`).
+- **Map image source:** every map layer is already produced as lat/lng geometry by
+  the server (`controlpoints`/`frontlines`/`threatzones`/`tgos`/`supplyroutes`
+  routes + `game/server/leaflet.py`); render those to a PNG (or grab the live Qt
+  `QWebEngineView`) for the multimodal map-image endpoint ([`04`](04-api-reference.md)).
 
 ---
 

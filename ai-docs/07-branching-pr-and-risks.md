@@ -34,9 +34,13 @@ WIP **not present in `dev`**. But the PR goes to `dev`. So the feature must be
    Keep each edit small and dependent only on code that **also exists in `dev`**.
 3. **Don't build on master-only APIs.** The engine seams used (`initialize_turn`,
    `TheaterCommander`, `PackageFulfiller`, `PurchaseAdapter`, the FastAPI server,
-   `GameContext`, `QtCallbacks`) are core/upstream — good. The main master-only
-   dependency is the fork's **kill-attribution** detail used by `prev_turns` ("who
-   killed it"): **degrade gracefully** if it's absent on `dev` rather than hard-depend.
+   `GameContext`, `QtCallbacks`, the `waypoints` set-position route) are
+   core/upstream — good. Two fork-only dependencies to **degrade gracefully** on
+   `dev` rather than hard-depend:
+   - **kill-attribution** detail used by `prev_turns` ("who killed it");
+   - **movable ships** (the `tgos` `target_position`/`moveable` reposition) — juanjux
+     is upstreaming it; if the target branch lacks it, hide/no-op the `move_ship`
+     op rather than break the build.
 4. **Isolate the `mcp` dependency** to `game/mcp/` + the mount, so it's a small,
    self-contained part of the single PR.
 
@@ -83,7 +87,10 @@ WIP **not present in `dev`**. But the PR goes to `dev`. So the feature must be
 ## Decisions already made (juanjux)
 
 - **Mode:** live-over-HTTP (no headless / save-file mode).
-- **API scope:** only player-legal actions — **no map editing, no cheats**. The AI
+- **API scope:** only player-legal actions, through the same endpoints — incl.
+  buy/sell aircraft, buy/transfer ground units, **moving movable ships**, and
+  **dragging flight/package waypoints**; plus a rendered **map image** for
+  multimodal models. **No cheats** (budget/base-capture/unit-placement). The AI
   reads settings (`map_coalition_visibility`, `enemy_income_multiplier`, …) but
   never changes them; those are normal per-campaign, player-alterable settings.
 - **AI intel:** driven by the existing `map_coalition_visibility` (the "Fog of war"

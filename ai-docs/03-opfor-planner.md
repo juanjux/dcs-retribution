@@ -123,11 +123,14 @@ def plan_missions(self, now, tracer):
 
 | LLM intent | Engine call |
 |------------|-------------|
-| Fly a package (task, target, size, escorts) | `PackageFulfiller.plan_mission(ProposedMission(...))` → `coalition.ato.add_package` (see [`02`](02-codebase-map.md)) |
+| Fly a package (target + flights; each flight = task/squadron/count/payload; escort/SEAD are flights too) | `Package` + `Flight(...)` + `recreate_flight_plan` + `coalition.ato.add_package`, or `PackageFulfiller.plan_mission` for auto-select (see [`02`](02-codebase-map.md), [`04`](04-api-reference.md)) |
 | Set a front-line stance | the corresponding primitive task / `CombatStance` on the `FrontLine` |
-| Buy aircraft / ground units | `AircraftPurchaseAdapter.buy` / `GroundUnitPurchaseAdapter.buy` |
+| Buy/sell aircraft, buy/transfer ground units | `AircraftPurchaseAdapter.buy/sell` / `GroundUnitPurchaseAdapter.buy` / `coalition.transfers.new_transfer` |
+| Move a ship / adjust a waypoint | existing `tgos` `set_tgo_destination` / `waypoints` `set_waypoint_position` routes (player-legal map moves) |
 
-(Only player-legal actions — no map editing or cheats; see [`04`](04-api-reference.md).)
+(Only player-legal actions — same as the human; **no cheats** (budget/base-capture/
+unit-placement). Moving movable ships and dragging waypoints **are** allowed. See
+[`04`](04-api-reference.md).)
 
 Because every intent routes through code that validates target/task
 compatibility and builds the flight plan, a malformed intent fails *that intent*
@@ -162,14 +165,26 @@ A small, typed schema (so we can use MCP/LLM structured output):
 {
   "intent": "Concentrate DEAD+strike on the northern airbase to enable a capture next turn",
   "actions": [
-    {"type": "package", "task": "DEAD",  "target": "SAM Armadillo", "size": 4, "escort": "ESCORT"},
-    {"type": "package", "task": "STRIKE","target": "Krymsk runway",  "size": 4, "escort": "SEAD"},
+    // A package is a target + flights; escort/SEAD are flights, not a field.
+    {"type": "package", "target": "SAM Armadillo", "flights": [
+        {"task": "DEAD", "squadron": "16th OVAP", "count": 2},
+        {"task": "SEAD", "squadron": "3rd Fighter Sqn", "count": 2}
+    ]},
+    {"type": "package", "target": "Krymsk runway", "flights": [
+        {"task": "STRIKE", "squadron": "559th Bomber", "count": 4},
+        {"task": "ESCORT", "squadron": "3rd Fighter Sqn", "count": 2}
+    ]},
     {"type": "stance",  "front": "Krymsk-Novorossiysk", "value": "BREAKTHROUGH"},
     {"type": "buy_air", "base": "Krymsk", "squadron": "Su-34", "count": 2},
-    {"type": "buy_ground", "base": "Krymsk", "unit": "T-90", "count": 6}
+    {"type": "buy_ground", "base": "Krymsk", "unit": "T-90", "count": 6},
+    {"type": "transfer", "origin": "Maykop", "dest": "Krymsk", "units": {"T-90": 6}}
   ]
 }
 ```
+
+(Flight fields mirror the `POST /packages` schema in [`04`](04-api-reference.md):
+`task`, origin `squadron` (fixes airframe + base), `count`, optional `start_type`/
+`payload`/`waypoints`. Omit waypoints to let the engine auto-build a valid plan.)
 
 Target identifiers should be **names/ids the read tools handed out**, so the
 executor can resolve them back to engine objects unambiguously (don't trust the

@@ -59,12 +59,16 @@ engine turns that intent into concrete, validated missions.
 
 ## Core constraint: the AI plays by the player's rules
 
-The API exposes **only the actions a human player can take** — plan packages, buy/
-sell units, set stances, run procurement, read state, keep notes. **No cheats, no
-map editing, no god-mode:** the AI can't set budgets, capture bases, or place/move
-units on the map. Settings like `enemy_income_multiplier` and
-`map_coalition_visibility` are normal per-campaign, player-alterable settings — the
-AI **reads** them, it doesn't change them. OPFOR is a fair opponent, not a cheater.
+The API exposes **exactly the actions a human player can take**, through the **same
+endpoints** — plan packages/flights, buy/sell aircraft, buy/transfer ground units,
+set stances, **move movable ships**, **drag flight/package waypoints on the map**
+(within the game's normal limits), run procurement, read state (incl. a rendered
+**map image** for multimodal models), keep notes. What's excluded is **cheats /
+god-mode**: setting budgets, capturing bases, creating/teleporting units beyond
+legal limits, editing TGO unit composition. Settings like `enemy_income_multiplier`
+and `map_coalition_visibility` are normal per-campaign, player-alterable settings —
+the AI **reads** them, it doesn't change them. OPFOR is a fair opponent, not a
+cheater.
 
 ## Non-goals (initial)
 
@@ -75,7 +79,8 @@ AI **reads** them, it doesn't change them. OPFOR is a fair opponent, not a cheat
   primitive tasks.
 - A standalone headless / save-file mode. (Earlier drafts explored this; it's
   **out** — the model is live-over-HTTP only.)
-- **Cheats / map editing** — out by the core constraint above.
+- **Cheats / god-mode** — out by the core constraint above. (Moving movable ships
+  and dragging waypoints are player actions, so they're **in**, not cheats.)
 
 ## Autonomy levels (ship incrementally)
 
