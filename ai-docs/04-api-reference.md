@@ -235,26 +235,47 @@ modal dialog**. Instead:
 - A **robot icon in the UI toolbar** shows AI activity: **grayscale = idle**,
   **colour + a subtle animation = the LLM is actively making changes**. The LLM
   toggles this when it starts/finishes a turn.
-- **Clicking the robot icon** opens a small **info window** showing the LLM's latest
-  **status string** (the phase it's on: "Evaluating last turn…", "Buying aircraft…",
-  "Planning packages…"). That's where the old "modal status line" now lives.
+- **Clicking the robot icon** opens a small **info window** with:
+  - the LLM's latest **status string** (the phase: "Evaluating last turn…", "Buying
+    aircraft…", "Planning packages…");
+  - **"Last update X seconds/minutes ago"** — derived from the server-side timestamp
+    of the last `set_ai_status`/`set_ai_active` call, so the player can tell if the
+    LLM has hung;
+  - a **"Cancel LLM planning"** button — aborts the LLM's turn (see below);
+  - a **"Non-LLM plan this turn"** button — **enabled only after Cancel is pressed**
+    — runs the scripted commander to plan red for this turn instead;
+  - a **"Close"** button (just closes the window; cancels nothing).
 - **The one hard sync point is Take Off.** If the human hits **Take Off** while the
   AI is still active, a **popup blocks it** ("OPFOR AI is still planning — wait for
-  the robot to go idle"). Once the AI signals done (icon → grayscale), Take Off is
-  allowed. So they overlap freely but the mission can't launch on a half-planned red.
+  the robot to go idle"). Once the AI is done (or cancelled), Take Off is allowed.
+  So they overlap freely but the mission can't launch on a half-planned red.
+
+**Cancel flow.** "Cancel LLM planning" sets a per-turn **cancelled** flag: it idles
+the robot, lifts the Take-Off gate, and makes the server **reject further LLM
+writes this turn** (so a slow agent that wakes up later can't clobber the human's
+decision). The LLM should notice via `turn_status` / the error returned on its next
+write and stop gracefully. After cancelling, red may be empty/half-planned — that's
+what **"Non-LLM plan this turn"** is for: it runs the scripted `TheaterCommander`
+to fill red (the fallback, on demand).
 
 | Op | REST | MCP | Service → engine |
 |----|------|-----|------------------|
-| **set AI active / idle** | `POST /ai_status/active` `{active: bool}` | tool `set_ai_active(active)` | `QtContext`/`QtCallbacks` bridge (`game/server/dependencies.py:35`): toolbar robot icon colour+animation; sets the **Take-Off gate flag** |
-| **set status text** | `POST /ai_status/text` `{text}` | tool `set_ai_status(text)` | stores the latest status; shown in the robot info window on click |
+| **set AI active / idle** | `POST /ai_status/active` `{active: bool}` | tool `set_ai_active(active)` | `QtContext`/`QtCallbacks` bridge (`game/server/dependencies.py:35`): toolbar robot icon colour+animation; sets the **Take-Off gate flag**; stamps last-update time |
+| **set status text** | `POST /ai_status/text` `{text}` | tool `set_ai_status(text)` | stores the latest status (+ last-update time); shown in the robot info window |
 | **signal done** | (same as `set_ai_active(false)`) | `opfor_planning_done()` | idle the icon + lift the Take-Off gate |
-| **turn status** | `GET /turn_status` | tool `turn_status()` | `game.turn`, whose-turn, ai-active flag |
+| **turn status** | `GET /turn_status` | tool `turn_status()` | `game.turn`, whose-turn, **ai-active**, **cancelled** flags, last-update time |
 
-> Engine/UI side: add an **ai-active flag** (on the GameModel / a UI controller) that
-> `set_ai_active` toggles; the **Take-Off action checks it** and shows the blocking
-> popup if set. No engine pause and no auto-advance are needed — the human drives
-> the flow and Take Off is the only gate. A stale status (no update for N s while
-> active) can be surfaced as "AI may have stalled".
+UI-only actions (no LLM call — the human clicks them in the robot window):
+- **Cancel LLM planning** → set the `cancelled` flag (idle robot, ungate Take Off,
+  reject later LLM writes); enables the next button.
+- **Non-LLM plan this turn** → run the scripted commander for red
+  (`Game.initialize_turn(events, for_red=True, for_blue=False)`), i.e. the fallback.
+
+> Engine/UI side: the **ai-active flag** + **cancelled flag** + **last-update
+> timestamp** live on the GameModel / a UI controller; `set_ai_active`/`set_ai_status`
+> update them, the **Take-Off action checks ai-active**, and the robot window renders
+> them. No engine pause or auto-advance — the human drives the flow; Take Off and
+> the cancel buttons are the only controls.
 
 ### Triggering / advancing
 

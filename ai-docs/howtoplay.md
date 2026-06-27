@@ -172,7 +172,10 @@ icon in the toolbar shows you're busy and Take Off is blocked until you're done.
 2. **Mark yourself active** (`set_ai_active(true)`) — the toolbar robot turns from
    grayscale to colour. Post a status line and **update it before each phase**
    ("Evaluating last turn…", "Buying aircraft…", "Planning packages…"); the player
-   sees it by clicking the robot icon, and it shows you haven't stalled.
+   sees it (and a "last update X ago") by clicking the robot icon. Updating often
+   matters: it proves you haven't hung. **The player can cancel you** from that
+   window — if you've been cancelled, `turn_status` shows it and your next write is
+   rejected; **stop planning gracefully** if that happens.
 3. **Read** the situation (turn context, previous turns, your notes, optionally the
    map image).
 4. **Plan and apply**: create packages/flights (crewed), set stances, buy/sell/
