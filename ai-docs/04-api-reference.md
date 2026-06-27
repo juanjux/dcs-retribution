@@ -61,7 +61,9 @@ compact, faithful snapshot; limit OWNFOR detail per `map_coalition_visibility`
 | Op | REST | MCP | Service → engine |
 |----|------|-----|------------------|
 | **create packages/flights** | `POST /packages` | tool `create_packages(specs)` | `PackageFulfiller.plan_mission(ProposedMission(...))` → `coalition.ato.add_package`; then `MissionScheduler.schedule_missions` ([`02`](02-codebase-map.md)) |
-| **remove package/flight** | `DELETE /packages/{id}` | tool `remove_package(id)` | `ato.remove_package` / `Package.remove_flight` |
+| **delete a package** | `DELETE /packages/{id}` | tool `delete_package(id)` | `ato.remove_package` (returns its pilots + aircraft to inventory) |
+| **delete a flight** | `DELETE /packages/{pkg_id}/flights/{flight_id}` | tool `delete_flight(pkg_id, flight_id)` | `Package.remove_flight` (`package.py:137`, returns pilots + aircraft) |
+| **clear all OPFOR packages** (start the turn fresh / drop a half-done plan) | `DELETE /packages?side=red` | tool `clear_packages(side)` | `coalition.ato.clear()` (`airtaaskingorder.py:36`) |
 | **set front-line stance** | `POST /stances` | tool `set_stance(front, value)` | `CombatStance` on `FrontLine` |
 | **buy aircraft** | `POST /buy/aircraft` | tool `buy_aircraft(base, squadron, n)` | `AircraftPurchaseAdapter(cp).buy` |
 | **buy ground units** | `POST /buy/ground` | tool `buy_ground(base, unit, n)` | `GroundUnitPurchaseAdapter(cp, coalition, game).buy` |
@@ -89,10 +91,13 @@ The service resolves names→engine objects, calls `plan_mission`, and returns a
 |----|------|-----|------------------|
 | **stored_context** read | `GET /stored_context` | resource `retribution://stored_context` | persisted with the campaign ([`05`](05-context-and-persistence.md)) |
 | **stored_context** write/append | `PUT /stored_context` (replace) / `POST /stored_context` (append) | tool `set_stored_context` / `append_stored_context` | same store |
+| **stored_context** delete one key | `DELETE /stored_context/{key}` | tool `delete_stored_context(key)` | pop the key from the store |
+| **stored_context** clear all | `DELETE /stored_context` | tool `clear_stored_context()` | reset the store |
 
 A freeform key/value or markdown blob the AI owns: multi-turn strategy, lessons
 learned this campaign, observations about the player. Persists across turns and
-across different AIs/sessions because it lives in the save.
+across different AIs/sessions because it lives in the save. The AI fully owns it,
+so it can prune/replace its own notes via the deletes above.
 
 ## E. UI / session
 
@@ -126,7 +131,10 @@ abort the whole turn.
 
 - Side-effect-free reads (`start`, `howtoplay`, `settings`, `human_notes`,
   `turn_context`, `stored_context` read) → **resources** (cacheable context).
-- Everything that mutates (packages, buys, stances, stored_context write,
-  show_planning_dialog, plan_opfor) → **tools**.
+- Everything that mutates — creates, writes, **and deletes** (packages/flights,
+  clear-ATO, buys, stances, stored_context write/delete, show_planning_dialog,
+  plan_opfor) → **tools**. MCP has no HTTP verbs, so a REST `DELETE` maps to a
+  `delete_*` / `clear_*` tool. All deletes obey the same turn/planning-boundary
+  rule as other writes.
 - Consider an MCP **prompt** "Plan OPFOR's turn" that bundles the workflow, so the
   user can one-shot it from the client.
