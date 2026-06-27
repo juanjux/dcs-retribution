@@ -87,7 +87,9 @@ cheater.
 
 - Replacing the **player's** planning UX (the human still plans blue in the UI).
 - Driving the in-DCS mission in real time (we plan the **strategic turn**; DCS
-  runs the generated `.miz`).
+  runs the generated `.miz`). *(A future evolution could add real-time in-mission
+  control for players who own the **Combined Arms** DLC — see Future directions in
+  [`07`](07-branching-pr-and-risks.md). Out of scope for v1.)*
 - Rewriting the HTN — it stays as **fallback/baseline** and a source of reusable
   primitive tasks.
 - A standalone headless / save-file mode. (Earlier drafts explored this; it's

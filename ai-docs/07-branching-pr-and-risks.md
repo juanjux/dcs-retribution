@@ -126,5 +126,25 @@ WIP **not present in `dev`**. But the PR goes to `dev`. So the feature must be
 ## Open decisions for juanjux
 
 **None outstanding** — the design is fully decided (see above). What remains is
-implementation, starting at Phase 0 in [`06`](06-implementation-plan.md). Future
-*optional* upgrades (not blockers): long-poll / eventstream turn triggers.
+implementation, starting at Phase 0 in [`06`](06-implementation-plan.md).
+
+## Future directions (not now — keep the door open)
+
+Out of scope for v1, but worth not precluding architecturally:
+
+- **Turn triggers:** long-poll (`wait_for_opfor_turn`) / eventstream `new_turn`
+  push, beyond the v1 "human says your turn" ([`04`](04-api-reference.md) §E).
+- **Engine-driven brain:** an embedded LLM that plans red with no human in the loop
+  (dropped for now until local models are cheap/good — [`03`](03-opfor-planner.md)).
+- **In-mission control via Combined Arms.** If the player owns the DCS **Combined
+  Arms** DLC, a later evolution could let the LLM **command units in real time
+  *during* the DCS mission** (e.g. OPFOR ground units / JTAC), not just plan the
+  strategic turn between missions. Design implications to keep in mind now:
+  - it's a **separate, real-time channel** from this strategic-turn API — it would
+    run **DCS-side** (mission Lua / CA scripting bridge), with a different timing
+    model (live, continuous) and different state (in-mission unit positions/orders),
+    so don't assume the between-turns request/response API covers it;
+  - the **agent-core/service layer** and the "the AI is a player" framing should
+    stay the reusable part — the in-mission channel reuses game/faction context and
+    the same agent identity, but adds its own live transport;
+  - gate it on **CA ownership** (it's a paid DLC), and keep it strictly optional.
