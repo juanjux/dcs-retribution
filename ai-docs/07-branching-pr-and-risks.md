@@ -86,7 +86,7 @@ WIP **not present in `dev`**. But the PR goes to `dev`. So the feature must be
 | **MCP mount/lifespan** quirks in the existing server | Verified pattern; sibling-port fallback; pin `mcp<2` |
 | **Save-compat** — new persisted fields (`stored_context`, after-action) | Default + `Migrator`/`__setstate__` backfill |
 | **`dev` PR drags in master-only code** | Isolation rules above; degrade gracefully on the kill-attribution dependency |
-| **Latency/cost** of LLM planning | Mode A: the client (the user's own agent) bears it. Mode B (engine-driven): cache turn_context, cap actions, token/budget caps in settings |
+| **Latency/cost** of LLM planning | Borne by the **chat client** (the user's own agent); the server calls no LLM. Keep `turn_context` compact to limit the client's token use |
 
 ## Decisions already made (juanjux)
 
@@ -105,25 +105,22 @@ WIP **not present in `dev`**. But the PR goes to `dev`. So the feature must be
   and fills them by **buying** — never the free aircraft +/-. It cannot change the
   faction's allowed airframes (asks the human). See [`04`](04-api-reference.md) §G.
 - **`stored_context`:** stored **in the save** (new `Game` field + migrator backfill).
-- **Autonomy:** **full autonomy only — no intermediate "strategy hook" level.** The
-  AI plans the whole red turn like a human player. **Mode A (client-driven)** ships
-  first: when OPFOR-AI is on, the engine doesn't auto-plan red — the chat LLM fills
-  red via the API; the scripted commander is **fallback** if red's turn is empty.
-  **Mode B (engine-driven, embedded LLM)** is a later optional add-on. See [`03`](03-opfor-planner.md).
+- **Autonomy:** **full autonomy only — no intermediate "strategy hook" level, and
+  no embedded/in-engine LLM.** The AI plans the whole red turn like a human player,
+  and the **brain is the chat LLM** (Claude Code / claude.ai) driving via the API.
+  When OPFOR-AI is on, the engine doesn't auto-plan red; the scripted commander is
+  **fallback** if red's turn is empty. (An embedded LLM is explicitly out of scope
+  until local models are far cheaper/better.) See [`03`](03-opfor-planner.md).
 - **Turn trigger (v1):** the **human says "your turn" in chat**; the `/howtoplay`
   briefing makes the LLM teach the player this on first contact (incl. the first
   turn). OPFOR plans **first**, then the human reviews. Long-poll / eventstream
   `new_turn` push remain documented as future upgrades. See [`04`](04-api-reference.md) §E.
+- **MCP mount:** into the **existing FastAPI app (one port)** — simplest; sibling
+  port only as a last-resort if the lifespan won't wire. See [`01`](01-architecture.md).
 - **PR:** **one** PR to `dev`.
 
 ## Open decisions for juanjux
 
-1. **Which LLM drives engine-driven OPFOR (Mode B)?** Mode A (v1) needs no key —
-   the chat client is the LLM. Mode B (engine calls an embedded LLM, hands-off)
-   needs an Anthropic API path + model choice + token/budget caps. (Only relevant
-   when you build Mode B.)
-2. **MCP mount** — into the existing FastAPI app (one port) vs. sibling port (same
-   process). Recommend one app if the lifespan wires cleanly.
-
-*(The turn-trigger mechanism is resolved for v1 — human says "your turn"; see
-Decisions above. Long-poll / eventstream push are future upgrades, not blockers.)*
+**None outstanding** — the design is fully decided (see above). What remains is
+implementation, starting at Phase 0 in [`06`](06-implementation-plan.md). Future
+*optional* upgrades (not blockers): long-poll / eventstream turn triggers.

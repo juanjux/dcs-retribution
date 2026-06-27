@@ -100,13 +100,13 @@ entire OPFOR plan (packages, flights, buys, stances, transfers, ship/waypoint
 moves) through the API. We do **not** build a half-measure where the LLM only nudges
 the scripted planner — that wastes time and reuses the weak HTN as the brain.
 
-- **v1 (client-driven):** the chat LLM fills red's plan via the API during the
-  OPFOR window (human says "your turn"). The engine doesn't auto-plan red; it leaves
-  the turn for the AI, like it leaves blue's turn for the human.
-- **later (engine-driven):** the engine itself calls an embedded LLM at red's
-  planning step — same executor, for hands-off play.
+**The brain is the chat LLM** (Claude Code / claude.ai), driving via the API during
+the OPFOR window (human says "your turn"). The engine doesn't auto-plan red; it
+leaves the turn for the AI, like it leaves blue's turn for the human. There is **no
+embedded/in-engine LLM** — deliberately out of scope until local models are far
+cheaper/better; the chat-driven path is simple and enough.
 
-See [`03-opfor-planner.md`](03-opfor-planner.md) for both modes.
+See [`03-opfor-planner.md`](03-opfor-planner.md) for the hook.
 *(For development only, you can run "review-only" — generate a plan but apply
 nothing — to vet quality. That's a test aid, not a product mode.)*
 

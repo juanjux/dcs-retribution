@@ -59,19 +59,16 @@ scripted `TheaterCommander` is kept **only as a fallback**, so an OPFOR turn is
 never empty. It reuses the engine's fulfilment machinery (packages, flight plans,
 procurement) — we never ask the LLM for waypoints or raw units.
 
-There are two ways the LLM can deliver that plan; both produce the same result (a
-filled red ATO + purchases) and both fall back to the scripted commander.
-
-### Mode A — client-driven (v1, recommended first)
+### How it's delivered: client-driven (the chat LLM is the brain)
 
 The chat LLM (Claude Code / claude.ai) fills red's plan **through the API** during
-the OPFOR window, just like the human fills theirs through the UI. The engine does
-**not** auto-run the scripted planner for red; it leaves the red ATO for the AI to
-author, and only falls back if the AI never plays.
+the OPFOR window, just like the human fills theirs through the UI. There is **no
+embedded/in-engine LLM** — that's deliberately out of scope until local models are
+much cheaper/better, and the chat-driven approach is simple and sufficient.
 
 The only engine change needed: when OPFOR-AI is enabled, **suppress the automatic
-scripted planning of red** and **fall back** if red's turn is still empty when the
-human advances.
+scripted planning of red** (leave the ATO for the AI to author) and **fall back** to
+the scripted commander if red's turn is still empty when the human advances.
 
 ```python
 # Coalition.initialize_turn / plan_missions for red, augmented
@@ -89,37 +86,6 @@ def plan_missions(self, now):
 
 > The API write path already runs `MissionScheduler.schedule_missions` after the AI
 > adds packages (see [`04`](04-api-reference.md) §C), so TOTs are spaced correctly.
-
-### Mode B — engine-driven (later; needs an embedded LLM)
-
-For fully hands-off play (no human in the loop), the engine itself calls an LLM at
-red's planning step. This wraps `TheaterCommander.plan_missions`:
-
-```python
-# game/agent/opforbrain.py  (engine-driven variant)
-class OpforBrain:
-    def plan_missions(self, game, player, now, tracer) -> bool:
-        """Return True if the LLM produced a usable plan, else False to fall back."""
-        view = GameView(game, player).operational_picture()
-        try:
-            plan = self.llm.plan_turn(view)                    # -> list[Intent] (Anthropic API)
-        except Exception:
-            return False
-        applied = 0
-        for intent in plan.intents:
-            try:
-                self.apply(intent, game, player, now, tracer)  # same executor as the API write path
-                applied += 1
-            except (PlanningError, TransactionError, ...):
-                continue                                        # skip bad intent, keep going
-        return applied > 0
-# If it returns False (or leaves gaps), run the scripted commander as fallback.
-```
-
-Mode B needs an Anthropic API path + model/budget (open decision in
-[`07`](07-branching-pr-and-risks.md)); Mode A needs none (the client is the LLM).
-**Both share the same executor** (`apply(intent, …)` = the API write path) and the
-same fallback, so Mode B is a later add-on, not a different design.
 
 ### What "execute an intent" maps to
 
@@ -213,10 +179,7 @@ and let the engine do what it's good at — **valid execution**.
    `PurchaseAdapter` + stances + transfers + ship/waypoint moves in the service
    layer, exposed as REST + MCP write tools. Drive a **full** red turn by hand from
    Claude Code against the live game.
-3. **Suppress + fallback (Mode A).** When `opfor_ai_enabled`, stop the engine from
+3. **Suppress + fallback.** When `opfor_ai_enabled`, stop the engine from
    auto-planning red (leave the ATO for the AI); add the fallback that runs the
    scripted commander if red's turn is still empty at advance time. This is the
-   v1 "decent opponent" — the AI plays the whole turn like a player.
-4. **Engine-driven (Mode B, later).** Wire `OpforBrain.plan_missions` (embedded
-   LLM) into `TheaterCommander.plan_missions`, reusing the same executor and
-   fallback, for hands-off play.
+   complete feature — the AI plays the whole turn like a player.

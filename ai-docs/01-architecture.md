@@ -69,13 +69,14 @@ app.mount("/mcp", mcp.streamable_http_app())  # NEW MCP (endpoint ends up at /mc
   endpoint won't work. The existing `app` has no lifespan today, so this is new.
 - `stateless_http=True, json_response=True` keep it simple (no long-lived SSE
   session needed; one request/response per tool call).
-- If wiring the lifespan into the existing thread-started uvicorn is awkward, the
-  fallback is to run the MCP app as a **sibling** on a second port in the same
-  process — non-duplication still holds because both call `game/agent/service`.
-  Prefer the single-app mount; document whichever you pick.
+- **Decided: mount into the existing FastAPI app (one port)** — simplest, one
+  process, one URL. Only if wiring the lifespan into the thread-started uvicorn
+  proves impossible would you fall back to a sibling port in the same process
+  (non-duplication still holds, since both call `game/agent/service`); but mount is
+  the plan.
 
-> The service layer is the contract; whether the two transports share one ASGI
-> app or run as siblings is an implementation detail.
+> The service layer is the contract; the two transports share one ASGI app on one
+> port.
 
 ## New code layout
 
@@ -88,7 +89,6 @@ game/
                          #   planning_dialog/status, turn-handshake, howtoplay, map-visibility (intel) filter
     views.py             # pydantic read-models (DTOs returned to the LLM)
     planner.py           # write ops over PackageFulfiller / PurchaseAdapter / stances
-    opforbrain.py        # the LLM hook used by TheaterCommander (see 03)
     schemas.py           # pydantic: package/flight specs, plan intents, DTOs
   server/
     retributionai/       # NEW REST routers (thin shims → game/agent/service)

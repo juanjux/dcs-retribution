@@ -15,7 +15,6 @@ game/
                          #   map-visibility/intel filter)
     views.py             # pydantic read DTOs (operational picture, intel filter)
     planner.py           # write ops → PackageFulfiller / PurchaseAdapter / stances
-    opforbrain.py        # engine-driven LLM (Mode B, later — see 03)
     schemas.py           # pydantic specs/intents/DTOs
   server/
     retributionai/routes.py + models.py   # NEW REST shims → service
@@ -37,11 +36,9 @@ Add to `requirements.txt` (v2 is in alpha as of 2026-06; beta 2026-06-30, stable
 mcp[cli]<2
 ```
 
-The LLM is **the client** (Claude Code / claude.ai) in v1 (Mode A) — the server
-does **not** call an LLM API. Only the later **engine-driven** OPFOR brain (Mode B,
-runs inside the engine with no human in the loop) needs an Anthropic API path
-(`anthropic` SDK) from `opforbrain.py` — keep it behind a setting and out of
-`game/mcp/`.
+The LLM is always **the client** (Claude Code / claude.ai) — the server **never**
+calls an LLM API. (An embedded/in-engine LLM is out of scope; see [`03`](03-opfor-planner.md).)
+So there is no `anthropic` dependency and no model/key to manage server-side.
 
 ## Phases
 
@@ -89,7 +86,7 @@ runs inside the engine with no human in the loop) needs an Anthropic API path
   player.
 - **Deliverable:** red references prior turns and its own strategy notes.
 
-### Phase 5 — Autonomous wiring + fallback (Mode A — the "decent opponent")
+### Phase 5 — Autonomous wiring + fallback (the "decent opponent" — completes the feature)
 - When `settings.opfor_ai_enabled`, **suppress the engine's auto-planning of red**
   (leave the ATO for the AI to author via the API), and add the **fallback**: if
   red's turn is still empty when the human advances (AI didn't play / errored), run
@@ -97,14 +94,8 @@ runs inside the engine with no human in the loop) needs an Anthropic API path
 - **Deliverable:** with the setting on, red is planned entirely by the LLM via the
   API like a human player; with it off (or on failure) the scripted commander runs.
 
-### Phase 6 — Engine-driven brain (Mode B, optional/later)
-- `game/agent/opforbrain.py`: an **embedded** LLM (Anthropic API) called from
-  `TheaterCommander.plan_missions`, reusing the same executor + fallback, for
-  hands-off play. Behind its own setting + model/token budget.
-
-### Phase 7 — Polish
-- Settings group (enable OPFOR-AI, AI-intel = mirror `map_coalition_visibility`,
-  + for Mode B: model, token/budget caps).
+### Phase 6 — Polish
+- Settings group (enable OPFOR-AI, AI-intel = mirror `map_coalition_visibility`).
 - Status surface (what red planned / why) — reuse turn/finances panels.
 - Tunnel/exposure docs for the web-LLM connector flow. (No map-edit/cheat tools —
   the API stays to player-legal actions; see the guiding principle in [`04`](04-api-reference.md).)
