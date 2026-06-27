@@ -56,7 +56,7 @@ models (JSON). Reads never mutate; writes only succeed at a turn/planning bounda
 compact, faithful snapshot; limit OWNFOR detail per `map_coalition_visibility`
 (see [`05`](05-context-and-persistence.md)).
 
-## C. Write — plan OPFOR
+## C. Write — plan OPFOR (missions, economy, transfers)
 
 | Op | REST | MCP | Service → engine |
 |----|------|-----|------------------|
@@ -66,8 +66,13 @@ compact, faithful snapshot; limit OWNFOR detail per `map_coalition_visibility`
 | **clear all OPFOR packages** (start the turn fresh / drop a half-done plan) | `DELETE /packages?side=red` | tool `clear_packages(side)` | `coalition.ato.clear()` (`airtaaskingorder.py:36`) |
 | **set front-line stance** | `POST /stances` | tool `set_stance(front, value)` | `CombatStance` on `FrontLine` |
 | **buy aircraft** | `POST /buy/aircraft` | tool `buy_aircraft(base, squadron, n)` | `AircraftPurchaseAdapter(cp).buy` |
+| **sell aircraft** | `POST /sell/aircraft` | tool `sell_aircraft(base, squadron, n)` | `AircraftPurchaseAdapter(cp).sell` (sells *untasked* airframes; refunds budget) |
 | **buy ground units** | `POST /buy/ground` | tool `buy_ground(base, unit, n)` | `GroundUnitPurchaseAdapter(cp, coalition, game).buy` |
+| **cancel a pending ground order** | `POST /buy/ground/cancel` | tool `cancel_ground_order(base, unit, n)` | `GroundUnitPurchaseAdapter(...).sell` — cancels a not-yet-delivered order (ground units can't be *sold* once delivered) |
 | **run auto-procurement** (spend the rest) | `POST /buy/auto` | tool `auto_procure()` | `Coalition.plan_procurement` |
+| **transfer ground units between bases** | `POST /transfers` | tool `create_transfer(origin, dest, units)` | `coalition.transfers.new_transfer(TransferOrder(origin, dest, {unit: n}), now)` (`game/transfers.py:94`, `:651`) |
+| **list pending transfers** | `GET /transfers?side=red` | tool `get_transfers(side)` | iterate `coalition.transfers` (`PendingTransfers`, `game/transfers.py:590`) |
+| **cancel a transfer** | `DELETE /transfers/{id}` | tool `cancel_transfer(id)` | `coalition.transfers.cancel_transfer(t)` (`game/transfers.py:718`) |
 
 `POST /packages` body — intent-shaped, target by **name/id from turn_context**
 (never raw coords):
@@ -84,6 +89,17 @@ compact, faithful snapshot; limit OWNFOR detail per `map_coalition_visibility`
 
 The service resolves names→engine objects, calls `plan_mission`, and returns a
 **per-item result** (created / why it failed). A bad item fails *itself* only.
+
+**Selling & transfers — semantics (all player-legal):**
+- **Aircraft** can be bought *and sold* (only *untasked* airframes can be sold;
+  selling refunds the price). `AircraftPurchaseAdapter` handles budget + parking.
+- **Ground units cannot be sold** once delivered (`GroundUnitPurchaseAdapter.do_sale`
+  raises). The only ways to undo ground spending are **cancel a pending order**
+  before delivery, or **transfer** delivered units to another base.
+- **Transfers** move *your own* ground units between *your own* bases along the
+  supply network (`TransferOrder(origin, destination, {unit: n})`). This is the
+  normal player transfer action — **not** the transfer *cheat* (`enable_transfer_cheat`),
+  which the AI does not use.
 
 ## D. Memory — the scratchpad
 

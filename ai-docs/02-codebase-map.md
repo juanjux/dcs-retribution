@@ -138,13 +138,20 @@ GroundUnitPurchaseAdapter(control_point, coalition, game).buy(unit_type, 6)  # a
 ```
 
 - `PurchaseAdapter.buy/sell` (`:24/:34`) deduct/refund via `coalition.adjust_budget`.
-- Aircraft adapter increments `squadron.pending_deliveries`; ground adapter calls
-  `control_point.ground_unit_orders.order({unit_type: 1})` (`groundunitorders.py:31`).
+- **Aircraft can be sold**: `AircraftPurchaseAdapter.sell` / `can_sell =
+  untasked_aircraft > 0` (`purchaseadapter.py:110/119`). Aircraft adapter buy
+  increments `squadron.pending_deliveries`.
+- **Ground units cannot be sold**: `GroundUnitPurchaseAdapter.can_sell` returns
+  `False` and `do_sale` raises (`purchaseadapter.py:160/169`). Buy calls
+  `control_point.ground_unit_orders.order({unit_type: 1})` (`groundunitorders.py:31`);
+  `do_cancel_purchase` cancels a pending order (`ground_unit_orders.sell`).
 - Auto-procurement: `ProcurementAi.spend_budget(budget)` (`game/procurement.py:115`);
   `AircraftProcurementRequest` (`:31`). `Income(game, player).total` (`game/income.py`).
-- Ground reinforcements & convoys: `GroundUnitOrders` (`groundunitorders.py:21`)
-  on each `ControlPoint`; transfers via `coalition.transfers` (`game/transfers.py`,
-  `PendingTransfers`).
+- **Transfers** (move own ground units between own bases): `TransferOrder(origin,
+  destination, units: dict[GroundUnitType, int])` (`game/transfers.py:94`) +
+  `coalition.transfers.new_transfer(order, now)` (`:651`); list by iterating
+  `coalition.transfers` (`PendingTransfers`, `:590`); `cancel_transfer(order)`
+  (`:718`). `GroundUnitOrders` (`groundunitorders.py:21`) holds per-CP buy orders.
 - `Settings.enemy_income_multiplier` (`game/settings/settings.py:125`) scales
   red's income. It's a **normal campaign/player setting** (per-campaign default,
   player-alterable) — the AI **reads** it (via `/settings`), it does not set it.
