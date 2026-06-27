@@ -26,7 +26,7 @@ engine turns that intent into concrete, validated missions.
 > builders, `MissionScheduler` and `PurchaseAdapter` decide *how* and guarantee
 > the result is valid. We never ask the LLM for waypoints or raw unit data.
 
-## The user-facing experience (juanjux's design)
+## The user-facing experience 
 
 1. **A setting "Allow OPFOR AI control"**, with help text roughly:
    > *Allow an external LLM to control OPFOR. Once checked, give this URL to your
