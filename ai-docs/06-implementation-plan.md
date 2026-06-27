@@ -44,7 +44,8 @@ SDK) from `opforbrain.py` — keep it behind a setting and out of `game/mcp/`.
 ## Phases
 
 ### Phase 0 — Service layer + read context  *(foundation, L0 advisor)*
-- `game/agent/service.py` + `views.py`: `turn_context` (with `fog_of_war` filter),
+- `game/agent/service.py` + `views.py`: `turn_context` (OWNFOR limited per
+  `map_coalition_visibility`, see [`05`](05-context-and-persistence.md)),
   `prev_turns`, `get_packages`, `settings`, `human_notes`, `howtoplay`, the `start`
   doc.
 - Pure functions over `GameContext.require()`.
@@ -87,9 +88,10 @@ SDK) from `opforbrain.py` — keep it behind a setting and out of `game/mcp/`.
 - **Deliverable:** toggling the setting makes red concentrate/adapt; never empty.
 
 ### Phase 6 — Polish
-- Settings group (enable, autonomy level, fog_of_war, model, token, budget caps).
+- Settings group (enable, autonomy level, AI-intel = mirror `map_coalition_visibility`, model, token, budget caps).
 - Status surface (what red planned / why) — reuse turn/finances panels.
-- Map-edit tools (F in [`04`](04-api-reference.md)) behind cheat flags + tunnel docs.
+- Tunnel/exposure docs for the web-LLM connector flow. (No map-edit/cheat tools —
+  the API stays to player-legal actions; see the guiding principle in [`04`](04-api-reference.md).)
 
 ## Minimal server wiring (current FastMCP API, verified 2026-06)
 

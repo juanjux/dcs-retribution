@@ -47,7 +47,7 @@ exactly one live game, in the running app.
 | 2 | [`02-codebase-map.md`](02-codebase-map.md) | Engine reference (`file:line`) for every subsystem the feature touches |
 | 3 | [`03-opfor-planner.md`](03-opfor-planner.md) | **The centerpiece** — the scripted commander and exactly where/how the LLM plugs in |
 | 4 | [`04-api-reference.md`](04-api-reference.md) | The endpoint/tool catalog (turn_context, packages, prev_turns, stored_context, …), REST **and** MCP, one backing each |
-| 5 | [`05-context-and-persistence.md`](05-context-and-persistence.md) | Where stored_context / human_notes / fog-of-war / prev-turn data live |
+| 5 | [`05-context-and-persistence.md`](05-context-and-persistence.md) | Where stored_context / human_notes / AI-intel (map visibility) / prev-turn data live |
 | 6 | [`06-implementation-plan.md`](06-implementation-plan.md) | Phased plan, file layout, deps, registration (desktop URL vs web connector), testing |
 | 7 | [`07-branching-pr-and-risks.md`](07-branching-pr-and-risks.md) | Branch strategy (master → dev PR), isolation, risks, open decisions |
 

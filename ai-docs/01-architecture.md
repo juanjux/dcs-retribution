@@ -85,7 +85,7 @@ game/
     __init__.py
     service.py           # the single source of truth: turn_context, packages,
                          #   prev_turns, stored_context, settings, human_notes,
-                         #   show_planning_dialog, howtoplay, fog-of-war filter
+                         #   show_planning_dialog, howtoplay, map-visibility (intel) filter
     views.py             # pydantic read-models (DTOs returned to the LLM)
     planner.py           # write ops over PackageFulfiller / PurchaseAdapter / stances
     opforbrain.py        # the LLM hook used by TheaterCommander (see 03)

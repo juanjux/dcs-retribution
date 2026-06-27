@@ -145,14 +145,18 @@ GroundUnitPurchaseAdapter(control_point, coalition, game).buy(unit_type, 6)  # a
 - Ground reinforcements & convoys: `GroundUnitOrders` (`groundunitorders.py:21`)
   on each `ControlPoint`; transfers via `coalition.transfers` (`game/transfers.py`,
   `PendingTransfers`).
-- Boost OPFOR resourcing without code: `Settings.enemy_income_multiplier`
-  (`game/settings/settings.py:125`).
+- `Settings.enemy_income_multiplier` (`game/settings/settings.py:125`) scales
+  red's income. It's a **normal campaign/player setting** (per-campaign default,
+  player-alterable) — the AI **reads** it (via `/settings`), it does not set it.
 
 ---
 
 ## Theater / map / control points / ground objects — `game/theater/`
 
-The map model and the data behind "place or change things on the map".
+The map data model — used **read-only** here (for `turn_context`). The feature
+does **not** edit the map (no repositioning/placing/capturing); see the guiding
+principle in [`04`](04-api-reference.md). Mutation entry points are noted only as
+engine reference.
 
 - `ControlPoint` (`game/theater/controlpoint.py:369`, a `MissionTarget`): subtypes
   `Airfield` (`:1334`), `NavalControlPoint` (`:1496`), `Carrier` (`:1618`),
@@ -174,8 +178,9 @@ The map model and the data behind "place or change things on the map".
 - **Coordinate system:** internal positions are `dcs.Point(x, y, theater.terrain)`
   in the terrain's projected (meter) CRS. Convert to map lat/lng with
   `Point(x, y, terrain).latlng()` → `LatLng(lat, lng)` (see `game/server/leaflet.py:66`).
-  Going the other way (lat/lng → internal) uses `dcs` mapping helpers. **Any
-  map-edit tool should accept lat/lng and convert**, matching what the web map uses.
+  Going the other way (lat/lng → internal) uses `dcs` mapping helpers. Read tools
+  should emit lat/lng (matching the web map); the feature reads positions, it does
+  not write them.
 
 ---
 
@@ -246,8 +251,10 @@ C reuses it.
 - **Debrief:** `game/debriefing.py` + `game/polldebriefingfilethread.py` parse DCS
   mission results; `MissionResultsProcessor` (`game/sim/`) commits them into the
   `Game`. Relevant for "what did the player do last turn" context fed to the LLM.
-- **Settings / cheats:** `Settings` (`game/settings/settings.py:93`).
-  `player_income_multiplier` (`:116`), `enemy_income_multiplier` (`:125`),
-  `automate_*` toggles (`:666`–`:768`), and cheat flags
-  `enable_frontline_cheats` / `enable_base_capture_cheat` / `enable_transfer_cheat`
-  / `enable_runway_state_cheat` (`:1703`–`:1706`). Gate map/economy mutations on these.
+- **Settings:** `Settings` (`game/settings/settings.py:93`). Relevant to the
+  feature (all **read-only** to the AI, surfaced via `/settings`):
+  `map_coalition_visibility` (`:170`, the "Fog of war" map mode — drives AI intel,
+  see [`05`](05-context-and-persistence.md)), `player_income_multiplier` (`:116`),
+  `enemy_income_multiplier` (`:125`), `automate_*` toggles (`:666`–`:768`). The
+  cheat flags (`enable_*_cheat`, `:1703`–`:1706`) exist but the feature **does not
+  use them** — the AI only takes player-legal actions ([`04`](04-api-reference.md)).

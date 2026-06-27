@@ -34,23 +34,19 @@ WIP **not present in `dev`**. But the PR goes to `dev`. So the feature must be
    Keep each edit small and dependent only on code that **also exists in `dev`**.
 3. **Don't build on master-only APIs.** The engine seams used (`initialize_turn`,
    `TheaterCommander`, `PackageFulfiller`, `PurchaseAdapter`, the FastAPI server,
-   `GameContext`, `QtCallbacks`) are core/upstream — good. Fork-only features
-   (movable ships, OPFOR money cheat, EW, TIC, kill-attribution detail for
-   `prev_turns`) are master-only; if a tool leans on one, **gate it** so the core
-   feature still builds against `dev`. Note: the "who killed it" detail in
-   `prev_turns` depends on the fork's kill-attribution — degrade gracefully if absent.
-4. **Isolate the `mcp` dependency** to `game/mcp/` + the mount, so the gameplay
-   half can be PR'd even if the MCP transport is split out.
+   `GameContext`, `QtCallbacks`) are core/upstream — good. The main master-only
+   dependency is the fork's **kill-attribution** detail used by `prev_turns` ("who
+   killed it"): **degrade gracefully** if it's absent on `dev` rather than hard-depend.
+4. **Isolate the `mcp` dependency** to `game/mcp/` + the mount, so it's a small,
+   self-contained part of the single PR.
 
-### Suggested PR path
+### Suggested PR path (one PR — decided)
 
 - Develop & soak-test on `experiment-mcp` (from `master`) in the real binary.
-- For the `dev` PR, cut a clean branch from `dev` and apply only the feature's
-  commits (new modules + small guarded edits). Isolation makes this a clean
-  cherry-pick.
-- Consider **splitting** into two PRs: (1) service layer + REST + engine OPFOR hook
-  (pure gameplay, the high-value contribution), (2) `game/mcp/` + `mcp[cli]`
-  dependency (the MCP transport for web LLMs).
+- For the `dev` PR, cut a clean branch from `dev` and apply the feature's commits
+  (new modules + small guarded edits). Isolation makes this a clean cherry-pick.
+- **One PR** containing service layer + REST + MCP transport + the engine OPFOR
+  hook. (The isolation rules keep it reviewable; no need to split.)
 
 ## Verification status of this design
 
@@ -80,13 +76,22 @@ WIP **not present in `dev`**. But the PR goes to `dev`. So the feature must be
 | **Concurrency** — UI/sim/API touch one `Game` | Writes only at the planning boundary (sim paused); lock around `initialize_turn`+ATO; push `GameUpdateEvents` after |
 | **Logic duplication** across REST/MCP | Single `game/agent/service.py`; transports are thin shims; parity test |
 | **MCP mount/lifespan** quirks in the existing server | Verified pattern; sibling-port fallback; pin `mcp<2` |
-| **Save-compat** — new persisted fields (`stored_context`, after-action) | Default + `Migrator`/`__setstate__` backfill; or sidecar JSON to avoid pickle change |
-| **`dev` PR drags in master-only code** | Isolation rules above; gate fork-only features; split PRs |
+| **Save-compat** — new persisted fields (`stored_context`, after-action) | Default + `Migrator`/`__setstate__` backfill |
+| **`dev` PR drags in master-only code** | Isolation rules above; degrade gracefully on the kill-attribution dependency |
 | **Latency/cost** of LLM planning (L3) | Cache turn_context; cap actions; budget/token caps in settings; L2 is cheaper |
 
-## Open decisions for juanjux
+## Decisions already made (juanjux)
 
-(The earlier "headless vs live" decision is **resolved: live-over-HTTP**.)
+- **Mode:** live-over-HTTP (no headless / save-file mode).
+- **API scope:** only player-legal actions — **no map editing, no cheats**. The AI
+  reads settings (`map_coalition_visibility`, `enemy_income_multiplier`, …) but
+  never changes them; those are normal per-campaign, player-alterable settings.
+- **AI intel:** driven by the existing `map_coalition_visibility` (the "Fog of war"
+  map mode) — mirror the player's setting; don't invent a flag. See [`05`](05-context-and-persistence.md).
+- **`stored_context`:** stored **in the save** (new `Game` field + migrator backfill).
+- **PR:** **one** PR to `dev`.
+
+## Open decisions for juanjux
 
 1. **Default autonomy level** behind the setting — **L2** (strategy hook; LLM sets
    priorities, HTN fulfils) is the recommended first "decent opponent"; **L3**
@@ -94,14 +99,5 @@ WIP **not present in `dev`**. But the PR goes to `dev`. So the feature must be
 2. **Which LLM drives autonomous OPFOR (L3)?** For L0–L2-manual the client is the
    LLM (no API key). L3 (engine-driven, no human) needs an Anthropic API path +
    model choice + token budget.
-3. **`fog_of_war` default** — omniscient (easier, simpler) vs. limited-to-what-red-
-   knows (fairer, harder to build). Recommend on, sourced from red's detection.
-4. **Give OPFOR a leg up by default?** `enemy_income_multiplier` (`settings.py:125`)
-   makes red threatening without perfect play. On/off?
-5. **`stored_context` home** — in-`Game` field + migrator backfill (travels with the
-   save; recommended) vs. sidecar JSON (no pickle change, but doesn't travel).
-6. **Map-edit power** — how much of section F ([`04`](04-api-reference.md)) to
-   expose, behind which cheat flags.
-7. **One PR or two** to `dev` (gameplay+REST hook vs. MCP transport)?
-8. **MCP mount** — into the existing FastAPI app (one port) vs. sibling port (same
+3. **MCP mount** — into the existing FastAPI app (one port) vs. sibling port (same
    process). Recommend one app if the lifespan wires cleanly.

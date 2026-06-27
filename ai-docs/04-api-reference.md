@@ -10,6 +10,15 @@ All take the auth **token** (header `X-API-Key` or `?token=`). All return pydant
 models (JSON). Reads never mutate; writes only succeed at a turn/planning boundary
 (see concurrency in [`01`](01-architecture.md)).
 
+> **Guiding principle — the AI is a player, not a god.**
+> The API exposes **only the actions a human player can take through the game**:
+> plan packages/flights, buy/sell units, set front-line stances, run procurement,
+> read state, keep notes. **No cheats, no map editing, no god-mode** — no setting
+> the budget, no capturing bases, no placing/teleporting units. Settings such as
+> `enemy_income_multiplier` and `map_coalition_visibility` are normal campaign/
+> player settings: the AI **reads** them via `/settings`, it does not change them.
+> This keeps OPFOR a fair opponent playing by the same rules as the human.
+
 > The endpoint names below follow juanjux's sketch. They're a starting catalog,
 > not gospel — refine shapes during implementation. The **engine backing** column
 > is the important, verified part.
@@ -39,12 +48,13 @@ models (JSON). Reads never mutate; writes only succeed at a turn/planning bounda
 
 | Op | REST | MCP | Service → engine |
 |----|------|-----|------------------|
-| **turn_context** — campaign, map, all OPFOR items (bases, wings, pilots, aircraft, ground units, units outside bases, buildings, SAMs, EWRs: position + alive/dead + health); OWNFOR items subject to **fog_of_war** | `GET /turn_context` | resource `retribution://turn_context/{side}` | `theater.controlpoints`/`ground_objects`, `AirWing.iter_squadrons`, `Squadron.*`, `game.threat_zone_for`, `ObjectiveFinder.*`, coords via `leaflet` ([`02`](02-codebase-map.md)) |
+| **turn_context** — campaign, map, all OPFOR items (bases, wings, pilots, aircraft, ground units, units outside bases, buildings, SAMs, EWRs: position + alive/dead + health); OWNFOR detail limited per **`map_coalition_visibility`** (the real "Fog of war" map mode — see [`05`](05-context-and-persistence.md)) | `GET /turn_context` | resource `retribution://turn_context/{side}` | `theater.controlpoints`/`ground_objects`, `AirWing.iter_squadrons`, `Squadron.*`, `game.threat_zone_for`, `ObjectiveFinder.*`, coords via `leaflet` ([`02`](02-codebase-map.md)) |
 | **prev_turns** — per prior turn: units lost (how / who killed them), bases captured, key events; `?n=K` for K turns ago (1 = last) | `GET /prev_turns?n=1` | tool `get_prev_turns(n)` | debrief history + `game.informations` + stats ([`05`](05-context-and-persistence.md)) |
 | **packages** (read) — current OPFOR packages/flights (to verify none / resume) | `GET /packages?side=red` | tool `get_packages(side)` | `coalition.ato.packages`, `Package.*`, `Flight.flight_plan` |
 
 `turn_context` is the high-value call. Build it in `game/agent/views.py` as a
-compact, faithful snapshot; respect `fog_of_war` by filtering OWNFOR detail.
+compact, faithful snapshot; limit OWNFOR detail per `map_coalition_visibility`
+(see [`05`](05-context-and-persistence.md)).
 
 ## C. Write — plan OPFOR
 
@@ -95,17 +105,14 @@ across different AIs/sessions because it lives in the save.
 > the LLM *fill red's plan*; the player clicks "next turn". `plan_opfor` is only
 > for "(re)generate red from scratch", e.g. to clear a half-done turn.
 
-## F. Map edits ("place/change things") — optional, cheat-gated
+## F. Out of scope: map editing & cheats
 
-Accept **lat/lng**, convert to internal `Point` (`leaflet.py:66`); gate on the
-matching `Settings` cheat flag; trigger `initialize_turn` + `compute_threat_zones`
-after ownership/unit changes (mirrors the cheat-capture flow at `game.py:398`).
-
-| Op | REST | MCP | Gate |
-|----|------|-----|------|
-| move ship group | `POST /map/move_ship` | `move_ship(tgo_id, lat, lng)` | movable-ships (fork feature) |
-| set base owner | `POST /map/capture` | `set_owner(cp, side)` | `enable_base_capture_cheat` |
-| repair/edit ground object | `POST /map/ground_object` | `edit_ground_object(...)` | follow buy/sell-TGO replan rules |
+There is **no map-editing surface and no cheat surface** (per the guiding
+principle above). The AI does not reposition/place units, capture bases, or set
+budgets — only the legitimate player actions in sections A–E. If a future need
+arises for a normal player capability that happens to move something on the map
+(e.g. the fork's *movable ships*, which the human can do), add it as a **normal
+player action** in section C — never as a cheat-gated "map edit".
 
 ## Error handling
 
@@ -120,6 +127,6 @@ abort the whole turn.
 - Side-effect-free reads (`start`, `howtoplay`, `settings`, `human_notes`,
   `turn_context`, `stored_context` read) → **resources** (cacheable context).
 - Everything that mutates (packages, buys, stances, stored_context write,
-  show_planning_dialog, plan_opfor, map edits) → **tools**.
+  show_planning_dialog, plan_opfor) → **tools**.
 - Consider an MCP **prompt** "Plan OPFOR's turn" that bundles the workflow, so the
   user can one-shot it from the client.

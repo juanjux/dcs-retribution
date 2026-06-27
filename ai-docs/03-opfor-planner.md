@@ -126,7 +126,8 @@ def plan_missions(self, now, tracer):
 | Fly a package (task, target, size, escorts) | `PackageFulfiller.plan_mission(ProposedMission(...))` → `coalition.ato.add_package` (see [`02`](02-codebase-map.md)) |
 | Set a front-line stance | the corresponding primitive task / `CombatStance` on the `FrontLine` |
 | Buy aircraft / ground units | `AircraftPurchaseAdapter.buy` / `GroundUnitPurchaseAdapter.buy` |
-| Reposition a ship / edit the map | theater mutation (see [`04`](04-api-reference.md)) |
+
+(Only player-legal actions — no map editing or cheats; see [`04`](04-api-reference.md).)
 
 Because every intent routes through code that validates target/task
 compatibility and builds the flight plan, a malformed intent fails *that intent*

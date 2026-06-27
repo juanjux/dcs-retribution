@@ -57,6 +57,15 @@ engine turns that intent into concrete, validated missions.
 4. **Memory across turns/sessions** via a `stored_context` scratchpad and
    human-authored `human_notes`.
 
+## Core constraint: the AI plays by the player's rules
+
+The API exposes **only the actions a human player can take** — plan packages, buy/
+sell units, set stances, run procurement, read state, keep notes. **No cheats, no
+map editing, no god-mode:** the AI can't set budgets, capture bases, or place/move
+units on the map. Settings like `enemy_income_multiplier` and
+`map_coalition_visibility` are normal per-campaign, player-alterable settings — the
+AI **reads** them, it doesn't change them. OPFOR is a fair opponent, not a cheater.
+
 ## Non-goals (initial)
 
 - Replacing the **player's** planning UX (the human still plans blue in the UI).
@@ -66,6 +75,7 @@ engine turns that intent into concrete, validated missions.
   primitive tasks.
 - A standalone headless / save-file mode. (Earlier drafts explored this; it's
   **out** — the model is live-over-HTTP only.)
+- **Cheats / map editing** — out by the core constraint above.
 
 ## Autonomy levels (ship incrementally)
 
