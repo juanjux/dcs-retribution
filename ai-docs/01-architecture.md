@@ -86,7 +86,7 @@ game/
     __init__.py
     service.py           # the single source of truth: turn_context, packages,
                          #   prev_turns, stored_context, settings, human_notes,
-                         #   planning_dialog/status, turn-handshake, howtoplay, map-visibility (intel) filter
+                         #   ai-activity/status, turn-trigger, howtoplay, map-visibility (intel) filter
     views.py             # pydantic read-models (DTOs returned to the LLM)
     planner.py           # write ops over PackageFulfiller / PurchaseAdapter / stances
     schemas.py           # pydantic: package/flight specs, plan intents, DTOs

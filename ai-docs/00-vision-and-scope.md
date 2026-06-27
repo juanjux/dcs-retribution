@@ -42,10 +42,13 @@ engine turns that intent into concrete, validated missions.
      as MCP tools (so it can **write**, which plain web-browsing can't).
 3. The AI learns it's its turn when **the player says "your turn" in chat** (the v1
    trigger; the AI teaches the player this on first contact, including the first
-   turn). OPFOR plans **first**, so the player can review red's plan and, while the
-   AI is learning, flag mistakes. It reads `turn_context`/`prev_turns`/`stored_context`,
-   then writes packages and purchases. A modal (robot-general + spinner) shows live
-   status ("Evaluating last turn… / Buying aircraft… / Planning packages…").
+   turn). The AI then plans red **in parallel** — the player keeps working, never
+   waiting. It reads `turn_context`/`prev_turns`/`stored_context`, then writes
+   packages and purchases. A **robot icon in the toolbar** (grayscale→colour +
+   animation) shows it's active; clicking it shows the live status ("Evaluating last
+   turn… / Buying aircraft… / Planning packages…"). The only hard sync is **Take
+   Off**, which is blocked (with a popup) until the AI finishes; then the player can
+   review red's plan and, while the AI is learning, flag mistakes.
 4. **No disk access required** — the LLM only ever talks to the live game over the
    API. (Crucial so the port can be exported and a remote/web LLM can play.)
 5. **Escape hatch — advise the human:** for anything outside its player-legal action

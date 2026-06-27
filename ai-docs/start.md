@@ -29,16 +29,17 @@ tool/resource of the same name.
 
 ## Workflow per turn
 
-1. `planning_dialog` show + `set_planning_status` "Evaluating last turn…" (update the
-   status before each phase so the human sees progress).
+1. `set_ai_active(true)` + `set_ai_status` "Evaluating last turn…" (toolbar robot
+   turns colour; update the status before each phase). You work in parallel — the
+   human is NOT blocked; only Take Off is gated until you finish.
 2. Read: `GET /turn_context` (+ `GET /prev_turns?n=1`, `GET /stored_context`,
    `GET /settings`, `GET /human_notes`; optionally `GET /map/image`).
 3. Check existing plan: `GET /packages?side=red` (resume / avoid duplicates).
 4. Decide intent (concentrate on 1–3 objectives), then apply (see Plan below):
    create packages, set stances, buy/transfer, move ships / adjust waypoints.
 5. `PUT /stored_context` — save your strategy/lessons for next turn.
-6. `opfor_planning_done` + `planning_dialog` hide → the human reviews red's plan; if
-   they flag a mistake in chat, fix it.
+6. `opfor_planning_done` (= `set_ai_active(false)`) → robot idle, Take Off unblocked;
+   the human can review red's plan and flag any mistake in chat.
 
 ## Endpoint catalog
 
@@ -81,7 +82,8 @@ tool/resource of the same name.
   (append) · `DELETE /stored_context/{key}` · `DELETE /stored_context` (clear)
 
 **Session**
-- `planning_dialog` (show/hide) · `set_planning_status` (text) · `opfor_planning_done`
+- `set_ai_active` (true/false — toolbar robot busy/idle; gates Take Off) ·
+  `set_ai_status` (text shown in the robot info window) · `opfor_planning_done`
 - `POST /plan_opfor` — clear+regenerate red from scratch (e.g. to drop a half-done turn)
 
 ## Rules of engagement (short version)

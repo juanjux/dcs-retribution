@@ -113,8 +113,12 @@ WIP **not present in `dev`**. But the PR goes to `dev`. So the feature must be
   until local models are far cheaper/better.) See [`03`](03-opfor-planner.md).
 - **Turn trigger (v1):** the **human says "your turn" in chat**; the `/howtoplay`
   briefing makes the LLM teach the player this on first contact (incl. the first
-  turn). OPFOR plans **first**, then the human reviews. Long-poll / eventstream
-  `new_turn` push remain documented as future upgrades. See [`04`](04-api-reference.md) §E.
+  turn). Long-poll / eventstream `new_turn` push remain documented as future
+  upgrades. See [`04`](04-api-reference.md) §E.
+- **Parallel operation:** the AI plans red **in parallel** with the human (no
+  blocking modal). A **toolbar robot icon** (grayscale↔colour) shows activity and
+  exposes the status on click; **Take Off is blocked** (popup) until the AI is done.
+  See [`04`](04-api-reference.md) §E.
 - **MCP mount:** into the **existing FastAPI app (one port)** — simplest; sibling
   port only as a last-resort if the lifespan won't wire. See [`01`](01-architecture.md).
 - **PR:** **one** PR to `dev`.

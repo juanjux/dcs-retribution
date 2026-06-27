@@ -11,7 +11,7 @@ game/
   agent/                 # NEW — single source of truth (pure Python)
     service.py           # all operations (turn_context, packages, prev_turns,
                          #   stored_context, settings, human_notes, squadrons,
-                         #   planning_dialog/status, turn-handshake, howtoplay,
+                         #   ai-activity/status, turn-trigger, howtoplay,
                          #   map-visibility/intel filter)
     views.py             # pydantic read DTOs (operational picture, intel filter)
     planner.py           # write ops → PackageFulfiller / PurchaseAdapter / stances
@@ -62,13 +62,14 @@ So there is no `anthropic` dependency and no model/key to manage server-side.
   stances, `schedule_all`, **move ships / waypoints** (reuse tgos/waypoints routes),
   delete ops. Structured per-item results/errors; reads return stable ids + pilots.
 - REST `POST/PUT/DELETE` routes for them. Gate writes to the planning boundary.
-- **Planning dialog** via the `QtCallbacks` bridge: `planning_dialog(show/hide)` +
-  `set_planning_status(text)` (robot-general image + spinner + live status line).
-- **Turn handshake** (§E of [`04`](04-api-reference.md)): `turn_status`,
-  `wait_for_opfor_turn` (long-poll), `opfor_planning_done`; reuse eventstream
-  `new_turn`. Pause turn-init at the OPFOR window with a timeout→scripted fallback.
-- **Deliverable:** from Claude Code, plan a full red turn over REST; the human
-  reviews red's plan, then advances the turn in Qt and it plays.
+- **AI activity indicator + Take-Off gate** (§E of [`04`](04-api-reference.md)) via
+  the `QtCallbacks` bridge: `set_ai_active(bool)` toggles a **toolbar robot icon**
+  (grayscale↔colour+animation) and an **ai-active flag**; `set_ai_status(text)`
+  feeds the icon's click-to-open info window. Make the **Take Off** action check the
+  flag and show a blocking popup while active. No modal, no blocking the human —
+  they work in parallel; Take Off is the only gate.
+- **Deliverable:** from Claude Code, plan a full red turn over REST in parallel with
+  the human; Take Off is blocked until the robot goes idle, then the mission plays.
 
 ### Phase 3 — MCP transport  *(web LLMs can POST)*
 - `game/mcp/server.py`: FastMCP instance; register tools/resources that **call the

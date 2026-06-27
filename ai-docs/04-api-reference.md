@@ -39,15 +39,17 @@ models (JSON). Reads never mutate; writes only succeed at a turn/planning bounda
 1. `GET /start` → this workflow + role/context (or `/howtoplay` for depth).
 2. `GET /howtoplay` once per session → game concepts + how to advise the human (§H).
 3. Wait for the player to say **"your turn"** in chat (v1 trigger — see §E; teach
-   them this on first contact), then `planning_dialog(show)` + a first `set_planning_status`.
+   them this on first contact), then `set_ai_active(true)` + a first `set_ai_status`
+   (the toolbar robot goes colour; the human keeps working in parallel).
 4. `GET /settings`, `GET /human_notes`, `GET /stored_context` → rules & memory.
 5. `GET /turn_context` (+ `GET /prev_turns?n=1`) → the situation. Image-capable
-   models can also pull `GET /map/image`. (Update `set_planning_status` per phase.)
+   models can also pull `GET /map/image`. (Update `set_ai_status` per phase.)
 6. `GET /packages` → check what's already planned (resume an interrupted turn).
 7. Plan, then apply: `POST /packages`, economy/stance writes, and any map moves
    (`move_ship`, `set_waypoint_position`).
 8. `PUT /stored_context` → persist notes/strategy for next turn.
-9. `opfor_planning_done` + `planning_dialog(hide)` → hand back to the human to review.
+9. `opfor_planning_done` (= `set_ai_active(false)`) → robot goes idle; Take Off is
+   now allowed. (You never blocked the human; you only gated Take Off.)
 
 ## A. Bootstrap & meta
 
@@ -209,53 +211,50 @@ learned this campaign, observations about the player. Persists across turns and
 across different AIs/sessions because it lives in the save. The AI fully owns it,
 so it can prune/replace its own notes via the deletes above.
 
-## E. Session — turn handshake & planning dialog
+## E. Session — turn trigger, AI activity indicator & Take-Off gate
 
 ### Knowing when it's OPFOR's turn
 
-Flow: the player finishes a mission → accepts in the dashboard → a new turn starts
-→ **OPFOR plans first** (so the player can review red's plan and, while the AI is
-learning, flag anything that looks wrong) → then the player plans and advances.
-
-**Decided (for now): the human says "your turn" in chat.** This is the v1 trigger —
-zero infra, and it fits the human-in-the-loop review workflow. The `/howtoplay`
-briefing instructs the LLM to teach the player this on first contact (including the
-very first turn, since they may be new to the feature). The mechanisms below stay
-documented as **future** upgrades.
+**Decided (v1): the human says "your turn" in chat.** Zero infra; the `/howtoplay`
+briefing makes the LLM teach the player this on first contact (incl. the very first
+turn). The mechanisms below stay documented as **future** upgrades.
 
 | Mechanism | How | Status |
 |-----------|-----|--------|
 | **Human says so** | player tells the AI in chat "your turn" | **v1 — use this** |
-| **Long-poll** | `GET /opfor/next` blocks until the OPFOR window opens, returns the turn context | future: clean agent loop, web-LLM friendly |
-| **Push via existing eventstream** | watch `/eventstream` for **`new_turn`** (`GameUpdateEventsJs.new_turn`, `eventstream/models.py:47`) | future: the signal already exists; desktop clients that hold a websocket |
+| **Long-poll** | `GET /opfor/next` blocks until the window opens, returns turn context | future |
+| **Push via existing eventstream** | watch `/eventstream` for **`new_turn`** (`GameUpdateEventsJs.new_turn`, `eventstream/models.py:47`) | future (desktop, holds a websocket) |
 | **Poll** | `GET /turn_status` → turn #, phase, whose-turn | future fallback |
 
+### Parallel operation — the AI works alongside the human (no blocking)
+
+The human **never waits** for the AI. After saying "your turn", they keep planning
+blue, editing the map, etc., while the LLM plans red **in parallel**. There is **no
+modal dialog**. Instead:
+
+- A **robot icon in the UI toolbar** shows AI activity: **grayscale = idle**,
+  **colour + a subtle animation = the LLM is actively making changes**. The LLM
+  toggles this when it starts/finishes a turn.
+- **Clicking the robot icon** opens a small **info window** showing the LLM's latest
+  **status string** (the phase it's on: "Evaluating last turn…", "Buying aircraft…",
+  "Planning packages…"). That's where the old "modal status line" now lives.
+- **The one hard sync point is Take Off.** If the human hits **Take Off** while the
+  AI is still active, a **popup blocks it** ("OPFOR AI is still planning — wait for
+  the robot to go idle"). Once the AI signals done (icon → grayscale), Take Off is
+  allowed. So they overlap freely but the mission can't launch on a half-planned red.
+
 | Op | REST | MCP | Service → engine |
 |----|------|-----|------------------|
-| **turn status** (handy even in v1) | `GET /turn_status` | tool `turn_status()` | `game.turn`, phase flag, whose-turn / is-OPFOR-window |
-| **signal planning done** | `POST /opfor/done` | tool `opfor_planning_done()` | the AI tells the system it's finished → the human reviews red's plan / proceeds |
-| **wait for OPFOR turn** *(future)* | `GET /opfor/next` (long-poll) | tool `wait_for_opfor_turn()` | blocks until the OPFOR window opens; returns `turn_context` |
+| **set AI active / idle** | `POST /ai_status/active` `{active: bool}` | tool `set_ai_active(active)` | `QtContext`/`QtCallbacks` bridge (`game/server/dependencies.py:35`): toolbar robot icon colour+animation; sets the **Take-Off gate flag** |
+| **set status text** | `POST /ai_status/text` `{text}` | tool `set_ai_status(text)` | stores the latest status; shown in the robot info window on click |
+| **signal done** | (same as `set_ai_active(false)`) | `opfor_planning_done()` | idle the icon + lift the Take-Off gate |
+| **turn status** | `GET /turn_status` | tool `turn_status()` | `game.turn`, whose-turn, ai-active flag |
 
-> Engine side: turn initialization should **leave the OPFOR window open** for the AI
-> and not auto-advance, with a **timeout → scripted-commander fallback** if the AI
-> never plays. In v1 the human gates the flow (they say "your turn", then review,
-> then advance), so a strict engine pause isn't required at first. OPFOR-first
-> ordering — see [`03`](03-opfor-planner.md).
-
-### The planning dialog (status + keep-alive)
-
-While the AI plans, a modal shows it's working — a robot-in-a-general's-cap image
-with a spinner/animation (so the player can see it hasn't hung) — plus a **live
-status line the LLM updates** as it works.
-
-| Op | REST | MCP | Service → engine |
-|----|------|-----|------------------|
-| **show / hide the dialog** | `POST /planning_dialog` `{state: show\|hide}` | tool `planning_dialog(state)` | `QtContext`/`QtCallbacks` bridge (`game/server/dependencies.py:35`) — add a callback like the existing ones |
-| **set status message** | `POST /planning_dialog/status` `{text}` | tool `set_planning_status(text)` | updates the dialog's status label, e.g. "Evaluating last turn…", "Buying aircraft…", "Planning packages…" |
-
-> Post a status update before each phase of work. Besides informing the player, a
-> fresh status doubles as a **keep-alive** — the UI can flag "no update for N s" if
-> the agent stalls.
+> Engine/UI side: add an **ai-active flag** (on the GameModel / a UI controller) that
+> `set_ai_active` toggles; the **Take-Off action checks it** and shows the blocking
+> popup if set. No engine pause and no auto-advance are needed — the human drives
+> the flow and Take Off is the only gate. A stale status (no update for N s while
+> active) can be surfaced as "AI may have stalled".
 
 ### Triggering / advancing
 
@@ -368,8 +367,8 @@ abort the whole turn.
   (`mcp.server.fastmcp.Image`), since it's parameterised (`side`/`bbox`/`layers`).
 - Everything that mutates — creates, writes, **and deletes** (packages/flights,
   clear-ATO, buys, stances, transfers, **ship moves**, **waypoint moves**,
-  squadron create/delete, stored_context write/delete, `planning_dialog`/
-  `set_planning_status`, `opfor_planning_done`, plan_opfor) → **tools**. MCP has no
+  squadron create/delete, stored_context write/delete, `set_ai_active`/
+  `set_ai_status`, `opfor_planning_done`, plan_opfor) → **tools**. MCP has no
   HTTP verbs, so a REST `DELETE`/`PUT` maps to a `delete_*`/`clear_*`/`set_*` tool.
   All mutations obey the same turn/planning-boundary rule.
 - `wait_for_opfor_turn` is a **long-poll tool** (blocks until the OPFOR window);

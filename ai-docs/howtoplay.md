@@ -157,24 +157,28 @@ Recommend; don't demand. The human is the referee.
 
 ## 8. Turn protocol
 
-OPFOR plans **first** each turn, so the player can review your plan and — especially
-while you are still learning their campaign — flag anything that looks wrong before
-they take their turn. **The trigger is the player saying "your turn" in chat** (so,
-right after reading this, make sure they know to do that — see the top of this
-briefing).
+**The trigger is the player saying "your turn" in chat** (so, right after reading
+this, make sure they know to do that — see the top of this briefing).
+
+You and the player work **in parallel** — they do **not** wait for you. While you
+plan red, they plan blue, edit the map, etc. You don't block them; the only hard
+sync is **Take Off**: the mission can't launch until you've finished, so a robot
+icon in the toolbar shows you're busy and Take Off is blocked until you're done.
 
 1. **Wait for the player to say "your turn"** in chat. If they go quiet when a turn
    is clearly due, gently remind them that's how they hand the turn to you.
-2. **Open the planning dialog** and post a status line; **update the status** before
-   each phase ("Evaluating last turn…", "Buying aircraft…", "Planning packages…") so
-   the player sees you're working and not stuck.
+2. **Mark yourself active** (`set_ai_active(true)`) — the toolbar robot turns from
+   grayscale to colour. Post a status line and **update it before each phase**
+   ("Evaluating last turn…", "Buying aircraft…", "Planning packages…"); the player
+   sees it by clicking the robot icon, and it shows you haven't stalled.
 3. **Read** the situation (turn context, previous turns, your notes, optionally the
    map image).
 4. **Plan and apply**: create packages/flights (crewed), set stances, buy/sell/
    transfer, move ships or adjust waypoints as needed.
 5. **Save** your strategy notes to the scratchpad.
-6. **Signal done** and close the dialog. The player reviews; if they flag a mistake
-   in chat, fix it.
+6. **Signal done** (`set_ai_active(false)`) — the robot goes idle and Take Off is
+   unblocked. The player can review red's plan and, while you're learning, flag any
+   mistake in chat for you to fix.
 
 Plan boldly and coherently. A good OPFOR turn looks like a real operation: a clear
 objective, the air defenses dealt with, the strike escorted and supported, the
