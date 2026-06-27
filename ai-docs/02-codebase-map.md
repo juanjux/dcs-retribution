@@ -227,6 +227,20 @@ composition).
 - `ArmedForces` (`game/armedforces/`) — the coalition's ground order-of-battle
   source. `Faction` (`game/factions/faction.py`) — what airframes/units/doctrine a
   side may field; `game/factions/FACTIONS` registry.
+- **Faction allowed airframes:** `Faction.aircraft` / `awacs` / `tankers`
+  (`game/factions/faction.py:64-71`); union via `Faction.all_aircrafts` (`:189`).
+- **Squadron create/delete (air-wing config):** create =
+  `air_wing.squadron_def_generator.generate_for_aircraft(aircraft)`
+  (`squadrondefgenerator.py:44`; aircraft must be in `faction.all_aircrafts`, base
+  must `can_operate`) → `Squadron.create_from(def, primary_task, max_size, base,
+  coalition, game)` (`squadron.py:572`) → `air_wing.add_squadron` (`airwing.py:48`);
+  new squadron starts at 0 aircraft. Delete = `air_wing.unclaim_squadron_def`
+  (`airwing.py:42`) + drop from `air_wing.squadrons[aircraft]`. Reference UI flow
+  (turn-0 config + cheat +/-): `qt_ui/windows/AirWingConfigurationDialog.py`.
+- **Air-wing cheat flag:** `Settings.enable_air_wing_adjustments` (`settings.py:1707`)
+  gates the free aircraft +/- (`cheat_add_aircraft`/`cheat_remove_aircraft`). The AI
+  may create/delete squadrons (turn-0, or mid-campaign when this is on) but **never**
+  the free +/- — it fills squadrons by buying.
 
 ---
 
@@ -281,6 +295,9 @@ C reuses it.
   feature (all **read-only** to the AI, surfaced via `/settings`):
   `map_coalition_visibility` (`:170`, the "Fog of war" map mode — drives AI intel,
   see [`05`](05-context-and-persistence.md)), `player_income_multiplier` (`:116`),
-  `enemy_income_multiplier` (`:125`), `automate_*` toggles (`:666`–`:768`). The
-  cheat flags (`enable_*_cheat`, `:1703`–`:1706`) exist but the feature **does not
-  use them** — the AI only takes player-legal actions ([`04`](04-api-reference.md)).
+  `enemy_income_multiplier` (`:125`), `automate_*` toggles (`:666`–`:768`), and
+  **`enable_air_wing_adjustments`** (`:1707`, the air-wing cheat — gates the AI's
+  *mid-campaign* squadron create/delete; see [`04`](04-api-reference.md) §G). The
+  pure cheat flags (`enable_*_cheat`, `:1703`–`:1706`) exist but the feature **does
+  not use them** — the AI only takes player-legal actions, and even with the
+  air-wing cheat on it buys aircraft rather than using the free +/-.

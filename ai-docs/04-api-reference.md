@@ -22,6 +22,13 @@ models (JSON). Reads never mutate; writes only succeed at a turn/planning bounda
 > `map_coalition_visibility` are normal campaign/player settings — the AI **reads**
 > them via `/settings`, it doesn't change them. OPFOR plays by the same rules, and
 > through the same endpoints, as the human.
+>
+> **Air-wing nuance (§G):** at **turn 0** the AI configures OPFOR's air wings just
+> like the player configures theirs (create/delete squadrons, set initial size).
+> Mid-campaign, it may create/delete squadrons **only if the player enabled the
+> air-wing cheat** — and even then it **buys** aircraft to fill them, never using
+> the free aircraft +/-. Changing which airframes the faction may field is **not**
+> allowed; the AI must ask the human in chat.
 
 > The endpoint names below follow juanjux's sketch. They're a starting catalog,
 > not gospel — refine shapes during implementation. The **engine backing** column
@@ -231,12 +238,51 @@ Notes:
   upstreaming it). For the `dev` PR, gate this op gracefully if the target branch
   lacks it ([`07`](07-branching-pr-and-risks.md)).
 
-## G. Out of scope: cheats
+## G. Air-wing setup & management (turn-0 config + cheat-gated mid-campaign)
+
+Configuring air wings — creating/deleting squadrons — is something the **player**
+does, so the AI does it too, in two contexts:
+
+**Turn 0 — campaign air-wing configuration.** At campaign start the player sets up
+blue's air wings (which squadrons, which airframes, which bases, starting size).
+The AI gets the **same turn-0 phase for OPFOR (red)**: create/delete squadrons of
+the faction's allowed airframes and set their initial size — exactly like the
+player's air-wing config. Normal setup, **not** a cheat. Detect via `game.turn == 0`
+(`begin_turn_0`, `game/game.py:325`).
+
+**Mid-campaign — only if the air-wing cheat is on.** During the campaign the AI may
+create/delete squadrons **only when `Settings.enable_air_wing_adjustments`** (the
+air-wing cheat, `settings.py:1707`) is enabled by the player. New squadrons start
+with **0 aircraft** (like the player's); the AI then **buys** aircraft
+(`buy_aircraft`, effective next turn) to fill them. The AI may **NOT** use the
+fork's free aircraft +/- (`cheat_add_aircraft`/`cheat_remove_aircraft`,
+`AirWingConfigurationDialog.py:384/390`) — that pure free-resource cheat stays
+human-only.
+
+| Op | REST | MCP | Service → engine |
+|----|------|-----|------------------|
+| **list faction's allowed airframes** | `GET /faction/aircraft?side=red` | tool `faction_aircraft(side)` | `coalition.faction.aircraft` (∪ `awacs`/`tankers`; `Faction.all_aircrafts`, `game/factions/faction.py:189`) |
+| **create a squadron** | `POST /squadrons` `{side, aircraft, base, primary_task?, max_size?, name?}` | tool `create_squadron(...)` | `air_wing.squadron_def_generator.generate_for_aircraft(aircraft)` (`squadrondefgenerator.py:44`) → `Squadron.create_from(def, primary_task, max_size, base, coalition, game)` (`squadron.py:572`) → `air_wing.add_squadron` (`airwing.py:48`) |
+| **delete a squadron** | `DELETE /squadrons/{id}` | tool `delete_squadron(id)` | `air_wing.unclaim_squadron_def(squadron)` (`airwing.py:42`) + remove from `air_wing.squadrons[aircraft]` |
+
+Constraints:
+- **Aircraft must be in the faction's set** (`faction.all_aircrafts`) and the base
+  must `can_operate(aircraft)`. To **change which airframes the faction may field**,
+  the AI must **ask the human in chat** — it cannot edit the faction's aircraft set.
+- `max_size` (initial strength) is honoured at **turn 0**; mid-campaign a new
+  squadron starts at 0 and is filled by **buying**.
+- **Gate:** turn-0 config always; mid-campaign only with `enable_air_wing_adjustments`.
+  Reject with a clear error otherwise.
+
+## H. Out of scope: cheats
 
 No **cheat / god-mode** surface (per the guiding principle): the AI cannot set the
 budget, capture bases, create/teleport units beyond the legal move limits, or edit
-a TGO's unit composition. Moving movable ships and dragging waypoints are **not**
-cheats — they're player actions and live in sections C/F above.
+a TGO's unit composition. The fork's **free aircraft +/-** air-wing cheat
+(`cheat_add_aircraft`/`cheat_remove_aircraft`) is **also out**, even when
+`enable_air_wing_adjustments` is on — the AI fills squadrons by **buying**, not for
+free. Moving movable ships, dragging waypoints, and (when unlocked) creating/
+deleting squadrons are player actions and live in sections C/F/G above.
 
 ## Error handling
 

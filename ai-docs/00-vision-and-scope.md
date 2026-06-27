@@ -62,10 +62,13 @@ engine turns that intent into concrete, validated missions.
 The API exposes **exactly the actions a human player can take**, through the **same
 endpoints** — plan packages/flights, buy/sell aircraft, buy/transfer ground units,
 set stances, **move movable ships**, **drag flight/package waypoints on the map**
-(within the game's normal limits), run procurement, read state (incl. a rendered
-**map image** for multimodal models), keep notes. What's excluded is **cheats /
-god-mode**: setting budgets, capturing bases, creating/teleporting units beyond
-legal limits, editing TGO unit composition. Settings like `enemy_income_multiplier`
+(within the game's normal limits), run procurement, **configure OPFOR's air wings**
+(create/delete squadrons at **turn 0** like the player, or mid-campaign **if the
+air-wing cheat is on** — filling them by *buying*, never the free +/-), read state
+(incl. a rendered **map image** for multimodal models), keep notes. What's excluded
+is **cheats / god-mode**: setting budgets, capturing bases, creating/teleporting
+units beyond legal limits, editing TGO unit composition, the free aircraft +/-, or
+changing which airframes the faction may field (ask the human for that). Settings like `enemy_income_multiplier`
 and `map_coalition_visibility` are normal per-campaign, player-alterable settings —
 the AI **reads** them, it doesn't change them. OPFOR is a fair opponent, not a
 cheater.

@@ -35,12 +35,16 @@ WIP **not present in `dev`**. But the PR goes to `dev`. So the feature must be
 3. **Don't build on master-only APIs.** The engine seams used (`initialize_turn`,
    `TheaterCommander`, `PackageFulfiller`, `PurchaseAdapter`, the FastAPI server,
    `GameContext`, `QtCallbacks`, the `waypoints` set-position route) are
-   core/upstream — good. Two fork-only dependencies to **degrade gracefully** on
-   `dev` rather than hard-depend:
+   core/upstream — good. Fork-only dependencies to **degrade gracefully** on `dev`
+   rather than hard-depend:
    - **kill-attribution** detail used by `prev_turns` ("who killed it");
    - **movable ships** (the `tgos` `target_position`/`moveable` reposition) — juanjux
      is upstreaming it; if the target branch lacks it, hide/no-op the `move_ship`
-     op rather than break the build.
+     op rather than break the build;
+   - the **air-wing cheat** (`enable_air_wing_adjustments`, fork PR #41): the
+     *mid-campaign* squadron create/delete gate depends on it. Turn-0 air-wing
+     config (create/delete via `AirWingConfigurationDialog`) is upstream and fine;
+     guard the cheat-flag reference so it no-ops where the flag is absent.
 4. **Isolate the `mcp` dependency** to `game/mcp/` + the mount, so it's a small,
    self-contained part of the single PR.
 
@@ -95,6 +99,11 @@ WIP **not present in `dev`**. But the PR goes to `dev`. So the feature must be
   never changes them; those are normal per-campaign, player-alterable settings.
 - **AI intel:** driven by the existing `map_coalition_visibility` (the "Fog of war"
   map mode) — mirror the player's setting; don't invent a flag. See [`05`](05-context-and-persistence.md).
+- **Air wings:** at **turn 0** the AI configures OPFOR's air wings like the player
+  (create/delete squadrons, initial size). Mid-campaign it may create/delete
+  squadrons **only when `enable_air_wing_adjustments`** (the air-wing cheat) is on,
+  and fills them by **buying** — never the free aircraft +/-. It cannot change the
+  faction's allowed airframes (asks the human). See [`04`](04-api-reference.md) §G.
 - **`stored_context`:** stored **in the save** (new `Game` field + migrator backfill).
 - **PR:** **one** PR to `dev`.
 
