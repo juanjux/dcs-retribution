@@ -37,23 +37,24 @@ models (JSON). Reads never mutate; writes only succeed at a turn/planning bounda
 ## Recommended LLM workflow (returned by `/start`)
 
 1. `GET /start` → this workflow + role/context (or `/howtoplay` for depth).
-2. `GET /howtoplay` once per session → game concepts (wings, packages, roles,
-   ground combat, buying/selling).
-3. `GET /settings`, `GET /human_notes`, `GET /stored_context` → rules & memory.
-4. `GET /turn_context` (+ `GET /prev_turns?n=1`) → the situation. Image-capable
-   models can also pull `GET /map/image` for the visual picture.
-5. `GET /packages` → check what's already planned (resume an interrupted turn).
-6. Plan, then apply: `POST /packages`, economy/stance writes, and any map moves
+2. `GET /howtoplay` once per session → game concepts + how to advise the human (§H).
+3. Wait for the turn (`wait_for_opfor_turn` / eventstream `new_turn` / human says so
+   — see §E), then `planning_dialog(show)` and post a first `set_planning_status`.
+4. `GET /settings`, `GET /human_notes`, `GET /stored_context` → rules & memory.
+5. `GET /turn_context` (+ `GET /prev_turns?n=1`) → the situation. Image-capable
+   models can also pull `GET /map/image`. (Update `set_planning_status` per phase.)
+6. `GET /packages` → check what's already planned (resume an interrupted turn).
+7. Plan, then apply: `POST /packages`, economy/stance writes, and any map moves
    (`move_ship`, `set_waypoint_position`).
-7. `PUT /stored_context` → persist notes/strategy for next turn.
-8. `POST /show_planning_dialog` (start) / done.
+8. `PUT /stored_context` → persist notes/strategy for next turn.
+9. `opfor_planning_done` + `planning_dialog(hide)` → hand back to the human to review.
 
 ## A. Bootstrap & meta
 
 | Op | REST | MCP | Service → engine |
 |----|------|-----|------------------|
 | **start** — role, context, API list, workflow | `GET /start` | resource `retribution://start` (and/or a `prompt`) | static + `service.bootstrap_doc()` |
-| **howtoplay** — game concepts (once/session) | `GET /howtoplay` | resource `retribution://howtoplay` | static doc (markdown) |
+| **howtoplay** — game concepts (once/session): wings/packages/roles, ground combat, buying/selling/transfers, air-wing config, **and how to advise the human in chat for out-of-scope/cheat actions** (see §H) | `GET /howtoplay` | resource `retribution://howtoplay` | static doc (markdown) |
 | **settings** — current settings + each explained | `GET /settings` | resource `retribution://settings` | `Settings` (`game/settings/settings.py:93`) + descriptions |
 | **human_notes** — player's freeform rules/notes | `GET /human_notes` | resource `retribution://human_notes` | stored in `Settings`/save ([`05`](05-context-and-persistence.md)) |
 
@@ -63,7 +64,7 @@ models (JSON). Reads never mutate; writes only succeed at a turn/planning bounda
 |----|------|-----|------------------|
 | **turn_context** — campaign, map, all OPFOR items (bases, wings, pilots, aircraft, ground units, units outside bases, buildings, SAMs, EWRs: position + alive/dead + health); OWNFOR detail limited per **`map_coalition_visibility`** (the real "Fog of war" map mode — see [`05`](05-context-and-persistence.md)) | `GET /turn_context` | resource `retribution://turn_context/{side}` | `theater.controlpoints`/`ground_objects`, `AirWing.iter_squadrons`, `Squadron.*`, `game.threat_zone_for`, `ObjectiveFinder.*`, coords via `leaflet` ([`02`](02-codebase-map.md)) |
 | **prev_turns** — per prior turn: units lost (how / who killed them), bases captured, key events; `?n=K` for K turns ago (1 = last) | `GET /prev_turns?n=1` | tool `get_prev_turns(n)` | debrief history + `game.informations` + stats ([`05`](05-context-and-persistence.md)) |
-| **packages** (read) — current packages/flights **incl. waypoints & TOTs** (to verify none / resume / inspect routes) | `GET /packages?side=red` | tool `get_packages(side)` | `coalition.ato.packages`, `Package.*`, `Flight.flight_plan.waypoints` (reuses existing `flights`/`waypoints` route shapes) |
+| **packages** (read) — current packages/flights **incl. waypoints & TOTs**; each package and flight carries a **stable `id`** and each flight its **pilot names** (so the LLM can pick which to delete — by id, or by pilot) | `GET /packages?side=red` | tool `get_packages(side)` | `coalition.ato.packages`, `Package.id`, `Flight.id` (uuid4), `Flight.flight_plan.waypoints`, `FlightMembers` pilots (reuses existing `flights`/`waypoints` route shapes) |
 | **flight waypoints** — ordered waypoints of one flight (lat/lng, type, alt, tot) | `GET /waypoints/{flight_id}` | tool `get_flight_waypoints(flight_id)` | existing `game/server/waypoints/routes.py:38` (`list_all_waypoints_for_flight`) |
 | **map image** — rendered PNG of the campaign map (ownership, control points, front lines, threat/detection rings, ground objects, **package route lines**) — "what the player sees", for multimodal LLMs; optional `bbox`, `layers`, `side` | `GET /map/image?side=red&bbox=…` | tool `get_map_image(side, bbox?)` → **image** | see "Map image" below |
 
@@ -134,6 +135,7 @@ are **just flights** in the package with that task — there is no package-level
           "task": "DEAD",                // FlightType
           "squadron": "16th OVAP",       // origin squadron — fixes BOTH airframe and base/wing
           "count": 2,
+          "pilots": ["Ivanov", "Petrov"],// optional; omit → auto-assign from the squadron's available pilots
           "start_type": "COLD",          // COLD | WARM | RUNWAY | IN_FLIGHT (default: settings.default_start_type)
           "payload": "DEAD standoff",    // optional named loadout; omit → Loadout.default_for(flight)
           "waypoints": null              // optional; null/omit → engine auto-builds a valid flight plan (recommended)
@@ -158,21 +160,24 @@ are **just flights** in the package with that task — there is no package-level
 | `squadron` | The origin **squadron** — this is what fixes the **aircraft type** *and* the **origin base/wing** (`Squadron.aircraft`, `Squadron.location`). Resolve from `get_air_wing` / `turn_context`. |
 | `aircraft` + `base` *(alt.)* | If you'd rather not name a squadron: give airframe + base and the service resolves the matching squadron; or omit both and it auto-picks via `AirWing.best_squadron_for`. **One of `squadron` or `aircraft`+`base` is required** (or omit all for auto). |
 | `count` | aircraft in the flight (claims `untasked_aircraft` from the squadron; fails if insufficient). |
+| `pilots` | **Optional list of pilot names**, one per seat. Omit → the service auto-assigns from `Squadron.available_pilots` (`claim_available_pilot`, `squadron.py:180`). **The service must not leave pilotless seats** — if it can't fill every seat (`FlightMembers.missing_pilots() > 0`, `flightmembers.py:51`) it fails the flight with a clear error. (The Qt UI allows pilotless flights, but the engine then **blocks starting the turn** — so the API refuses them by default.) Names resolve to `Pilot` via `FlightRoster.set_pilot` (`flightroster.py:50`). |
 | `start_type` | `StartType` enum. |
 | `payload` | a **named loadout** for the airframe/task, applied to the flight's members (uniform by default — `use_same_loadout_for_all_members`). Omit → `Loadout.default_for(flight)`. Valid names: `Loadout.default_loadout_names_for(task)` (`game/ato/loadouts.py:273`). |
 | `waypoints` | **Optional. Recommended: omit.** The engine builds a doctrine/navmesh/threat-aware flight plan automatically (`recreate_flight_plan`). Provide a waypoint list only to *override*, which switches the flight to a custom plan (`flight.degrade_to_custom_flight_plan`, `game/ato/flight.py:161`). Hand-authored routes bypass the auto threat-avoidance — use sparingly. |
 
 **How the service builds it (per package):** create `Package(target, game.db.flights)`
 → for each flight resolve the squadron, `Flight(package, squadron, count, task,
-start_type)`, set payload if given, `pkg.add_flight(flight)` → build **all** flights
-first, then `recreate_flight_plan()` each (formation packages share waypoints) →
-`pkg.set_tot_asap(now)` or honour `tot` → `coalition.ato.add_package(pkg)` →
-`MissionScheduler.schedule_missions(now)`. (See the recipe + gotchas in
-[`02`](02-codebase-map.md).)
+start_type)`, **assign pilots** (named, or auto from `available_pilots`) and reject
+if any seat is left pilotless, set payload if given, `pkg.add_flight(flight)` →
+build **all** flights first, then `recreate_flight_plan()` each (formation packages
+share waypoints) → `pkg.set_tot_asap(now)` or honour `tot` →
+`coalition.ato.add_package(pkg)` → `MissionScheduler.schedule_missions(now)`. (See
+the recipe + gotchas in [`02`](02-codebase-map.md).)
 
-Returns a **per-package / per-flight result** (created, or why it failed —
-unknown squadron, insufficient aircraft, task/target mismatch, no route). A bad
-flight fails *itself* only; the rest still apply.
+Returns a **per-package / per-flight result** — each created flight carries a
+stable **`id`** (`Flight.id`, a uuid4) and its assigned pilot names, or the reason
+it failed (unknown squadron, insufficient aircraft, **no pilots available**,
+task/target mismatch, no route). A bad flight fails *itself* only; the rest apply.
 
 > To author flights the LLM needs the inventory: `get_air_wing(side)` /
 > `turn_context` list squadrons (airframe, base, untasked count, ready pilots), and
@@ -204,16 +209,59 @@ learned this campaign, observations about the player. Persists across turns and
 across different AIs/sessions because it lives in the save. The AI fully owns it,
 so it can prune/replace its own notes via the deletes above.
 
-## E. UI / session
+## E. Session — turn handshake & planning dialog
+
+### Knowing when it's OPFOR's turn
+
+Flow: the player finishes a mission → accepts in the dashboard → a new turn starts
+→ **OPFOR plans first** (so the player can review red's plan and, while the AI is
+learning, flag anything that looks wrong) → then the player plans and advances. So
+the AI must know when its planning window opens. Mechanisms (support the simple
+ones first; **the trigger mechanism is an open design choice** — see [`07`](07-branching-pr-and-risks.md)):
+
+| Mechanism | How | Notes |
+|-----------|-----|-------|
+| **Human says so (simplest)** | player tells the AI in chat "your turn" (or clicks a *Plan OPFOR* button that pings the agent) | zero infra; fits the human-in-the-loop review workflow |
+| **Long-poll (recommended for agents)** | `GET /opfor/next` blocks until the OPFOR window opens, then returns the turn context | clean agent loop (wait→plan→submit→wait); works for REST and as an MCP tool; web-LLM friendly |
+| **Push via existing eventstream** | subscribe to the `/eventstream` websocket and watch **`new_turn`** (`GameUpdateEventsJs.new_turn`, `eventstream/models.py:47`) | the signal already exists; for clients that can hold a websocket (desktop agents) |
+| **Poll** | `GET /turn_status` → turn #, phase, whose-turn | simple fallback; inelegant |
 
 | Op | REST | MCP | Service → engine |
 |----|------|-----|------------------|
-| **show_planning_dialog** — modal "AI is planning OPFOR…" | `POST /show_planning_dialog` `{state: start\|done}` | tool `show_planning_dialog(state)` | `QtContext`/`QtCallbacks` bridge (`game/server/dependencies.py:35`) — add a callback like the existing ones |
-| **trigger OPFOR replan** (optional; usually the human advances the turn in Qt) | `POST /plan_opfor` | tool `plan_opfor()` | `Game.initialize_turn(events, for_red=True, for_blue=False)` (`game/game.py:398`) |
+| **turn status** | `GET /turn_status` | tool `turn_status()` | `game.turn`, phase flag, whose-turn / is-OPFOR-window |
+| **wait for OPFOR turn** | `GET /opfor/next` (long-poll) | tool `wait_for_opfor_turn()` | blocks until the OPFOR window opens; returns `turn_context` |
+| **signal planning done** | `POST /opfor/done` | tool `opfor_planning_done()` | releases the handshake → the human can review red's plan / proceed |
 
-> Advancing the campaign turn stays a **human** action in the Qt UI. The API lets
-> the LLM *fill red's plan*; the player clicks "next turn". `plan_opfor` is only
-> for "(re)generate red from scratch", e.g. to clear a half-done turn.
+> Engine side: turn initialization must **pause at the OPFOR window** and wait for
+> the AI to finish (with a **timeout → scripted-commander fallback**), then hand
+> control to the human to review. That ordering (OPFOR first, then human) is the
+> turn-handshake integration — see [`03`](03-opfor-planner.md) and the open
+> decision in [`07`](07-branching-pr-and-risks.md).
+
+### The planning dialog (status + keep-alive)
+
+While the AI plans, a modal shows it's working — a robot-in-a-general's-cap image
+with a spinner/animation (so the player can see it hasn't hung) — plus a **live
+status line the LLM updates** as it works.
+
+| Op | REST | MCP | Service → engine |
+|----|------|-----|------------------|
+| **show / hide the dialog** | `POST /planning_dialog` `{state: show\|hide}` | tool `planning_dialog(state)` | `QtContext`/`QtCallbacks` bridge (`game/server/dependencies.py:35`) — add a callback like the existing ones |
+| **set status message** | `POST /planning_dialog/status` `{text}` | tool `set_planning_status(text)` | updates the dialog's status label, e.g. "Evaluating last turn…", "Buying aircraft…", "Planning packages…" |
+
+> Post a status update before each phase of work. Besides informing the player, a
+> fresh status doubles as a **keep-alive** — the UI can flag "no update for N s" if
+> the agent stalls.
+
+### Triggering / advancing
+
+| Op | REST | MCP | Service → engine |
+|----|------|-----|------------------|
+| **(re)generate red from scratch** | `POST /plan_opfor` | tool `plan_opfor()` | `Game.initialize_turn(events, for_red=True, for_blue=False)` (`game/game.py:398`) |
+
+> Advancing the campaign turn stays a **human** action in the Qt UI. `plan_opfor`
+> only clears+regenerates red (e.g. to drop a half-done turn); normal planning is
+> the create/edit/delete tools above.
 
 ## F. Spatial actions — move ships & adjust waypoints (player-legal)
 
@@ -284,6 +332,22 @@ a TGO's unit composition. The fork's **free aircraft +/-** air-wing cheat
 free. Moving movable ships, dragging waypoints, and (when unlocked) creating/
 deleting squadrons are player actions and live in sections C/F/G above.
 
+### Escape hatch: advise the human in chat
+
+The AI **does not perform** cheats/out-of-scope actions, but it **may recommend**
+them to the human in chat, with reasoning — the human decides and does it. This is
+the AI's lever for anything outside its player-legal action set:
+
+- "The game AI bugged and lost 10 aircraft to crashes without the *ignore non-combat
+  losses* option — consider enabling it and restoring those airframes."
+- "OPFOR can't counter the F-22 with its current airframes — consider adding a
+  capable type to red's faction."
+- enabling/disabling a setting, applying a cheat, fixing an engine glitch, etc.
+
+This "ask/advise the human" pattern is **documented in `/howtoplay`** so the LLM
+knows it's the sanctioned way to reach beyond its own actions. It needs no special
+API — it's just chat.
+
 ## Error handling
 
 Engine planning raises `PlanningError` / `NavMeshError` /
@@ -300,8 +364,12 @@ abort the whole turn.
   (`mcp.server.fastmcp.Image`), since it's parameterised (`side`/`bbox`/`layers`).
 - Everything that mutates — creates, writes, **and deletes** (packages/flights,
   clear-ATO, buys, stances, transfers, **ship moves**, **waypoint moves**,
-  stored_context write/delete, show_planning_dialog, plan_opfor) → **tools**. MCP
-  has no HTTP verbs, so a REST `DELETE`/`PUT` maps to a `delete_*`/`clear_*`/`set_*`
-  tool. All mutations obey the same turn/planning-boundary rule.
+  squadron create/delete, stored_context write/delete, `planning_dialog`/
+  `set_planning_status`, `opfor_planning_done`, plan_opfor) → **tools**. MCP has no
+  HTTP verbs, so a REST `DELETE`/`PUT` maps to a `delete_*`/`clear_*`/`set_*` tool.
+  All mutations obey the same turn/planning-boundary rule.
+- `wait_for_opfor_turn` is a **long-poll tool** (blocks until the OPFOR window);
+  `turn_status` is a plain read. Clients that can hold a websocket may instead watch
+  `/eventstream` for `new_turn`.
 - Consider an MCP **prompt** "Plan OPFOR's turn" that bundles the workflow, so the
   user can one-shot it from the client.

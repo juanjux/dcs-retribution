@@ -10,9 +10,10 @@ MCP over one service layer) — see [`01`](01-architecture.md).
 game/
   agent/                 # NEW — single source of truth (pure Python)
     service.py           # all operations (turn_context, packages, prev_turns,
-                         #   stored_context, settings, human_notes,
-                         #   show_planning_dialog, howtoplay, fog filter)
-    views.py             # pydantic read DTOs (operational picture, fog filter)
+                         #   stored_context, settings, human_notes, squadrons,
+                         #   planning_dialog/status, turn-handshake, howtoplay,
+                         #   map-visibility/intel filter)
+    views.py             # pydantic read DTOs (operational picture, intel filter)
     planner.py           # write ops → PackageFulfiller / PurchaseAdapter / stances
     opforbrain.py        # the LLM hook for TheaterCommander (L2/L3, see 03)
     schemas.py           # pydantic specs/intents/DTOs
@@ -58,12 +59,18 @@ SDK) from `opforbrain.py` — keep it behind a setting and out of `game/mcp/`.
 - **Deliverable:** paste `…/start?token=…` into Claude Code → it reads context.
 
 ### Phase 2 — Write path  *(L1 assisted apply)*
-- `game/agent/planner.py`: `create_packages` (PackageFulfiller), buy/sell
-  (PurchaseAdapter), stances, `schedule_all`. Structured per-item results/errors.
-- REST `POST` routes for them. Gate writes to the planning boundary (sim paused).
-- `show_planning_dialog` via the `QtCallbacks` bridge.
+- `game/agent/planner.py`: `create_packages` (PackageFulfiller; **assign pilots**,
+  reject pilotless seats), buy/sell + transfers (PurchaseAdapter / `PendingTransfers`),
+  stances, `schedule_all`, **move ships / waypoints** (reuse tgos/waypoints routes),
+  delete ops. Structured per-item results/errors; reads return stable ids + pilots.
+- REST `POST/PUT/DELETE` routes for them. Gate writes to the planning boundary.
+- **Planning dialog** via the `QtCallbacks` bridge: `planning_dialog(show/hide)` +
+  `set_planning_status(text)` (robot-general image + spinner + live status line).
+- **Turn handshake** (§E of [`04`](04-api-reference.md)): `turn_status`,
+  `wait_for_opfor_turn` (long-poll), `opfor_planning_done`; reuse eventstream
+  `new_turn`. Pause turn-init at the OPFOR window with a timeout→scripted fallback.
 - **Deliverable:** from Claude Code, plan a full red turn over REST; the human
-  advances the turn in Qt and it plays.
+  reviews red's plan, then advances the turn in Qt and it plays.
 
 ### Phase 3 — MCP transport  *(web LLMs can POST)*
 - `game/mcp/server.py`: FastMCP instance; register tools/resources that **call the

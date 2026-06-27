@@ -40,11 +40,17 @@ engine turns that intent into concrete, validated missions.
    - **Web LLM** (claude.ai): the user adds the **MCP** URL as a custom connector,
      and the same bootstrap is an MCP resource; the LLM calls the same operations
      as MCP tools (so it can **write**, which plain web-browsing can't).
-3. When it's time to plan red's turn, the LLM reads `turn_context`, optionally
-   `prev_turns` and its own `stored_context` scratchpad, then writes packages and
-   purchases. A small modal can show "AI is planning OPFOR…".
+3. The AI learns it's its turn (long-poll / eventstream `new_turn` / the human says
+   so — OPFOR plans **first**, so the player can review red's plan and, while the AI
+   is learning, flag mistakes). It reads `turn_context`/`prev_turns`/`stored_context`,
+   then writes packages and purchases. A modal (robot-general + spinner) shows live
+   status ("Evaluating last turn… / Buying aircraft… / Planning packages…").
 4. **No disk access required** — the LLM only ever talks to the live game over the
    API. (Crucial so the port can be exported and a remote/web LLM can play.)
+5. **Escape hatch — advise the human:** for anything outside its player-legal action
+   set (a cheat, fixing an engine bug that lost aircraft, changing the faction's
+   airframes), the AI **recommends it to the human in chat**; the human decides and
+   does it. Documented in `/howtoplay`.
 
 ## Goals
 

@@ -224,6 +224,11 @@ composition).
   (`:305`), `.location` (`ControlPoint`), `.primary_task`, `claim_inventory(count)`
   (`:416`), `can_auto_assign(task)` (`:351`), `expected_size_next_turn` (`:473`).
   Squadron sizing limits gated by `Settings.enable_squadron_aircraft_limits` (`:477`).
+- **Pilots:** `Squadron.available_pilots` (`squadron.py:58`), `claim_available_pilot()`
+  (`:180`), `return_pilot(s)`. A flight's seats are filled via `FlightRoster.set_pilot`
+  (`flightroster.py:50`); `FlightMembers.missing_pilots()` (`flightmembers.py:51`)
+  counts pilotless seats — **a flight with missing pilots blocks turn start**, so the
+  API assigns pilots on creation and refuses pilotless flights. `Pilot` (`game/squadrons/pilot.py:22`).
 - `ArmedForces` (`game/armedforces/`) — the coalition's ground order-of-battle
   source. `Faction` (`game/factions/faction.py`) — what airframes/units/doctrine a
   side may field; `game/factions/FACTIONS` registry.
@@ -265,7 +270,9 @@ C reuses it.
 - Auth: `ApiKeyManager.KEY` random per process, `X-API-Key` header
   (`game/server/security.py`).
 - `eventstream/` — websocket push of `GameUpdateEvents` to the map; the qt webview
-  is the consumer.
+  is the consumer. `GameUpdateEventsJs` already carries **`new_turn: bool`**
+  (`eventstream/models.py:47`) — the existing **turn signal** the AI's turn-handshake
+  can subscribe to ([`04`](04-api-reference.md) §E).
 - The existing endpoints are overwhelmingly **read/render**; the only mutations go
   through the `qt` router into Qt callbacks. Writing the planning surface means
   adding new routes/tools, not reusing existing ones.
