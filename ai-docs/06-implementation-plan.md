@@ -184,4 +184,7 @@ def create_packages(body: dict):
   results (guards against logic drifting out of the service layer).
 - **No-Qt purity:** `game/agent/*` importable without PySide6 (keeps the `dev` PR
   clean; the Qt-callback bits stay behind a thin interface).
+- **Fake-LLM harness (enh. #10):** a scripted client that drives the API with canned
+  plans (no real LLM, no tokens) for CI/dev; plus a test asserting any generated plan
+  **passes `validate_plan`** (enh. #4). Fast, deterministic regression coverage.
 - Keep `mypy` / `black` / `pre-commit` green.

@@ -47,7 +47,8 @@ tool/resource of the same name.
 
 **Meta / read**
 - `GET /howtoplay` · `GET /settings` · `GET /human_notes`
-- `GET /turn_context?side=red` — campaign, map, red forces, detected blue (fog-aware)
+- `GET /capabilities` — what this install supports (check first; avoids unsupported ops)
+- `GET /turn_context?side=red` — campaign, map, red forces, detected blue (fog-aware) + computed hints (affordability, force ratio, threats)
 - `GET /prev_turns?n=1` — after-action of prior turns (losses, who-killed-what, captures)
 - `GET /packages?side=red` — current packages/flights (each with `id` + pilots + waypoints)
 - `GET /waypoints/{flight_id}` — a flight's waypoints
@@ -57,8 +58,10 @@ tool/resource of the same name.
 
 **Plan — missions**
 - `POST /packages` — create packages & flights (body: target + flights; each flight =
-  task, squadron, count, pilots?, start_type?, payload?, waypoints?). Escort/SEAD are
-  flights. See the body schema in 04 §C.
+  task, squadron, count, pilots?, start_type?, payload?, waypoints?; give each package
+  a one-line `rationale`). Escort/SEAD are flights. See the body schema in 04 §C.
+- `POST /plan/validate` — dry-run lint of a plan (TOT window, SAM coverage, pilots,
+  budget…); fix warnings before committing.
 - `DELETE /packages/{id}` · `DELETE /packages/{pkg_id}/flights/{flight_id}` ·
   `DELETE /packages?side=red` (clear all)
 
@@ -86,6 +89,8 @@ tool/resource of the same name.
 **Session**
 - `set_ai_active` (true/false — toolbar robot busy/idle; gates Take Off) ·
   `set_ai_status` (text shown in the robot info window) · `opfor_planning_done`
+- `GET /turn_status` (also reports cancelled flag + session holder) · `GET /ai_log`
+  (audit of what red did this turn) — the player can cancel you; stop gracefully.
 - `POST /plan_opfor` — clear+regenerate red from scratch (e.g. to drop a half-done turn)
 
 ## Rules of engagement (short version)

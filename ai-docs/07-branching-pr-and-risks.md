@@ -128,6 +128,44 @@ WIP **not present in `dev`**. But the PR goes to `dev`. So the feature must be
 **None outstanding** — the design is fully decided (see above). What remains is
 implementation, starting at Phase 0 in [`06`](06-implementation-plan.md).
 
+## Enhancements (approved — fold in during implementation)
+
+Quality/robustness/UX additions agreed with juanjux. The cheap, high-value ones
+(#1–#4) are worth doing alongside the MVP; the rest layer on.
+
+1. **Per-package/flight `rationale`** → reuse `Package.custom_name` / `Flight.custom_name`
+   (already exist + serialized). The LLM writes "why" on each package; shows in the
+   human's review + kneeboards; powers the review/reflection loops. ([`04`](04-api-reference.md) §C)
+2. **Post-mission reflection** — at turn start the LLM reads `prev_turns`/debrief,
+   compares to last turn's intent + rationales, and writes lessons to `stored_context`.
+   The real cross-campaign learning loop. ([`05`](05-context-and-persistence.md), howtoplay §5)
+3. **`GET /capabilities`** — feature discovery so the LLM adapts and never calls an
+   unsupported op (gates fork-vs-`dev`). ([`04`](04-api-reference.md) §A)
+4. **`POST /plan/validate`** — dry-run lint (TOT window, SAM coverage, pilots, budget,
+   undefended bases…); the LLM self-corrects, the human sanity-checks. ([`04`](04-api-reference.md) §C)
+5. **Computed decision-support in `turn_context`** — affordability, force-ratio trend,
+   threatened bases, ranked threats — so weak/cheap models don't do raw bookkeeping. ([`04`](04-api-reference.md) §B)
+6. **Visualize the plan** — `map/image?plan=red` overlay of red's packages/routes for
+   a visual sanity-check before Take Off. ([`04`](04-api-reference.md) §B)
+7. **Single-writer guard** — a planning-session token so only one agent edits red at a
+   time (no clobbering by a second session / zombie agent). ([`04`](04-api-reference.md) §E)
+8. **AI action log** (`GET /ai_log`) — audit of what red did + rationale; behind the
+   robot window's **"View red's plan"** button (disabled w/ spinner while the LLM is
+   working, enabled when done). Trust + debugging. ([`04`](04-api-reference.md) §E)
+9. **Fake-LLM test harness** — scripted client + "plan must pass `validate_plan`" test;
+   CI/dev without spending tokens. ([`06`](06-implementation-plan.md))
+
+*(Item numbers here are this roadmap's own; in the API docs they're tagged "enh. #N"
+matching the brainstorm order.)*
+
+### Considered and declined
+
+- **A persona / difficulty "knob" for the AI.** Not needed: (a) the game already has
+  **`opfor_autoplanner_aggressiveness`** (`settings.py:333`) which the LLM reads via
+  `/settings` and can interpret as it likes; (b) the player can just tell the AI in
+  chat what kind of campaign they want; and (c) part of the LLM's value is being
+  **unpredictable** — a fixed persona knob works against that.
+
 ## Future directions (not now — keep the door open)
 
 Out of scope for v1, but worth not precluding architecturally:
@@ -136,6 +174,11 @@ Out of scope for v1, but worth not precluding architecturally:
   push, beyond the v1 "human says your turn" ([`04`](04-api-reference.md) §E).
 - **Engine-driven brain:** an embedded LLM that plans red with no human in the loop
   (dropped for now until local models are cheap/good — [`03`](03-opfor-planner.md)).
+- **Blue-assist (enh. #11).** The API is coalition-agnostic, so the same machinery
+  could *suggest* (or pre-fill) the player's own blue plan as an advisor. Note that
+  Retribution's scripted commander **already auto-plans blue** too — the player just
+  prunes it (typically keeping BARCAP and replacing the rest); an LLM blue-assist
+  would be an opt-in upgrade to that. Architecturally free; out of scope for v1.
 - **In-mission control via Combined Arms.** If the player owns the DCS **Combined
   Arms** DLC, a later evolution could let the LLM **command units in real time
   *during* the DCS mission** (e.g. OPFOR ground units / JTAC), not just plan the

@@ -105,9 +105,17 @@ bypass the automatic threat-avoidance.
 
 ## 5. How to plan a strong turn
 
+0. **Reflect on last turn first.** Read `prev_turns`/the debrief and compare it to
+   what you *intended* last turn (your saved notes + the package rationales you
+   wrote). What worked, what didn't, why? **Write the lessons to `stored_context`**
+   — this is how you actually learn this player across the campaign.
 1. **Understand the situation.** Read the turn context, the previous turns (what you
    lost and to what, what blue did, what changed), and your own saved notes. If you
-   reason better from a picture, fetch the map image.
+   reason better from a picture, fetch the map image. `turn_context` also gives
+   **computed hints** (what you can afford, force-ratio trend vs blue, your
+   most-threatened bases, ranked threats) — use them instead of re-doing the maths.
+   The `OPFOR auto-planner aggressiveness` setting (in `/settings`) is a hint of how
+   risk-tolerant the player wants red to be — read it and weigh it, but you decide.
 2. **Find blue's intent and weak points.** Where is blue pushing? What did they fly
    last turn? Which of their bases/SAMs/fleets are exposed? Where are *you* exposed?
 3. **Pick 1–3 objectives for this turn and concentrate on them.** Examples: hold a
@@ -186,11 +194,17 @@ icon in the toolbar shows you're busy and Take Off is blocked until you're done.
 3. **Read** the situation (turn context, previous turns, your notes, optionally the
    map image).
 4. **Plan and apply**: create packages/flights (crewed), set stances, buy/sell/
-   transfer, move ships or adjust waypoints as needed.
-5. **Save** your strategy notes to the scratchpad.
-6. **Signal done** (`set_ai_active(false)`) — the robot goes idle and Take Off is
-   unblocked. The player can review red's plan and, while you're learning, flag any
-   mistake in chat for you to fix.
+   transfer, move ships or adjust waypoints as needed. **Give every package a
+   one-line `rationale`** ("why this exists") — the player sees it in their review,
+   so it's how they understand and trust your plan (and how you grade yourself next
+   turn).
+5. **Check your plan before finishing**: run `validate_plan` and fix the warnings
+   (TOTs outside the mission window, strikers into live SAMs without DEAD, pilotless
+   flights, over-budget, undefended vulnerable base, …). Cheap insurance.
+6. **Save** your strategy notes to the scratchpad.
+7. **Signal done** (`set_ai_active(false)`) — the robot goes idle and Take Off is
+   unblocked. The player can review red's plan (the "View red's plan" button lights
+   up) and, while you're learning, flag any mistake in chat for you to fix.
 
 Plan boldly and coherently. A good OPFOR turn looks like a real operation: a clear
 objective, the air defenses dealt with, the strike escorted and supported, the

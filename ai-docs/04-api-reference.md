@@ -59,16 +59,17 @@ models (JSON). Reads never mutate; writes only succeed at a turn/planning bounda
 | **howtoplay** — the commander's briefing (once/session): role, game concepts, package composition doctrine, fair-play rules, advising the human, and the "your turn" trigger | `GET /howtoplay` | resource `retribution://howtoplay` | static doc — **draft written in [`howtoplay.md`](howtoplay.md)** |
 | **settings** — current settings + each explained | `GET /settings` | resource `retribution://settings` | `Settings` (`game/settings/settings.py:93`) + descriptions |
 | **human_notes** — player's freeform rules/notes | `GET /human_notes` | resource `retribution://human_notes` | stored in `Settings`/save ([`05`](05-context-and-persistence.md)) |
+| **capabilities** *(enh. #3)* — what THIS install/campaign supports, so the LLM adapts and never calls an unsupported op: `api_version`, `air_wing_cheat` on?, `movable_ships` present?, `map_image` available?, `combined_arms`?, fog level, factions, mission-duration | `GET /capabilities` | resource `retribution://capabilities` | read `Settings` + feature presence (gates fork-vs-`dev` features) |
 
 ## B. Read — situation (the "operational picture")
 
 | Op | REST | MCP | Service → engine |
 |----|------|-----|------------------|
-| **turn_context** — campaign, map, all OPFOR items (bases, wings, pilots, aircraft, ground units, units outside bases, buildings, SAMs, EWRs: position + alive/dead + health); OWNFOR detail limited per **`map_coalition_visibility`** (the real "Fog of war" map mode — see [`05`](05-context-and-persistence.md)) | `GET /turn_context` | resource `retribution://turn_context/{side}` | `theater.controlpoints`/`ground_objects`, `AirWing.iter_squadrons`, `Squadron.*`, `game.threat_zone_for`, `ObjectiveFinder.*`, coords via `leaflet` ([`02`](02-codebase-map.md)) |
+| **turn_context** — campaign, map, all OPFOR items (bases, wings, pilots, aircraft, ground units, units outside bases, buildings, SAMs, EWRs: position + alive/dead + health); OWNFOR detail limited per **`map_coalition_visibility`** (the real "Fog of war" map mode — see [`05`](05-context-and-persistence.md)); **+ computed decision-support** *(enh. #5)*: affordability (what red can buy), force-ratio trend vs blue, your most-threatened bases, ranked threats — so the LLM needn't do raw bookkeeping | `GET /turn_context` | resource `retribution://turn_context/{side}` | `theater.controlpoints`/`ground_objects`, `AirWing.iter_squadrons`, `Squadron.*`, `game.threat_zone_for`, `ObjectiveFinder.*` (already ranks targets), coords via `leaflet` ([`02`](02-codebase-map.md)) |
 | **prev_turns** — per prior turn: units lost (how / who killed them), bases captured, key events; `?n=K` for K turns ago (1 = last) | `GET /prev_turns?n=1` | tool `get_prev_turns(n)` | debrief history + `game.informations` + stats ([`05`](05-context-and-persistence.md)) |
 | **packages** (read) — current packages/flights **incl. waypoints & TOTs**; each package and flight carries a **stable `id`** and each flight its **pilot names** (so the LLM can pick which to delete — by id, or by pilot) | `GET /packages?side=red` | tool `get_packages(side)` | `coalition.ato.packages`, `Package.id`, `Flight.id` (uuid4), `Flight.flight_plan.waypoints`, `FlightMembers` pilots (reuses existing `flights`/`waypoints` route shapes) |
 | **flight waypoints** — ordered waypoints of one flight (lat/lng, type, alt, tot) | `GET /waypoints/{flight_id}` | tool `get_flight_waypoints(flight_id)` | existing `game/server/waypoints/routes.py:38` (`list_all_waypoints_for_flight`) |
-| **map image** — rendered PNG of the campaign map (ownership, control points, front lines, threat/detection rings, ground objects, **package route lines**) — "what the player sees", for multimodal LLMs; optional `bbox`, `layers`, `side` | `GET /map/image?side=red&bbox=…` | tool `get_map_image(side, bbox?)` → **image** | see "Map image" below |
+| **map image** — rendered PNG of the campaign map (ownership, control points, front lines, threat/detection rings, ground objects, **package route lines**) — "what the player sees", for multimodal LLMs; optional `bbox`, `layers`, `side`, and **`plan=red` to overlay red's just-planned packages/routes** *(enh. #7)* so the LLM (and the human) can sanity-check the plan visually | `GET /map/image?side=red&plan=red&bbox=…` | tool `get_map_image(side, plan?, bbox?)` → **image** | see "Map image" below |
 
 `turn_context` is the high-value text call; **map image** is its visual companion
 for image-capable models. Build `turn_context` in `game/agent/views.py` as a
@@ -104,7 +105,8 @@ Recommend the server-side renderer as primary; offer the Qt grab as an optional
 
 | Op | REST | MCP | Service → engine |
 |----|------|-----|------------------|
-| **create packages/flights** | `POST /packages` | tool `create_packages(specs)` | explicit flights → `Package` + `Flight(squadron, count, task, start_type)` + payload + `recreate_flight_plan` + `ato.add_package`; auto-select/auto-escort path → `PackageFulfiller.plan_mission(ProposedMission)`; then `MissionScheduler.schedule_missions` ([`02`](02-codebase-map.md)). Body schema below. |
+| **create packages/flights** | `POST /packages` | tool `create_packages(specs)` | explicit flights → `Package` + `Flight(squadron, count, task, start_type)` + payload + pilots + `recreate_flight_plan` + `ato.add_package`; auto-select/auto-escort path → `PackageFulfiller.plan_mission(ProposedMission)`; then `MissionScheduler.schedule_missions` ([`02`](02-codebase-map.md)). Body schema below. |
+| **validate a plan** *(enh. #4, dry-run)* | `POST /plan/validate` | tool `validate_plan(specs)` | builds the plan **without committing** and returns warnings: TOT outside the mission window, striker into a live SAM ring with no DEAD, pilotless flight, over-budget, vulnerable base undefended, package with no escort vs known CAP, etc. Lets the LLM self-correct (and the human sanity-check) before `create_packages`. |
 | **delete a package** | `DELETE /packages/{id}` | tool `delete_package(id)` | `ato.remove_package` (returns its pilots + aircraft to inventory) |
 | **delete a flight** | `DELETE /packages/{pkg_id}/flights/{flight_id}` | tool `delete_flight(pkg_id, flight_id)` | `Package.remove_flight` (`package.py:137`, returns pilots + aircraft) |
 | **clear all OPFOR packages** (start the turn fresh / drop a half-done plan) | `DELETE /packages?side=red` | tool `clear_packages(side)` | `coalition.ato.clear()` (`airtaaskingorder.py:36`) |
@@ -132,6 +134,7 @@ are **just flights** in the package with that task — there is no package-level
     {
       "target": "SAM Armadillo",        // resolved from turn_context
       "tot": "asap",                     // "asap" | ISO datetime | omit → MissionScheduler spaces it
+      "rationale": "DEAD Armadillo → open a corridor for the Krymsk strike", // enh #1 → Package.custom_name
       "flights": [
         {
           "task": "DEAD",                // FlightType
@@ -140,6 +143,7 @@ are **just flights** in the package with that task — there is no package-level
           "pilots": ["Ivanov", "Petrov"],// optional; omit → auto-assign from the squadron's available pilots
           "start_type": "COLD",          // COLD | WARM | RUNWAY | IN_FLIGHT (default: settings.default_start_type)
           "payload": "DEAD standoff",    // optional named loadout; omit → Loadout.default_for(flight)
+          "rationale": "lob standoff ARMs from the south", // optional, per-flight → Flight.custom_name
           "waypoints": null              // optional; null/omit → engine auto-builds a valid flight plan (recommended)
         },
         {
@@ -166,6 +170,15 @@ are **just flights** in the package with that task — there is no package-level
 | `start_type` | `StartType` enum. |
 | `payload` | a **named loadout** for the airframe/task, applied to the flight's members (uniform by default — `use_same_loadout_for_all_members`). Omit → `Loadout.default_for(flight)`. Valid names: `Loadout.default_loadout_names_for(task)` (`game/ato/loadouts.py:273`). |
 | `waypoints` | **Optional. Recommended: omit.** The engine builds a doctrine/navmesh/threat-aware flight plan automatically (`recreate_flight_plan`). Provide a waypoint list only to *override*, which switches the flight to a custom plan (`flight.degrade_to_custom_flight_plan`, `game/ato/flight.py:161`). Hand-authored routes bypass the auto threat-avoidance — use sparingly. |
+| `rationale` *(enh. #1, optional)* | one-line intent for this flight → stored on `Flight.custom_name` (`flight.py:61/83`). |
+
+> **`rationale` (enh. #1) — strongly encouraged.** A per-package one-liner ("why
+> this package exists") maps to `Package.custom_name`, and an optional per-flight
+> one maps to `Flight.custom_name` — **both fields already exist and are already
+> serialized/shown** (e.g. in the ATO list and kneeboards). Writing them makes the
+> human's pre-Take-Off review meaningful (they see *why*, not just *what*), powers
+> the "flag a mistake" loop, and gives the post-mission reflection ([`05`](05-context-and-persistence.md))
+> something to grade itself against.
 
 **How the service builds it (per package):** create `Package(target, game.db.flights)`
 → for each flight resolve the squadron, `Flight(package, squadron, count, task,
@@ -244,6 +257,10 @@ modal dialog**. Instead:
   - a **"Cancel LLM planning"** button — aborts the LLM's turn (see below);
   - a **"Non-LLM plan this turn"** button — **enabled only after Cancel is pressed**
     — runs the scripted commander to plan red for this turn instead;
+  - a **"View red's plan"** button *(enh. #9, the AI action log)* — **disabled with a
+    spinner while the LLM is still working** and **enabled once it signals done** —
+    opens the audit trail: what red did this turn and **why** (the per-package
+    `rationale`/`custom_name` from enh. #1), so the player can review before Take Off;
   - a **"Close"** button (just closes the window; cancels nothing).
 - **The one hard sync point is Take Off.** If the human hits **Take Off** while the
   AI is still active, a **popup blocks it** ("OPFOR AI is still planning — wait for
@@ -263,19 +280,28 @@ to fill red (the fallback, on demand).
 | **set AI active / idle** | `POST /ai_status/active` `{active: bool}` | tool `set_ai_active(active)` | `QtContext`/`QtCallbacks` bridge (`game/server/dependencies.py:35`): toolbar robot icon colour+animation; sets the **Take-Off gate flag**; stamps last-update time |
 | **set status text** | `POST /ai_status/text` `{text}` | tool `set_ai_status(text)` | stores the latest status (+ last-update time); shown in the robot info window |
 | **signal done** | (same as `set_ai_active(false)`) | `opfor_planning_done()` | idle the icon + lift the Take-Off gate |
-| **turn status** | `GET /turn_status` | tool `turn_status()` | `game.turn`, whose-turn, **ai-active**, **cancelled** flags, last-update time |
+| **turn status** | `GET /turn_status` | tool `turn_status()` | `game.turn`, whose-turn, **ai-active**, **cancelled** flags, last-update time, **session holder** (enh. #8) |
+| **AI action log** *(enh. #9)* | `GET /ai_log?turn=` | tool `get_ai_log(turn?)` | the audit trail of what red's AI did this turn (+ rationale); backs the "View red's plan" button; reuse `game.informations` + a dedicated list |
 
 UI-only actions (no LLM call — the human clicks them in the robot window):
 - **Cancel LLM planning** → set the `cancelled` flag (idle robot, ungate Take Off,
   reject later LLM writes); enables the next button.
 - **Non-LLM plan this turn** → run the scripted commander for red
   (`Game.initialize_turn(events, for_red=True, for_blue=False)`), i.e. the fallback.
+- **View red's plan** → open the AI action log (enabled only once the AI is done).
 
 > Engine/UI side: the **ai-active flag** + **cancelled flag** + **last-update
 > timestamp** live on the GameModel / a UI controller; `set_ai_active`/`set_ai_status`
 > update them, the **Take-Off action checks ai-active**, and the robot window renders
 > them. No engine pause or auto-advance — the human drives the flow; Take Off and
 > the cancel buttons are the only controls.
+
+> **Single-writer guard (enh. #8).** Only one agent should edit red at a time. When
+> a session starts planning (`set_ai_active(true)`), record a **planning-session
+> token / holder**; reject red-mutating calls from any other session until it
+> finishes or is cancelled (first-writer-wins for the turn). Prevents two chat
+> sessions — or a stale/zombie agent — from clobbering each other. `turn_status`
+> exposes the current holder.
 
 ### Triggering / advancing
 
