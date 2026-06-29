@@ -69,6 +69,7 @@ ADVANCED_CAMPAIGN_MANAGEMENT_PAGE = "Campaign Management+"
 GENERAL_SECTION = "General"
 PILOTS_AND_SQUADRONS_SECTION = "Pilots and Squadrons"
 HQ_AUTOMATION_SECTION = "HQ Automation"
+OPFOR_AI_SECTION = "OPFOR AI commander"
 FLIGHT_PLANNER_AUTOMATION = "Flight Planner Automation"
 GROUND_OBJECT_REPAIR_TUNING_SECTION = "Ground Object Repairs"
 BUILDING_REPAIR_TUNING_SECTION = "Building Repairs"
@@ -179,6 +180,19 @@ class Settings:
             "Map only": Views.OnlyMap,
         },
         default=Views.All,
+    )
+    opfor_ai_enabled: bool = boolean_option(
+        "Allow OPFOR AI control (external LLM plays red)",
+        page=CAMPAIGN_MANAGEMENT_PAGE,
+        section=OPFOR_AI_SECTION,
+        default=False,
+        detail=(
+            "Expose the live game over a local API so an external LLM (e.g. Claude) "
+            "plans the enemy (red) turns instead of the scripted commander. With it "
+            "off — or if the AI does not play — the scripted commander still runs as "
+            "a fallback, so a turn is never empty. Connect your LLM to the URL "
+            "printed in the log: .../retribution-ai/start?token=<key>."
+        ),
     )
     external_views_allowed: bool = boolean_option(
         "Allow external views",
