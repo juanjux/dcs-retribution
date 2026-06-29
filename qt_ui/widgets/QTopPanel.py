@@ -470,6 +470,15 @@ class QTopPanel(QFrame):
             )
             return
 
+        # OPFOR-AI fallback: if red was left for the LLM but it never played, run the
+        # scripted commander so red's turn is never empty.
+        try:
+            from game.agent import service
+
+            service.run_opfor_fallback_if_needed()
+        except Exception:
+            logging.exception("OPFOR-AI scripted fallback failed; continuing")
+
         if not self.game.ato_has_clients() and not self.confirm_no_client_launch():
             return
 

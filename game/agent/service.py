@@ -160,6 +160,26 @@ def prev_turns(n: int = 3) -> list:
     return views.build_prev_turns(_require_game(), n)
 
 
+# --- autonomous wiring / scripted fallback ---
+
+
+def run_opfor_fallback_if_needed() -> dict:
+    """If OPFOR-AI is on but red's ATO is empty (the LLM never played), run the
+    scripted commander so the turn is never empty. Called at Take Off."""
+    game = _require_game()
+    if not getattr(game.settings, "opfor_ai_enabled", False):
+        return {"ran": False, "reason": "opfor_ai disabled"}
+    red = game.red
+    if red.ato.packages:
+        return {
+            "ran": False,
+            "reason": "AI already planned",
+            "packages": len(red.ato.packages),
+        }
+    red.plan_missions(game.conditions.start_time)
+    return {"ran": True, "packages": len(red.ato.packages)}
+
+
 _DOCS_DIR = Path(__file__).parent / "docs"
 _LEADING_COMMENT = re.compile(r"\A\s*<!--.*?-->\s*", re.DOTALL)
 
