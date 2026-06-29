@@ -116,6 +116,8 @@ class Game:
         self.date = date(start_date.year, start_date.month, start_date.day)
         self.game_stats = GameStats()
         self.notes = ""
+        # Free-form scratchpad for the OPFOR-AI commander (persisted per campaign).
+        self.stored_context: dict[str, str] = {}
         self.ground_planners: dict[UUID, GroundPlanner] = {}
         self.informations: list[Information] = []
         self.message("Game Start", "-" * 40)
@@ -173,6 +175,8 @@ class Game:
             self.laser_code_registry = LaserCodeRegistry()
             for front_line in self.theater.conflicts():
                 front_line.laser_code = self.laser_code_registry.alloc_laser_code()
+        if not hasattr(self, "stored_context"):
+            self.stored_context = {}
         # Regenerate any state that was not persisted.
         self.on_load()
 

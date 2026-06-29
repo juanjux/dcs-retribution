@@ -139,3 +139,36 @@ def set_ai_status(text: str) -> dict:
 @router.get("/turn_status", operation_id="ai_turn_status")
 def turn_status() -> dict:
     return service.turn_status()
+
+
+# --- memory ---
+
+
+@router.get("/stored_context", operation_id="ai_get_stored_context")
+def get_stored_context() -> dict:
+    return service.get_stored_context()
+
+
+@router.put("/stored_context", operation_id="ai_put_stored_context")
+def put_stored_context(body: dict) -> dict:
+    return service.put_stored_context(body)
+
+
+@router.post("/stored_context", operation_id="ai_post_stored_context")
+def post_stored_context(body: dict) -> dict:
+    return service.post_stored_context(body)
+
+
+@router.delete("/stored_context/{key}", operation_id="ai_delete_stored_context_key")
+def delete_stored_context(key: str) -> dict:
+    return service.delete_stored_context(key)
+
+
+@router.delete("/stored_context", operation_id="ai_clear_stored_context")
+def clear_stored_context() -> dict:
+    return service.clear_stored_context()
+
+
+@router.get("/human_notes", operation_id="ai_human_notes")
+def human_notes() -> dict:
+    return service.human_notes()

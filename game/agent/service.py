@@ -114,6 +114,47 @@ def turn_status() -> dict:
     return snap
 
 
+# --- memory (persisted in the save) ---
+
+
+def get_stored_context() -> dict:
+    """The AI's saved per-campaign strategy notes (key -> value)."""
+    return dict(_require_game().stored_context)
+
+
+def put_stored_context(data: dict) -> dict:
+    """Replace the whole stored_context with ``data``."""
+    game = _require_game()
+    game.stored_context = {str(k): str(v) for k, v in dict(data).items()}
+    return dict(game.stored_context)
+
+
+def post_stored_context(data: dict) -> dict:
+    """Merge ``data`` into stored_context (add/update keys)."""
+    game = _require_game()
+    game.stored_context.update({str(k): str(v) for k, v in dict(data).items()})
+    return dict(game.stored_context)
+
+
+def delete_stored_context(key: str) -> dict:
+    """Remove one key from stored_context."""
+    game = _require_game()
+    game.stored_context.pop(key, None)
+    return dict(game.stored_context)
+
+
+def clear_stored_context() -> dict:
+    """Empty the stored_context."""
+    game = _require_game()
+    game.stored_context.clear()
+    return dict(game.stored_context)
+
+
+def human_notes() -> dict:
+    """The player's campaign notes — guidance the AI reads (read-only)."""
+    return {"notes": getattr(_require_game(), "notes", "") or ""}
+
+
 _DOCS_DIR = Path(__file__).parent / "docs"
 _LEADING_COMMENT = re.compile(r"\A\s*<!--.*?-->\s*", re.DOTALL)
 

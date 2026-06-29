@@ -131,3 +131,36 @@ def set_ai_active(active: bool = True) -> dict:
 def set_ai_status(text: str) -> dict:
     """Set the one-line status shown in the robot info window."""
     return service.set_ai_status(text)
+
+
+# --- memory ---
+
+
+@mcp.tool()
+def get_stored_context() -> dict:
+    """Your saved per-campaign strategy notes (key -> value), persisted in the save."""
+    return service.get_stored_context()
+
+
+@mcp.tool()
+def put_stored_context(data: dict) -> dict:
+    """Replace ALL your stored notes with `data` (a key->value object)."""
+    return service.put_stored_context(data)
+
+
+@mcp.tool()
+def post_stored_context(data: dict) -> dict:
+    """Merge `data` into your stored notes (add/update keys; keeps the rest)."""
+    return service.post_stored_context(data)
+
+
+@mcp.tool()
+def delete_stored_context(key: str) -> dict:
+    """Remove one note key from stored_context."""
+    return service.delete_stored_context(key)
+
+
+@mcp.tool()
+def human_notes() -> dict:
+    """The player's campaign notes — guidance for you to read (read-only)."""
+    return service.human_notes()
