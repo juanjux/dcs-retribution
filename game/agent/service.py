@@ -48,6 +48,38 @@ def create_packages(side, specs):
     return planner.create_packages(_require_game(), side, specs)
 
 
+def delete_package(side, index):
+    from game.agent import planner
+
+    return planner.delete_package(_require_game(), side, index)
+
+
+def clear_packages(side):
+    from game.agent import planner
+
+    return planner.clear_packages(_require_game(), side)
+
+
+def buy_aircraft(side, squadron_id, quantity=1):
+    from game.agent import planner
+
+    return planner.buy_aircraft(_require_game(), side, squadron_id, quantity)
+
+
+def sell_aircraft(side, squadron_id, quantity=1):
+    from game.agent import planner
+
+    return planner.sell_aircraft(_require_game(), side, squadron_id, quantity)
+
+
+def set_stance(side, friendly_cp_id, enemy_cp_id, stance):
+    from game.agent import planner
+
+    return planner.set_stance(
+        _require_game(), side, friendly_cp_id, enemy_cp_id, stance
+    )
+
+
 _DOCS_DIR = Path(__file__).parent / "docs"
 _LEADING_COMMENT = re.compile(r"\A\s*<!--.*?-->\s*", re.DOTALL)
 

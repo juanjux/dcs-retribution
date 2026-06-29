@@ -29,3 +29,30 @@ class CreateResult(BaseModel):
     target: str
     error: str | None = None
     package: views.PackageView | None = None
+
+
+class OpResult(BaseModel):
+    ok: bool
+    detail: str | None = None
+    error: str | None = None
+
+
+# --- REST request bodies ---
+
+
+class CreatePackagesRequest(BaseModel):
+    side: str = "red"
+    packages: list[PackageSpec]
+
+
+class BuyAircraftRequest(BaseModel):
+    side: str = "red"
+    squadron_id: str
+    quantity: int = 1
+
+
+class StanceRequest(BaseModel):
+    side: str = "red"
+    friendly_cp_id: str
+    enemy_cp_id: str
+    stance: str

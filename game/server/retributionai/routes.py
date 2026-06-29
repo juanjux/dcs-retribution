@@ -9,7 +9,7 @@ Per-turn reads serialise with ``exclude_none`` to stay token-frugal.
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import PlainTextResponse
 
-from game.agent import service, views
+from game.agent import schemas, service, views
 from game.server.security import ApiKeyManager
 
 router: APIRouter = APIRouter(
@@ -56,3 +56,68 @@ def start(request: Request) -> PlainTextResponse:
 @router.get("/howtoplay", operation_id="ai_howtoplay", response_class=PlainTextResponse)
 def howtoplay() -> PlainTextResponse:
     return PlainTextResponse(service.howtoplay_doc(), media_type="text/markdown")
+
+
+# --- write path ---
+
+
+@router.post(
+    "/packages",
+    operation_id="ai_create_packages",
+    response_model=list[schemas.CreateResult],
+    response_model_exclude_none=True,
+)
+def create_packages(body: schemas.CreatePackagesRequest) -> list[schemas.CreateResult]:
+    return service.create_packages(body.side, body.packages)
+
+
+@router.delete(
+    "/packages",
+    operation_id="ai_clear_packages",
+    response_model=schemas.OpResult,
+    response_model_exclude_none=True,
+)
+def clear_packages(side: str = "red") -> schemas.OpResult:
+    return service.clear_packages(side)
+
+
+@router.delete(
+    "/packages/{index}",
+    operation_id="ai_delete_package",
+    response_model=schemas.OpResult,
+    response_model_exclude_none=True,
+)
+def delete_package(index: int, side: str = "red") -> schemas.OpResult:
+    return service.delete_package(side, index)
+
+
+@router.post(
+    "/buy/aircraft",
+    operation_id="ai_buy_aircraft",
+    response_model=schemas.OpResult,
+    response_model_exclude_none=True,
+)
+def buy_aircraft(body: schemas.BuyAircraftRequest) -> schemas.OpResult:
+    return service.buy_aircraft(body.side, body.squadron_id, body.quantity)
+
+
+@router.post(
+    "/sell/aircraft",
+    operation_id="ai_sell_aircraft",
+    response_model=schemas.OpResult,
+    response_model_exclude_none=True,
+)
+def sell_aircraft(body: schemas.BuyAircraftRequest) -> schemas.OpResult:
+    return service.sell_aircraft(body.side, body.squadron_id, body.quantity)
+
+
+@router.post(
+    "/stances",
+    operation_id="ai_set_stance",
+    response_model=schemas.OpResult,
+    response_model_exclude_none=True,
+)
+def set_stance(body: schemas.StanceRequest) -> schemas.OpResult:
+    return service.set_stance(
+        body.side, body.friendly_cp_id, body.enemy_cp_id, body.stance
+    )

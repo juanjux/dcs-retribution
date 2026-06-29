@@ -232,9 +232,11 @@ def build_flight(flight) -> FlightView:
 
 def build_package(index: int, pkg) -> PackageView:
     tot = pkg.time_over_target
-    desc = pkg.package_description
-    if callable(desc):
-        desc = desc()
+    desc = getattr(pkg, "custom_name", None)  # the planner stores the rationale here
+    if not desc:
+        desc = pkg.package_description
+        if callable(desc):
+            desc = desc()
     return PackageView(
         index=index,
         target=getattr(pkg.target, "name", str(pkg.target)),
