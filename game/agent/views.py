@@ -2,6 +2,13 @@
 
 Pure functions over a ``Game`` (no ``GameContext``, no Qt) so they are unit-testable
 and importable without PySide6. ``service.py`` wires these to the live game.
+
+Token economy: these payloads go to the LLM **every turn** (and, in copy-paste mode,
+to free-account LLMs with tight context). So they are frugal — numbers are rounded,
+coordinates are bare ``[lat, lng]`` pairs, TOT is ``HH:MM``, and "boring" fields
+(zero counts, empty strings) are left ``None`` so the transport drops them with
+``exclude_none``. Convention, stated once in ``/howtoplay``: an absent numeric field
+means 0. The one-time docs (start/howtoplay) are exempt — only per-turn data is.
 """
 
 from __future__ import annotations
@@ -43,21 +50,32 @@ def coalition_for_side(game: Game, side: str) -> Coalition:
     return game.coalition_for(player_for_side(side))
 
 
-class LatLng(BaseModel):
-    lat: float
-    lng: float
+def _r(value: float, ndigits: int = 5) -> float:
+    return round(float(value), ndigits)
+
+
+def _enum_str(value: object) -> str | None:
+    if value is None:
+        return None
+    member_value = getattr(value, "value", None)
+    if member_value is not None:
+        return str(member_value)
+    return getattr(value, "name", None) or str(value)
+
+
+# --- DTOs (omitted-when-None fields carry their "boring" default implicitly) ---
 
 
 class SituationView(BaseModel):
     turn: int
     date: str
     time_of_day: str
-    campaign_state: str  # ongoing / red_winning / red_losing (RED's perspective)
+    campaign_state: str | None = None  # set only when not "ongoing"
 
 
 class EconomyView(BaseModel):
-    budget: float
-    income_next_turn: float
+    budget: int
+    income_next_turn: int
 
 
 class ControlPointView(BaseModel):
@@ -65,8 +83,8 @@ class ControlPointView(BaseModel):
     name: str
     type: str
     owner: str  # red / blue / neutral
-    position: LatLng
-    squadron_count: int
+    pos: list[float]  # [lat, lng]
+    sqns: int | None = None  # based-squadron count (omitted when 0)
 
 
 class SquadronView(BaseModel):
@@ -74,10 +92,31 @@ class SquadronView(BaseModel):
     name: str
     aircraft: str
     base: str
-    owned_aircraft: int
-    untasked_aircraft: int
-    pending_deliveries: int
-    available_pilots: int
+    owned: int | None = None  # aircraft on hand (omitted when 0)
+    untasked: int | None = None  # available to task (omitted when 0)
+    pending: int | None = None  # arriving next turn (omitted when 0)
+    pilots: int
+
+
+class FlightView(BaseModel):
+    id: str
+    task: str | None
+    aircraft: str
+    count: int
+    squadron: str
+    start: str | None = None
+    dep: str | None = None
+    clients: int | None = None  # player-controlled seats (omitted when 0)
+    uncrewed: int | None = None  # missing pilots — present only when >0 (an alert)
+
+
+class PackageView(BaseModel):
+    index: int  # position in the ATO (stable within a turn snapshot)
+    target: str
+    task: str | None
+    tot: str | None  # time over target, HH:MM
+    desc: str | None = None
+    flights: list[FlightView]
 
 
 class TurnContextView(BaseModel):
@@ -91,68 +130,45 @@ class TurnContextView(BaseModel):
 class SettingsView(BaseModel):
     """The campaign settings the OPFOR planner reads (and never changes)."""
 
-    opfor_aggressiveness_pct: int  # risk tolerance hint the player set for red
+    opfor_aggressiveness_pct: int  # risk-tolerance hint the player set for red
     map_coalition_visibility: str  # fog-of-war level (drives the intel filter)
     desired_player_mission_duration_min: int  # TOT window the player flies within
     player_income_multiplier: float
     enemy_income_multiplier: float
 
 
-class FlightView(BaseModel):
-    id: str
-    task: str | None
-    aircraft: str
-    count: int
-    squadron: str
-    squadron_id: str
-    client_slots: int  # player-controlled seats
-    missing_pilots: int  # uncrewed seats — must be 0 before the turn can start
-    departure: str | None
-    start_type: str | None
-
-
-class PackageView(BaseModel):
-    index: int  # position in the ATO (stable within a turn snapshot)
-    target: str
-    primary_task: str | None
-    time_over_target: str | None
-    description: str | None
-    flights: list[FlightView]
-
-
-def _latlng(game: Game, point: DcsPoint) -> LatLng:
-    # Mirror game/server/leaflet.py: build a terrain-aware Point before converting.
-    ll = DcsPoint(point.x, point.y, game.theater.terrain).latlng()
-    return LatLng(lat=ll.lat, lng=ll.lng)
+# --- builders ---
 
 
 def build_situation(game: Game) -> SituationView:
+    state = _CAMPAIGN_STATE_FROM_RED.get(game.check_win_loss().name, "ongoing")
     return SituationView(
         turn=game.turn,
         date=game.current_day.isoformat(),
         time_of_day=game.current_turn_time_of_day.name,
-        campaign_state=_CAMPAIGN_STATE_FROM_RED.get(
-            game.check_win_loss().name, "ongoing"
-        ),
+        campaign_state=None if state == "ongoing" else state,
     )
 
 
 def build_economy(game: Game, side: str) -> EconomyView:
     player = player_for_side(side)
     return EconomyView(
-        budget=game.coalition_for(player).budget,
-        income_next_turn=Income(game, player).total,
+        budget=round(game.coalition_for(player).budget),
+        income_next_turn=round(Income(game, player).total),
     )
 
 
 def build_control_point(game: Game, cp: ControlPoint) -> ControlPointView:
+    # Mirror game/server/leaflet.py: build a terrain-aware Point before converting.
+    ll = DcsPoint(cp.position.x, cp.position.y, game.theater.terrain).latlng()
+    sqns = sum(1 for _ in cp.squadrons)
     return ControlPointView(
         id=str(cp.id),
         name=cp.name,
         type=cp.cptype.name,
         owner=cp.captured.value.lower(),
-        position=_latlng(game, cp.position),
-        squadron_count=sum(1 for _ in cp.squadrons),
+        pos=[_r(ll.lat), _r(ll.lng)],
+        sqns=sqns or None,
     )
 
 
@@ -162,10 +178,10 @@ def build_squadron(sq: Squadron) -> SquadronView:
         name=str(sq),
         aircraft=sq.aircraft.display_name,
         base=sq.location.name,
-        owned_aircraft=sq.owned_aircraft,
-        untasked_aircraft=sq.untasked_aircraft,
-        pending_deliveries=sq.pending_deliveries,
-        available_pilots=sq.number_of_available_pilots,
+        owned=sq.owned_aircraft or None,
+        untasked=sq.untasked_aircraft or None,
+        pending=sq.pending_deliveries or None,
+        pilots=sq.number_of_available_pilots,
     )
 
 
@@ -198,15 +214,6 @@ def build_settings(game: Game) -> SettingsView:
     )
 
 
-def _enum_str(value: object) -> str | None:
-    if value is None:
-        return None
-    member_value = getattr(value, "value", None)
-    if member_value is not None:
-        return str(member_value)
-    return getattr(value, "name", None) or str(value)
-
-
 def build_flight(flight) -> FlightView:
     missing = flight.missing_pilots
     missing_count = len(missing) if hasattr(missing, "__len__") else int(missing)
@@ -216,11 +223,10 @@ def build_flight(flight) -> FlightView:
         aircraft=flight.unit_type.display_name,
         count=flight.count,
         squadron=str(flight.squadron),
-        squadron_id=str(flight.squadron.id),
-        client_slots=flight.client_count,
-        missing_pilots=missing_count,
-        departure=getattr(flight.departure, "name", None),
-        start_type=_enum_str(flight.start_type),
+        start=_enum_str(flight.start_type),
+        dep=getattr(flight.departure, "name", None),
+        clients=flight.client_count or None,
+        uncrewed=missing_count or None,
     )
 
 
@@ -232,9 +238,9 @@ def build_package(index: int, pkg) -> PackageView:
     return PackageView(
         index=index,
         target=getattr(pkg.target, "name", str(pkg.target)),
-        primary_task=_enum_str(pkg.primary_task),
-        time_over_target=tot.isoformat() if tot else None,
-        description=desc or None,
+        task=_enum_str(pkg.primary_task),
+        tot=tot.strftime("%H:%M") if tot else None,
+        desc=desc or None,
         flights=[build_flight(f) for f in pkg.flights],
     )
 
