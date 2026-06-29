@@ -15,6 +15,7 @@ from . import (
     tgos,
     waypoints,
     iadsnetwork,
+    retributionai,
 )
 from .settings import ServerSettings
 
@@ -32,6 +33,7 @@ app.include_router(supplyroutes.router)
 app.include_router(tgos.router)
 app.include_router(waypoints.router)
 app.include_router(iadsnetwork.router)
+app.include_router(retributionai.router)
 
 
 origins = ["file://"]
