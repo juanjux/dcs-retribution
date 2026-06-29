@@ -96,7 +96,19 @@ class QTopPanel(QFrame):
         self.buttonBoxLayout = QHBoxLayout()
         self.buttonBoxLayout.addWidget(self.air_wing)
         self.buttonBoxLayout.addWidget(self.transfers)
+        # OPFOR-AI commander indicator (only shown when the setting is on); lit while
+        # the LLM is planning red, and Take Off is blocked until it goes idle.
+        self.ai_status_button = QPushButton("OPFOR AI: idle")
+        self.ai_status_button.setProperty("style", "btn-primary")
+        self.ai_status_button.setToolTip("LLM OPFOR commander — click for status")
+        self.ai_status_button.clicked.connect(self._show_ai_status)
+        self.ai_status_button.setVisible(False)
+        self.buttonBoxLayout.addWidget(self.ai_status_button)
         self.buttonBox.setLayout(self.buttonBoxLayout)
+
+        self._ai_status_timer = QTimer(self)
+        self._ai_status_timer.timeout.connect(self._refresh_ai_status)
+        self._ai_status_timer.start(1000)
 
         self.simSpeedControls = SimSpeedControls(sim_controller)
 
@@ -176,6 +188,46 @@ class QTopPanel(QFrame):
     def open_transfers(self):
         self.dialog = PendingTransfersDialog(self.game_model)
         self.dialog.show()
+
+    def _refresh_ai_status(self) -> None:
+        from game.agent.session import AI_SESSION
+
+        enabled = bool(self.game and self.game.settings.opfor_ai_enabled)
+        self.ai_status_button.setVisible(enabled)
+        if not enabled:
+            return
+        snap = AI_SESSION.snapshot()
+        if snap["active"]:
+            self.ai_status_button.setText(
+                f"OPFOR AI: {snap['status'] or 'planning...'}"
+            )
+            self.ai_status_button.setStyleSheet(
+                "color: white; background-color: #2e7d32; font-weight: bold;"
+            )
+        else:
+            self.ai_status_button.setText("OPFOR AI: idle")
+            self.ai_status_button.setStyleSheet("color: gray;")
+
+    def _show_ai_status(self) -> None:
+        from game.agent.session import AI_SESSION
+
+        snap = AI_SESSION.snapshot()
+        box = QMessageBox(self)
+        box.setWindowTitle("OPFOR AI commander")
+        box.setText(
+            f"Active: {snap['active']}\n"
+            f"Status: {snap['status'] or '(none)'}\n"
+            f"Last update: {snap['updated_at'] or '(never)'}"
+        )
+        cancel_btn = None
+        if snap["active"]:
+            cancel_btn = box.addButton(
+                "Cancel AI turn", QMessageBox.ButtonRole.DestructiveRole
+            )
+        box.addButton(QMessageBox.StandardButton.Close)
+        box.exec()
+        if cancel_btn is not None and box.clickedButton() == cancel_btn:
+            AI_SESSION.cancel()
 
     def passTurn(self):
         with logged_duration("Skipping turn"):
@@ -406,6 +458,18 @@ class QTopPanel(QFrame):
 
     def launch_mission(self):
         """Finishes planning and waits for mission completion."""
+        from game.agent.session import AI_SESSION
+
+        if AI_SESSION.active:
+            QMessageBox.warning(
+                self,
+                "OPFOR AI is planning",
+                "The OPFOR AI commander is still planning red's turn.\n\n"
+                "Wait for it to finish (the OPFOR AI indicator goes idle) or "
+                "cancel it before taking off.",
+            )
+            return
+
         if not self.game.ato_has_clients() and not self.confirm_no_client_launch():
             return
 
