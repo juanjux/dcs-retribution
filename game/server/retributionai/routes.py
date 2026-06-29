@@ -121,3 +121,21 @@ def set_stance(body: schemas.StanceRequest) -> schemas.OpResult:
     return service.set_stance(
         body.side, body.friendly_cp_id, body.enemy_cp_id, body.stance
     )
+
+
+# --- session / Take-Off gate ---
+
+
+@router.post("/ai/active", operation_id="ai_set_active")
+def set_ai_active(active: bool = True) -> dict:
+    return service.set_ai_active(active)
+
+
+@router.post("/ai/status", operation_id="ai_set_status")
+def set_ai_status(text: str) -> dict:
+    return service.set_ai_status(text)
+
+
+@router.get("/turn_status", operation_id="ai_turn_status")
+def turn_status() -> dict:
+    return service.turn_status()

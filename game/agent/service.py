@@ -80,6 +80,40 @@ def set_stance(side, friendly_cp_id, enemy_cp_id, stance):
     )
 
 
+# --- session / Take-Off gate ---
+
+
+def set_ai_active(active: bool = True) -> dict:
+    """Mark the AI busy/idle. Take Off is blocked while active (toolbar robot lit)."""
+    from game.agent.session import AI_SESSION
+
+    AI_SESSION.set_active(active)
+    return AI_SESSION.snapshot()
+
+
+def set_ai_status(text: str) -> dict:
+    """Set the one-line status shown in the robot info window."""
+    from game.agent.session import AI_SESSION
+
+    AI_SESSION.set_status(text)
+    return AI_SESSION.snapshot()
+
+
+def turn_status() -> dict:
+    """AI-session snapshot plus the current turn number."""
+    from game.agent.session import AI_SESSION
+
+    snap = AI_SESSION.snapshot()
+    try:
+        from game.server import GameContext
+
+        game = GameContext.get()
+    except Exception:
+        game = None
+    snap["turn"] = game.turn if game is not None else None
+    return snap
+
+
 _DOCS_DIR = Path(__file__).parent / "docs"
 _LEADING_COMMENT = re.compile(r"\A\s*<!--.*?-->\s*", re.DOTALL)
 
