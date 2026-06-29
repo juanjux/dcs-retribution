@@ -1096,11 +1096,16 @@ function EWJD(jammer)
     local removalDist4 = 5000
     local removalDist5 = 7000
     -- PROBAILITY OF SUCCESFULL JAMMING  REMOVALDIST1 CORRESPOND TO PKILL1, REMOVALDIST2 CORRESPOND TO PKILL2, ETC...
-    local pkill_1 =95
-    local pkill_2 =65
-    local pkill_3 =50
-    local pkill_4 =30
-    local pkill_5 =15
+    -- Attenuated (orig 95/65/50/30/15 -> 60/45/30/18/8 -> now lower again): one
+    -- growler's defensive bubble was deleting ~47% of incoming SAMs on its own and
+    -- barely scaling with jammer count (saturated). Lowered ~20% so the OFFENSIVE
+    -- launcher-jam (which does scale with jammers) drives more of the effect and
+    -- the defence degrades a little less overall.
+    local pkill_1 =48
+    local pkill_2 =36
+    local pkill_3 =24
+    local pkill_4 =14
+    local pkill_5 =6
 
     -- Scale Defensive missile pkill by DEFENSIVE_POWER (capped at 100)
     local function scale_pkill(base)
@@ -1218,22 +1223,38 @@ local function checkMis(mis)
         mis.debugLogged = true
     end
     ---------------------------------------------------
-    -- SARH "launcher jammed => missile dies" code ----
+    -- "launcher jammed => missile guidance breaks" code
     ---------------------------------------------------
-    if mis.launcherGroupName and (mis.guidance == 3) then
+    -- SARH (guidance 3) rides the launcher's radar, so jamming that radar breaks
+    -- it outright. ARH (guidance 4, e.g. HHQ-9) has its own terminal seeker, so
+    -- jamming the launcher only defeats it intermittently -- roll once per missile.
+    if mis.launcherGroupName and (mis.guidance == 3 or mis.guidance == 4) then
         local rec = JammedLaunchers and JammedLaunchers[mis.launcherGroupName]
         if rec and rec.untilT and timer.getTime() < rec.untilT then
-            if ewrj_options.DEBUG_OFFENSIVE then
-                env.info(string.format(
-                    "[EW DEBUG - OFFENSIVE] KILL missile (guidance=%s): launcher group jammed (%s) by %s (%.1fs left)",
-                    tostring(mis.guidance),
-                    tostring(mis.launcherGroupName),
-                    tostring(rec.by),
-                    rec.untilT - timer.getTime()
-                ))
+            local kill = false
+            if not mis.jamRolled then
+                mis.jamRolled = true
+                -- SARH rides the launcher's illumination, so jamming that radar
+                -- defeats it more often than ARH, which has its own terminal
+                -- seeker. Both kept well below 1.0 on purpose: a jammed ship
+                -- still fires live SAMs that fly and can intercept -- we degrade
+                -- its defence, not silence it. Rolled once per missile.
+                local p = (mis.guidance == 3) and 0.6 or 0.35
+                kill = math.random() < p
             end
-            removeMis(mis.uid)
-            return
+            if kill then
+                if ewrj_options.DEBUG_OFFENSIVE then
+                    env.info(string.format(
+                        "[EW DEBUG - OFFENSIVE] KILL missile (guidance=%s): launcher group jammed (%s) by %s (%.1fs left)",
+                        tostring(mis.guidance),
+                        tostring(mis.launcherGroupName),
+                        tostring(rec.by),
+                        rec.untilT - timer.getTime()
+                    ))
+                end
+                removeMis(mis.uid)
+                return
+            end
         end
     end
 
