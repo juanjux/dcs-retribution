@@ -19,6 +19,7 @@ from . import (
     iadsnetwork,
     retributionai,
 )
+from .security import TokenAuthMiddleware
 from .settings import ServerSettings
 
 # The MCP transport is optional: if `mcp` isn't installed the REST API still runs.
@@ -54,7 +55,8 @@ app.include_router(iadsnetwork.router)
 app.include_router(retributionai.router)
 
 if _mcp is not None:
-    app.mount("/mcp", _mcp.streamable_http_app())
+    # Gate /mcp on the same per-process token as the REST routes.
+    app.mount("/mcp", TokenAuthMiddleware(_mcp.streamable_http_app()))
 
 
 origins = ["file://"]
