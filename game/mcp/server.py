@@ -164,3 +164,9 @@ def delete_stored_context(key: str) -> dict:
 def human_notes() -> dict:
     """The player's campaign notes — guidance for you to read (read-only)."""
     return service.human_notes()
+
+
+@mcp.tool()
+def prev_turns(n: int = 3) -> list:
+    """Force totals over the last n turns — the attrition trend to react to."""
+    return _dump(service.prev_turns(n))

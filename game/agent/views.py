@@ -128,6 +128,16 @@ class TargetView(BaseModel):
     threat_nm: int | None = None  # SAM max threat range (omitted for non-radar)
 
 
+class TurnForcesView(BaseModel):
+    """Force totals at a past turn — the attrition trend the planner reacts to."""
+
+    turn: int
+    blue_aircraft: int
+    blue_vehicles: int
+    red_aircraft: int
+    red_vehicles: int
+
+
 class TurnContextView(BaseModel):
     side: str
     situation: SituationView
@@ -295,3 +305,22 @@ def build_package(index: int, pkg) -> PackageView:
 def build_packages(game: Game, side: str = "red") -> list[PackageView]:
     ato = coalition_for_side(game, side).ato
     return [build_package(i, p) for i, p in enumerate(ato.packages)]
+
+
+def build_prev_turns(game: Game, n: int = 3) -> list[TurnForcesView]:
+    """The last ``n`` turns' force totals (blue=allied, red=enemy in game_stats)."""
+    data = game.game_stats.data_per_turn
+    start = max(0, len(data) - n)
+    out: list[TurnForcesView] = []
+    for i in range(start, len(data)):
+        td = data[i]
+        out.append(
+            TurnForcesView(
+                turn=i,
+                blue_aircraft=td.allied_units.aircraft_count,
+                blue_vehicles=td.allied_units.vehicles_count,
+                red_aircraft=td.enemy_units.aircraft_count,
+                red_vehicles=td.enemy_units.vehicles_count,
+            )
+        )
+    return out

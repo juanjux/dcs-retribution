@@ -172,3 +172,12 @@ def clear_stored_context() -> dict:
 @router.get("/human_notes", operation_id="ai_human_notes")
 def human_notes() -> dict:
     return service.human_notes()
+
+
+@router.get(
+    "/prev_turns",
+    operation_id="ai_prev_turns",
+    response_model=list[views.TurnForcesView],
+)
+def prev_turns(n: int = 3) -> list[views.TurnForcesView]:
+    return service.prev_turns(n)

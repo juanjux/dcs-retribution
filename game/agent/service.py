@@ -155,6 +155,11 @@ def human_notes() -> dict:
     return {"notes": getattr(_require_game(), "notes", "") or ""}
 
 
+def prev_turns(n: int = 3) -> list:
+    """Force totals over the last ``n`` turns (the attrition trend)."""
+    return views.build_prev_turns(_require_game(), n)
+
+
 _DOCS_DIR = Path(__file__).parent / "docs"
 _LEADING_COMMENT = re.compile(r"\A\s*<!--.*?-->\s*", re.DOTALL)
 
