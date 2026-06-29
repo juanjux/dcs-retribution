@@ -8,6 +8,8 @@ module stays importable without a running server (and without Qt).
 
 from __future__ import annotations
 
+import re
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from game.agent import views
@@ -36,3 +38,36 @@ def settings() -> views.SettingsView:
 def get_packages(side: str = "red") -> list[views.PackageView]:
     """Current ATO for ``side`` — packages and their flights (with stable ids)."""
     return views.build_packages(_require_game(), side)
+
+
+_DOCS_DIR = Path(__file__).parent / "docs"
+_LEADING_COMMENT = re.compile(r"\A\s*<!--.*?-->\s*", re.DOTALL)
+
+
+def _render_doc(name: str, subs: dict[str, str]) -> str:
+    text = (_DOCS_DIR / name).read_text(encoding="utf-8")
+    text = _LEADING_COMMENT.sub("", text, count=1)  # drop the editorial header
+    for key, value in subs.items():
+        text = text.replace("{" + key + "}", value)
+    return text
+
+
+def start_doc(base_url: str) -> str:
+    """The /start welcome doc, with {BASE_URL} filled in (read once per session)."""
+    return _render_doc("start.md", {"BASE_URL": base_url.rstrip("/")})
+
+
+def howtoplay_doc() -> str:
+    """The OPFOR briefing; fills in the red faction when a game is loaded."""
+    subs: dict[str, str] = {}
+    try:
+        from game.server import GameContext
+
+        game = GameContext.get()
+    except Exception:
+        game = None
+    if game is not None:
+        faction = game.red.faction
+        subs["RED_FACTION"] = faction.name or "the RED faction"
+        subs["RED_COUNTRY"] = faction.country.name
+    return _render_doc("howtoplay.md", subs)

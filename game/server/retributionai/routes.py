@@ -6,7 +6,8 @@ Every route requires the per-process token (``?token=`` or ``X-API-Key``).
 Per-turn reads serialise with ``exclude_none`` to stay token-frugal.
 """
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
+from fastapi.responses import PlainTextResponse
 
 from game.agent import service, views
 from game.server.security import ApiKeyManager
@@ -44,3 +45,14 @@ def settings() -> views.SettingsView:
 )
 def packages(side: str = "red") -> list[views.PackageView]:
     return service.get_packages(side)
+
+
+@router.get("/start", operation_id="ai_start", response_class=PlainTextResponse)
+def start(request: Request) -> PlainTextResponse:
+    base_url = str(request.base_url).rstrip("/") + "/retribution-ai"
+    return PlainTextResponse(service.start_doc(base_url), media_type="text/markdown")
+
+
+@router.get("/howtoplay", operation_id="ai_howtoplay", response_class=PlainTextResponse)
+def howtoplay() -> PlainTextResponse:
+    return PlainTextResponse(service.howtoplay_doc(), media_type="text/markdown")
