@@ -50,7 +50,8 @@ engine turns that intent into concrete, validated missions.
    Off**, which is blocked (with a popup) until the AI finishes; then the player can
    review red's plan and, while the AI is learning, flag mistakes.
 4. **No disk access required** — the LLM only ever talks to the live game over the
-   API. (Crucial so the port can be exported and a remote/web LLM can play.)
+   API or via the copy-paste channel. (Crucial so the feature works for remote/web
+   LLMs and for free accounts with no API access.)
 5. **Escape hatch — advise the human:** for anything outside its player-legal action
    set (a cheat, fixing an engine bug that lost aircraft, changing the faction's
    airframes), the AI **recommends it to the human in chat**; the human decides and
@@ -60,8 +61,9 @@ engine turns that intent into concrete, validated missions.
 
 1. **A competent, adaptive OPFOR** planned by an LLM over the API — meaningfully
    harder and more interesting than the scripted AI.
-2. **Two zero-friction ways in:** REST for desktop agents (curl, no config), MCP
-   over HTTP for web LLMs (connector, enables POST). One shared implementation.
+2. **Three zero-friction ways in:** REST for desktop agents, MCP over HTTP for web
+   LLMs with connectors, and **Copy-Paste mode** for free/restricted accounts with
+   no API access. One shared service layer.
 3. **Live, disk-free operation** against the running game, so the port can be
    exposed for a remote LLM.
 4. **Memory across turns/sessions** via a `stored_context` scratchpad and

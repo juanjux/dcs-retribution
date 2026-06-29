@@ -1,6 +1,6 @@
 # 01 — Architecture
 
-## One service layer, two transports, one live game
+## One service layer, three transports, one live game
 
 The whole feature is built on **infrastructure that already exists**. The Qt app
 already runs a FastAPI server in-process on a background thread
@@ -12,9 +12,12 @@ Qt process (exactly ONE live Game)
 └─ FastAPI app  (game/server/app.py — already started in a thread)
      ├─ existing map/render routers + /eventstream            (unchanged)
      ├─ NEW REST routers     /retribution-ai/*   ─┐
-     │      (desktop agents curl GET/POST)         │  both delegate to the
-     └─ NEW MCP sub-app      mounted at /mcp      ─┤  SAME service layer
-            (web LLMs via connector; enables POST)─┘
+     │      (desktop agents curl GET/POST)         │  all three delegate to the
+     ├─ NEW MCP sub-app      mounted at /mcp      ─┤  SAME service layer
+     │      (web LLMs via connector; enables POST) │
+     └─ NEW Copy-Paste bridge  (Qt dialog)        ─┘
+            (free/restricted accounts; human carries
+             compressed blobs between the UI and the LLM)
                                                    │
                                                    ▼
                               game/agent/service.py   ← single source of truth
@@ -29,16 +32,70 @@ Qt process (exactly ONE live Game)
 route handler and the matching MCP tool are each a 3-line shim that calls the same
 service function. Add an operation once; both transports get it.
 
-### Why two transports
+### Why three transports
 
-| | REST (`/retribution-ai/*`) | MCP over HTTP (`/mcp`) |
-|---|---|---|
-| Audience | Desktop agents (Claude Code) | Web LLMs (claude.ai connector); any MCP client |
-| Setup | Paste URL; agent curls it. **No config files.** | Add URL as a custom connector once. |
-| Reads | GET | tools/resources |
-| **Writes** | POST (agent can curl arbitrary POST) | **tools** (this is the reason MCP exists here — a web LLM can't POST via plain browsing, but it *can* call an MCP tool) |
+| | REST (`/retribution-ai/*`) | MCP over HTTP (`/mcp`) | Copy-Paste (Qt dialog) |
+|---|---|---|---|
+| Audience | Desktop agents (Claude Code, curl) | Web LLMs with connectors (claude.ai, etc.) | **Free/restricted accounts** — no API, no connector install |
+| Setup | Paste URL; agent curls it. **No config files.** | Add URL as a custom connector once. | Enable setting; follow on-screen instructions. |
+| Reads | GET | tools/resources | Compressed blob → user pastes to LLM |
+| **Writes** | POST | **tools** | LLM generates response blob → user pastes back |
+| Network required | Yes (localhost or tunnel) | Yes (tunnel for web LLMs) | **No — human is the transport** |
 
-Same data, same operations, served from the same service layer.
+Same data, same operations, served from the same service layer. The copy-paste
+transport calls the same `game/agent/service.py` functions; it just serialises the
+input/output as a compressed blob rather than an HTTP request.
+
+### Copy-Paste mode — design
+
+**Setting:** "Copy-Paste mode, no API or MCP (use this for free AI accounts)"
+— shown under the main "Allow OPFOR AI control" toggle in the same settings group.
+
+**Activation flow:**
+1. Player checks the setting and **closes the settings dialog**.
+2. Retribution immediately generates an **initial briefing blob** — the
+   equivalent of `start` + a condensed `howtoplay` + copy-paste protocol
+   instructions (how to decode the turn blob, how to format the response blob).
+   This is shown in a Qt dialog with a read-only text area and a **Copy** button.
+   Player pastes it into their LLM chat once. The LLM acknowledges and waits.
+
+**Per-turn flow:**
+1. At the start of each OPFOR turn Retribution serialises the full turn context
+   (same data as `GET /turn_context` + `prev_turns` + `stored_context`) into a
+   **compressed+encoded turn blob** (zlib → base64, or msgpack → base64 — whichever
+   is smallest). A dialog opens with this blob in a read-only text area + **Copy**
+   button. Label: *"Paste this into your LLM chat"*.
+2. The decoding instructions are embedded in the initial briefing, so the LLM
+   knows how to parse it and what format to reply in.
+3. The LLM processes the blob and generates a **response blob** (same
+   compress+encode scheme) containing the planned actions (packages, flights, buys,
+   transfers, `stored_context` update, optional status message).
+4. Below the outgoing blob, the same dialog shows a **text input area** labelled
+   *"Paste the LLM's response here"* and an **OK** button.
+5. Retribution decodes the response blob, validates all actions through the normal
+   service layer (budget, inventory, range, etc.), and applies the valid ones.
+6. **On validation error:** a new dialog shows the error description formatted as
+   a human-readable + pasteable snippet, with instructions for the LLM to correct
+   it, plus another text input area for the corrected blob. This loop repeats until
+   the plan is clean or the player cancels.
+
+**Blob format (design intent — exact format TBD in implementation):**
+- Outgoing: `zlib.compress(json.dumps(turn_context_dict).encode()) |> base64.b64encode`
+- Response: same scheme; JSON schema defined in `game/agent/schemas.py`
+- The initial briefing includes the schema and a worked example so the LLM can
+  produce a valid response on the first try.
+- Compact, not human-readable — the human never needs to read it, only copy it.
+
+**What the copy-paste transport does NOT do:**
+- No live API calls — the server endpoints are irrelevant when this mode is on.
+- No streaming — each turn is one outgoing blob, one response blob.
+- No parallel operation — while the player is manually shuttling blobs the game
+  is effectively paused at the planning screen (same as if the player were planning
+  themselves). The robot-icon parallel flow is an API/MCP-only feature.
+
+**Implementation note:** the Qt dialog logic lives in a new
+`qt_ui/windows/copypaste_ai_dialog.py`; serialisation/deserialisation in
+`game/agent/copypaste.py` (calls `service.py`, returns the same DTOs).
 
 ## How the two transports compose (verified 2026-06)
 
