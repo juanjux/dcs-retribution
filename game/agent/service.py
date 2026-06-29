@@ -40,6 +40,14 @@ def get_packages(side: str = "red") -> list[views.PackageView]:
     return views.build_packages(_require_game(), side)
 
 
+def create_packages(side, specs):
+    """Plan packages from the LLM's specs (reusing the engine). Lazy-imports the
+    write path so the read service stays light."""
+    from game.agent import planner
+
+    return planner.create_packages(_require_game(), side, specs)
+
+
 _DOCS_DIR = Path(__file__).parent / "docs"
 _LEADING_COMMENT = re.compile(r"\A\s*<!--.*?-->\s*", re.DOTALL)
 
