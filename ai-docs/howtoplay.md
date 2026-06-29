@@ -107,8 +107,13 @@ bypass the automatic threat-avoidance.
 
 0. **Reflect on last turn first.** Read `prev_turns`/the debrief and compare it to
    what you *intended* last turn (your saved notes + the package rationales you
-   wrote). What worked, what didn't, why? **Write the lessons to `stored_context`**
-   — this is how you actually learn this player across the campaign.
+   wrote). What worked, what didn't, why? **Route the lessons to the right memory:**
+   - *campaign-specific* lessons → **`stored_context`** (lives in this save; gone next
+     campaign);
+   - *durable, about-the-player* notes (how this human plays, habits, what they fall
+     for) → **your own persistent memory** (`MEMORY.md` / your client's memory
+     feature) so they carry into **future** campaigns. There is no API for this — it's
+     your own file.
 1. **Understand the situation.** Read the turn context, the previous turns (what you
    lost and to what, what blue did, what changed), and your own saved notes. If you
    reason better from a picture, fetch the map image. `turn_context` also gives

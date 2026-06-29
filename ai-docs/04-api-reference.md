@@ -224,6 +224,12 @@ learned this campaign, observations about the player. Persists across turns and
 across different AIs/sessions because it lives in the save. The AI fully owns it,
 so it can prune/replace its own notes via the deletes above.
 
+> **Scope:** `stored_context` is **campaign-scoped** (it's in the save). Notes meant
+> to outlive a campaign — above all *how this human plays* — belong in the **LLM's
+> own persistent memory** (`MEMORY.md` / the client's memory feature), **not** here;
+> there is deliberately **no API** for that. See [`05`](05-context-and-persistence.md)
+> "Two memory scopes".
+
 ## E. Session — turn trigger, AI activity indicator & Take-Off gate
 
 ### Knowing when it's OPFOR's turn

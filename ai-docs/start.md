@@ -85,6 +85,9 @@ tool/resource of the same name.
 **Memory**
 - `GET /stored_context` · `PUT /stored_context` (replace) · `POST /stored_context`
   (append) · `DELETE /stored_context/{key}` · `DELETE /stored_context` (clear)
+- `stored_context` is **this campaign** only (it's in the save). Notes that should
+  outlive a campaign — *how this human plays* — go in **your own `MEMORY.md`**, not
+  here (no API for that). See howtoplay / 05.
 
 **Session**
 - `set_ai_active` (true/false — toolbar robot busy/idle; gates Take Off) ·

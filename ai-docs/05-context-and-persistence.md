@@ -24,6 +24,28 @@ sessions**, and **across different AIs** — i.e. it belongs to *this campaign*.
   backfill it in `Migrator` (`game/migrator.py:28`) / `Game.__setstate__`
   (`game/game.py:170`) so old saves load.
 
+## Two memory scopes — campaign vs. cross-campaign
+
+There are **two** places the AI keeps notes, and it must use the right one:
+
+| Scope | Lives in | For |
+|-------|----------|-----|
+| **This campaign** | `stored_context` (in the save) | multi-turn strategy, lessons, observations *about this campaign* — gone when a new campaign starts (new save = empty `stored_context`) |
+| **Across campaigns** | **the LLM's own persistent memory** — `MEMORY.md` / `CLAUDE.md`, or the client's memory feature — **not** the save | durable knowledge, above all **how this human plays** (habits, favourite tactics, what they fall for, recurring mistakes) so it carries into *future* campaigns |
+
+Why the split: `stored_context` is pickled **inside the campaign save**, so it is by
+definition scoped to that campaign — a fresh campaign has none. Knowledge that
+should outlive a campaign (player profiling, general doctrine that worked) therefore
+belongs in the **agent's own persistent memory**, which is outside the save and
+outside this feature's control. The `/howtoplay` briefing tells the LLM this so it
+routes each note to the right place: *campaign-specific → `stored_context`;
+durable/about-the-player → my `MEMORY.md`*.
+
+> The MCP/REST API only owns `stored_context`; it has **no endpoint** for the
+> cross-campaign memory — that's the LLM client's own file/feature (e.g. Claude
+> Code's `MEMORY.md`). Keep it that way: the game shouldn't try to manage the agent's
+> long-term memory.
+
 ## `human_notes` — player-authored rules
 
 Freeform text the human types in a box in the Settings window ("play aggressively",
