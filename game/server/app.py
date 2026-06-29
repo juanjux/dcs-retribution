@@ -1,3 +1,5 @@
+import contextlib
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -19,7 +21,23 @@ from . import (
 )
 from .settings import ServerSettings
 
-app = FastAPI()
+# The MCP transport is optional: if `mcp` isn't installed the REST API still runs.
+try:
+    from game.mcp.server import mcp as _mcp
+except Exception:  # pragma: no cover - mcp[cli] is an optional dependency
+    _mcp = None
+
+
+@contextlib.asynccontextmanager
+async def _lifespan(_app: FastAPI):
+    async with contextlib.AsyncExitStack() as stack:
+        if _mcp is not None:
+            # Required for the streamable-HTTP MCP app mounted at /mcp.
+            await stack.enter_async_context(_mcp.session_manager.run())
+        yield
+
+
+app = FastAPI(lifespan=_lifespan)
 app.include_router(controlpoints.router)
 app.include_router(debuggeometries.router)
 app.include_router(eventstream.router)
@@ -34,6 +52,9 @@ app.include_router(tgos.router)
 app.include_router(waypoints.router)
 app.include_router(iadsnetwork.router)
 app.include_router(retributionai.router)
+
+if _mcp is not None:
+    app.mount("/mcp", _mcp.streamable_http_app())
 
 
 origins = ["file://"]
