@@ -119,12 +119,22 @@ class PackageView(BaseModel):
     flights: list[FlightView]
 
 
+class TargetView(BaseModel):
+    id: str
+    name: str
+    kind: str  # sam / ship / building
+    suggested_task: str  # DEAD / ANTISHIP / STRIKE
+    pos: list[float]  # [lat, lng]
+    threat_nm: int | None = None  # SAM max threat range (omitted for non-radar)
+
+
 class TurnContextView(BaseModel):
     side: str
     situation: SituationView
     economy: EconomyView
     control_points: list[ControlPointView]
     air_wing: list[SquadronView]
+    targets: list[TargetView]  # enemy objects this side can strike (aim by id)
 
 
 class SettingsView(BaseModel):
@@ -185,6 +195,40 @@ def build_squadron(sq: Squadron) -> SquadronView:
     )
 
 
+def _build_target(game: Game, tgo, kind: str, task: str) -> TargetView:
+    ll = DcsPoint(tgo.position.x, tgo.position.y, game.theater.terrain).latlng()
+    threat = None
+    max_range = getattr(tgo, "max_threat_range", None)
+    if max_range is not None:
+        try:
+            rng = max_range()
+            threat = int(rng.nautical_miles) if rng else None
+        except Exception:
+            threat = None
+    return TargetView(
+        id=str(tgo.id),
+        name=tgo.name,
+        kind=kind,
+        suggested_task=task,
+        pos=[_r(ll.lat), _r(ll.lng)],
+        threat_nm=threat or None,
+    )
+
+
+def build_targets(game: Game, side: str) -> list[TargetView]:
+    from game.commander.objectivefinder import ObjectiveFinder
+
+    finder = ObjectiveFinder(game, player_for_side(side))
+    targets: list[TargetView] = []
+    for sam in finder.enemy_air_defenses():
+        targets.append(_build_target(game, sam, "sam", "DEAD"))
+    for ship in finder.enemy_ships():
+        targets.append(_build_target(game, ship, "ship", "ANTISHIP"))
+    for building in finder.strike_targets():
+        targets.append(_build_target(game, building, "building", "STRIKE"))
+    return targets
+
+
 def build_turn_context(game: Game, side: str = "red") -> TurnContextView:
     side = side.lower()
     coalition = coalition_for_side(game, side)
@@ -196,6 +240,7 @@ def build_turn_context(game: Game, side: str = "red") -> TurnContextView:
             build_control_point(game, cp) for cp in game.theater.controlpoints
         ],
         air_wing=[build_squadron(sq) for sq in coalition.air_wing.iter_squadrons()],
+        targets=build_targets(game, side),
     )
 
 
