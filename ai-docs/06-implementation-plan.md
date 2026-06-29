@@ -100,6 +100,15 @@ So there is no `anthropic` dependency and no model/key to manage server-side.
 - Status surface (what red planned / why) — reuse turn/finances panels.
 - Tunnel/exposure docs for the web-LLM connector flow. (No map-edit/cheat tools —
   the API stays to player-legal actions; see the guiding principle in [`04`](04-api-reference.md).)
+- **Update user documentation** (`docs/` Sphinx project): add a dedicated section
+  explaining how to enable and configure the LLM OPFOR commander. Must include
+  explicit, step-by-step instructions for connecting each major LLM client:
+  - **Claude** (claude.ai web): add MCP connector pointing to `http://localhost:<port>/mcp`
+  - **ChatGPT / OpenAI**: custom GPT or Actions connector via REST base URL
+  - **CLI agents** (curl, local scripts): REST base URL + Bearer token example
+  - **Local models** (Ollama, LM Studio, etc.): same REST path, no auth if localhost
+  Instructions should cover: where to find the server port, how to get the API key
+  from settings, and what to paste as the server URL. Assume a non-technical user.
 
 ## Minimal server wiring (current FastMCP API, verified 2026-06)
 
