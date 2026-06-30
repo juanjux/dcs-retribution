@@ -38,7 +38,10 @@ tool/resource of the same name.
 4. Decide intent (concentrate on 1–3 objectives), then apply (see Plan below):
    create packages, set stances, buy/transfer, move ships / adjust waypoints. Keep
    package **TOTs within `Desired mission duration`** (from `/settings`) — actions
-   after that window are wasted (the player will have ended the mission). See howtoplay.
+   after that window are wasted (the player will have ended the mission). **Respect
+   `threats`**: never route a strike or transit through a long-range SAM umbrella —
+   land *or* naval (an SM-6 frigate reaches 80+ nm) — without suppressing it
+   (DEAD/ANTISHIP) or routing around it. See howtoplay.
 5. `PUT /stored_context` — save your strategy/lessons for next turn.
 6. `opfor_planning_done` (= `set_ai_active(false)`) → robot idle, Take Off unblocked;
    the human can review red's plan and flag any mistake in chat.
@@ -48,7 +51,9 @@ tool/resource of the same name.
 **Meta / read**
 - `GET /howtoplay` · `GET /settings` · `GET /human_notes`
 - `GET /capabilities` — what this install supports (check first; avoids unsupported ops)
-- `GET /turn_context?side=red` — campaign, map, red forces, detected blue (fog-aware) + computed hints (affordability, force ratio, threats)
+- `GET /turn_context?side=red` — campaign, map, red forces, detected blue (fog-aware),
+  `targets`, and **`threats`** — blue's air-defense umbrellas ranked by reach (incl.
+  SAM-armed ships like SM-6 frigates). **Read `threats` every turn and respect them.**
 - `GET /prev_turns?n=1` — after-action of prior turns (losses, who-killed-what, captures)
 - `GET /packages?side=red` — current packages/flights (each with `id` + pilots + waypoints)
 - `GET /waypoints/{flight_id}` — a flight's waypoints

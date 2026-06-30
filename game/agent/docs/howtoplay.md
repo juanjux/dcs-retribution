@@ -144,6 +144,13 @@ bypass the automatic threat-avoidance.
 4. **Defend what matters.** BARCAP over vulnerable bases/fleets; sensible front-line
    stances; keep your own IADS alive.
 5. **Build the packages** to achieve your objectives, properly composed (see §4).
+   **Before you commit a strike, look at `threats` and think about its path.** A package
+   routed into — or even transiting near — a live long-range SAM umbrella, **land or
+   naval** (an SM-6 frigate reaches 80+ nm), will be turned back or slaughtered.
+   Suppress the threat first (DEAD a SAM, ANTISHIP a SAM-armed ship) or route around it,
+   and use `evaluate_package` to confirm the strike is feasible and on time before you
+   create it. Respecting `threats` is not optional — it is the difference between a real
+   operation and a parade of shoot-downs.
 6. **Time your strikes to the mission window.** Read **`Desired mission duration`**
    (`desired_player_mission_duration`) from `/settings` — it's the best estimate of
    when the player will end the DCS mission (after they've flown their tasking and
@@ -217,8 +224,10 @@ icon in the toolbar shows you're busy and Take Off is blocked until you're done.
    so it's how they understand and trust your plan (and how you grade yourself next
    turn).
 5. **Check your plan before finishing**: run `validate_plan` and fix the warnings
-   (TOTs outside the mission window, strikers into live SAMs without DEAD, pilotless
-   flights, over-budget, undefended vulnerable base, …). Cheap insurance.
+   (TOTs outside the mission window, strikers into a live SAM **or naval-SAM umbrella**
+   without DEAD/ANTISHIP, pilotless flights, over-budget, undefended vulnerable base, …).
+   Re-read `threats` and confirm no package flies through a top threat unsuppressed.
+   Cheap insurance.
 6. **Save** your strategy notes to the scratchpad.
 7. **Signal done** (`set_ai_active(false)`) — the robot goes idle and Take Off is
    unblocked. The player can review red's plan (the "View red's plan" button lights
