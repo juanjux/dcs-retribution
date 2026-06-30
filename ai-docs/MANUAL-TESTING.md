@@ -1,9 +1,12 @@
 # OPFOR-AI — manual test checklist
 
-Everything below was built on branch `experiment-mcp` and verified **headless only**
-(loading saves via the venv / FastAPI `TestClient`). **Nothing is validated in the
-running game yet, and the dist has NOT been rebuilt** (retribution_main.exe was open).
-Work top to bottom. `chinos2` is backed up to `chinos2.retribution.20260630.bak`.
+The OPFOR-AI rework is now **merged to `master` and the dist is rebuilt** (full client
++ python build). Copy-paste was removed — the feature is **REST + MCP only** (those are
+interactive; the LLM can query and now dry-run a package's TOT). Everything was verified
+**headless** (saves via the venv / FastAPI `TestClient`); the in-game Qt + runtime items
+below still need a real session. Work top to bottom. `chinos2` is backed up to
+`chinos2.retribution.20260630.bak`. Note: saves made with the now-removed EW jamming
+feature (e.g. marianas2/siria2) no longer load — that's the EW removal, not this.
 
 Legend: 🔴 = could break things / pay attention · ⚙️ = setup · ✅ = expected result.
 
@@ -11,7 +14,8 @@ Legend: 🔴 = could break things / pay attention · ⚙️ = setup · ✅ = exp
 
 ## 0. Build / run the new code  ⚙️🔴
 
-The new code is on `experiment-mcp` only; your current dist does **not** have it.
+The rework is merged to `master` and the **dist is already rebuilt** (full client +
+python) — just launch the new `dist_full_fork` exe (or run from source).
 
 - [X] **Close retribution_main.exe** before rebuilding.
 - [X] Make sure you're on the branch with the work: `git -C "<repo>" status` → `experiment-mcp`.
@@ -51,6 +55,7 @@ The new code is on `experiment-mcp` only; your current dist does **not** have it
 - [ ] `GET /retribution-ai/start` → ✅ markdown briefing; **`{BASE_URL}` is filled in** (no literal `{BASE_URL}`), no `<!-- -->` header.
 - [ ] `GET /retribution-ai/howtoplay` → ✅ briefing with **your red faction name/country filled in** (no `{RED_FACTION}`).
 - [ ] `GET /retribution-ai/turn_context?side=red` → ✅ `situation`, `economy` (budget/income), `control_points` (with lat/lng + owner), `air_wing` (squadrons with ids), **`targets`** (SAMs/ships/buildings with ids + `threat_nm`). Numbers look sane vs the in-game map.
+- [ ] 🆕 In `turn_context`, spot-check the new structured fields: a red `control_point` shows `parking_free`/`parking_total` (room to buy aircraft), `can_recruit_ground` (where `buy/ground` works), `links` (adjacent base ids) and `ground` (armor on hand); ships in `targets` share a `group_id` (their naval group) and a hit target shows `damage`. (Fields are omitted when empty/zero.)
 - [ ] `GET /retribution-ai/settings` → ✅ aggressiveness %, map visibility, mission-window minutes, income multipliers.
 - [ ] `GET /retribution-ai/packages?side=red` → ✅ current red packages (likely **empty** if the feature is ON and you haven't planned — see §8).
 - [ ] `GET /retribution-ai/prev_turns?n=3` → ✅ force totals (blue/red aircraft + vehicles) for recent turns.
@@ -63,11 +68,14 @@ The new code is on `experiment-mcp` only; your current dist does **not** have it
   `{"side":"red","packages":[{"target_id":"<a target id from §4>","flights":[{"task":"DEAD","count":2}],"rationale":"test DEAD"}]}`
   → ✅ `[{"ok":true,...,"package":{...}}]`.
 - [ ] `GET /packages?side=red` → ✅ the new package is there. On the **map**, red now has a package aimed at that target.
+- [ ] 🆕 `POST /retribution-ai/packages/evaluate` `{"side":"red","package":{"target_id":"<a target id>","flights":[{"task":"DEAD","count":2}]}}` → ✅ a **dry run**: `ok:true` with `package` (its `tot`), `tot_minutes_into_mission`, `mission_window_min`, `within_window`. 🔴 It must **NOT** create a package — `GET /packages` is unchanged and squadron `untasked` counts are unchanged afterwards. A far target should report `within_window:false`; an unfulfillable one `ok:false`.
 - [ ] 🔴 **Crewing:** open the red flight — ✅ it has pilots (no empty seats). At Take Off there should be **no "missing pilots"** block for red.
 - [ ] Try a bad target (carrier for OCA, or a nonsense id) → ✅ `{"ok":false,"error":"..."}` (graceful, no crash).
 - [ ] `POST /retribution-ai/buy/aircraft` `{"side":"red","squadron_id":"<id>","quantity":2}` → ✅ ok; **budget drops**, `pending_deliveries` +2 (check `turn_context` again or the Air Wing window).
 - [ ] `POST /retribution-ai/sell/aircraft` `{"side":"red","squadron_id":"<id of a squadron with untasked aircraft>","quantity":1}` → ✅ ok; budget rises.
 - [ ] `POST /retribution-ai/stances` `{"side":"red","friendly_cp_id":"<red cp>","enemy_cp_id":"<blue cp>","stance":"breakthrough"}` → ✅ ok (only meaningful where a front line connects them).
+- [ ] 🆕 `POST /retribution-ai/squadron/relocate` `{"side":"red","squadron_id":"<id>","dest_cp_id":"<another red cp>"}` → ✅ ok; the squadron shows a relocation order (arrives over turns). Relocating to a non-friendly base → `ok:false`.
+- [ ] 🆕 `POST /retribution-ai/ground/transfer` `{"side":"red","origin_cp_id":"<red cp with `ground`>","dest_cp_id":"<connected red cp>","unit_name":"<a unit from that base's `ground`>","quantity":1}` → ✅ ok by land; the unit count at the origin drops. 🔴 An unreachable destination (e.g. a carrier, or no land route) → `ok:false` and the origin **keeps** its units (no leak). Add `"by_air":true` to airlift.
 - [ ] `DELETE /retribution-ai/packages/0?side=red` → ✅ that package is gone (map updates).
 - [ ] `DELETE /retribution-ai/packages?side=red` → ✅ all red packages cleared.
 
@@ -100,7 +108,7 @@ The new code is on `experiment-mcp` only; your current dist does **not** have it
 
 ### Claude Code (localhost, no tunnel)
 - [ ] `claude mcp add --transport http "http://[::1]:<PORT>/mcp?token=<KEY>"`.
-- [ ] In Claude Code, ✅ the OPFOR tools appear (`turn_context`, `create_packages`, `buy_aircraft`, `set_ai_active`, `stored_context`, …).
+- [ ] In Claude Code, ✅ the OPFOR tools appear (`turn_context`, `create_packages`, `evaluate_package`, `buy_aircraft`, `relocate_squadron`, `transfer_ground`, `set_ai_active`, `stored_context`, …).
 - [ ] Ask it to read `turn_context` and create a package → ✅ same effect as the REST writes.
 
 ### claude.ai web (needs a tunnel)  🔴
