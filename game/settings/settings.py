@@ -199,11 +199,10 @@ class Settings:
         section=OPFOR_AI_SECTION,
         default=False,
         detail=(
-            "Expose the live game over a local API so an external LLM (e.g. Claude) "
-            "plans the enemy (red) turns instead of the scripted commander. With it "
-            "off — or if the AI does not play — the scripted commander still runs as "
-            "a fallback, so a turn is never empty. Connect your LLM to the URL "
-            "printed in the log: .../retribution-ai/start?token=<key>."
+            "Expose the live game over a local API so an external LLM (e.g. ChatGPT, "
+            "Claude, et cetera) plans the enemy turns instead of the scripted "
+            "commander. Check the toolbar OPFOR AI button for more info when enabling "
+            "this."
         ),
     )
     opfor_ai_copy_paste_mode: bool = boolean_option(
@@ -215,8 +214,7 @@ class Settings:
             "Plan red via copy-paste instead of a live API: each turn you copy a "
             "compact turn blob to any LLM (even a free chat account) and paste its "
             "reply back. Open the copy-paste window from the OPFOR AI button in the "
-            "top panel. Like API mode, the scripted commander still runs as a "
-            "fallback if you don't plan red."
+            "top panel."
         ),
     )
     opfor_ai_copy_paste_rot13: bool = boolean_option(
@@ -225,12 +223,8 @@ class Settings:
         section=OPFOR_AI_SECTION,
         default=True,
         detail=(
-            "Scramble the turn blob with handle-safe ROT13 — the words are rotated "
-            "but the handles (B#/S#/T#/G#) and numbers stay readable — so you can't "
-            "read red's plan at a glance, while even small/free LLMs decode it without "
-            "garbling the handles (plain ROT13 made weak models do that; base64 made "
-            "them give up). Uncheck to send plain text instead (you can then read the "
-            "blob). Note: this is obfuscation, not encryption."
+            "Do a soft obfuscation of the copy-pasted blobs so it's not obvious on a "
+            "first glance what OPFOR is planning."
         ),
     )
     external_views_allowed: bool = boolean_option(

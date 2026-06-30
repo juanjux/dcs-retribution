@@ -22,7 +22,25 @@ import codecs
 import re
 
 from game.ato.flighttype import FlightType
+from game.utils import meters
 from game.agent import service, views
+
+_COMPASS = ("N", "NE", "E", "SE", "S", "SW", "W", "NW")
+
+
+def _nm(a, b) -> int:
+    """Rounded nautical-mile distance between two world positions."""
+    return round(meters(a.distance_to_point(b)).nautical_miles)
+
+
+def _bearing(frm, to) -> str:
+    """8-point compass direction from one position to another."""
+    try:
+        h = frm.heading_between_point(to) % 360
+        return _COMPASS[int((h + 22.5) % 360 // 45)]
+    except Exception:
+        return "?"
+
 
 # Tasks worth surfacing per squadron in the flyable summary (a pkg flight task).
 _ROLE_TASKS = (
@@ -91,6 +109,116 @@ def _build_handles(game, side: str):
     return bases, squadrons, targets, ground
 
 
+def _operational_picture(game, side, bases, targets) -> list[str]:
+    """Engine-generated strategic geography: where the enemy fleet is, which long-range
+    SAMs gate ingress, and the distances from your launch bases to the key objectives —
+    so the LLM can do OPERATIONAL planning (which base hits what) without raw coords."""
+    player = views.player_for_side(side)
+    cps = list(game.theater.controlpoints)
+    handle_of_cp = {str(cp.id): h for h, cp in bases.items()}
+
+    pos_by_id = {str(cp.id): cp.position for cp in cps}
+    for cp in cps:
+        for tgo in cp.ground_objects:
+            pos_by_id[str(tgo.id)] = tgo.position
+    for fr in game.theater.conflicts():
+        pos_by_id[str(fr.id)] = fr.position
+
+    red_bases = [cp for cp in cps if cp.captured == player]
+    enemy_bases = [cp for cp in cps if cp.captured != player and not cp.is_fleet]
+    enemy_fleets = [cp for cp in cps if cp.is_fleet and cp.captured != player]
+    launch = [
+        cp
+        for cp in red_bases
+        if any(cp.squadrons) or cp.is_fleet or cp.cptype.name == "AIRBASE"
+    ]
+
+    def near_red(pos):
+        return min(
+            red_bases, key=lambda b: pos.distance_to_point(b.position), default=None
+        )
+
+    out: list[str] = [
+        "",
+        "OPERATIONAL PICTURE (the map the engine sees — plan around it)",
+    ]
+    terrain = getattr(getattr(game.theater, "terrain", None), "name", None) or type(
+        game.theater
+    ).__name__.replace("Theater", "")
+    start = game.conditions.start_time
+    out.append(
+        f"Theater: {terrain}. Turn starts {start:%H:%M} local "
+        f"({views.build_situation(game).time_of_day})."
+    )
+
+    if enemy_fleets:
+        out.append("Enemy naval groups (mobile — strike or avoid):")
+        for cp in enemy_fleets:
+            b = near_red(cp.position)
+            where = (
+                f" — {_nm(cp.position, b.position)}nm {_bearing(b.position, cp.position)} "
+                f"of {handle_of_cp[str(b.id)]} {b.name}"
+                if b
+                else ""
+            )
+            out.append(f"  {handle_of_cp[str(cp.id)]} {cp.name}{where}")
+
+    sams = sorted(
+        (
+            (h, t)
+            for h, t in targets.items()
+            if t.kind == "sam" and (t.threat_nm or 0) >= 15
+        ),
+        key=lambda x: -(x[1].threat_nm or 0),
+    )
+    if sams:
+        out.append("Long-range SAM rings (route around, or DEAD first):")
+        for h, t in sams[:8]:
+            p = pos_by_id.get(t.id)
+            b = near_red(p) if p else None
+            where = (
+                f" — {_nm(p, b.position)}nm {_bearing(b.position, p)} of {handle_of_cp[str(b.id)]}"
+                if (p and b)
+                else ""
+            )
+            out.append(f"  {h} {t.name} ({t.threat_nm}nm){where}")
+
+    fronts = [(h, t) for h, t in targets.items() if t.kind == "front"]
+    ships = [(h, t) for h, t in targets.items() if t.kind == "ship"]
+    if launch:
+        out.append("Distances from your launch bases (nm to key objectives):")
+        for cp in launch:
+            parts: list[str] = []
+            eb = (
+                min(
+                    enemy_bases, key=lambda b: cp.position.distance_to_point(b.position)
+                )
+                if enemy_bases
+                else None
+            )
+            if eb:
+                parts.append(
+                    f"enemy base {handle_of_cp[str(eb.id)]} {_nm(cp.position, eb.position)}"
+                )
+            for h, t in fronts[:4]:
+                p = pos_by_id.get(t.id)
+                if p:
+                    parts.append(f"front {h} {_nm(cp.position, p)}")
+            for cpf in enemy_fleets[:3]:
+                parts.append(
+                    f"{handle_of_cp[str(cpf.id)]} {_nm(cp.position, cpf.position)}"
+                )
+            for h, t in ships[:2]:
+                p = pos_by_id.get(t.id)
+                if p:
+                    parts.append(f"{h} {_nm(cp.position, p)}")
+            if parts:
+                out.append(
+                    f"  {handle_of_cp[str(cp.id)]} {cp.name}: " + " | ".join(parts)
+                )
+    return out
+
+
 def _plain_outgoing(side: str) -> str:
     """The readable compact turn snapshot (before optional ROT13)."""
     game = service._require_game()
@@ -126,12 +254,18 @@ def _plain_outgoing(side: str) -> str:
     except Exception:
         pass
 
-    out += [
+    out.append(
         f"SETTINGS: aggressiveness {st.opfor_aggressiveness_pct}% (higher = take more "
         f"risk vs enemy SAMs) | mission window {st.desired_player_mission_duration_min} "
-        f"min (aim every package's TOT within this) | map visibility "
-        f"{st.map_coalition_visibility} | income multiplier you/enemy "
-        f"{st.player_income_multiplier}/{st.enemy_income_multiplier}.",
+        f"min (every package's time-over-target is auto-set within this window of the "
+        f"turn start) | map visibility {st.map_coalition_visibility} | income multiplier "
+        f"you/enemy {st.player_income_multiplier}/{st.enemy_income_multiplier}."
+    )
+    try:
+        out += _operational_picture(game, side, bases, targets)
+    except Exception:
+        pass
+    out += [
         "",
         "GRAMMAR — reply with these commands, ONE PER LINE:",
         "  pkg <T#|enemyB#> <TASK[:count]> [<TASK[:count]> ...]   buy <S#> <n>   "
