@@ -5,12 +5,14 @@ it cannot call any read/action endpoint — so the briefing is a COMPLETE,
 self-contained reference (blob format + every action) and the blob carries
 everything the LLM needs (incl. the settings and the buyable ground units).
 
-The turn data is ROT13-obfuscated (opfor_ai_copy_paste_rot13, on by default) so the
-player can't read red's state/plan at a glance — a capable LLM decodes ROT13 in its
-head, unlike base64 which made every model forfeit the turn. Untick the setting for
-plain text. The reply is accepted plain, ROT13, or (legacy) base64. Objects use short
-handles (B# base, S# squadron, T# target, G# buyable ground unit), deterministic
-within a turn.
+The turn data is obfuscated (opfor_ai_copy_paste_rot13, on by default) with handle-safe
+ROT13 — words are ROT13'd but the handles and numbers stay plain — so the player can't
+read red's state/plan at a glance while an LLM decodes it in its head WITHOUT corrupting
+the load-bearing handles (plain ROT13 made weak models swap the T#/G# namespaces; base64
+made every model forfeit the turn). Untick the setting for plain text. The reply is
+accepted plain, handle-safe ROT13, full ROT13, or (legacy) base64. Objects use short
+handles (B# base, S# squadron, T# target, G# buyable ground unit), deterministic within
+a turn.
 """
 
 from __future__ import annotations
@@ -44,6 +46,20 @@ _ROLE_TASKS = (
 def _rot13(text: str) -> str:
     """ROT13 is its own inverse — used for both encode and decode."""
     return codecs.encode(text, "rot_13")
+
+
+# Handle tokens (B5, S13, T229, G2) — kept verbatim so weak models can't corrupt them.
+_HANDLE_RE = re.compile(r"(\b[BSTG]\d+\b)")
+
+
+def _handle_safe_rot13(text: str) -> str:
+    """ROT13 only the words, leaving handle tokens and digits in plain — even
+    haiku-class models then never garble the load-bearing B#/S#/T#/G# handles
+    (plain ROT13 made them swap the T#/G# namespaces). Its own inverse."""
+    return "".join(
+        part if _HANDLE_RE.fullmatch(part) else _rot13(part)
+        for part in _HANDLE_RE.split(text)
+    )
 
 
 def _capable_tasks(sq) -> list[str]:
@@ -172,7 +188,7 @@ def _plain_outgoing(side: str) -> str:
         price = getattr(sq.aircraft, "price", "?")
         note = ""
         if sq.location.captured != player:
-            note = " | GROUNDED: base is enemy-held, can't fly"
+            note = " | GROUNDED: base is enemy-held — can't fly or buy into"
         out.append(
             f"{h} | {sq.aircraft.display_name} | {bh} {sq.location.name} | "
             f"{sq.owned_aircraft} | {sq.untasked_aircraft} | "
@@ -215,26 +231,28 @@ def _plain_outgoing(side: str) -> str:
 
 
 def outgoing_blob(side: str = "red") -> str:
-    """The turn snapshot, ROT13-obfuscated when enabled (a capable LLM decodes it in
-    its head) or plain when not — base64 is gone: hand-decoding it made LLMs forfeit."""
+    """The turn snapshot, handle-safe-ROT13-obfuscated when enabled (a chat LLM decodes
+    it in its head, handles intact) or plain when not — base64 is gone: hand-decoding
+    it made every LLM forfeit the turn."""
     plain = _plain_outgoing(side)
     game = service._require_game()
     if getattr(game.settings, "opfor_ai_copy_paste_rot13", True):
-        return _rot13(plain)
+        return _handle_safe_rot13(plain)
     return plain
 
 
 def _maybe_decode(text: str) -> str:
-    """Accept the reply as plain, ROT13, or (legacy) base64 — pick whichever yields
-    our command grammar, else treat it as plain."""
+    """Accept the reply as plain, handle-safe ROT13, full ROT13, or (legacy) base64 —
+    pick whichever yields our command grammar, else treat it as plain."""
     if _looks_like_commands(text):
         return text
-    rotated = _rot13(text)
-    if _looks_like_commands(rotated):
-        return rotated
-    candidate = "".join(text.split())  # base64 ignores whitespace; commands don't
+    for decoder in (_handle_safe_rot13, _rot13):
+        candidate = decoder(text)
+        if _looks_like_commands(candidate):
+            return candidate
+    stripped = "".join(text.split())  # base64 ignores whitespace; commands don't
     try:
-        decoded = base64.b64decode(candidate, validate=True).decode("utf-8")
+        decoded = base64.b64decode(stripped, validate=True).decode("utf-8")
         if _looks_like_commands(decoded):
             return decoded
     except Exception:
@@ -329,16 +347,21 @@ def briefing(side: str = "red") -> str:
     if rot13:
         loop = """\
 THE COPY-PASTE LOOP (important — you have NO other source of information)
-Each turn the player pastes you a TURN BLOB that is ROT13-encoded (every LETTER is
-shifted 13 places; digits, '|' and numbers are unchanged, so handles like B8, T3,
-S14, G2 keep their digits). Decode it in your head to read the data described below.
-Plan, then REPLY in ROT13 too (shift your letters 13 places) so the player can't read
-red's plan; they paste it back. If you can't ROT13 reliably, reply in PLAIN command
-lines — it still works. If even reading the blob is too hard, tell the player to
-UNTICK "Obfuscate the copy-paste blob with ROT13" in the OPFOR AI settings to switch
-to plain text. You CANNOT ask for more data: everything is in the blob + this briefing."""
-        reply_note = "one per line; then ROT13-encode the whole reply (or send plain)"
-        example_note = "plain — ROT13-encode it before sending, or send as-is"
+Each turn the player pastes you a TURN BLOB that is ROT13-encoded WORD BY WORD: every
+letter is shifted 13 places, BUT the handle tokens (B8, S14, T3, G2 — a letter then
+digits) and all numbers are left PLAIN, already readable. So you only decode the words
+(shift letters back 13) to read the data below; the handles you'll use in commands are
+already correct as written — never transform a handle. Plan, then REPLY the same way
+(ROT13 your words, keep handles/numbers plain) so the player can't read red's plan;
+they paste it back. PLAIN command lines also work if that's easier. If reading the blob
+is too hard, tell the player to UNTICK "Obfuscate the copy-paste blob" in the OPFOR AI
+settings for plain text. You CANNOT ask for more data: it's all in the blob + briefing."""
+        reply_note = (
+            "one per line; keep handles plain, ROT13 the words (or send all plain)"
+        )
+        example_note = (
+            "handles/numbers stay plain; ROT13 the words before sending, or send as-is"
+        )
     else:
         loop = """\
 THE COPY-PASTE LOOP (important — you have NO other source of information)

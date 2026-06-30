@@ -201,6 +201,11 @@ def buy_aircraft(
 
     try:
         squadron = _resolve_squadron(game, side, squadron_id)
+        if squadron.location.captured != views.player_for_side(side):
+            raise ValueError(
+                f"can't reinforce {squadron} — its base {squadron.location.name} is "
+                f"enemy-held (you can only buy into squadrons at your own bases)"
+            )
         AircraftPurchaseAdapter(squadron.location).buy(squadron, quantity)
         budget = round(views.coalition_for_side(game, side).budget)
         return schemas.OpResult(

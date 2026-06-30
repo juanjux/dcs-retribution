@@ -63,9 +63,10 @@ class CopyPasteAiDialog(QDialog):
                 "it to your LLM as the first message.<br>"
                 "<b>Each turn:</b> 1) <b>Copy turn blob</b> → paste it to your LLM. "
                 "2) Paste its reply below → <b>Apply reply</b>.<br>"
-                "The blob is ROT13-scrambled (so you can't read red's plan); a capable "
-                "LLM decodes it and replies the same way. If your LLM struggles, untick "
-                "the ROT13 option in OPFOR AI settings to send plain text instead."
+                "The blob is scrambled (handle-safe ROT13: words rotated, handles/numbers "
+                "kept) so you can't read red's plan; the LLM decodes it and replies the "
+                "same way. To send plain text instead, untick the obfuscate option in "
+                "OPFOR AI settings."
             )
         )
 
