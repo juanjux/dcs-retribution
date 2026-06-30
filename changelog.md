@@ -4,6 +4,7 @@
 * **[Mod]** Add support for the F-15EX Eagle II mod (by Spino).
 * **[Mod]** Add support for the F-15C EG Golden Eagle mod (by Spino).
 * **[Mod]** Add support for the Eurofighter Typhoon mod (by Lechuzas Negras).
+* **[Options]** "Custom cloud preset pack" setting (replaces "Use Bandit's clouds") makes a community cloud-preset weather mod's presets available to the mission generator — choose Bandit's Cloud Presets, Weather 2.0, or ATMOS-X to match the pack you have installed.
 * **[Map]** Unified, dark, grouped/collapsible map-layers panel with presets, replacing the scattered layer toggles (adapted from the 414Ret fork; the fog-of-war row is omitted and the emitter-highlight and destroyed-object toggles keep their existing behaviour).
 * **[AI]** AI AWACS and tanker support orbits are anchored on the front line and held deep behind the FLOT instead of drifting forward (adapted from the 414Ret fork).
 * **[AI]** Optimistic DEAD "site cleared" assumptions are now gated on whether the flight can actually reach the target, so the planner stops clearing SAMs it can't prosecute (adapted from the 414Ret fork).
@@ -46,8 +47,14 @@
 * **[Mission Generator]** New campaign setting "Default laser code for Player flights" controls whether newly-created player flights are assigned a unique allocated TGP/weapon laser code (the new default, matching existing behavior) or stay on 1688. When a code is allocated it is applied to both the TGP/kneeboard code and the weapon code by default, so LGBs home on the player's own code without extra clicks; both remain independently overridable in the payload tab.
 * **[Engine]** Support for DCS 2.9.27 including F-100D and F-14A (Export).
 * **[Options]** Add new option to fast forward until player is at the IP.
+* **[Modding]** Update to CJS Super Hornet Mod to v2.4.5.260501.RC1
+* **[Modding]** Update Community A4EC Mod to 2.3.0 (May 2025)
+
 
 ## Fixes
+* **[Mission Planning]** Carrier/LHA targets now offer SEAD in the flight-task list and no longer list SEAD Escort twice (their escorts are SAM platforms, so they can be suppressed directly like any other naval group).
+* **[App]** Retribution no longer stays alive in the background after its window is closed: the API server's graceful shutdown is now bounded (uvicorn otherwise waited forever on the long-lived event-stream websocket and the join hung).
+* **[App]** Relaunching the executable while it is already running no longer spawns orphaned, windowless duplicate processes; a second instance detects the first via an OS file lock and exits immediately.
 * **[Mission]** Reliably auto-detect end of mission, even when DCS wrote the final state.json before the wait dialog started watching
 * **[Mission]** End-of-mission detection now finds DCS' state.json wherever the export hook actually wrote it (install dir, RETRIBUTION_EXPORT_DIR, TEMP, or the DCS Saved Games Missions folder) instead of only the working directory, polls more responsively, and logs the watched paths — fixing missions frequently not being detected as finished
 * **[Mission]** Fix a crash when choosing "Fix TOTs automatically" in the past-start-times dialog at Take Off: the automatic fix called `TotEstimator.earliest_tot()` without the required current-time argument and raised a `TypeError`.
@@ -75,6 +82,8 @@
 * **[Performance]** Improved robustness w.r.t. state.json handling to avoid corruption and thus save loss.
 * **[Performance]** Faster post-mission turn processing
 * **[Engine]** Fixed a bug where squadrons could transfer to enemy owned control points
+* **[Mission Generation]** Relocate ground units that spawn on inland water (ponds, rivers, lakes) to the nearest land at mission start, fixing armor and SAM sites spawning underwater (#59).
+* **[Mission Generation]** Relocate ships that spawn on land (e.g. carrier escorts when the carrier hugs the shore) to the nearest deep water at mission start (#59).
 
 # Retribution v1.5.0
 
