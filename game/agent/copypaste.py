@@ -91,6 +91,21 @@ def _capable_tasks(sq) -> list[str]:
     return out
 
 
+def _parking(cp):
+    """(used, total) aircraft-parking at a base, or None if it has no slots. Lets the
+    LLM see where it can station/buy aircraft (a full base has no room)."""
+    from game.theater import ParkingType
+
+    try:
+        allp = ParkingType(fixed_wing=True, fixed_wing_stol=True, rotary_wing=True)
+        total = cp.total_aircraft_parking(allp)
+        if total <= 0:
+            return None
+        return total - cp.unclaimed_parking(allp), total
+    except Exception:
+        return None
+
+
 def _looks_like_commands(text: str) -> bool:
     return bool(re.search(r"(?im)^\s*(pkg|buyg|buy|sell|stance|note|clear)\b", text))
 
@@ -328,6 +343,25 @@ def _plain_outgoing(side: str) -> str:
             f"{sq.owned_aircraft} | {sq.untasked_aircraft} | "
             f"{sq.number_of_available_pilots} | buy {price}{note}"
         )
+
+    park_lines = []
+    for h, cp in bases.items():
+        if cp.captured != player:
+            continue
+        p = _parking(cp)
+        if p:
+            used, total = p
+            park_lines.append(
+                f"{h} {cp.name}: {used}/{total} used, {total - used} free"
+            )
+    if park_lines:
+        out += [
+            "",
+            "YOUR PARKING (aircraft slots per base — you can't buy/station beyond the "
+            "free slots; a full base needs aircraft moved or sold first)",
+        ]
+        out += park_lines
+
     out += [
         "",
         "TARGETS — enemy objects you can attack (handle | name | kind | task | info). "
@@ -599,6 +633,9 @@ THE TURN BLOB FORMAT
   SQUADRONS:   "S# | aircraft | base | owned | untasked | pilots | buy-cost | note".
                owned 0 = no airframes (buy into it; arrives NEXT turn). A squadron
                marked GROUNDED sits at an enemy-held base and CANNOT fly this turn.
+  YOUR PARKING: used/total aircraft slots and FREE slots per base — you can only buy
+               or station aircraft where there's room; a full base must free a slot
+               first (sell, or move a squadron out with `move`).
   TARGETS:     "T# | name | kind | task | info". sam->DEAD, ship->ANTISHIP,
                building->STRIKE, front->CAS. A SAM with "threat <=2nm (inert)" is
                harmless at altitude — skip SEAD; only >=4nm radar SAMs need DEAD. A
