@@ -110,6 +110,12 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   so fleets actually fight back (radars/SAM/CIWS/AAA) instead of sitting passive
   with radars off when the performance "red alert state" toggle is off.
   ([#47](https://github.com/juanjux/dcs-retribution/pull/47))
+- **Custom cloud preset packs** — a campaign setting that makes a community
+  cloud-preset weather mod's presets available to the mission generator: choose
+  Bandit's Cloud Presets, Weather 2.0 or ATMOS-X to match the pack you have
+  installed in DCS (only one active at a time, since the packs reuse the same
+  preset keys for different clouds).
+  ([#53](https://github.com/juanjux/dcs-retribution/pull/53))
 
 ### Modding & data
 - *(WIP on `master`, not yet PR'd)* **F-15EX, F-15C EG (Golden Eagle) and
