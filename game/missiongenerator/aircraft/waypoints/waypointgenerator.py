@@ -29,7 +29,6 @@ from .casingress import CasIngressBuilder
 from .deadingress import DeadIngressBuilder
 from .default import DefaultWaypointBuilder
 from .holdpoint import HoldPointBuilder
-from .jamminghold import JammingHoldBuilder
 from .joinpoint import JoinPointBuilder
 from .landingpoint import LandingPointBuilder
 from .landingzone import LandingZoneBuilder
@@ -79,7 +78,6 @@ class WaypointGenerator:
                 if self.flight.flight_type in [
                     FlightType.ESCORT,
                     FlightType.SEAD_ESCORT,
-                    FlightType.EWAR,
                 ]:
                     is_join = point.waypoint_type == FlightWaypointType.JOIN
                     join_passed = self.flight.state.has_passed_waypoint(point)
@@ -135,14 +133,9 @@ class WaypointGenerator:
         # late.
         self._estimate_min_fuel_for(waypoints)
 
-        # The kneeboard (and the recon kneeboard pages) must list the same
-        # waypoints the player sees in the cockpit. For in-air starts, DCS spawns
-        # the flight at its current waypoint (group point 0) and omits the
-        # already-passed takeoff/join/ingress waypoints, which shifts the in-game
-        # waypoint numbering. Returning the full plan from index 0 would leave the
-        # kneeboard numbered/labelled out of sync with the actual flight plan (e.g.
-        # kneeboard "1: Hold" while the cockpit shows "1: Escort Hold"). Slice from
-        # the spawn waypoint onward so the kneeboard matches the generated mission.
+        # In-air starts spawn at the current waypoint, so DCS omits the
+        # already-passed waypoints; slice from the spawn waypoint so the kneeboard
+        # numbering matches the cockpit.
         kneeboard_waypoints = waypoints
         if isinstance(self.flight.state, InFlight):
             kneeboard_waypoints = waypoints[self.flight.state.waypoint_index :]
@@ -236,7 +229,6 @@ class WaypointGenerator:
             FlightWaypointType.INGRESS_SEAD_SWEEP: SeadSweepIngressBuilder,
             FlightWaypointType.INGRESS_STRIKE: StrikeIngressBuilder,
             FlightWaypointType.INGRESS_SWEEP: SweepIngressBuilder,
-            FlightWaypointType.JAMMING_HOLD: JammingHoldBuilder,
             FlightWaypointType.JOIN: JoinPointBuilder,
             FlightWaypointType.LANDING_POINT: LandingPointBuilder,
             FlightWaypointType.LOITER: HoldPointBuilder,

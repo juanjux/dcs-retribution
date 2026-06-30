@@ -318,9 +318,6 @@ class Loadout:
         loadout_names[FlightType.SEAD_SWEEP].extend(
             loadout_names[FlightType.SEAD_ESCORT]
         )
-        # An EW jammer flight has no dedicated payload, so fall back to the SEAD
-        # escort loadout (which itself falls back to SEAD).
-        loadout_names[FlightType.EWAR].extend(loadout_names[FlightType.SEAD_ESCORT])
         # Sweep and escort can fall back to TARCAP.
         loadout_names[FlightType.ESCORT].extend(loadout_names[FlightType.TARCAP])
         loadout_names[FlightType.SWEEP].extend(loadout_names[FlightType.TARCAP])

@@ -39,7 +39,7 @@
 -- CONFIGURABLE JAMMING MULTIPLIERS
 ewrj_options = {
     -- Offensive jamming vs SAM radars (in check())
-    ["OFFENSIVE_POWER"] = 0.8,     -- 1.0 = stock, 1.4 = realistic-strong, 0.8 = degraded (intermittent suppression)
+    ["OFFENSIVE_POWER"] = 1.6,     -- 1.0 = stock, 1.4 = realistic-strong
     -- Defensive jamming vs incoming missiles (in EWJD)
     ["DEFENSIVE_POWER"] = 1.25,  -- 1.0 = stock, 1.25 = mild buff
     -- NEW: < 1.0 = missile targets get jammed LESS often
@@ -51,49 +51,8 @@ ewrj_options = {
     -- Enable Defensive Debug
     ["DEBUG_DEFENSIVE"] = false,
     -- Enable Advanced Debug (Radar Lists)
-    ["DEBUG_ADVANCED"] = false,
-    -- Show "counter measures pod ON/OFF" messages on screen
-    ["SHOW_POD_MESSAGES"] = false,
-    -- Audience for those messages: "Flight" / "Package" / "All OWNFOR"
-    ["MESSAGE_SCOPE"] = "Package",
-    -- Also announce OPFOR (enemy) jamming to the opposite coalition
-    ["SHOW_OPFOR_MESSAGES"] = false
+    ["DEBUG_ADVANCED"] = false
 }
-
--- Resolve the list of group ids in a jammer's package (for the "Package"
--- audience). dcsRetribution.ewrj_package_groups is injected by DCS Retribution;
--- fall back to just the jammer's own group if it is absent.
-function ewPackageGroups(jammer)
-    local u = Unit.getByName(jammer)
-    if not u then return {} end
-    local gid = u:getGroup():getID()
-    local map = dcsRetribution and dcsRetribution.ewrj_package_groups or {}
-    return map[gid] or {gid}
-end
-
--- Show a pod ON/OFF message to the configured audience. Honors SHOW_POD_MESSAGES
--- + MESSAGE_SCOPE (Flight / Package / All OWNFOR); SHOW_OPFOR_MESSAGES
--- independently mirrors it to the opposite coalition (tagged [OPFOR]).
-function ewPodMessage(jammer, msg)
-    if not ewrj_options.SHOW_POD_MESSAGES then return end
-    local u = Unit.getByName(jammer)
-    if not u then return end
-    local coa = u:getCoalition()
-    local scope = ewrj_options.MESSAGE_SCOPE
-    if scope == "Flight" then
-        trigger.action.outTextForGroup(u:getGroup():getID(), msg, 5)
-    elseif scope == "All OWNFOR" then
-        trigger.action.outTextForCoalition(coa, msg, 5)
-    else
-        for _, gid in ipairs(ewPackageGroups(jammer)) do
-            trigger.action.outTextForGroup(gid, msg, 5)
-        end
-    end
-    if ewrj_options.SHOW_OPFOR_MESSAGES then
-        local other = (coa == coalition.side.RED) and coalition.side.BLUE or coalition.side.RED
-        trigger.action.outTextForCoalition(other, "[OPFOR] "..msg, 5)
-    end
-end
 -- Offensive jamming vs SAM radars (in check())
 --local OFFENSIVE_POWER = 1.6     -- 1.0 = stock, 1.4 = realistic-strong
 
@@ -729,17 +688,10 @@ function samOFF(groupsam)
         return
     end
 
-    -- REALISM: offensive jamming must DEGRADE, not SILENCE. We do NOT force
-    -- WEAPON_HOLD anymore (that muted the whole group: search radar AND the
-    -- optical last-ditch guns like naval CIWS / ZSU-23-4 AAA = a whole fleet
-    -- going dark, unrealistic). A successful jam instead drops the group to
-    -- RETURN_FIRE: it stops proactively engaging but still defends when shot at,
-    -- and its optical guns still swat incoming missiles. How often this triggers
-    -- is scaled down by OFFENSIVE_POWER so suppression is intermittent.
-    _controller:setOption(AI.Option.Ground.id.ROE, AI.Option.Ground.val.ROE.RETURN_FIRE)
+    _controller:setOption(AI.Option.Ground.id.ROE, AI.Option.Ground.val.ROE.WEAPON_HOLD)
     if ewrj_options.DEBUG then
-        trigger.action.outText(groupsam.." SAM JAMMED (degraded -> return fire)", 5)
-        env.info("[EW DEBUG] SAM jammed (ROE -> RETURN_FIRE, degraded): " .. groupsam)
+        trigger.action.outText(groupsam.." SAM SWITCHING OFF", 5)
+        env.info("[EW DEBUG] SAM has switched OFF: " .. groupsam)
     end
     -- mist.scheduleFunction(samON, {groupsam}, timer.getTime()+ math.random(25,40))
 end
@@ -754,16 +706,13 @@ function samPEEK(groupsam)
     local controller = group:getController()
     if not controller then return end
 
-    -- The "peek" state: a jammed-but-checking radar drops to RETURN_FIRE
-    -- (reactive only) so it never goes fully silent (WEAPON_HOLD) but is
-    -- degraded while the jam check keeps succeeding.
     controller:setOption(
         AI.Option.Ground.id.ROE,
         AI.Option.Ground.val.ROE.RETURN_FIRE
     )
     if ewrj_options.DEBUG then
-        trigger.action.outText(groupsam.." SAM is PEEKING (return fire)", 5)
-        env.info("[EW DEBUG] "..groupsam.." radar PEEK (ROE -> RETURN_FIRE)")
+        trigger.action.outText(groupsam.." SAM is PEEKING (Return Fire)", 5)
+        env.info("[EW DEBUG] "..groupsam.." radar PEEK (RETURN_FIRE)")
     end
 end
 
@@ -836,7 +785,7 @@ getRadars()
 ---- START OFFENSIVE JAMMING ----
 --------------------------------- 
 function startEWjamm(jammer)
-    ewPodMessage(jammer, "OFFENSIVE COUNTER MEASURES POD ON "..jammer)
+    trigger.action.outText("OFFENSIVE COUNTER MEASURES POD ON "..jammer, 5)
     if ewrj_options.DEBUG then
         env.info("[EW DEBUG] Start Offensive Jamming: " .. jammer)
     end
@@ -898,7 +847,7 @@ end -- startEWjamm('Prowler1')
 --------------------------------
 function stopEWjamm(jammer)
     ActiveJammers[jammer] = nil
-    ewPodMessage(jammer, "OFFENSIVE COUNTER MEASURES POD OFF "..jammer)
+    trigger.action.outText("OFFENSIVE COUNTER MEASURES POD OFF "..jammer,5)
     if ewrj_options.DEBUG then
         env.info("[EW DEBUG] Stop Offensive Jamming: " .. jammer)
     end
@@ -1037,7 +986,7 @@ end
     end
     function startDjamming(jammer)
         switch[#switch+1]=jammer
-        ewPodMessage(jammer, "DEFENSIVE COUNTER MEASURES POD ON "..jammer)
+        trigger.action.outText("DEFENSIVE COUNTER MEASURES POD ON "..jammer,5)
         if ewrj_options.DEBUG then
             env.info("[EW DEBUG] Start Defensive Jamming: " ..jammer)
         end
@@ -1052,7 +1001,7 @@ end
             switch[i] = nil
         end
     end
-    ewPodMessage(jammer, "DEFENSIVE COUNTER MEASURES POD OFF "..jammer)
+    trigger.action.outText("DEFENSIVE COUNTER MEASURES POD OFF "..jammer,5)
     if ewrj_options.DEBUG then
         env.info("[EW DEBUG] Stop Defensive Jamming: " ..jammer)    
     end

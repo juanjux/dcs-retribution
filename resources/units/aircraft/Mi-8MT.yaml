@@ -26,10 +26,7 @@ radios:
     type: common
     intra_flight_radio_index: 1
     inter_flight_radio_index: 1
-has_built_in_jamming: true
-has_built_in_ecm: true
 tasks:
-  Jamming: 400
   Air Assault: 40
   BAI: 390
   CAS: 390
