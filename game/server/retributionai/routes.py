@@ -47,6 +47,21 @@ def packages(side: str = "red") -> list[views.PackageView]:
     return service.get_packages(side)
 
 
+@router.get(
+    "/validate",
+    operation_id="ai_validate",
+    response_model=schemas.ValidateResult,
+    response_model_exclude_none=True,
+)
+def validate_plan(side: str = "red") -> schemas.ValidateResult:
+    return service.validate_plan(side)
+
+
+@router.get("/capabilities", operation_id="ai_capabilities")
+def capabilities() -> dict:
+    return service.capabilities()
+
+
 @router.get("/start", operation_id="ai_start", response_class=PlainTextResponse)
 def start(request: Request) -> PlainTextResponse:
     base_url = str(request.base_url).rstrip("/") + "/retribution-ai"

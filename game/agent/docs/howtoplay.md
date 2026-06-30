@@ -249,6 +249,15 @@ means none/empty** (stated once so the per-turn payloads stay small).
 `GET /packages?side=red` → `[{index, target, task, tot (HH:MM), desc?,
 flights:[{id, task, aircraft, count, squadron, start?, dep?, clients?, uncrewed?}]}]`.
 
+`GET /validate?side=red` → a health check of the WHOLE committed plan (no changes):
+`{ok, mission_window_min, packages:[{index, target, tot, tot_minutes_into_mission,
+within_window, uncrewed?}], issues?}`. `ok:false` + `issues` lists any uncrewed flights
+or packages whose TOT is past the window. (`evaluate` checks ONE not-yet-created package;
+`validate` checks everything you've already created.)
+
+`GET /capabilities` → a small manifest of the available reads/writes (so you needn't
+guess endpoint names). Full prose is here in `/howtoplay`.
+
 `GET /prev_turns?n=` → `[{turn, blue_aircraft, blue_vehicles, red_aircraft,
 red_vehicles, blue_air_lost?, red_air_lost?, blue_ground_lost?, red_ground_lost?,
 red_air_killers?, blue_air_killers?}]` (killers = `{unit/weapon: count}`).

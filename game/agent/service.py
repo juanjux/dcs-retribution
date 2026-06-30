@@ -40,6 +40,47 @@ def get_packages(side: str = "red") -> list[views.PackageView]:
     return views.build_packages(_require_game(), side)
 
 
+def validate_plan(side: str = "red"):
+    """Health-check the committed plan: per-package TOT vs the mission window + any
+    uncrewed flights (no changes made)."""
+    from game.agent import planner
+
+    return planner.validate_plan(_require_game(), side)
+
+
+def capabilities() -> dict:
+    """A small machine-readable manifest of what this OPFOR-AI API offers (so a client
+    can discover the endpoints without guessing). Full prose is in /howtoplay."""
+    return {
+        "name": "DCS Retribution OPFOR-AI",
+        "side": "red",
+        "docs": "GET /retribution-ai/start and /howtoplay (full briefing)",
+        "reads": [
+            "turn_context",
+            "settings",
+            "packages",
+            "validate",
+            "prev_turns",
+            "turn_status",
+            "stored_context",
+            "human_notes",
+        ],
+        "writes": [
+            "packages (create)",
+            "packages/evaluate (dry-run a package's TOT, no commit)",
+            "packages/{index} (delete)",
+            "buy/aircraft",
+            "sell/aircraft",
+            "buy/ground",
+            "stances",
+            "squadron/relocate",
+            "ground/transfer",
+            "ai/active",
+            "ai/status",
+        ],
+    }
+
+
 def create_packages(side, specs):
     """Plan packages from the LLM's specs (reusing the engine). Lazy-imports the
     write path so the read service stays light."""

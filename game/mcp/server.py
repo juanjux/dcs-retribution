@@ -65,6 +65,20 @@ def get_packages(side: str = "red") -> list:
 
 
 @mcp.tool()
+def validate_plan(side: str = "red") -> dict:
+    """Health-check the committed plan: each package's TOT vs the mission window and any
+    uncrewed flights. ok=true means every package is crewed and on time (no changes made).
+    """
+    return _dump(service.validate_plan(side))
+
+
+@mcp.tool()
+def capabilities() -> dict:
+    """A manifest of the reads/writes this OPFOR-AI API offers (see howtoplay for detail)."""
+    return service.capabilities()
+
+
+@mcp.tool()
 def start() -> str:
     """Start-here briefing: role, per-turn workflow, the tool catalog."""
     return service.start_doc("")

@@ -202,6 +202,48 @@ def evaluate_package(
         return schemas.EvaluateResult(ok=False, target=target_name, error=str(exc))
 
 
+def validate_plan(game: Game, side: str) -> schemas.ValidateResult:
+    """Health-check the whole committed plan (no changes): every package's TOT vs the
+    mission window and whether any flight is uncrewed (not enough pilots)."""
+    coalition = views.coalition_for_side(game, side)
+    window = int(getattr(game.settings, "desired_player_mission_duration_min", 60))
+    now = game.conditions.start_time
+    checks: list[schemas.PackageCheck] = []
+    issues: list[str] = []
+    for i, pkg in enumerate(coalition.ato.packages):
+        view = views.build_package(i, pkg)
+        tot = pkg.time_over_target
+        tot_min = round((tot - now).total_seconds() / 60) if tot else None
+        within = tot_min is not None and tot_min <= window
+        uncrewed = sum((f.uncrewed or 0) for f in view.flights)
+        if not view.flights:
+            issues.append(f"#{i} {view.target}: no flights (empty package)")
+        if uncrewed:
+            issues.append(
+                f"#{i} {view.target}: {uncrewed} uncrewed flight slot(s) — not enough pilots"
+            )
+        if tot_min is not None and not within:
+            issues.append(
+                f"#{i} {view.target}: TOT {tot_min} min is past the {window}-min window"
+            )
+        checks.append(
+            schemas.PackageCheck(
+                index=i,
+                target=view.target,
+                tot=view.tot,
+                tot_minutes_into_mission=tot_min,
+                within_window=within,
+                uncrewed=uncrewed or None,
+            )
+        )
+    return schemas.ValidateResult(
+        ok=not issues,
+        mission_window_min=window,
+        packages=checks,
+        issues=issues or None,
+    )
+
+
 def _resolve_squadron(game: Game, side: str, squadron_id: str):
     coalition = views.coalition_for_side(game, side)
     for squadron in coalition.air_wing.iter_squadrons():

@@ -43,6 +43,24 @@ class EvaluateResult(BaseModel):
     within_window: bool | None = None  # False = arrives late (wasted / needs a tanker)
 
 
+class PackageCheck(BaseModel):
+    index: int
+    target: str
+    tot: str | None = None  # HH:MM
+    tot_minutes_into_mission: int | None = None
+    within_window: bool | None = None
+    uncrewed: int | None = None  # missing pilot slots in this package (omitted when 0)
+
+
+class ValidateResult(BaseModel):
+    """A health check of the whole committed plan (no changes made)."""
+
+    ok: bool  # True = every package is crewed and within the mission window
+    mission_window_min: int
+    packages: list[PackageCheck]
+    issues: list[str] | None = None  # human-readable problems (omitted when none)
+
+
 class OpResult(BaseModel):
     ok: bool
     detail: str | None = None

@@ -58,6 +58,8 @@ python) — just launch the new `dist_full_fork` exe (or run from source).
 - [ ] 🆕 In `turn_context`, spot-check the new structured fields: a red `control_point` shows `parking_free`/`parking_total` (room to buy aircraft), `can_recruit_ground` (where `buy/ground` works), `links` (adjacent base ids) and `ground` (armor on hand); ships in `targets` share a `group_id` (their naval group) and a hit target shows `damage`. (Fields are omitted when empty/zero.)
 - [ ] `GET /retribution-ai/settings` → ✅ aggressiveness %, map visibility, mission-window minutes, income multipliers.
 - [ ] `GET /retribution-ai/packages?side=red` → ✅ current red packages (likely **empty** if the feature is ON and you haven't planned — see §8).
+- [ ] 🆕 `GET /retribution-ai/validate?side=red` → ✅ a whole-plan health check: `{ok, mission_window_min, packages:[…within_window, uncrewed?], issues?}`. With a plan that has a late strike, `ok:false` and `issues` names it. (Read-only — makes no changes.)
+- [ ] 🆕 `GET /retribution-ai/capabilities` → ✅ a manifest listing the reads/writes (so the LLM stops probing 404s like `validate`/`capabilities` did before).
 - [ ] `GET /retribution-ai/prev_turns?n=3` → ✅ force totals (blue/red aircraft + vehicles) for recent turns.
 - [ ] `GET /retribution-ai/turn_status` → ✅ `{active, status, cancelled, turn}`.
 - [ ] 🔴 Cross-check: a target id from `turn_context.targets` matches a real SAM/ship on the map; lat/lng put bases in the right place.
