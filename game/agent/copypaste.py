@@ -57,7 +57,6 @@ _ROLE_TASKS = (
     FlightType.SWEEP,
     FlightType.AEWC,
     FlightType.REFUELING,
-    FlightType.EWAR,
 )
 
 
@@ -356,7 +355,7 @@ def _plain_outgoing(side: str) -> str:
         "  move <S#> <yourB#>   (relocate a squadron)   movg <fromB#> <toB#> <G#> <n> [air]   (transfer ground units)",
         "  stance <yourB#> <enemyB#> <stance>   del <#index>   clear   note <key>=<text>",
         "  tasks: DEAD SEAD STRIKE CAS OCA_AIRCRAFT OCA_RUNWAY ANTISHIP BARCAP TARCAP "
-        "ESCORT SWEEP AEWC REFUELING EWAR",
+        "ESCORT SWEEP AEWC REFUELING",
         "  stances: defend hold aggressive push breakthrough eliminate retreat ambush",
         "",
         "FLYABLE NOW — aircraft you can task THIS turn (pkg auto-crews from these; "
@@ -782,7 +781,7 @@ MISSION TYPES (the TASK in a pkg flight — only use a task a squadron 'can:' do
       target during a strike · SWEEP = offensive sweep to clear enemy fighters ahead ·
       ESCORT = fighters bound to your strike package.
   Air defence suppression: SEAD = suppress a SAM (keeps its head down for the strike) ·
-      DEAD = destroy a SAM outright · EWAR = stand-off jamming support.
+      DEAD = destroy a SAM outright.
   Strike: STRIKE = buildings/infrastructure · OCA_AIRCRAFT = destroy parked enemy
       aircraft at a base · OCA_RUNWAY = crater a runway · ANTISHIP = attack ships ·
       CAS = close air support AT a front · BAI = hit enemy ground forces behind a front.

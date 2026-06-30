@@ -38,7 +38,6 @@
 * **[AirWing]** Airfield Command shows idle aircraft per squadron (e.g. "20 (10 idle)") with a "transfer ordered to X" indicator, lets you open a squadron's dialog by clicking its name, and lays the count below the name so long text no longer adds a horizontal scrollbar
 * **[BaseMenu]** Base intel summary shows aircraft occupied/transferring/free and a per-parking-type breakdown (shared / fixed-wing-exclusive / rotary-wing-exclusive / ground spawns), fixing the misleading "0 fixed-wing only parking" at bases whose slots are all shared
 * **[Plugins]** Update EW Script to version 2.1
-* **[EW]** EW jamming now degrades enemy air defenses instead of silencing them. The scripted offensive jamming drops a jammed radar's group to return-fire (intermittently, scaled by the new `OFFENSIVE_POWER` multiplier) rather than weapon-hold, and EW flights also emit the DCS engine's own ECM (`OptECMUsing`) to degrade enemy radar lock — so jammed SAM sites and naval groups keep defending: radar-guided engagement is degraded while IR missiles and gun/CIWS point-defense are unaffected.
 * **[Modding]** Add CurrentHill UK Assets Pack support (v1.1.2)
 * **[Modding]** Add support for Su-35S mod (v2.0.27b)
 * **[Data]** Add Refueling/Recovery tasks to A-6E Intruder mod
