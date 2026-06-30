@@ -85,6 +85,11 @@ class ControlPointView(BaseModel):
     owner: str  # red / blue / neutral
     pos: list[float]  # [lat, lng]
     sqns: int | None = None  # based-squadron count (omitted when 0)
+    parking_free: int | None = None  # free aircraft slots (room to buy/station here)
+    parking_total: int | None = None  # total aircraft slots
+    can_recruit_ground: bool | None = None  # has a factory/front — buy ground here
+    links: list[str] | None = None  # adjacent control-point ids (land moves / fronts)
+    ground: dict[str, int] | None = None  # armor on hand here (unit name -> count)
 
 
 class SquadronView(BaseModel):
@@ -131,6 +136,10 @@ class TargetView(BaseModel):
     threat_nm: int | None = None  # SAM max threat range (omitted for non-radar)
     friendly_cp_id: str | None = None  # fronts only: your control point (for stances)
     enemy_cp_id: str | None = None  # fronts only: the enemy control point
+    group_id: str | None = (
+        None  # ships: their naval-group control-point id (concentrate)
+    )
+    damage: str | None = None  # 'lightly/heavily damaged' (omitted at full strength)
 
 
 class GroundUnitView(BaseModel):
@@ -199,10 +208,32 @@ def build_economy(game: Game, side: str) -> EconomyView:
     )
 
 
+def _parking(cp) -> tuple[int, int] | None:
+    """(used, total) aircraft-parking slots at a base, or None if it has none."""
+    from game.theater import ParkingType
+
+    try:
+        pt = ParkingType(fixed_wing=True, fixed_wing_stol=True, rotary_wing=True)
+        total = cp.total_aircraft_parking(pt)
+        if total <= 0:
+            return None
+        return total - cp.unclaimed_parking(pt), total
+    except Exception:
+        return None
+
+
 def build_control_point(game: Game, cp: ControlPoint) -> ControlPointView:
     # Mirror game/server/leaflet.py: build a terrain-aware Point before converting.
     ll = DcsPoint(cp.position.x, cp.position.y, game.theater.terrain).latlng()
     sqns = sum(1 for _ in cp.squadrons)
+    park = _parking(cp)
+    armor = getattr(getattr(cp, "base", None), "armor", None)
+    ground = {ut.display_name: n for ut, n in armor.items() if n} if armor else None
+    links = [str(n.id) for n in getattr(cp, "connected_points", [])] or None
+    try:
+        recruit = bool(cp.has_ground_unit_source(game)) or None
+    except Exception:
+        recruit = None
     return ControlPointView(
         id=str(cp.id),
         name=cp.name,
@@ -210,6 +241,11 @@ def build_control_point(game: Game, cp: ControlPoint) -> ControlPointView:
         owner=cp.captured.value.lower(),
         pos=[_r(ll.lat), _r(ll.lng)],
         sqns=sqns or None,
+        parking_free=(park[1] - park[0]) if park else None,
+        parking_total=park[1] if park else None,
+        can_recruit_ground=recruit,
+        links=links,
+        ground=ground or None,
     )
 
 
@@ -231,6 +267,23 @@ def build_squadron(sq: Squadron, player: Player | None = None) -> SquadronView:
     )
 
 
+def _damage_word(tgo) -> str | None:
+    """Short damage state for a target, or None if at full strength."""
+    try:
+        units = list(tgo.units)
+        if not units:
+            return None
+        alive = sum(1 for u in units if getattr(u, "alive", True))
+        total = len(units)
+        if alive >= total:
+            return None
+        if alive == 0:
+            return "destroyed"
+        return "lightly damaged" if alive / total > 0.6 else "heavily damaged"
+    except Exception:
+        return None
+
+
 def _build_target(game: Game, tgo, kind: str, task: str) -> TargetView:
     ll = DcsPoint(tgo.position.x, tgo.position.y, game.theater.terrain).latlng()
     threat = None
@@ -241,6 +294,10 @@ def _build_target(game: Game, tgo, kind: str, task: str) -> TargetView:
             threat = int(rng.nautical_miles) if rng else None
         except Exception:
             threat = None
+    group_id = None
+    if kind == "ship":
+        grp = getattr(tgo, "control_point", None)
+        group_id = str(grp.id) if grp is not None else None
     return TargetView(
         id=str(tgo.id),
         name=tgo.name,
@@ -248,6 +305,8 @@ def _build_target(game: Game, tgo, kind: str, task: str) -> TargetView:
         suggested_task=task,
         pos=[_r(ll.lat), _r(ll.lng)],
         threat_nm=threat or None,
+        group_id=group_id,
+        damage=_damage_word(tgo),
     )
 
 
