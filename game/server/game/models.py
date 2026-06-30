@@ -22,6 +22,16 @@ if TYPE_CHECKING:
     from game import Game
 
 
+class MapLayersJs(BaseModel):
+    """The web client's map-layer panel state, persisted with the save.
+
+    `state` is an opaque JSON string the client owns end to end; the backend only
+    stores and returns it so the user's layer choices survive turns and reloads.
+    """
+
+    state: str | None = None
+
+
 class GameJs(BaseModel):
     control_points: list[ControlPointJs]
     tgos: list[TgoJs]
