@@ -23,6 +23,12 @@ plan it. Ask them to say it **now** for the first turn if the campaign is ready 
 they may never have used this feature, so make the instruction clear and friendly.
 After that, follow the turn protocol at the end.
 
+**Keep your chat output short.** Do your reasoning internally — do NOT narrate every
+thought, and do NOT echo each tool call and its raw JSON into the chat. When a turn is
+planned, a few lines are plenty: your objective for the turn and the key moves (and any
+warnings, e.g. a strike that won't make the window). The player reads the actual plan on
+the map and via `validate`/`get_packages`, not a transcript of your thinking.
+
 ## 1. What this game is
 
 DCS Retribution is a **turn-based strategic campaign** on top of DCS World. Each
