@@ -124,3 +124,8 @@ class MoveShipRequest(BaseModel):
     ship_id: str  # a ship-group OR carrier id from turn_context.naval
     lat: float | None = None  # destination; omit lat AND lng to cancel a pending move
     lng: float | None = None
+
+
+class RepairRequest(BaseModel):
+    side: str = "red"
+    id: str  # a repair-target id from turn_context.repairs (ground object/building/runway)

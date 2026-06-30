@@ -53,8 +53,9 @@ tool/resource of the same name.
 - `GET /capabilities` — what this install supports (check first; avoids unsupported ops)
 - `GET /turn_context?side=red` — campaign, map, red forces, detected blue (fog-aware),
   `targets`, **`threats`** (blue's air-defense umbrellas ranked by reach, incl. SAM-armed
-  ships like SM-6 frigates — **read every turn and respect them**), and `naval` (YOUR own
-  movable ship groups and carriers — reposition them with `POST /naval/move`).
+  ships like SM-6 frigates — **read every turn and respect them**), `naval` (YOUR own
+  movable ship groups and carriers — reposition them with `POST /naval/move`), and
+  `repairs` (YOUR damaged SAMs/buildings/runways you can pay to fix with `POST /repair`).
 - `GET /prev_turns?n=1` — after-action of prior turns (losses, who-killed-what, captures)
 - `GET /packages?side=red` — current packages/flights (each with `id` + pilots + waypoints)
 - `GET /waypoints/{flight_id}` — a flight's waypoints
@@ -83,6 +84,9 @@ tool/resource of the same name.
 - `POST /naval/move` `{side, ship_id, lat, lng}` — reposition one of your own naval groups
   — a ship group or a carrier/LHA (an `id` from `turn_context.naval`) — up to ~80 nm over
   water; applies at turn end. Omit `lat`+`lng` to cancel a pending move.
+- `POST /repair` `{side, id}` — pay to repair a damaged asset (an `id` from
+  `turn_context.repairs`): a SAM/EWR/armor unit group, a building, or a runway. Instant or
+  over a few turns; debits your budget. (Leftover budget also auto-repairs at turn end.)
 
 **Air wings** (turn-0 config always; mid-campaign only if the air-wing cheat is on)
 - `POST /squadrons` (create) · `DELETE /squadrons/{id}` (delete) — new squadrons
