@@ -229,7 +229,13 @@ def _operational_picture(game, side, bases, targets) -> list[str]:
     fronts = [(h, t) for h, t in targets.items() if t.kind == "front"]
     ships = [(h, t) for h, t in targets.items() if t.kind == "ship"]
     if launch:
-        out.append("Distances from your launch bases (nm to key objectives):")
+        window = int(getattr(game.settings, "desired_player_mission_duration_min", 60))
+        out.append(
+            f"Distances from your launch bases (nm to key objectives; a target beyond "
+            f"~{window * 5}nm of its launching base likely can't reach its time-over-"
+            f"target inside the {window}-min window — add a tanker (REFUELING) or expect "
+            f"a late strike, and prefer a closer base):"
+        )
         for cp in launch:
             parts: list[str] = []
             eb = (
@@ -757,6 +763,10 @@ escorts are flights too. Sequence + combined arms matter:
   2. WIN THE AIR: if blue has fighters over the target, add ESCORT / TARCAP.
   3. THEN STRIKE: STRIKE / OCA / ANTISHIP / CAS hit the objective.
   4. SUPPORT: AEWC (AWACS) + a tanker (REFUELING) for deep or large operations.
+  5. MIND THE CLOCK + FUEL: time-over-target grows with distance. The OPERATIONAL
+     PICTURE flags how far is too far for the mission window — a target well beyond it
+     arrives LATE (wasted) and may run short on fuel. Strike it from a CLOSER base, add
+     a tanker (REFUELING), or pick a nearer objective.
 
 MISSION TYPES (the TASK in a pkg flight — only use a task a squadron 'can:' do)
   Air-to-air: BARCAP = standing CAP defending an area/your base · TARCAP = CAP over the
