@@ -116,6 +116,11 @@ class Game:
         self.date = date(start_date.year, start_date.month, start_date.day)
         self.game_stats = GameStats()
         self.notes = ""
+        # Opaque JSON blob with the web client's map-layer panel state (which layers
+        # are visible, base map, which groups are open). The client owns the
+        # (de)serialization; the game just stores it so the choices travel with the
+        # save instead of being lost on reload.
+        self.client_map_layers: Optional[str] = None
         self.ground_planners: dict[UUID, GroundPlanner] = {}
         self.informations: list[Information] = []
         self.message("Game Start", "-" * 40)
@@ -173,6 +178,8 @@ class Game:
             self.laser_code_registry = LaserCodeRegistry()
             for front_line in self.theater.conflicts():
                 front_line.laser_code = self.laser_code_registry.alloc_laser_code()
+        if not hasattr(self, "client_map_layers"):
+            self.client_map_layers = None
         # Regenerate any state that was not persisted.
         self.on_load()
 
