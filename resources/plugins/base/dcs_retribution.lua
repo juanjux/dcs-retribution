@@ -375,3 +375,51 @@ local function escort_leash_update()
 end
 
 timer.scheduleFunction(escort_leash_update, nil, timer.getTime() + 1)
+
+-- TEMP DEBUG (anti-ship / EW tuning): Harpoon leak-rate + ship-hit loggers.
+-- Self-contained handler — grep "[HARPOON" / "[SHIP HIT" in dcs.log. The
+-- [HARPOON SUMMARY] line (fired / hit_ship / intercepted_or_missed) prints at
+-- mission end. Remove once the anti-ship / EW tuning is settled.
+harpoon_fired = 0
+harpoon_hit_ship = 0
+
+local function harpoon_logger(event)
+    if event.id == world.event.S_EVENT_SHOT and event.weapon then
+        pcall(function()
+            local wn = event.weapon:getTypeName() or ""
+            if string.find(wn, "AGM_84") then
+                harpoon_fired = harpoon_fired + 1
+                env.info(string.format("[HARPOON] fired #%d (%s)", harpoon_fired, wn))
+            end
+        end)
+    elseif event.id == world.event.S_EVENT_HIT and event.target and event.weapon then
+        pcall(function()
+            if event.target.getGroup and event.target:getGroup()
+               and event.target:getGroup():getCategory() == Group.Category.SHIP then
+                local wname = event.weapon:getTypeName() or ""
+                if string.find(wname, "AGM_84") then
+                    harpoon_hit_ship = harpoon_hit_ship + 1
+                end
+                local iname = "?"
+                if event.initiator then
+                    pcall(function() iname = event.initiator:getName() end)
+                end
+                local life = event.target:getLife()
+                local life0 = event.target:getLife0()
+                local pct = (life0 and life0 > 0) and (100 * life / life0) or -1
+                env.info(string.format(
+                    "[SHIP HIT DEBUG] %s hit %s with %s -> life %.0f/%.0f (%.0f%%)",
+                    tostring(iname), tostring(event.target:getName()),
+                    tostring(wname), life or -1, life0 or -1, pct))
+            end
+        end)
+    elseif event.id == world.event.S_EVENT_MISSION_END then
+        pcall(function()
+            env.info(string.format(
+                "[HARPOON SUMMARY] fired=%d  hit_ship=%d  intercepted_or_missed=%d",
+                harpoon_fired, harpoon_hit_ship, harpoon_fired - harpoon_hit_ship))
+        end)
+    end
+end
+
+mist.addEventHandler(harpoon_logger)
