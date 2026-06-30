@@ -121,13 +121,35 @@ The new code is on `experiment-mcp` only; your current dist does **not** have it
 
 ---
 
-## Known gaps / not yet built (follow-ups for tomorrow)
+## 12. Copy-paste mode (free-LLM accounts)  🔴 (Qt, never run)
 
-- **Copy-paste UI**: the core (`game/agent/copypaste.py`: `outgoing_blob`/`apply_incoming`/`briefing`) is built + verified, but there is **no in-game dialog/setting** yet to drive it. (For free-LLM accounts.)
-- **Settings URL panel**: the connect URL is only in the **log** for now (no copy-button widget in settings).
-- **Front-line targets**: only offensive targets (SAM/ship/building) are in `turn_context.targets`; front lines (for CAS/BAI + stance discovery) are not surfaced. chinos2 is naval, so no fronts to test anyway.
-- **Detailed debrief**: `prev_turns` gives force totals, not who-killed-what / captures.
-- Everything in §6 (Qt gate/indicator) and the dialogs is **built + syntax-checked but never run in a real Qt session** — watch for layout/behaviour bugs.
+- [ ] Settings → Campaign Management → **"Copy-Paste mode"** → enable. The top-panel
+  **"OPFOR AI"** button turns blue: *"copy-paste — click to plan"*.
+- [ ] Click it → ✅ the copy-paste window opens with a turn blob.
+- [ ] **Copy turn blob** → paste it to any LLM (even a free chat). Paste the LLM's reply
+  into the lower box → **Apply reply** → ✅ results appear (per-line ok/FAIL) and the map
+  shows the new red packages.
+- [ ] **Show briefing** → ✅ the command grammar (pkg/buy/sell/stance/note/clear).
+- [ ] Leave red empty (don't apply anything), Take Off → ✅ the scripted fallback fills red.
+
+## Previously-pending items, now built (validate in-game)
+
+All headless/syntax-checked only:
+
+- **Settings URL panel**: Settings → Campaign Management → bottom **"OPFOR AI connection"**
+  box shows the connect URL + a **Copy** button. Also: in API mode, clicking the "OPFOR AI"
+  button shows the URL in the status window (not just the log).
+- **Front-line targets**: in a **land** campaign, `turn_context.targets` includes
+  `kind:"front"` (suggested_task CAS) with `friendly_cp_id`/`enemy_cp_id`; `POST /packages`
+  with a front id plans CAS, and the cp pair drives `/stances`. (chinos2 is naval → no
+  fronts; validate with a land campaign — e.g. start a quick Syria/Caucasus one.)
+- **Detailed debrief**: after a flown mission, `prev_turns` entries gain `blue_air_lost` /
+  `red_air_lost` / `blue_ground_lost` / `red_ground_lost` for that turn.
+
+## Still not done
+- **The dist is NOT rebuilt and NOTHING is validated in a real Qt/game session.** All the
+  Qt (the Take-Off gate/indicator §6, the copy-paste window §12, the settings URL panel)
+  is syntax/import-checked only — watch for layout/behaviour bugs.
 
 ## If something is broken
 - REST 500s on `/start` or `/howtoplay` in the **built exe** → the docs weren't bundled; confirm `game/agent/docs` is in `pyinstaller.spec` datas (it is) and rebuild.
