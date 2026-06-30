@@ -5,7 +5,6 @@ from dcs.task import (
     ActivateBeaconCommand,
     ControlledTask,
     EngageTargets,
-    OptECMUsing,
     OrbitAction,
     Tanker,
     Targets,
@@ -39,15 +38,12 @@ class RaceTrackBuilder(PydcsWaypointBuilder):
             )
             return
 
-        # Self-protection ECM for air-to-air patrols (CAP/sweep). DCS AI won't switch
-        # on a built-in jammer unless told when, so enable it once locked by radar.
-        # (We used to apply the EW script's defensive jamming here, but that scripted
-        # missile-defeat was too strong for non-EW jets -- the engine ECM is the
-        # realistic self-protection; the script shield is reserved for EW/pod flights.)
-        if self.flight.flight_type.is_air_to_air:
-            waypoint.tasks.append(
-                OptECMUsing(value=OptECMUsing.Values.UseIfOnlyLockByRadar)
-            )
+        # Start Defensive Jamming for all flights
+        settings = self.flight.coalition.game.settings
+        ai_jammer = settings.plugin_option("ewrj.ai_jammer_enabled")
+        if settings.plugins.get("ewrj") and ai_jammer:
+            self.defensive_jamming(waypoint, "start")
+            self.offensive_jamming(waypoint, "start")
 
         # NB: It's important that the engage task comes before the orbit task.
         # Though they're on the same waypoint, if the orbit task comes first it

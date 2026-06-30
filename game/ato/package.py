@@ -192,7 +192,6 @@ class Package(RadioFrequencyContainer):
             FlightType.REFUELING,
             FlightType.SWEEP,
             FlightType.SEAD_ESCORT,
-            FlightType.EWAR,
             FlightType.ESCORT,
         ]
         for task in tasks_by_priority:
