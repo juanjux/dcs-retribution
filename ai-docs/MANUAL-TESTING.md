@@ -30,11 +30,10 @@ The new code is on `experiment-mcp` only; your current dist does **not** have it
 
 ## 2. Find the connect URL + token, and choose REST vs MCP  ⚙️
 
-- [X] Settings → **Campaign Management → "OPFOR AI commander"**. With **"Allow OPFOR AI control" ON** and **Copy-Paste mode OFF**, a **"Connect your LLM"** block shows **two URLs** with **Copy** buttons:
+- [X] Settings → **Campaign Management → "OPFOR AI commander"**. With **"Allow OPFOR AI control" ON**, a **"Connect your LLM"** block shows **two URLs** with **Copy** buttons:
   - **REST** (`…/retribution-ai/start?token=…`) — for Claude Code or curl.
   - **MCP** (`…/mcp?token=…`) — for claude.ai connectors or `claude mcp add`.
   - 👉 **There is no REST-vs-MCP toggle** — both are always live when the feature is on. You pick by which URL you give your client. (Answers "how do I use MCP instead of REST".)
-- [ ] ✅ The **Copy-Paste mode** checkbox is **greyed out** while the master is OFF, and **auto-unchecks** if you turn the master off (so the toolbar button only shows in a real mode).
 - [ ] (The URLs are also in the status window: click the **"OPFOR AI"** button in the top panel.)
 - [ ] (The connect URL is still logged once at startup, but settings is the place to grab it.)
 
@@ -124,42 +123,13 @@ The new code is on `experiment-mcp` only; your current dist does **not** have it
 - [ ] A **normal mission** (feature OFF) plans, launches, and debriefs as before.
 - [ ] No new errors in the log on startup/shutdown (the MCP lifespan + the server thread shut down cleanly on exit).
 
----
-
-## 12. Copy-paste mode (free-LLM accounts)  🔴 (Qt, never run)
-
-- [ ] Enable **"Allow OPFOR AI control"** (master) FIRST, then tick **"Copy-Paste mode"**
-  (it's greyed out until the master is on). The top-panel **"OPFOR AI"** button turns blue:
-  *"copy-paste — click to plan"*.
-- [ ] **"Obfuscate the copy-paste blob with ROT13"** is ticked by default. Untick it to send
-  plain text (100% reliable with any model; you can read the blob). Re-tick for obfuscation.
-- [ ] Click it → ✅ the window opens and explains the flow (briefing once, then copy/paste each turn).
-- [ ] **Briefing for your LLM** → ✅ a **copyable** window with a full briefing (role,
-  doctrine, package composition, planning, fair play, command grammar, a worked example).
-  It adapts to the ROT13/plain setting. Paste it to your LLM **once**.
-- [ ] **Copy turn blob** → with ROT13 on it's **scrambled** (gibberish, not red's state/plan).
-  Paste it to your LLM → it decodes + replies (ROT13 or plain). Paste the reply → **Apply reply**
-  → ✅ per-line results (ok/FAIL) and the map shows the new red packages.
-- [ ] ✅ Works whether the LLM replied in **ROT13** or **plain** command lines.
-- [ ] With ROT13 **off**, the blob is plain text and the reply is plain — verify both still apply.
-- [ ] 🔴 Note: ROT13 is **obfuscation, not encryption** — a determined player could still
-  decode it. base64 was dropped: hand-decoding a few KB of base64 made every model forfeit
-  the turn; ROT13 keeps digits/handles intact so capable LLMs decode it in their head.
-  (Weak models may scramble handles — untick ROT13 for them.)
-- [ ] The blob now also shows **FORCES** (red vs blue totals), a **GRAMMAR** cheat-sheet,
-  a **FLYABLE NOW** list (only taskable squadrons + their tasks), per-squadron **buy-cost**,
-  **GROUNDED** flags (squadrons at enemy-held bases can't fly), front lines with their **B#
-  handles**, and **inert** SAM tags.
-- [ ] Leave red empty (don't apply), Take Off → ✅ the scripted fallback fills red.
-
 ## Previously-pending items, now built (validate in-game)
 
 All headless/syntax-checked only:
 
-- **Settings URL panel + dependency**: in the **OPFOR AI commander** section, the "Connect
-  your LLM" block (REST + MCP URLs, Copy buttons) shows when the master is on + copy-paste
-  off; the Copy-Paste checkbox is gated on the master (see §2). The status window also shows
-  both URLs.
+- **Settings URL panel**: in the **OPFOR AI commander** section, the "Connect your LLM"
+  block (REST + MCP URLs, Copy buttons) shows when the master is on (see §2). The status
+  window also shows both URLs.
 - **Front-line targets**: in a **land** campaign, `turn_context.targets` includes
   `kind:"front"` (suggested_task CAS) with `friendly_cp_id`/`enemy_cp_id`; `POST /packages`
   with a front id plans CAS, and the cp pair drives `/stances`. (chinos2 is naval → no
@@ -169,8 +139,8 @@ All headless/syntax-checked only:
 
 ## Still not done
 - **Nothing is validated in a real Qt/game session yet** — all the Qt (the Take-Off
-  gate/indicator §6, the settings dependency + URL block §2, the copy-paste window §12) is
-  syntax/import-checked only. The dist **is** rebuilt — this is what you're testing now.
+  gate/indicator §6, the settings URL block §2) is syntax/import-checked only. The dist
+  **is** rebuilt — this is what you're testing now.
 
 ## If something is broken
 - REST 500s on `/start` or `/howtoplay` in the **built exe** → the docs weren't bundled; confirm `game/agent/docs` is in `pyinstaller.spec` datas (it is) and rebuild.

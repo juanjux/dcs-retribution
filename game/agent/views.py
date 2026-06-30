@@ -3,8 +3,8 @@
 Pure functions over a ``Game`` (no ``GameContext``, no Qt) so they are unit-testable
 and importable without PySide6. ``service.py`` wires these to the live game.
 
-Token economy: these payloads go to the LLM **every turn** (and, in copy-paste mode,
-to free-account LLMs with tight context). So they are frugal — numbers are rounded,
+Token economy: these payloads go to the LLM **every turn**, so they are frugal —
+numbers are rounded,
 coordinates are bare ``[lat, lng]`` pairs, TOT is ``HH:MM``, and "boring" fields
 (zero counts, empty strings) are left ``None`` so the transport drops them with
 ``exclude_none``. Convention, stated once in ``/howtoplay``: an absent numeric field

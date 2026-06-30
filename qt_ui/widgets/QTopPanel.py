@@ -197,12 +197,6 @@ class QTopPanel(QFrame):
         self.ai_status_button.setVisible(enabled)
         if not enabled:
             return
-        if getattr(s, "opfor_ai_copy_paste_mode", False):
-            self.ai_status_button.setText("OPFOR AI: copy-paste — click to plan")
-            self.ai_status_button.setStyleSheet(
-                "color: white; background-color: #1565c0; font-weight: bold;"
-            )
-            return
         snap = AI_SESSION.snapshot()
         if snap["active"]:
             self.ai_status_button.setText(
@@ -216,14 +210,6 @@ class QTopPanel(QFrame):
             self.ai_status_button.setStyleSheet("color: gray;")
 
     def _show_ai_status(self) -> None:
-        # In copy-paste mode the button opens the copy-paste planning window.
-        if self.game and getattr(self.game.settings, "opfor_ai_copy_paste_mode", False):
-            from qt_ui.windows.copypaste_ai_dialog import CopyPasteAiDialog
-
-            self.dialog = CopyPasteAiDialog("red", self.window())
-            self.dialog.show()
-            return
-
         from game.agent import service
         from game.agent.session import AI_SESSION
 

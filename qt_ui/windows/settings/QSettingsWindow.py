@@ -184,11 +184,8 @@ class AutoSettingsLayout(QGridLayout):
             self._wire_opfor_ai()
 
     def _wire_opfor_ai(self) -> None:
-        """Make Copy-Paste mode depend on the master toggle, and show the REST/MCP
-        connect URLs only in live API/MCP mode."""
+        """Show the REST/MCP connect URLs when OPFOR AI control is enabled."""
         master = self.settings_map.get("opfor_ai_enabled")
-        cp = self.settings_map.get("opfor_ai_copy_paste_mode")
-        rot13 = self.settings_map.get("opfor_ai_copy_paste_rot13")
 
         box = QWidget()
         v = QVBoxLayout(box)
@@ -200,15 +197,7 @@ class AutoSettingsLayout(QGridLayout):
         self._opfor_ai_box = box
 
         def refresh() -> None:
-            on = bool(master and master.isChecked())
-            if cp is not None:
-                cp.setEnabled(on)
-                if not on and cp.isChecked():
-                    cp.setChecked(False)
-            # ROT13 obfuscation only applies in copy-paste mode.
-            if rot13 is not None:
-                rot13.setEnabled(on and bool(cp and cp.isChecked()))
-            show = on and not bool(cp and cp.isChecked())
+            show = bool(master and master.isChecked())
             self._opfor_ai_box.setVisible(show)
             if show:
                 try:
@@ -224,8 +213,6 @@ class AutoSettingsLayout(QGridLayout):
 
         if master is not None:
             master.toggled.connect(lambda _=None: refresh())
-        if cp is not None:
-            cp.toggled.connect(lambda _=None: refresh())
         refresh()
 
     def _url_row(self, parent_layout: QVBoxLayout, label: str) -> QLineEdit:
