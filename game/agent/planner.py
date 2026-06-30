@@ -74,6 +74,25 @@ def _mission_window_min(game: Game) -> int:
         return int(dur)  # tolerate a plain-number setting
 
 
+def _new_map_events():
+    """A GameUpdateEvents to collect live-map changes for an OPFOR-AI write."""
+    from game.sim.gameupdateevents import GameUpdateEvents
+
+    return GameUpdateEvents()
+
+
+def _push_map_events(events) -> None:
+    """Send collected changes to the live web map so an OPFOR-AI write shows immediately
+    (the player's UI does the same). No-op when the server isn't running (headless tests).
+    """
+    try:
+        from game.server import EventStream
+
+        EventStream.put_nowait(events)
+    except Exception:
+        pass
+
+
 def resolve_target(game: Game, target_id: str) -> MissionTarget:
     """Resolve a target id to a control point or ground object."""
     try:
@@ -463,7 +482,16 @@ def move_ship(
     from dcs import Point
     from dcs.mapping import LatLng
 
+    from game.theater.theatergroundobject import ShipGroundObject
     from game.utils import meters
+
+    def _refresh(obj) -> None:
+        events = _new_map_events()
+        if isinstance(obj, ShipGroundObject):
+            events.update_tgo(obj)
+        else:
+            events.update_control_point(obj)
+        _push_map_events(events)
 
     player = views.player_for_side(side)
     try:
@@ -479,6 +507,7 @@ def move_ship(
             raise ValueError(f"{mover.name} is not yours to move")
         if lat is None or lng is None:
             mover.target_position = None
+            _refresh(mover)
             return schemas.OpResult(
                 ok=True, detail=f"{mover.name}: pending move cancelled (holds position)"
             )
@@ -495,6 +524,7 @@ def move_ship(
                 f"can't move {mover.name} over land — pick an all-water destination"
             )
         mover.target_position = point
+        _refresh(mover)
         return schemas.OpResult(
             ok=True,
             detail=f"{mover.name} repositioning {moved_nm}nm (applies at turn end)",
@@ -539,6 +569,9 @@ def repair(game: Game, side: str, asset_id: str) -> schemas.OpResult:
                 )
             cp.begin_runway_repair()
             coalition.budget -= cost
+            events = _new_map_events()
+            events.update_control_point(cp)
+            _push_map_events(events)
             return schemas.OpResult(
                 ok=True,
                 detail=f"runway repair started at {cp.name} "
@@ -571,6 +604,7 @@ def repair(game: Game, side: str, asset_id: str) -> schemas.OpResult:
                 f"nothing to repair at {tgo.name} "
                 f"(no dead repairable units, or already under repair)"
             )
+        events = _new_map_events()
         revived = scheduled = spent = 0
         for unit, cost in candidates:
             if coalition.budget < cost:
@@ -578,11 +612,9 @@ def repair(game: Game, side: str, asset_id: str) -> schemas.OpResult:
             coalition.budget -= cost
             spent += cost
             if repair_turns == 0:
-                from game.sim.gameupdateevents import GameUpdateEvents
-
                 unit.repair_turns_remaining = None
                 try:
-                    unit.revive(GameUpdateEvents())
+                    unit.revive(events)  # recomputes threat poly + re-registers IADS
                 except Exception:
                     unit.alive = True
                 revived += 1
@@ -594,6 +626,8 @@ def repair(game: Game, side: str, asset_id: str) -> schemas.OpResult:
                 f"can't afford to repair {tgo.name} "
                 f"(have {round(coalition.budget)}M)"
             )
+        events.update_tgo(tgo)
+        _push_map_events(events)
         if repair_turns == 0:
             detail = (
                 f"repaired {revived} unit(s) at {tgo.name} "
