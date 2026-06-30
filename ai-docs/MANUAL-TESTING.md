@@ -13,23 +13,24 @@ Legend: 🔴 = could break things / pay attention · ⚙️ = setup · ✅ = exp
 
 The new code is on `experiment-mcp` only; your current dist does **not** have it.
 
-- [ ] **Close retribution_main.exe** before rebuilding.
-- [ ] Make sure you're on the branch with the work: `git -C "<repo>" status` → `experiment-mcp`.
-- [ ] **Rebuild** with your usual full-fork process (`pyinstaller pyinstaller.spec` → `dist_full_fork`). The spec was updated to bundle `game/agent/docs/*.md` and the `mcp` + `sse_starlette` submodules.
+- [X] **Close retribution_main.exe** before rebuilding.
+- [X] Make sure you're on the branch with the work: `git -C "<repo>" status` → `experiment-mcp`.
+- [X] **Rebuild** with your usual full-fork process (`pyinstaller pyinstaller.spec` → `dist_full_fork`). The spec was updated to bundle `game/agent/docs/*.md` and the `mcp` + `sse_starlette` submodules.
   - 🔴 The build now pulls in **`mcp`** and bumps **`anyio` 3.7.1 → 4.14.1**. Watch the PyInstaller output for missing-module warnings about `mcp`, `sse_starlette`, `httpx`, `pydantic`. If the built exe crashes on start with an `mcp`/`anyio` import error, add the offending module to `hiddenimports` in `pyinstaller.spec` and rebuild.
-  - [ ] Preserve `state.json` as usual.
+  - [X] Preserve `state.json` as usual.
 - [ ] **Faster alternative for testing (no rebuild):** run from source —
   `& "<repo>\.venv\Scripts\python.exe" "<repo>\qt_ui\main.py"`.
-- [ ] ✅ The game starts normally with the feature OFF (regression: nothing changed for normal play).
+- [X] ✅ The game starts normally with the feature OFF (regression: nothing changed for normal play).
 
 ## 1. Enable the feature  ⚙️
 
-- [ ] Settings → **Campaign Management → "OPFOR AI commander"** → tick **"Allow OPFOR AI control"**. Close settings.
-- [ ] ✅ No crash; the setting sticks after closing/reopening settings.
-- [ ] Load an **old save** (e.g. the chinos2 backup). ✅ It loads (the new `stored_context` / setting back-fill is save-safe).
+- [X] Settings → **Campaign Management → "OPFOR AI commander"** → tick **"Allow OPFOR AI control"**. Close settings.
+- [X] ✅ No crash; the setting sticks after closing/reopening settings.
+- [X] Load an **old save** (e.g. the chinos2 backup). ✅ It loads (the new `stored_context` / setting back-fill is save-safe).
 
 ## 2. Find the connect URL + token  ⚙️
 
+NO, lo del log es un patron horrible, puede tener muchisimo texto y hacer dificil de encontrar la URL
 - [ ] In the log window / console, find: `OPFOR-AI commander API ready — point an LLM at http://[::1]:<PORT>/retribution-ai/start?token=<KEY>`.
 - [ ] Note the **PORT** and **KEY**. (If you can't find it, the server logs it at startup; restart the app and look early in the log.)
 
