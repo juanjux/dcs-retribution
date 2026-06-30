@@ -102,6 +102,7 @@ class SideLossCounts:
     ground_objects: int
     scenery: int
     bases_lost: int
+    runways_destroyed: int
 
 
 @dataclass(frozen=True)
@@ -305,6 +306,7 @@ class Debriefing:
             airlifts = gl.player_airlifts
             ground_objects = gl.player_ground_objects
             scenery = gl.player_scenery
+            airfields = gl.player_airfields
         else:
             air = self.air_losses.enemy
             front_line = gl.enemy_front_line
@@ -313,6 +315,7 @@ class Debriefing:
             airlifts = gl.enemy_airlifts
             ground_objects = gl.enemy_ground_objects
             scenery = gl.enemy_scenery
+            airfields = gl.enemy_airfields
         return SideLossCounts(
             aircraft=len(air),
             front_line=len(front_line),
@@ -326,6 +329,7 @@ class Debriefing:
                 for capture in self.base_captures
                 if capture.captured_by_player == player.opponent
             ),
+            runways_destroyed=len(airfields),
         )
 
     def dead_aircraft(self) -> AirLosses:
@@ -344,6 +348,7 @@ class Debriefing:
 
     def dead_ground_units(self) -> GroundLosses:
         losses = GroundLosses()
+        untracked: List[str] = []
         for unit_name in self.state_data.killed_ground_units:
             front_line_unit = self.unit_map.front_line_unit(unit_name)
             if front_line_unit is not None:
@@ -398,13 +403,19 @@ class Debriefing:
                     losses.enemy_airfields.append(airfield)
                 continue
 
-            # Only logging as debug because we don't currently track infantry
-            # deaths, so we expect to see quite a few unclaimed dead ground
-            # units. We should start tracking those and covert this to a
-            # warning.
+            # We don't track infantry or map/scenery objects, so a mission can
+            # end with thousands of these unclaimed deaths. Collect them and log
+            # one summary instead of a line each: per-unit logging here floods
+            # the handlers (a file stat + flush per line, plus the log-window UI
+            # hook) and froze the debrief for ~20s on busy missions.
+            untracked.append(unit_name)
+
+        if untracked:
             logging.debug(
-                f"Death of untracked ground unit {unit_name} will "
-                "have no effect. This may be normal behavior."
+                "%d untracked ground unit deaths had no effect (untracked "
+                "infantry or map/scenery objects). First few: %s",
+                len(untracked),
+                ", ".join(untracked[:10]),
             )
 
         for unit_name in self.state_data.killed_aircraft:

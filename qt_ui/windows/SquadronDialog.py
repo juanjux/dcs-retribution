@@ -188,7 +188,15 @@ class SquadronDestinationComboBox(QComboBox):
             )
             free_ground_spawns = cp.total_aircraft_parking(parking_type)
 
-            for s in cp.squadrons:
+            # Squadrons whose parking must be reserved at this base next turn:
+            # every squadron currently based here (outgoing transfers included —
+            # they may need to return if the destination is captured this turn)
+            # plus any squadrons relocating in.
+            occupants = list(cp.squadrons)
+            occupants += [
+                s for s in cp.coalition.air_wing.iter_squadrons() if s.destination == cp
+            ]
+            for s in occupants:
                 for count in range(s.owned_aircraft):
                     is_heli = s.aircraft.helicopter
                     is_vtol = not is_heli and s.aircraft.lha_capable
