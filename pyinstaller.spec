@@ -4,7 +4,28 @@ import glob
 import os
 import sysconfig
 
+from PyInstaller.utils.hooks import collect_data_files, collect_submodules
+
 block_cipher = None
+
+
+def _safe_collect_submodules(name):
+    try:
+        return collect_submodules(name)
+    except Exception:
+        return []
+
+
+# The OPFOR-AI MCP transport (game/mcp) imports `mcp` (FastMCP), which loads
+# submodules dynamically in ways PyInstaller's static analysis misses; collect
+# them (and sse_starlette) explicitly so the built exe can mount /mcp.
+_mcp_hiddenimports = _safe_collect_submodules("mcp") + _safe_collect_submodules(
+    "sse_starlette"
+)
+try:
+    _mcp_datas = collect_data_files("mcp")
+except Exception:
+    _mcp_datas = []
 
 
 # The `mgrs` dependency (used by the target-recon kneeboard pages) ships a
@@ -30,8 +51,11 @@ analysis = Analysis(
         ('resources/caucasus.p', 'dcs/terrain/'),
         ('resources/nevada.p', 'dcs/terrain/'),
         ('client/build', 'client/build'),
-    ],
-    hiddenimports=['mgrs', 'mgrs.core', 'packaging.tags'],
+        # OPFOR-AI served briefings (GET /start, /howtoplay).
+        ('game/agent/docs', 'game/agent/docs'),
+    ]
+    + _mcp_datas,
+    hiddenimports=['mgrs', 'mgrs.core', 'packaging.tags'] + _mcp_hiddenimports,
     hookspath=[],
     runtime_hooks=[],
     excludes=[],

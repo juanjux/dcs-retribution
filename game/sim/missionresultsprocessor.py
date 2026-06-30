@@ -52,6 +52,7 @@ class MissionResultsProcessor:
                 self.commit_captures(debriefing, events)
             with logged_duration("record_carcasses"):
                 self.record_carcasses(debriefing)
+            self.game.record_debrief(debriefing)
 
     def commit_air_losses(self, debriefing: Debriefing) -> None:
         for loss in debriefing.air_losses.losses:

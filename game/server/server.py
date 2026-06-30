@@ -1,3 +1,4 @@
+import logging
 import time
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -9,6 +10,7 @@ from uvicorn import Config
 
 from game.server import EventStream
 from game.server.app import app
+from game.server.security import ApiKeyManager
 from game.server.settings import ServerSettings
 from game.sim import GameUpdateEvents
 
@@ -45,6 +47,14 @@ class Server(uvicorn.Server):
         try:
             while not self.started:
                 time.sleep(1e-3)
+            host = self.config.host
+            logging.getLogger(__name__).info(
+                "OPFOR-AI commander API ready — point an LLM at "
+                "http://%s:%s/retribution-ai/start?token=%s",
+                f"[{host}]" if ":" in str(host) else host,
+                self.config.port,
+                ApiKeyManager.KEY,
+            )
             yield
         finally:
             self.should_exit = True

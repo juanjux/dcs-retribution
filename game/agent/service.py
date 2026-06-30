@@ -1,0 +1,242 @@
+"""Service layer for the OPFOR-AI feature — the single source of truth.
+
+Both transports (REST routers in ``game/server/retributionai/`` and the MCP tools in
+``game/mcp/``) call these functions, so all behaviour lives here and never drifts
+between transports. Functions resolve the live game lazily via ``GameContext`` so the
+module stays importable without a running server (and without Qt).
+"""
+
+from __future__ import annotations
+
+import re
+from pathlib import Path
+from typing import TYPE_CHECKING
+
+from game.agent import views
+
+if TYPE_CHECKING:
+    from game import Game
+
+
+def _require_game() -> Game:
+    # Lazy import keeps game/agent importable without the server/Qt stack.
+    from game.server import GameContext
+
+    return GameContext.require()
+
+
+def turn_context(side: str = "red") -> views.TurnContextView:
+    """Operational picture for ``side`` (red/blue) from the live game."""
+    return views.build_turn_context(_require_game(), side)
+
+
+def settings() -> views.SettingsView:
+    """Campaign settings the planner reads (aggressiveness, fog, mission window)."""
+    return views.build_settings(_require_game())
+
+
+def get_packages(side: str = "red") -> list[views.PackageView]:
+    """Current ATO for ``side`` — packages and their flights (with stable ids)."""
+    return views.build_packages(_require_game(), side)
+
+
+def create_packages(side, specs):
+    """Plan packages from the LLM's specs (reusing the engine). Lazy-imports the
+    write path so the read service stays light."""
+    from game.agent import planner
+
+    return planner.create_packages(_require_game(), side, specs)
+
+
+def delete_package(side, index):
+    from game.agent import planner
+
+    return planner.delete_package(_require_game(), side, index)
+
+
+def clear_packages(side):
+    from game.agent import planner
+
+    return planner.clear_packages(_require_game(), side)
+
+
+def buy_aircraft(side, squadron_id, quantity=1):
+    from game.agent import planner
+
+    return planner.buy_aircraft(_require_game(), side, squadron_id, quantity)
+
+
+def sell_aircraft(side, squadron_id, quantity=1):
+    from game.agent import planner
+
+    return planner.sell_aircraft(_require_game(), side, squadron_id, quantity)
+
+
+def buy_ground(side, cp_id, unit_name, quantity=1):
+    from game.agent import planner
+
+    return planner.buy_ground(_require_game(), side, cp_id, unit_name, quantity)
+
+
+def set_stance(side, friendly_cp_id, enemy_cp_id, stance):
+    from game.agent import planner
+
+    return planner.set_stance(
+        _require_game(), side, friendly_cp_id, enemy_cp_id, stance
+    )
+
+
+# --- session / Take-Off gate ---
+
+
+def set_ai_active(active: bool = True) -> dict:
+    """Mark the AI busy/idle. Take Off is blocked while active (toolbar robot lit)."""
+    from game.agent.session import AI_SESSION
+
+    AI_SESSION.set_active(active)
+    return AI_SESSION.snapshot()
+
+
+def set_ai_status(text: str) -> dict:
+    """Set the one-line status shown in the robot info window."""
+    from game.agent.session import AI_SESSION
+
+    AI_SESSION.set_status(text)
+    return AI_SESSION.snapshot()
+
+
+def turn_status() -> dict:
+    """AI-session snapshot plus the current turn number."""
+    from game.agent.session import AI_SESSION
+
+    snap = AI_SESSION.snapshot()
+    try:
+        from game.server import GameContext
+
+        game = GameContext.get()
+    except Exception:
+        game = None
+    snap["turn"] = game.turn if game is not None else None
+    return snap
+
+
+# --- memory (persisted in the save) ---
+
+
+def get_stored_context() -> dict:
+    """The AI's saved per-campaign strategy notes (key -> value)."""
+    return dict(_require_game().stored_context)
+
+
+def put_stored_context(data: dict) -> dict:
+    """Replace the whole stored_context with ``data``."""
+    game = _require_game()
+    game.stored_context = {str(k): str(v) for k, v in dict(data).items()}
+    return dict(game.stored_context)
+
+
+def post_stored_context(data: dict) -> dict:
+    """Merge ``data`` into stored_context (add/update keys)."""
+    game = _require_game()
+    game.stored_context.update({str(k): str(v) for k, v in dict(data).items()})
+    return dict(game.stored_context)
+
+
+def delete_stored_context(key: str) -> dict:
+    """Remove one key from stored_context."""
+    game = _require_game()
+    game.stored_context.pop(key, None)
+    return dict(game.stored_context)
+
+
+def clear_stored_context() -> dict:
+    """Empty the stored_context."""
+    game = _require_game()
+    game.stored_context.clear()
+    return dict(game.stored_context)
+
+
+def human_notes() -> dict:
+    """The player's campaign notes — guidance the AI reads (read-only)."""
+    return {"notes": getattr(_require_game(), "notes", "") or ""}
+
+
+def prev_turns(n: int = 3) -> list:
+    """Force totals over the last ``n`` turns (the attrition trend)."""
+    return views.build_prev_turns(_require_game(), n)
+
+
+# --- autonomous wiring / scripted fallback ---
+
+
+def run_opfor_fallback_if_needed() -> dict:
+    """If OPFOR-AI is on but red's ATO is empty (the LLM never played), run the
+    scripted commander so the turn is never empty. Called at Take Off."""
+    game = _require_game()
+    if not getattr(game.settings, "opfor_ai_enabled", False):
+        return {"ran": False, "reason": "opfor_ai disabled"}
+    red = game.red
+    if red.ato.packages:
+        return {
+            "ran": False,
+            "reason": "AI already planned",
+            "packages": len(red.ato.packages),
+        }
+    red.plan_missions(game.conditions.start_time)
+    return {"ran": True, "packages": len(red.ato.packages)}
+
+
+def _server_base() -> str:
+    from game.server.settings import ServerSettings
+
+    s = ServerSettings.get()
+    host = str(s.server_bind_address)
+    host_disp = f"[{host}]" if ":" in host else host
+    return f"http://{host_disp}:{s.server_port}"
+
+
+def connect_url() -> str:
+    """Ready-to-paste REST connect URL+token (GET /start) — for Claude Code / curl."""
+    from game.server.security import ApiKeyManager
+
+    return f"{_server_base()}/retribution-ai/start?token={ApiKeyManager.KEY}"
+
+
+def mcp_url() -> str:
+    """Ready-to-paste MCP connector URL+token (/mcp) — for claude.ai / Claude Code."""
+    from game.server.security import ApiKeyManager
+
+    return f"{_server_base()}/mcp?token={ApiKeyManager.KEY}"
+
+
+_DOCS_DIR = Path(__file__).parent / "docs"
+_LEADING_COMMENT = re.compile(r"\A\s*<!--.*?-->\s*", re.DOTALL)
+
+
+def _render_doc(name: str, subs: dict[str, str]) -> str:
+    text = (_DOCS_DIR / name).read_text(encoding="utf-8")
+    text = _LEADING_COMMENT.sub("", text, count=1)  # drop the editorial header
+    for key, value in subs.items():
+        text = text.replace("{" + key + "}", value)
+    return text
+
+
+def start_doc(base_url: str) -> str:
+    """The /start welcome doc, with {BASE_URL} filled in (read once per session)."""
+    return _render_doc("start.md", {"BASE_URL": base_url.rstrip("/")})
+
+
+def howtoplay_doc() -> str:
+    """The OPFOR briefing; fills in the red faction when a game is loaded."""
+    subs: dict[str, str] = {}
+    try:
+        from game.server import GameContext
+
+        game = GameContext.get()
+    except Exception:
+        game = None
+    if game is not None:
+        faction = game.red.faction
+        subs["RED_FACTION"] = faction.name or "the RED faction"
+        subs["RED_COUNTRY"] = faction.country.name
+    return _render_doc("howtoplay.md", subs)

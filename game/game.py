@@ -116,6 +116,10 @@ class Game:
         self.date = date(start_date.year, start_date.month, start_date.day)
         self.game_stats = GameStats()
         self.notes = ""
+        # Free-form scratchpad for the OPFOR-AI commander (persisted per campaign).
+        self.stored_context: dict[str, str] = {}
+        # Per-turn loss summaries for the OPFOR-AI prev_turns after-action.
+        self.debrief_history: list[dict[str, int]] = []
         self.ground_planners: dict[UUID, GroundPlanner] = {}
         self.informations: list[Information] = []
         self.message("Game Start", "-" * 40)
@@ -173,8 +177,56 @@ class Game:
             self.laser_code_registry = LaserCodeRegistry()
             for front_line in self.theater.conflicts():
                 front_line.laser_code = self.laser_code_registry.alloc_laser_code()
+        if not hasattr(self, "stored_context"):
+            self.stored_context = {}
+        if not hasattr(self, "debrief_history"):
+            self.debrief_history = []
         # Regenerate any state that was not persisted.
         self.on_load()
+
+    def record_debrief(self, debriefing: Any) -> None:
+        """Capture a concise per-turn loss summary (counts + who-killed-what) for the
+        OPFOR-AI prev_turns after-action (best-effort; must never break the commit)."""
+        from collections import Counter
+        from game.theater.player import Player
+
+        if not hasattr(self, "debrief_history"):
+            self.debrief_history = []
+
+        def killers(losses: Any) -> dict[str, int]:
+            try:
+                index = getattr(debriefing, "kill_info_by_unit_id", {}) or {}
+                counts: Counter = Counter()
+                for loss in losses:
+                    detail = index.get(id(loss))
+                    if detail:
+                        who = detail.get("initiator_type") or detail.get("weapon")
+                        if who:
+                            counts[str(who)] += 1
+                return dict(counts)
+            except Exception:
+                return {}
+
+        try:
+            summary = {
+                "turn": self.turn,
+                "blue_air_lost": len(debriefing.air_losses.player),
+                "red_air_lost": len(debriefing.air_losses.enemy),
+                "blue_ground_lost": sum(
+                    debriefing.front_line_losses_by_type(Player.BLUE).values()
+                ),
+                "red_ground_lost": sum(
+                    debriefing.front_line_losses_by_type(Player.RED).values()
+                ),
+                "red_air_killers": killers(debriefing.air_losses.enemy),
+                "blue_air_killers": killers(debriefing.air_losses.player),
+            }
+        except Exception:
+            logging.exception("OPFOR-AI: failed to record debrief summary")
+            return
+        self.debrief_history.append(summary)
+        if len(self.debrief_history) > 20:
+            self.debrief_history = self.debrief_history[-20:]
 
     @property
     def coalitions(self) -> Iterator[Coalition]:
