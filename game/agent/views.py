@@ -122,20 +122,29 @@ class PackageView(BaseModel):
 class TargetView(BaseModel):
     id: str
     name: str
-    kind: str  # sam / ship / building
-    suggested_task: str  # DEAD / ANTISHIP / STRIKE
+    kind: str  # sam / ship / building / front
+    suggested_task: str  # DEAD / ANTISHIP / STRIKE / CAS
     pos: list[float]  # [lat, lng]
     threat_nm: int | None = None  # SAM max threat range (omitted for non-radar)
+    friendly_cp_id: str | None = None  # fronts only: your control point (for stances)
+    enemy_cp_id: str | None = None  # fronts only: the enemy control point
 
 
 class TurnForcesView(BaseModel):
-    """Force totals at a past turn — the attrition trend the planner reacts to."""
+    """Force totals at a past turn — the attrition trend the planner reacts to.
+
+    Loss fields are present only for turns whose mission was flown + debriefed.
+    """
 
     turn: int
     blue_aircraft: int
     blue_vehicles: int
     red_aircraft: int
     red_vehicles: int
+    blue_air_lost: int | None = None
+    red_air_lost: int | None = None
+    blue_ground_lost: int | None = None
+    red_ground_lost: int | None = None
 
 
 class TurnContextView(BaseModel):
@@ -228,7 +237,8 @@ def _build_target(game: Game, tgo, kind: str, task: str) -> TargetView:
 def build_targets(game: Game, side: str) -> list[TargetView]:
     from game.commander.objectivefinder import ObjectiveFinder
 
-    finder = ObjectiveFinder(game, player_for_side(side))
+    player = player_for_side(side)
+    finder = ObjectiveFinder(game, player)
     targets: list[TargetView] = []
     for sam in finder.enemy_air_defenses():
         targets.append(_build_target(game, sam, "sam", "DEAD"))
@@ -236,6 +246,21 @@ def build_targets(game: Game, side: str) -> list[TargetView]:
         targets.append(_build_target(game, ship, "ship", "ANTISHIP"))
     for building in finder.strike_targets():
         targets.append(_build_target(game, building, "building", "STRIKE"))
+    for front in game.theater.conflicts():
+        friendly_cp = front.red_cp if player.is_red else front.blue_cp
+        enemy_cp = front.blue_cp if player.is_red else front.red_cp
+        ll = DcsPoint(front.position.x, front.position.y, game.theater.terrain).latlng()
+        targets.append(
+            TargetView(
+                id=str(front.id),
+                name=front.name,
+                kind="front",
+                suggested_task="CAS",
+                pos=[_r(ll.lat), _r(ll.lng)],
+                friendly_cp_id=str(friendly_cp.id),
+                enemy_cp_id=str(enemy_cp.id),
+            )
+        )
     return targets
 
 
@@ -308,12 +333,17 @@ def build_packages(game: Game, side: str = "red") -> list[PackageView]:
 
 
 def build_prev_turns(game: Game, n: int = 3) -> list[TurnForcesView]:
-    """The last ``n`` turns' force totals (blue=allied, red=enemy in game_stats)."""
+    """The last ``n`` turns' force totals (blue=allied, red=enemy in game_stats),
+    merged with that turn's debriefed losses when available."""
     data = game.game_stats.data_per_turn
+    losses_by_turn = {
+        d.get("turn"): d for d in getattr(game, "debrief_history", []) or []
+    }
     start = max(0, len(data) - n)
     out: list[TurnForcesView] = []
     for i in range(start, len(data)):
         td = data[i]
+        loss = losses_by_turn.get(i, {})
         out.append(
             TurnForcesView(
                 turn=i,
@@ -321,6 +351,10 @@ def build_prev_turns(game: Game, n: int = 3) -> list[TurnForcesView]:
                 blue_vehicles=td.allied_units.vehicles_count,
                 red_aircraft=td.enemy_units.aircraft_count,
                 red_vehicles=td.enemy_units.vehicles_count,
+                blue_air_lost=loss.get("blue_air_lost") or None,
+                red_air_lost=loss.get("red_air_lost") or None,
+                blue_ground_lost=loss.get("blue_ground_lost") or None,
+                red_ground_lost=loss.get("red_ground_lost") or None,
             )
         )
     return out

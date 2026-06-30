@@ -79,6 +79,9 @@ def resolve_target(game: Game, target_id: str) -> MissionTarget:
         for tgo in cp.ground_objects:
             if str(tgo.id) == str(target_id):
                 return tgo
+    for front in game.theater.conflicts():
+        if str(front.id) == str(target_id):
+            return front
     raise ValueError(f"no target with id {target_id!r}")
 
 

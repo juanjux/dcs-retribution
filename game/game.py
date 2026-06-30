@@ -118,6 +118,8 @@ class Game:
         self.notes = ""
         # Free-form scratchpad for the OPFOR-AI commander (persisted per campaign).
         self.stored_context: dict[str, str] = {}
+        # Per-turn loss summaries for the OPFOR-AI prev_turns after-action.
+        self.debrief_history: list[dict[str, int]] = []
         self.ground_planners: dict[UUID, GroundPlanner] = {}
         self.informations: list[Information] = []
         self.message("Game Start", "-" * 40)
@@ -177,8 +179,36 @@ class Game:
                 front_line.laser_code = self.laser_code_registry.alloc_laser_code()
         if not hasattr(self, "stored_context"):
             self.stored_context = {}
+        if not hasattr(self, "debrief_history"):
+            self.debrief_history = []
         # Regenerate any state that was not persisted.
         self.on_load()
+
+    def record_debrief(self, debriefing: Any) -> None:
+        """Capture a concise per-turn loss summary for the OPFOR-AI prev_turns
+        after-action (best-effort; must never break the mission commit)."""
+        from game.theater.player import Player
+
+        if not hasattr(self, "debrief_history"):
+            self.debrief_history = []
+        try:
+            summary = {
+                "turn": self.turn,
+                "blue_air_lost": len(debriefing.air_losses.player),
+                "red_air_lost": len(debriefing.air_losses.enemy),
+                "blue_ground_lost": sum(
+                    debriefing.front_line_losses_by_type(Player.BLUE).values()
+                ),
+                "red_ground_lost": sum(
+                    debriefing.front_line_losses_by_type(Player.RED).values()
+                ),
+            }
+        except Exception:
+            logging.exception("OPFOR-AI: failed to record debrief summary")
+            return
+        self.debrief_history.append(summary)
+        if len(self.debrief_history) > 20:
+            self.debrief_history = self.debrief_history[-20:]
 
     @property
     def coalitions(self) -> Iterator[Coalition]:
