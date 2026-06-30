@@ -28,7 +28,6 @@
 * **[Comms]** Preset radio channels (ATC, AWACS, tanker, package, JTAC) are also mirrored onto COMM2 on aircraft with a second radio (e.g. F/A-18C, F-16), so you can monitor two nets at once; the kneeboard shows both channels.
 * **[Options]** New option to spawn TACAN beacons at captured airfields
 * **[Options]** New Campaign Doctrine option so AI non-combat (crash) air losses don't count: only losses DCS attributes to a weapon or SAM deplete a squadron, and the debriefing shows how many were not counted. Applies to both coalitions.
-* **[Options]** New Campaign Doctrine option "Enable Electronic Warfare (jamming) flights": dedicated EW aircraft (EA-18G, EA-6B, Su-34, Tornado ECR, EC-130, ...) can be tasked as a "Jamming" escort that suppresses enemy SAM radars and defeats incoming radar-guided missiles, holding off at a threat-aware standoff with the package. Requires the "EW Jammer Script" LUA plugin. Applies to both coalitions.
 * **[Cheat]** The money cheat can give or take money to both OWNFOR and OPFOR (previously OWNFOR only).
 * **[Mission Status]** Mission result window splits every loss category into OwnFor (your faction) and OpFor (enemy) columns instead of a single combined total.
 * **[AirWing]** Track per-squadron campaign aircraft stats (initial/destroyed/purchased, save-compatible) and expose pilot experience level and living/dead pilot views for the UI

@@ -225,55 +225,6 @@ local unitPayloads = {
 				[8] = 17,
 			},
 		},
-		[5] = {
-			["displayName"] = "Retribution Jamming",
-			["name"] = "Retribution Jamming",
-			["pylons"] = {
-				[1] = {
-					["CLSID"] = "{SUPERHORNET_PYLON_03_MB_ALQ_99_HI_BAND}",
-					["num"] = 1,
-				},
-				[2] = {
-					["CLSID"] = "{SUPERHORNET_PYLON_02_OB_AR_1X_AGM-88}",
-					["num"] = 2,
-				},
-				[3] = {
-					["CLSID"] = "{SUPERHORNET_PYLON_03_IB_FT_1X_FPU-8A}",
-					["num"] = 3,
-				},
-				[4] = {
-					["CLSID"] = "{SUPERHORNET_PYLON_05_AM_1X_AIM-120C}",
-					["num"] = 4,
-				},
-				[5] = {
-					["CLSID"] = "{SUPERHORNET_PYLON_06_CN_ANALQ_99_LO_BAND}",
-					["num"] = 5,
-				},
-				[6] = {
-					["CLSID"] = "{SUPERHORNET_PYLON_07_AM_1X_AIM-120C}",
-					["num"] = 6,
-				},
-				[7] = {
-					["CLSID"] = "{SUPERHORNET_PYLON_09_IB_FT_1X_FPU-8A}",
-					["num"] = 7,
-				},
-				[8] = {
-					["CLSID"] = "{SUPERHORNET_PYLON_10_OB_AR_1X_AGM-88}",
-					["num"] = 8,
-				},
-				[9] = {
-					["CLSID"] = "{SUPERHORNET_PYLON_09_MB_ALQ_99_HI_BAND}",
-					["num"] = 9,
-				},
-				[10] = {
-					["CLSID"] = "{SUPERHORNET_PYLON_IN_FT_AUX_CELLS}",
-					["num"] = 10,
-				},
-			},
-			["tasks"] = {
-				[1] = 11,
-			},
-		},
 	},
 	["unitType"] = "EA-18G",
 }
