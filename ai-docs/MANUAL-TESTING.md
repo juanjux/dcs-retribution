@@ -30,7 +30,7 @@ The new code is on `experiment-mcp` only; your current dist does **not** have it
 
 ## 2. Find the connect URL + token, and choose REST vs MCP  ⚙️
 
-- [ ] Settings → **Campaign Management → "OPFOR AI commander"**. With **"Allow OPFOR AI control" ON** and **Copy-Paste mode OFF**, a **"Connect your LLM"** block shows **two URLs** with **Copy** buttons:
+- [X] Settings → **Campaign Management → "OPFOR AI commander"**. With **"Allow OPFOR AI control" ON** and **Copy-Paste mode OFF**, a **"Connect your LLM"** block shows **two URLs** with **Copy** buttons:
   - **REST** (`…/retribution-ai/start?token=…`) — for Claude Code or curl.
   - **MCP** (`…/mcp?token=…`) — for claude.ai connectors or `claude mcp add`.
   - 👉 **There is no REST-vs-MCP toggle** — both are always live when the feature is on. You pick by which URL you give your client. (Answers "how do I use MCP instead of REST".)
