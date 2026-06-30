@@ -145,6 +145,8 @@ class TurnForcesView(BaseModel):
     red_air_lost: int | None = None
     blue_ground_lost: int | None = None
     red_ground_lost: int | None = None
+    red_air_killers: dict[str, int] | None = None  # what killed red's aircraft
+    blue_air_killers: dict[str, int] | None = None  # what killed blue's aircraft
 
 
 class TurnContextView(BaseModel):
@@ -355,6 +357,8 @@ def build_prev_turns(game: Game, n: int = 3) -> list[TurnForcesView]:
                 red_air_lost=loss.get("red_air_lost") or None,
                 blue_ground_lost=loss.get("blue_ground_lost") or None,
                 red_ground_lost=loss.get("red_ground_lost") or None,
+                red_air_killers=loss.get("red_air_killers") or None,
+                blue_air_killers=loss.get("blue_air_killers") or None,
             )
         )
     return out
