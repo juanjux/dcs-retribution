@@ -49,11 +49,12 @@ class Server(uvicorn.Server):
                 time.sleep(1e-3)
             host = self.config.host
             logging.getLogger(__name__).info(
-                "OPFOR-AI commander API ready — point an LLM at "
-                "http://%s:%s/retribution-ai/start?token=%s",
+                "OPFOR-AI commander API ready on http://%s:%s/retribution-ai/start "
+                "— the per-campaign token + connect URL are in the OPFOR AI toolbar "
+                "button once a campaign is loaded (provisional token %s)",
                 f"[{host}]" if ":" in str(host) else host,
                 self.config.port,
-                ApiKeyManager.KEY,
+                ApiKeyManager.current_key(),
             )
             yield
         finally:
