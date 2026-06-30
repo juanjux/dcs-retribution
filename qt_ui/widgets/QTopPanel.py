@@ -226,8 +226,8 @@ class QTopPanel(QFrame):
             f"Status: {snap['status'] or '(none)'}\n"
             f"Last update: {snap['updated_at'] or '(never)'}\n\n"
             f"Connect an LLM —\n"
-            f"REST (Claude Code / curl): {rest}\n"
-            f"MCP (claude.ai / Claude Code): {mcp}"
+            f"REST (any HTTP/REST client or curl): {rest}\n"
+            f"MCP (any MCP-compatible client): {mcp}"
         )
         cancel_btn = None
         if snap["active"]:

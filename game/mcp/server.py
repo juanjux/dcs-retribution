@@ -28,7 +28,7 @@ mcp = FastMCP(
     # connector URL is http://host:port/mcp (not /mcp/mcp).
     streamable_http_path="/",
     # Single-user tool with user-controlled exposure: don't reject by Host header
-    # so a tunnel (claude.ai connector) reaches it. The localhost bind and the
+    # so a tunnel (an MCP connector) reaches it. The localhost bind and the
     # user's own tunnel are the boundary — add token auth + a host allowlist before
     # exposing more widely.
     transport_security=TransportSecuritySettings(enable_dns_rebinding_protection=False),

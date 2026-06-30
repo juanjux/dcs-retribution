@@ -191,8 +191,8 @@ class AutoSettingsLayout(QGridLayout):
         v = QVBoxLayout(box)
         v.setContentsMargins(0, 4, 0, 0)
         v.addWidget(QLabel("<b>Connect your LLM (paste a URL):</b>"))
-        self._opfor_ai_rest = self._url_row(v, "REST — Claude Code / curl")
-        self._opfor_ai_mcp = self._url_row(v, "MCP — claude.ai / Claude Code")
+        self._opfor_ai_rest = self._url_row(v, "REST — any HTTP/REST client or curl")
+        self._opfor_ai_mcp = self._url_row(v, "MCP — any MCP-compatible client")
         self.addWidget(box, self.rowCount(), 0, 1, 2)
         self._opfor_ai_box = box
 

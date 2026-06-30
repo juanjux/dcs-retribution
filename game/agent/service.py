@@ -260,14 +260,14 @@ def _server_base() -> str:
 
 
 def connect_url() -> str:
-    """Ready-to-paste REST connect URL+token (GET /start) — for Claude Code / curl."""
+    """Ready-to-paste REST connect URL+token (GET /start) — for any HTTP/REST client or curl."""
     from game.server.security import ApiKeyManager
 
     return f"{_server_base()}/retribution-ai/start?token={ApiKeyManager.KEY}"
 
 
 def mcp_url() -> str:
-    """Ready-to-paste MCP connector URL+token (/mcp) — for claude.ai / Claude Code."""
+    """Ready-to-paste MCP connector URL+token (/mcp) — for any MCP-compatible client."""
     from game.server.security import ApiKeyManager
 
     return f"{_server_base()}/mcp?token={ApiKeyManager.KEY}"
