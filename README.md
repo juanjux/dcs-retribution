@@ -64,6 +64,10 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   remembers your choice by name — it does not rename or overwrite any payload.
   ([#49](https://github.com/juanjux/dcs-retribution/pull/49),
   [#51](https://github.com/juanjux/dcs-retribution/pull/51))
+- **Persistent map layers** — the map-layers panel remembers its visible layers,
+  base map and open groups in the campaign save, so they survive turns and
+  reopening the app instead of resetting to defaults.
+  ([#54](https://github.com/juanjux/dcs-retribution/pull/54))
 
 ### Kneeboards
 - **Friendly-packages list** plus a **package-targets map** page.
