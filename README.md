@@ -186,6 +186,40 @@ TIC script (MIT).
   longer depletes your squadron in the debrief.
   ([#34](https://github.com/juanjux/dcs-retribution/pull/34), porting 414Ret #64)
 
+## Halted for Now
+
+Work that was built and soak-tested but **parked** — pulled out of `master` and
+`juanjux-dev` to keep them clean, with every branch preserved here so it can be
+revived later.
+
+### Electronic Warfare (EWAR "Jamming")
+
+A dedicated **EWAR / "Jamming" flight task** for EW aircraft (EA-18G, EA-6B,
+Su-34, Mi-8, plus emulated EC-130 Compass Call / Su-24MP / Tornado ECR variants),
+built on upstream's `ewrj` jammer plugin: offensive radar suppression, a
+defensive missile-deletion bubble, engine ECM, naval point-defense handling and a
+launcher-jam missile kill — all tuned to *degrade* enemy air defenses, not
+silence them.
+
+**Why halted:** after a lot of in-game soak-testing, a *reliable and good* EWAR
+turned out to be basically impossible without proper support from the DCS engine
+itself. The available levers (scripted ROE, missile deletion, engine ECM) don't
+scale consistently — e.g. a few jammers saturate a fleet's radar into total
+silence, which is neither realistic nor fun. Parked until DCS exposes real EW
+hooks.
+
+Reverted from `master` and `juanjux-dev` (the upstream `ewrj` plugin base, off by
+default, stays). Everything is preserved on these branches:
+
+- **[`juanjux/ew_jamming_parked`](https://github.com/juanjux/dcs-retribution/tree/juanjux/ew_jamming_parked)** — the complete pre-removal state (feature + all tuning + debugging); branch from here to revive it.
+- [`juanjux/ewr`](https://github.com/juanjux/dcs-retribution/tree/juanjux/ewr) (consolidated feature) · [`juanjux/ew_jamming`](https://github.com/juanjux/dcs-retribution/tree/juanjux/ew_jamming) (original feature branch)
+- Tuning: [`ew_attenuate_defensive_bubble`](https://github.com/juanjux/dcs-retribution/tree/juanjux/ew_attenuate_defensive_bubble) · [`ew_arh_launcher_jam`](https://github.com/juanjux/dcs-retribution/tree/juanjux/ew_arh_launcher_jam) · [`ew_sarh_modulate`](https://github.com/juanjux/dcs-retribution/tree/juanjux/ew_sarh_modulate) · [`ew_ship_point_defense`](https://github.com/juanjux/dcs-retribution/tree/juanjux/ew_ship_point_defense) · [`jamming_degrade_not_silence`](https://github.com/juanjux/dcs-retribution/tree/juanjux/jamming_degrade_not_silence) · [`jamming_degrade_returnfire`](https://github.com/juanjux/dcs-retribution/tree/juanjux/jamming_degrade_returnfire)
+- Debug tooling: [`ew_harpoon_loggers`](https://github.com/juanjux/dcs-retribution/tree/juanjux/ew_harpoon_loggers) (Harpoon leak-rate / ship-hit loggers)
+- Removal: [`remove_ew_jamming`](https://github.com/juanjux/dcs-retribution/tree/juanjux/remove_ew_jamming) · [`remove_ew_dev_v2`](https://github.com/juanjux/dcs-retribution/tree/juanjux/remove_ew_dev_v2) · [`remove_ew_jamming_dev`](https://github.com/juanjux/dcs-retribution/tree/juanjux/remove_ew_jamming_dev) · [`ew_removal_howtoplay`](https://github.com/juanjux/dcs-retribution/tree/juanjux/ew_removal_howtoplay)
+- Pre-removal backups: [`backup/master-pre-ewremoval-20260630`](https://github.com/juanjux/dcs-retribution/tree/backup/master-pre-ewremoval-20260630) · [`backup/juanjux-dev-pre-ewremoval-20260630`](https://github.com/juanjux/dcs-retribution/tree/backup/juanjux-dev-pre-ewremoval-20260630)
+
+> Saves that use EW units won't load on a build without this feature.
+
 ---
 
 For installation and general usage, see the upstream
