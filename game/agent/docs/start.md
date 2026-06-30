@@ -65,7 +65,8 @@ tool/resource of the same name.
 **Plan — missions**
 - `POST /packages` — create packages & flights (body: target + flights; each flight =
   task, squadron, count, pilots?, start_type?, payload?, waypoints?; give each package
-  a one-line `rationale`). Escort/SEAD are flights. See the body schema in 04 §C.
+  a one-line `rationale`; optional `ignore_range:true` sends a capable airframe past the
+  auto-planner's range limit, matching the human's manual reach). Escort/SEAD are flights.
 - `POST /plan/validate` — dry-run lint of a plan (TOT window, SAM coverage, pilots,
   budget…); fix warnings before committing.
 - `DELETE /packages/{id}` · `DELETE /packages/{pkg_id}/flights/{flight_id}` ·

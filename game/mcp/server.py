@@ -103,7 +103,10 @@ def turn_status() -> dict:
 
 @mcp.tool()
 def create_packages(side: str, packages: list[dict]) -> list:
-    """Plan packages: each spec is target_id + flights[{task,count,escort?}] + rationale."""
+    """Plan packages: each spec is target_id + flights[{task,count,escort?}] + rationale.
+    Optional per-package ignore_range:true sends a capable airframe even past the
+    auto-planner's range limit (parity with the human's manual planner; accept the risk).
+    """
     return _dump(service.create_packages(side, packages))
 
 

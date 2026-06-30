@@ -96,7 +96,10 @@ Common roles and what they're for:
   (carrier fighters) would have to enter the SAM bubble, and the planner scrubs them as
   out of (safe) range. That standoff bomber is scarce — don't waste it, and
   `evaluate_package` the strike first (it consumes no aircraft) so a probe doesn't tie up
-  the airframes a real package needs.
+  the airframes a real package needs. If your only standoff platform is tasked, a
+  shorter-legged but anti-ship-capable airframe sitting just past the auto-planner's
+  range limit can still be sent with `ignore_range:true` (a costlier, riskier strike — but
+  an option the human has too).
 - **AEW&C (AWACS)** and **REFUELING (tanker)** — support assets that extend your
   radar picture and range. Big offensives often need them.
 
@@ -311,7 +314,10 @@ red_air_killers?, blue_air_killers?}]` (killers = `{unit/weapon: count}`).
 
 Write bodies:
 - `POST /packages` `{side, packages:[{target_id, flights:[{task, count, escort?}],
-  rationale}]}`
+  rationale, ignore_range?}]}` — `ignore_range:true` plans the package even when the
+  target is past the auto-planner's range limit, so you can send a capable airframe the
+  conservative auto-planner would refuse (the human can task it manually from the map —
+  this gives you the same reach; you accept the fuel/attrition risk).
 - `POST /packages/evaluate` `{side, package:{target_id, flights:[…]}}` → a DRY RUN:
   plans the package and returns its `package` (with `tot`), `tot_minutes_into_mission`,
   `mission_window_min` and `within_window` — WITHOUT committing it. Use it to check a
