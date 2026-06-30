@@ -382,10 +382,19 @@ def _plain_outgoing(side: str) -> str:
         else:
             info = f"threat {t.threat_nm}nm" if t.threat_nm else "-"
         out.append(f"{h} | {t.name} | {t.kind} | {t.suggested_task} | {info}")
+    recruiters = [
+        f"{h} {cp.name}"
+        for h, cp in bases.items()
+        if cp.captured == player and cp.has_ground_unit_source(game)
+    ]
+    rec_note = (
+        "buyg ONLY at: " + ", ".join(recruiters)
+        if recruiters
+        else "NONE of your bases can recruit ground units this turn (need a factory/front)"
+    )
     out += [
         "",
-        "GROUND UNITS YOU CAN BUY (handle | name | price | kind) — buyg at a RED base "
-        "with a factory/front",
+        f"GROUND UNITS YOU CAN BUY (handle | name | price | kind) — {rec_note}",
     ]
     for h, gv in ground.items():
         out.append(f"{h} | {gv.name} | {gv.price} | {gv.kind}")
@@ -575,7 +584,8 @@ already correct as written — never transform a handle. Plan, then REPLY the sa
 (ROT13 your words, keep handles/numbers plain) so the player can't read red's plan;
 they paste it back. PLAIN command lines also work if that's easier. If reading the blob
 is too hard, tell the player to UNTICK "Obfuscate the copy-paste blob" in the OPFOR AI
-settings for plain text. You CANNOT ask for more data: it's all in the blob + briefing."""
+settings for plain text. Assume the TURN BLOB is COMPLETE: plan from it — don't ask the
+player for more data, and don't refuse a turn over info you think is missing."""
         reply_note = (
             "one per line; keep handles plain, ROT13 the words (or send all plain)"
         )
@@ -586,8 +596,8 @@ settings for plain text. You CANNOT ask for more data: it's all in the blob + br
         loop = """\
 THE COPY-PASTE LOOP (important — you have NO other source of information)
 Each turn the player pastes you a plain-text TURN BLOB (the format below). Read it,
-plan, then REPLY with plain command lines; the player pastes them back. You CANNOT
-ask for more data: everything is in the blob + this briefing."""
+plan, then REPLY with plain command lines; the player pastes them back. Assume the
+TURN BLOB is COMPLETE: plan from it — do not ask the player for more data."""
         reply_note = "one per line"
         example_note = "send exactly like this"
 
@@ -663,9 +673,22 @@ escorts are flights too. Sequence + combined arms matter:
   3. THEN STRIKE: STRIKE / OCA / ANTISHIP / CAS hit the objective.
   4. SUPPORT: AEWC (AWACS) + a tanker (REFUELING) for deep or large operations.
 
+MISSION TYPES (the TASK in a pkg flight — only use a task a squadron 'can:' do)
+  Air-to-air: BARCAP = standing CAP defending an area/your base · TARCAP = CAP over the
+      target during a strike · SWEEP = offensive sweep to clear enemy fighters ahead ·
+      ESCORT = fighters bound to your strike package.
+  Air defence suppression: SEAD = suppress a SAM (keeps its head down for the strike) ·
+      DEAD = destroy a SAM outright · EWAR = stand-off jamming support.
+  Strike: STRIKE = buildings/infrastructure · OCA_AIRCRAFT = destroy parked enemy
+      aircraft at a base · OCA_RUNWAY = crater a runway · ANTISHIP = attack ships ·
+      CAS = close air support AT a front · BAI = hit enemy ground forces behind a front.
+  Support: AEWC = AWACS radar picture · REFUELING = tanker (extends reach for deep ops).
+
 DOCTRINE — THE GROUND WAR
 Front lines move with the ground battle. Two levers:
-  - BUY ground units (buyg) at your bases — they reinforce the front next turn.
+  - BUY ground units (buyg) — ONLY at a red base that can RECRUIT (one with a factory,
+    or near a front). The GROUND UNITS line lists which of your bases can; buying at a
+    plain airbase fails. Recruited units reinforce the front next turn.
   - SET a STANCE on a front (its line gives the two base handles):
       defend / hold = hold · aggressive / push = press forward ·
       breakthrough = large armored push · eliminate = destroy the enemy in contact ·
@@ -682,6 +705,21 @@ COMMANDER'S PRINCIPLES (you'll follow the rules fine — THIS is where to be sha
   - INVEST 3-5 TURNS AHEAD: buy toward the force you'll need, not just next turn's gap.
   - SEIZE OPPORTUNITIES: if blue loses its CAP or leaves a carrier exposed, tear up the
     plan and exploit it THIS turn — adapt, don't repeat last turn.
+  - DON'T MICRO-MANAGE: don't tear up a coherent plan for a tiny gain. Only del or
+    replace a package when it makes the operation MEANINGFULLY stronger.
+  - SPEND WISELY — money not spent is opportunity wasted, but don't fritter it: rebuild
+    SCARCE aircraft first, buy ground units that support YOUR chosen front, and do NOT
+    scatter one-of-each across many squadrons. Leaving budget is only OK if deliberately
+    saving for a bigger purchase next turn.
+
+CAMPAIGN PRIORITIES (a tie-breaker when unsure — prefer the higher one)
+  1. Preserve your own carriers.  2. Destroy enemy carriers.  3. Win air superiority.
+  4. Break or hold the key front.  5. Strike infrastructure.
+
+COMMANDER'S INTENT — before issuing commands, settle THREE things in your head (you
+needn't write them): your PRIMARY objective, your SUPPORTING objective, and your ECONOMY
+objective (what to buy). Then make EVERY command serve one of them. Higher aggressiveness
+% = accept more risk for the primary objective; lower = play safer.
 
 PLAN A STRONG TURN
   1. Read FORCES + LAST TURN losses + what's already planned.
