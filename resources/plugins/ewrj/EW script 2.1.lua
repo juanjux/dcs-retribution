@@ -729,15 +729,10 @@ function samOFF(groupsam)
         return
     end
 
-    -- REALISM: offensive jamming must DEGRADE, not SILENCE. We deliberately do
-    -- NOT force WEAPON_HOLD here anymore: that muted the whole group (search
-    -- radar AND optical last-ditch guns like naval CIWS / ZSU-23-4 AAA), which
-    -- was unrealistic. We leave the group at OPEN_FIRE so it keeps defending;
-    -- the actual degradation comes from the DCS engine ECM the jammer pod emits.
-    _controller:setOption(AI.Option.Ground.id.ROE, AI.Option.Ground.val.ROE.OPEN_FIRE)
+    _controller:setOption(AI.Option.Ground.id.ROE, AI.Option.Ground.val.ROE.WEAPON_HOLD)
     if ewrj_options.DEBUG then
-        trigger.action.outText(groupsam.." SAM JAMMED (degraded, still firing)", 5)
-        env.info("[EW DEBUG] SAM jammed (ROE left at OPEN_FIRE, engine ECM degrades it): " .. groupsam)
+        trigger.action.outText(groupsam.." SAM SWITCHING OFF", 5)
+        env.info("[EW DEBUG] SAM has switched OFF: " .. groupsam)
     end
     -- mist.scheduleFunction(samON, {groupsam}, timer.getTime()+ math.random(25,40))
 end
@@ -752,16 +747,13 @@ function samPEEK(groupsam)
     local controller = group:getController()
     if not controller then return end
 
-    -- REALISM: keep the group at OPEN_FIRE (never below) so it always engages.
-    -- The "peek" is now purely a state-machine concept; the engine ECM does the
-    -- degrading, not a scripted ROE downgrade.
     controller:setOption(
         AI.Option.Ground.id.ROE,
-        AI.Option.Ground.val.ROE.OPEN_FIRE
+        AI.Option.Ground.val.ROE.RETURN_FIRE
     )
     if ewrj_options.DEBUG then
-        trigger.action.outText(groupsam.." SAM is PEEKING (kept at Open Fire)", 5)
-        env.info("[EW DEBUG] "..groupsam.." radar PEEK (ROE kept at OPEN_FIRE)")
+        trigger.action.outText(groupsam.." SAM is PEEKING (Return Fire)", 5)
+        env.info("[EW DEBUG] "..groupsam.." radar PEEK (RETURN_FIRE)")
     end
 end
 
