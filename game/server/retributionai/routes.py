@@ -133,6 +133,33 @@ def set_stance(body: schemas.StanceRequest) -> schemas.OpResult:
     )
 
 
+@router.post(
+    "/squadron/relocate",
+    operation_id="ai_relocate_squadron",
+    response_model=schemas.OpResult,
+    response_model_exclude_none=True,
+)
+def relocate_squadron(body: schemas.RelocateSquadronRequest) -> schemas.OpResult:
+    return service.relocate_squadron(body.side, body.squadron_id, body.dest_cp_id)
+
+
+@router.post(
+    "/ground/transfer",
+    operation_id="ai_transfer_ground",
+    response_model=schemas.OpResult,
+    response_model_exclude_none=True,
+)
+def transfer_ground(body: schemas.TransferGroundRequest) -> schemas.OpResult:
+    return service.transfer_ground(
+        body.side,
+        body.origin_cp_id,
+        body.dest_cp_id,
+        body.unit_name,
+        body.quantity,
+        body.by_air,
+    )
+
+
 # --- session / Take-Off gate ---
 
 

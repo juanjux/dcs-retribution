@@ -251,8 +251,14 @@ Write bodies:
 - `POST /packages` `{side, packages:[{target_id, flights:[{task, count, escort?}],
   rationale}]}`
 - `POST /buy/aircraft` · `POST /sell/aircraft` `{side, squadron_id, quantity}`
-- `POST /buy/ground` `{side, cp_id, unit_name, quantity}`
+- `POST /buy/ground` `{side, cp_id, unit_name, quantity}` (only at a base with a
+  factory/front — `cp.has_ground_unit_source`)
 - `POST /stances` `{side, friendly_cp_id, enemy_cp_id, stance}`
+- `POST /squadron/relocate` `{side, squadron_id, dest_cp_id}` (move a squadron to
+  another friendly base; arrives over time)
+- `POST /ground/transfer` `{side, origin_cp_id, dest_cp_id, unit_name, quantity, by_air}`
+  (move existing ground units between your bases; route pre-validated)
+- `DELETE /packages/{index}` (cancel one package) · `DELETE /packages` (clear all)
 - `PUT`/`POST /stored_context` `{key: value}` · `DELETE /stored_context/{key}`
 - `POST /ai/active?active=true|false` · `POST /ai/status?text=…`
 

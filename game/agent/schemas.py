@@ -63,3 +63,18 @@ class StanceRequest(BaseModel):
     friendly_cp_id: str
     enemy_cp_id: str
     stance: str
+
+
+class RelocateSquadronRequest(BaseModel):
+    side: str = "red"
+    squadron_id: str
+    dest_cp_id: str
+
+
+class TransferGroundRequest(BaseModel):
+    side: str = "red"
+    origin_cp_id: str
+    dest_cp_id: str
+    unit_name: str
+    quantity: int = 1
+    by_air: bool = False

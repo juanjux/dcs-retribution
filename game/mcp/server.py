@@ -128,6 +128,29 @@ def set_stance(side: str, friendly_cp_id: str, enemy_cp_id: str, stance: str) ->
 
 
 @mcp.tool()
+def relocate_squadron(side: str, squadron_id: str, dest_cp_id: str) -> dict:
+    """Relocate a squadron to another of your bases (arrives over time, not instant)."""
+    return _dump(service.relocate_squadron(side, squadron_id, dest_cp_id))
+
+
+@mcp.tool()
+def transfer_ground(
+    side: str,
+    origin_cp_id: str,
+    dest_cp_id: str,
+    unit_name: str,
+    quantity: int = 1,
+    by_air: bool = False,
+) -> dict:
+    """Transfer existing ground units between two of your bases (land, or by_air to airlift)."""
+    return _dump(
+        service.transfer_ground(
+            side, origin_cp_id, dest_cp_id, unit_name, quantity, by_air
+        )
+    )
+
+
+@mcp.tool()
 def set_ai_active(active: bool = True) -> dict:
     """Mark the AI busy/idle. Take Off is blocked while active (toolbar robot lit)."""
     return service.set_ai_active(active)
