@@ -9,7 +9,22 @@ API_KEY_QUERY = APIKeyQuery(name="token", auto_error=False)
 
 
 class ApiKeyManager:
+    # Per-process fallback used before any campaign is loaded (server up, no game yet).
     KEY = secrets.token_urlsafe()
+
+    @classmethod
+    def current_key(cls) -> str:
+        """The active campaign's persisted OPFOR-AI token, so the connect URL stays the
+        same across restarts of the same save. Falls back to the per-process key when no
+        game is loaded (or in headless/test contexts without a GameModel)."""
+        try:
+            from game.server.dependencies import GameContext
+
+            game = GameContext.get()
+        except Exception:
+            game = None
+        token = getattr(game, "opfor_ai_token", None) if game is not None else None
+        return token or cls.KEY
 
     @classmethod
     def verify(
@@ -17,9 +32,9 @@ class ApiKeyManager:
         api_key_header: str | None = Security(API_KEY_HEADER),
         api_key_query: str | None = Security(API_KEY_QUERY),
     ) -> None:
-        # Accept the per-process key via the X-API-Key header OR a ?token= query
-        # param, so an LLM agent can authenticate with nothing but a pasted URL.
-        if cls.KEY not in (api_key_header, api_key_query):
+        # Accept the campaign token via the X-API-Key header OR a ?token= query param,
+        # so an LLM agent can authenticate with nothing but a pasted URL.
+        if cls.current_key() not in (api_key_header, api_key_query):
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
 
 
@@ -41,7 +56,7 @@ class TokenAuthMiddleware:
                 headers = dict(scope.get("headers") or [])
                 raw = headers.get(b"x-api-key")
                 token = raw.decode() if raw else None
-            if token != ApiKeyManager.KEY:
+            if token != ApiKeyManager.current_key():
                 await send(
                     {
                         "type": "http.response.start",

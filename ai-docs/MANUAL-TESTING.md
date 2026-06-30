@@ -47,6 +47,7 @@ python) — just launch the new `dist_full_fork` exe (or run from source).
 - [ ] `curl "http://[::1]:<PORT>/retribution-ai/turn_context?token=<KEY>"` → ✅ **200** + JSON.
 - [ ] `curl -H "X-API-Key: <KEY>" "http://[::1]:<PORT>/retribution-ai/turn_context"` → ✅ 200 (header auth works too).
 - [ ] `curl "http://[::1]:<PORT>/mcp"` (no token) → ✅ **403**.
+- [ ] 🆕 **Stable per-campaign token:** note the token in the OPFOR AI button's connect URL, save + quit, relaunch and reload the **same** save → ✅ the token/URL is **unchanged** (the LLM reconnects with the same URL). Loading a **different** campaign → a **different** token. (Pre-feature saves mint one on first load; it sticks once that save is written.)
 
 ## 4. Reads (REST)  
 

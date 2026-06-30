@@ -3,6 +3,7 @@ from __future__ import annotations
 import itertools
 import logging
 import math
+import secrets
 from collections.abc import Iterator
 from copy import deepcopy
 from datetime import date, datetime, time, timedelta
@@ -125,6 +126,9 @@ class Game:
         # (de)serialization; the game just stores it so the choices travel with the
         # save instead of being lost on reload.
         self.client_map_layers: Optional[str] = None
+        # OPFOR-AI API token, persisted so a campaign keeps the same connect URL across
+        # restarts of this save (an LLM reconnects without a new token each session).
+        self.opfor_ai_token: str = secrets.token_urlsafe()
         self.ground_planners: dict[UUID, GroundPlanner] = {}
         self.informations: list[Information] = []
         self.message("Game Start", "-" * 40)
@@ -188,6 +192,9 @@ class Game:
             self.debrief_history = []
         if not hasattr(self, "client_map_layers"):
             self.client_map_layers = None
+        if not getattr(self, "opfor_ai_token", None):
+            # Pre-feature save: mint a token now; it sticks once this save is written.
+            self.opfor_ai_token = secrets.token_urlsafe()
         # Regenerate any state that was not persisted.
         self.on_load()
 

@@ -277,14 +277,14 @@ def connect_url() -> str:
     """Ready-to-paste REST connect URL+token (GET /start) — for any HTTP/REST client or curl."""
     from game.server.security import ApiKeyManager
 
-    return f"{_server_base()}/retribution-ai/start?token={ApiKeyManager.KEY}"
+    return f"{_server_base()}/retribution-ai/start?token={ApiKeyManager.current_key()}"
 
 
 def mcp_url() -> str:
     """Ready-to-paste MCP connector URL+token (/mcp) — for any MCP-compatible client."""
     from game.server.security import ApiKeyManager
 
-    return f"{_server_base()}/mcp?token={ApiKeyManager.KEY}"
+    return f"{_server_base()}/mcp?token={ApiKeyManager.current_key()}"
 
 
 _DOCS_DIR = Path(__file__).parent / "docs"
