@@ -39,7 +39,7 @@
 -- CONFIGURABLE JAMMING MULTIPLIERS
 ewrj_options = {
     -- Offensive jamming vs SAM radars (in check())
-    ["OFFENSIVE_POWER"] = 0.8,     -- 1.0 = stock, 1.4 = realistic-strong, 0.8 = degraded (intermittent suppression)
+    ["OFFENSIVE_POWER"] = 1.6,     -- 1.0 = stock, 1.4 = realistic-strong
     -- Defensive jamming vs incoming missiles (in EWJD)
     ["DEFENSIVE_POWER"] = 1.25,  -- 1.0 = stock, 1.25 = mild buff
     -- NEW: < 1.0 = missile targets get jammed LESS often
@@ -51,49 +51,8 @@ ewrj_options = {
     -- Enable Defensive Debug
     ["DEBUG_DEFENSIVE"] = false,
     -- Enable Advanced Debug (Radar Lists)
-    ["DEBUG_ADVANCED"] = false,
-    -- Show "counter measures pod ON/OFF" messages on screen
-    ["SHOW_POD_MESSAGES"] = false,
-    -- Audience for those messages: "Flight" / "Package" / "All OWNFOR"
-    ["MESSAGE_SCOPE"] = "Package",
-    -- Also announce OPFOR (enemy) jamming to the opposite coalition
-    ["SHOW_OPFOR_MESSAGES"] = false
+    ["DEBUG_ADVANCED"] = false
 }
-
--- Resolve the list of group ids in a jammer's package (for the "Package"
--- audience). dcsRetribution.ewrj_package_groups is injected by DCS Retribution;
--- fall back to just the jammer's own group if it is absent.
-function ewPackageGroups(jammer)
-    local u = Unit.getByName(jammer)
-    if not u then return {} end
-    local gid = u:getGroup():getID()
-    local map = dcsRetribution and dcsRetribution.ewrj_package_groups or {}
-    return map[gid] or {gid}
-end
-
--- Show a pod ON/OFF message to the configured audience. Honors SHOW_POD_MESSAGES
--- + MESSAGE_SCOPE (Flight / Package / All OWNFOR); SHOW_OPFOR_MESSAGES
--- independently mirrors it to the opposite coalition (tagged [OPFOR]).
-function ewPodMessage(jammer, msg)
-    if not ewrj_options.SHOW_POD_MESSAGES then return end
-    local u = Unit.getByName(jammer)
-    if not u then return end
-    local coa = u:getCoalition()
-    local scope = ewrj_options.MESSAGE_SCOPE
-    if scope == "Flight" then
-        trigger.action.outTextForGroup(u:getGroup():getID(), msg, 5)
-    elseif scope == "All OWNFOR" then
-        trigger.action.outTextForCoalition(coa, msg, 5)
-    else
-        for _, gid in ipairs(ewPackageGroups(jammer)) do
-            trigger.action.outTextForGroup(gid, msg, 5)
-        end
-    end
-    if ewrj_options.SHOW_OPFOR_MESSAGES then
-        local other = (coa == coalition.side.RED) and coalition.side.BLUE or coalition.side.RED
-        trigger.action.outTextForCoalition(other, "[OPFOR] "..msg, 5)
-    end
-end
 -- Offensive jamming vs SAM radars (in check())
 --local OFFENSIVE_POWER = 1.6     -- 1.0 = stock, 1.4 = realistic-strong
 
@@ -697,11 +656,7 @@ function samON(groupsam)
         return
     end
 
-    if _group:getCategory() == Group.Category.SHIP then
-        _controller:setOption(AI.Option.Naval.id.ROE, AI.Option.Naval.val.ROE.OPEN_FIRE)
-    else
-        _controller:setOption(AI.Option.Ground.id.ROE,     AI.Option.Ground.val.ROE.OPEN_FIRE)
-    end
+    _controller:setOption(AI.Option.Ground.id.ROE,     AI.Option.Ground.val.ROE.OPEN_FIRE)
     if ewrj_options.DEBUG then
         trigger.action.outText(groupsam.." SAM SWITCHING ON", 5)
         env.info("[EW DEBUG] SAM has switched ON: " .. groupsam)
@@ -733,26 +688,10 @@ function samOFF(groupsam)
         return
     end
 
-    -- REALISM: offensive jamming must DEGRADE, not SILENCE. We do NOT force
-    -- WEAPON_HOLD anymore (that muted the whole group: search radar AND the
-    -- optical last-ditch guns). A successful jam instead drops a GROUND group to
-    -- RETURN_FIRE: it stops proactively engaging but still defends when shot at,
-    -- scaled by OFFENSIVE_POWER so suppression is intermittent.
-    -- SHIPS are different: on a naval group RETURN_FIRE also gates point-defense
-    -- (CIWS / last-ditch SAM go fully silent and the fleet eats the whole
-    -- anti-ship salvo, as in-game testing confirmed), and ENGAGE_AIR_WEAPONS
-    -- (default true) does NOT override that ROE gate. So a jammed ship stays
-    -- OPEN_FIRE via the Naval option namespace and keeps point-defending; the jam
-    -- still degrades its long-range radar SAMs through the engine ECM and SARH
-    -- launcher-jamming, not by muting its guns.
-    if _group:getCategory() == Group.Category.SHIP then
-        _controller:setOption(AI.Option.Naval.id.ROE, AI.Option.Naval.val.ROE.OPEN_FIRE)
-    else
-        _controller:setOption(AI.Option.Ground.id.ROE, AI.Option.Ground.val.ROE.RETURN_FIRE)
-    end
+    _controller:setOption(AI.Option.Ground.id.ROE, AI.Option.Ground.val.ROE.WEAPON_HOLD)
     if ewrj_options.DEBUG then
-        trigger.action.outText(groupsam.." SAM JAMMED (degraded -> return fire)", 5)
-        env.info("[EW DEBUG] SAM jammed (ROE -> RETURN_FIRE, degraded): " .. groupsam)
+        trigger.action.outText(groupsam.." SAM SWITCHING OFF", 5)
+        env.info("[EW DEBUG] SAM has switched OFF: " .. groupsam)
     end
     -- mist.scheduleFunction(samON, {groupsam}, timer.getTime()+ math.random(25,40))
 end
@@ -767,22 +706,13 @@ function samPEEK(groupsam)
     local controller = group:getController()
     if not controller then return end
 
-    -- The "peek" state: a jammed-but-checking radar drops to RETURN_FIRE
-    -- (reactive only) so it never goes fully silent (WEAPON_HOLD) but is
-    -- degraded while the jam check keeps succeeding.
-    if group:getCategory() == Group.Category.SHIP then
-        -- Ships keep point-defending; see samOFF() for why RETURN_FIRE is wrong
-        -- for naval groups (it silences CIWS/last-ditch SAM).
-        controller:setOption(AI.Option.Naval.id.ROE, AI.Option.Naval.val.ROE.OPEN_FIRE)
-    else
-        controller:setOption(
-            AI.Option.Ground.id.ROE,
-            AI.Option.Ground.val.ROE.RETURN_FIRE
-        )
-    end
+    controller:setOption(
+        AI.Option.Ground.id.ROE,
+        AI.Option.Ground.val.ROE.RETURN_FIRE
+    )
     if ewrj_options.DEBUG then
-        trigger.action.outText(groupsam.." SAM is PEEKING (return fire)", 5)
-        env.info("[EW DEBUG] "..groupsam.." radar PEEK (ROE -> RETURN_FIRE)")
+        trigger.action.outText(groupsam.." SAM is PEEKING (Return Fire)", 5)
+        env.info("[EW DEBUG] "..groupsam.." radar PEEK (RETURN_FIRE)")
     end
 end
 
@@ -855,7 +785,7 @@ getRadars()
 ---- START OFFENSIVE JAMMING ----
 --------------------------------- 
 function startEWjamm(jammer)
-    ewPodMessage(jammer, "OFFENSIVE COUNTER MEASURES POD ON "..jammer)
+    trigger.action.outText("OFFENSIVE COUNTER MEASURES POD ON "..jammer, 5)
     if ewrj_options.DEBUG then
         env.info("[EW DEBUG] Start Offensive Jamming: " .. jammer)
     end
@@ -917,7 +847,7 @@ end -- startEWjamm('Prowler1')
 --------------------------------
 function stopEWjamm(jammer)
     ActiveJammers[jammer] = nil
-    ewPodMessage(jammer, "OFFENSIVE COUNTER MEASURES POD OFF "..jammer)
+    trigger.action.outText("OFFENSIVE COUNTER MEASURES POD OFF "..jammer,5)
     if ewrj_options.DEBUG then
         env.info("[EW DEBUG] Stop Offensive Jamming: " .. jammer)
     end
@@ -1056,7 +986,7 @@ end
     end
     function startDjamming(jammer)
         switch[#switch+1]=jammer
-        ewPodMessage(jammer, "DEFENSIVE COUNTER MEASURES POD ON "..jammer)
+        trigger.action.outText("DEFENSIVE COUNTER MEASURES POD ON "..jammer,5)
         if ewrj_options.DEBUG then
             env.info("[EW DEBUG] Start Defensive Jamming: " ..jammer)
         end
@@ -1071,7 +1001,7 @@ end
             switch[i] = nil
         end
     end
-    ewPodMessage(jammer, "DEFENSIVE COUNTER MEASURES POD OFF "..jammer)
+    trigger.action.outText("DEFENSIVE COUNTER MEASURES POD OFF "..jammer,5)
     if ewrj_options.DEBUG then
         env.info("[EW DEBUG] Stop Defensive Jamming: " ..jammer)    
     end
@@ -1096,16 +1026,11 @@ function EWJD(jammer)
     local removalDist4 = 5000
     local removalDist5 = 7000
     -- PROBAILITY OF SUCCESFULL JAMMING  REMOVALDIST1 CORRESPOND TO PKILL1, REMOVALDIST2 CORRESPOND TO PKILL2, ETC...
-    -- Attenuated (orig 95/65/50/30/15 -> 60/45/30/18/8 -> now lower again): one
-    -- growler's defensive bubble was deleting ~47% of incoming SAMs on its own and
-    -- barely scaling with jammer count (saturated). Lowered ~20% so the OFFENSIVE
-    -- launcher-jam (which does scale with jammers) drives more of the effect and
-    -- the defence degrades a little less overall.
-    local pkill_1 =48
-    local pkill_2 =36
-    local pkill_3 =24
-    local pkill_4 =14
-    local pkill_5 =6
+    local pkill_1 =95
+    local pkill_2 =65
+    local pkill_3 =50
+    local pkill_4 =30
+    local pkill_5 =15
 
     -- Scale Defensive missile pkill by DEFENSIVE_POWER (capped at 100)
     local function scale_pkill(base)
@@ -1223,38 +1148,22 @@ local function checkMis(mis)
         mis.debugLogged = true
     end
     ---------------------------------------------------
-    -- "launcher jammed => missile guidance breaks" code
+    -- SARH "launcher jammed => missile dies" code ----
     ---------------------------------------------------
-    -- SARH (guidance 3) rides the launcher's radar, so jamming that radar breaks
-    -- it outright. ARH (guidance 4, e.g. HHQ-9) has its own terminal seeker, so
-    -- jamming the launcher only defeats it intermittently -- roll once per missile.
-    if mis.launcherGroupName and (mis.guidance == 3 or mis.guidance == 4) then
+    if mis.launcherGroupName and (mis.guidance == 3) then
         local rec = JammedLaunchers and JammedLaunchers[mis.launcherGroupName]
         if rec and rec.untilT and timer.getTime() < rec.untilT then
-            local kill = false
-            if not mis.jamRolled then
-                mis.jamRolled = true
-                -- SARH rides the launcher's illumination, so jamming that radar
-                -- defeats it more often than ARH, which has its own terminal
-                -- seeker. Both kept well below 1.0 on purpose: a jammed ship
-                -- still fires live SAMs that fly and can intercept -- we degrade
-                -- its defence, not silence it. Rolled once per missile.
-                local p = (mis.guidance == 3) and 0.6 or 0.35
-                kill = math.random() < p
+            if ewrj_options.DEBUG_OFFENSIVE then
+                env.info(string.format(
+                    "[EW DEBUG - OFFENSIVE] KILL missile (guidance=%s): launcher group jammed (%s) by %s (%.1fs left)",
+                    tostring(mis.guidance),
+                    tostring(mis.launcherGroupName),
+                    tostring(rec.by),
+                    rec.untilT - timer.getTime()
+                ))
             end
-            if kill then
-                if ewrj_options.DEBUG_OFFENSIVE then
-                    env.info(string.format(
-                        "[EW DEBUG - OFFENSIVE] KILL missile (guidance=%s): launcher group jammed (%s) by %s (%.1fs left)",
-                        tostring(mis.guidance),
-                        tostring(mis.launcherGroupName),
-                        tostring(rec.by),
-                        rec.untilT - timer.getTime()
-                    ))
-                end
-                removeMis(mis.uid)
-                return
-            end
+            removeMis(mis.uid)
+            return
         end
     end
 

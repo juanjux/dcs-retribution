@@ -17,11 +17,6 @@ variants:
   Su-24M Fencer-D: {}
   Su-24MK Fencer-D:
     introduced: 1988
-  Su-24MP (emulated):
-    tasks:
-      Jamming: 600
-    has_built_in_jamming: true
-    has_built_in_ecm: true
 tasks:
   Anti-ship: 130
   BAI: 610

@@ -595,28 +595,6 @@ class WaypointBuilder:
             pretty_name="Escort Hold",
         )
 
-    def jamming_hold(self, start: Point) -> FlightWaypoint:
-        """Creates a standoff hold waypoint for jamming (EWAR) flights.
-
-        Anchored at the threat-aware ingress point so the jammer holds with the
-        package instead of orbiting inside the target's threat ring.
-        """
-        altitude = self.get_combat_altitude
-
-        alt_type: Literal["BARO", "RADIO"] = "BARO"
-        if self.is_helo or altitude.feet <= AGL_TRANSITION_ALT:
-            alt_type = "RADIO"
-
-        return FlightWaypoint(
-            "JAMMING HOLD",
-            FlightWaypointType.JAMMING_HOLD,
-            start,
-            altitude,
-            alt_type=alt_type,
-            description="Anchor and jam from this standoff point",
-            pretty_name="Jamming Hold",
-        )
-
     @staticmethod
     def sweep_start(position: Point, altitude: Distance) -> FlightWaypoint:
         """Creates a sweep start waypoint.

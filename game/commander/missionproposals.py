@@ -11,7 +11,6 @@ class EscortType(Enum):
     AirToAir = auto()
     Sead = auto()
     Refuel = auto()
-    Ewar = auto()
 
 
 @dataclass(frozen=True)

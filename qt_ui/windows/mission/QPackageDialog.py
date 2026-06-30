@@ -18,9 +18,7 @@ from PySide6.QtWidgets import (
 
 from game.ato.flight import Flight
 from game.ato.flightplans.planningerror import PlanningError
-from game.ato.flighttype import FlightType
 from game.ato.package import Package
-from game.data.weapons import WeaponType
 from game.game import Game
 from game.radio.radios import RadioFrequency
 from game.server import EventStream
@@ -243,47 +241,6 @@ class QPackageDialog(QDialog):
         self.auto_create_button.setDisabled(True)
         # noinspection PyUnresolvedReferences
         self.package_changed.emit()
-        self.warn_if_jamming_degrades_cap(flight)
-
-    @staticmethod
-    def _is_jammer(f: Flight) -> bool:
-        return (
-            f.flight_type == FlightType.EWAR
-            or f.unit_type.has_built_in_jamming
-            or f.any_member_has_weapon_of_type(WeaponType.OFFENSIVE_JAMMER)
-            or f.any_member_has_weapon_of_type(WeaponType.JAMMER)
-        )
-
-    def warn_if_jamming_degrades_cap(self, added: Flight) -> None:
-        """Advisory popup when a jammer and a BAR/TAR CAP share a package.
-
-        Friendly jamming also blinds the radar-guided (Fox-1/Fox-3) missiles of
-        the package's CAP flights. Warn the player, but let them continue.
-        """
-        added_is_cap = added.flight_type in {FlightType.BARCAP, FlightType.TARCAP}
-        if not (self._is_jammer(added) or added_is_cap):
-            # The just-added flight is neither a jammer nor a CAP, so it can't
-            # have introduced a new jammer-vs-CAP conflict; don't re-warn.
-            return
-        flights = list(self.package_model.package.flights)
-        has_jammer = any(self._is_jammer(f) for f in flights)
-        has_cap = any(
-            f.flight_type in {FlightType.BARCAP, FlightType.TARCAP} for f in flights
-        )
-        if has_jammer and has_cap:
-            QMessageBox.warning(
-                self,
-                "Electronic warfare in package",
-                "This package contains both an electronic-warfare jammer and a "
-                "BARCAP/TARCAP flight.\n\n"
-                "The jammer does not discriminate between friend and foe: it will "
-                "also degrade the radar-guided (Fox-1 and Fox-3) missiles of your "
-                "own CAP flights, which may fail to track or guide while jamming is "
-                "active.\n\n"
-                "Consider splitting the jammer and the CAP into separate packages, "
-                "or rely on IR (Fox-2) missiles for the escort.",
-                QMessageBox.StandardButton.Ok,
-            )
 
     def on_delete_flight(self) -> None:
         """Removes the selected flight from the package."""
