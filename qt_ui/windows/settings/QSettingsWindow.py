@@ -180,6 +180,61 @@ class AutoSettingsLayout(QGridLayout):
                 self.add_duration_controls_for(row, name, description)
             else:
                 raise TypeError(f"Unhandled option type: {description}")
+        if self.section == OPFOR_AI_SECTION:
+            self._wire_opfor_ai()
+
+    def _wire_opfor_ai(self) -> None:
+        """Make Copy-Paste mode depend on the master toggle, and show the REST/MCP
+        connect URLs only in live API/MCP mode."""
+        master = self.settings_map.get("opfor_ai_enabled")
+        cp = self.settings_map.get("opfor_ai_copy_paste_mode")
+
+        box = QWidget()
+        v = QVBoxLayout(box)
+        v.setContentsMargins(0, 4, 0, 0)
+        v.addWidget(QLabel("<b>Connect your LLM (paste a URL):</b>"))
+        self._opfor_ai_rest = self._url_row(v, "REST — Claude Code / curl")
+        self._opfor_ai_mcp = self._url_row(v, "MCP — claude.ai / Claude Code")
+        self.addWidget(box, self.rowCount(), 0, 1, 2)
+        self._opfor_ai_box = box
+
+        def refresh() -> None:
+            on = bool(master and master.isChecked())
+            if cp is not None:
+                cp.setEnabled(on)
+                if not on and cp.isChecked():
+                    cp.setChecked(False)
+            show = on and not bool(cp and cp.isChecked())
+            self._opfor_ai_box.setVisible(show)
+            if show:
+                try:
+                    from game.agent import service
+
+                    self._opfor_ai_rest.setText(service.connect_url())
+                    self._opfor_ai_mcp.setText(service.mcp_url())
+                except Exception:
+                    self._opfor_ai_rest.setText(
+                        "(start a campaign to generate the URL)"
+                    )
+                    self._opfor_ai_mcp.setText("")
+
+        if master is not None:
+            master.toggled.connect(lambda _=None: refresh())
+        if cp is not None:
+            cp.toggled.connect(lambda _=None: refresh())
+        refresh()
+
+    def _url_row(self, parent_layout: QVBoxLayout, label: str) -> QLineEdit:
+        h = QHBoxLayout()
+        h.addWidget(QLabel(label + ":"))
+        field = QLineEdit()
+        field.setReadOnly(True)
+        h.addWidget(field, 1)
+        copy = QPushButton("Copy")
+        copy.clicked.connect(lambda: QApplication.clipboard().setText(field.text()))
+        h.addWidget(copy)
+        parent_layout.addLayout(h)
+        return field
 
     def add_label(self, row: int, description: OptionDescription) -> None:
         wrapped_title = "<br />".join(textwrap.wrap(description.text, width=55))
@@ -328,40 +383,6 @@ class AutoSettingsPageLayout(QVBoxLayout):
                 AutoSettingsGroup(page, section, sc, write_full_settings)
             )
             self.addWidget(self.widgets[-1])
-        if OPFOR_AI_SECTION in Settings.sections(page):
-            # Not in self.widgets: it has no update_from_settings and the URL is
-            # static per process.
-            self.addWidget(self._build_opfor_ai_connection_box())
-
-    @staticmethod
-    def _build_opfor_ai_connection_box() -> QGroupBox:
-        box = QGroupBox("OPFOR AI connection")
-        layout = QVBoxLayout()
-        layout.addWidget(
-            QLabel("Paste into your LLM agent (Claude Code / curl) to command red:")
-        )
-        row = QHBoxLayout()
-        field = QLineEdit()
-        field.setReadOnly(True)
-        try:
-            from game.agent import service
-
-            field.setText(service.connect_url())
-        except Exception:
-            field.setText("(start/continue a campaign to generate the URL)")
-        row.addWidget(field)
-        copy = QPushButton("Copy")
-        copy.clicked.connect(lambda: QApplication.clipboard().setText(field.text()))
-        row.addWidget(copy)
-        layout.addLayout(row)
-        layout.addWidget(
-            QLabel(
-                "MCP (claude.ai / Claude Code): same host:port with /mcp?token=… "
-                "(expose the port with a tunnel for the web)."
-            )
-        )
-        box.setLayout(layout)
-        return box
 
     def update_from_settings(self) -> None:
         for w in self.widgets:

@@ -193,12 +193,11 @@ class QTopPanel(QFrame):
         from game.agent.session import AI_SESSION
 
         s = self.game.settings if self.game else None
-        cp_mode = bool(s and getattr(s, "opfor_ai_copy_paste_mode", False))
-        api_mode = bool(s and s.opfor_ai_enabled)
-        self.ai_status_button.setVisible(api_mode or cp_mode)
-        if not (api_mode or cp_mode):
+        enabled = bool(s and s.opfor_ai_enabled)
+        self.ai_status_button.setVisible(enabled)
+        if not enabled:
             return
-        if cp_mode:
+        if getattr(s, "opfor_ai_copy_paste_mode", False):
             self.ai_status_button.setText("OPFOR AI: copy-paste — click to plan")
             self.ai_status_button.setStyleSheet(
                 "color: white; background-color: #1565c0; font-weight: bold;"
@@ -230,16 +229,19 @@ class QTopPanel(QFrame):
 
         snap = AI_SESSION.snapshot()
         try:
-            url = service.connect_url()
+            rest = service.connect_url()
+            mcp = service.mcp_url()
         except Exception:
-            url = "(unavailable)"
+            rest = mcp = "(unavailable)"
         box = QMessageBox(self)
         box.setWindowTitle("OPFOR AI commander")
         box.setText(
             f"Active: {snap['active']}\n"
             f"Status: {snap['status'] or '(none)'}\n"
             f"Last update: {snap['updated_at'] or '(never)'}\n\n"
-            f"Connect an LLM to:\n{url}"
+            f"Connect an LLM —\n"
+            f"REST (Claude Code / curl): {rest}\n"
+            f"MCP (claude.ai / Claude Code): {mcp}"
         )
         cancel_btn = None
         if snap["active"]:

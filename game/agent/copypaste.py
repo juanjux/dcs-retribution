@@ -1,14 +1,18 @@
 """Copy-paste transport for free-LLM accounts (no API / no MCP).
 
 The player copies the *outgoing* turn blob to their LLM and pastes the LLM's
-*response* blob back. Both are compact TEXT — NOT zlib/base64 — because the LLM
-reads them directly; compression would not cut token count. Token economy comes
-from short handles (``B``/``S``/``T`` + index) instead of UUIDs and a terse
-line-oriented command grammar. Handles are deterministic within a turn, so the
-same enumeration resolves them on the way back in.
+*response* blob back. The turn data is **base64-encoded** so the player can't read
+red's full state / plan at a glance (it's obfuscation/friction, not encryption —
+a determined player can still decode it; an LLM is told to decode it in the
+briefing). The reply is accepted either base64-encoded (preferred — hides red's
+plan from the player) or plain (still works). Token economy comes from short
+handles (``B``/``S``/``T`` + index) instead of UUIDs and a terse command grammar.
 """
 
 from __future__ import annotations
+
+import base64
+import re
 
 from game.agent import service, views
 
@@ -24,8 +28,8 @@ def _build_handles(game, side: str):
     return bases, squadrons, targets
 
 
-def outgoing_blob(side: str = "red") -> str:
-    """The compact turn snapshot for the LLM to read."""
+def _plain_outgoing(side: str) -> str:
+    """The readable compact turn snapshot (before base64-encoding)."""
     game = service._require_game()
     tc = views.build_turn_context(game, side)
     pkgs = views.build_packages(game, side)
@@ -57,15 +61,34 @@ def outgoing_blob(side: str = "red") -> str:
         )
     out += ["", "TARGETS (handle | name | kind | suggested_task | threat)"]
     for h, t in targets.items():
-        out.append(
-            f"{h} | {t.name} | {t.kind} | {t.suggested_task}"
-            + (f" | {t.threat_nm}nm" if t.threat_nm else "")
-        )
+        extra = ""
+        if t.threat_nm:
+            extra += f" | {t.threat_nm}nm"
+        if t.kind == "front":
+            extra += " | (front: use the two bases for stance/CAS)"
+        out.append(f"{h} | {t.name} | {t.kind} | {t.suggested_task}{extra}")
     out += ["", "CURRENT RED PACKAGES (index | target | task | tot)"]
     for p in pkgs:
         out.append(f"#{p.index} | {p.target} | {p.task} | {p.tot or '?'}")
-    out += ["", "Reply with commands (see the briefing). End with: done"]
     return "\n".join(out)
+
+
+def outgoing_blob(side: str = "red") -> str:
+    """Base64 of the turn snapshot (so the player can't read it; the LLM decodes it)."""
+    return base64.b64encode(_plain_outgoing(side).encode("utf-8")).decode("ascii")
+
+
+def _maybe_decode(text: str) -> str:
+    """Accept the reply as base64 (preferred) or plain. Decode only if the result
+    actually looks like our command grammar, otherwise treat the text as plain."""
+    candidate = "".join(text.split())  # base64 ignores whitespace; commands don't
+    try:
+        decoded = base64.b64decode(candidate, validate=True).decode("utf-8")
+    except Exception:
+        return text
+    if re.search(r"(?im)^\s*(pkg|buy|sell|stance|note|clear)\b", decoded):
+        return decoded
+    return text
 
 
 def apply_incoming(side: str, text: str) -> str:
@@ -81,7 +104,7 @@ def apply_incoming(side: str, text: str) -> str:
             return str(bases[handle].id)
         raise ValueError(f"unknown target handle {handle!r}")
 
-    for raw in text.splitlines():
+    for raw in _maybe_decode(text).splitlines():
         line = raw.strip()
         if not line or line.startswith("#") or line.lower() == "done":
             continue
@@ -125,35 +148,93 @@ def apply_incoming(side: str, text: str) -> str:
         except Exception as exc:  # keep going; report per line
             results.append(f"{line}: ERROR {exc}")
     if not results:
-        results.append("(no commands found)")
+        results.append(
+            "(no commands found — did you paste the LLM's reply? it can be the "
+            "base64 block or plain command lines)"
+        )
     return "\n".join(results)
 
 
 def briefing(side: str = "red") -> str:
-    """One-time briefing shown when copy-paste mode is enabled (verbose is fine)."""
-    return (
-        "DCS Retribution — OPFOR AI, COPY-PASTE mode\n"
-        "===========================================\n\n"
-        "You are the RED (OPFOR) commander. Each turn the player pastes you a TURN "
-        "BLOB (situation, your bases/squadrons, enemy TARGETS, your current packages). "
-        "You reply with COMMANDS; the player pastes them back into the game.\n\n"
-        "Objects are referenced by short handles from the blob: B# = base, S# = "
-        "squadron, T# = enemy target. (B# can also be a strike/OCA target.)\n\n"
-        "COMMANDS (one per line):\n"
-        "  pkg <target> <task[:count]> [<task[:count]> ...]\n"
-        "        Create a package at a target with one or more flights.\n"
-        "        Tasks: DEAD SEAD BARCAP TARCAP ESCORT OCA_AIRCRAFT OCA_RUNWAY\n"
-        "               STRIKE ANTISHIP CAS BAI AEWC REFUELING EWAR\n"
-        "        e.g.  pkg T3 DEAD:2 ESCORT:2     (DEAD a SAM, with 2 escorts)\n"
-        "              pkg T5 ANTISHIP:4          (4-ship anti-ship strike)\n"
-        "  buy <squadron> <qty>      Order aircraft (arrive next turn).\n"
-        "  sell <squadron> <qty>     Sell untasked aircraft.\n"
-        "  stance <baseA> <baseB> <stance>   Ground posture between two bases.\n"
-        "        stances: defend hold aggressive push breakthrough eliminate retreat ambush\n"
-        "  note <key>=<text>         Save a strategy note (persists across turns).\n"
-        "  clear                     Remove all your current packages.\n"
-        "  done                      (optional) end of your reply.\n\n"
-        "Plan boldly: open SAM rings with DEAD first, escort strikers, time TOTs "
-        "within the mission window, and spend to fix gaps. Keep every flight crewed "
-        "(the game auto-assigns pilots). Concentrate force on 1-3 objectives.\n"
-    )
+    """The one-time briefing the player gives their LLM. Comprehensive on purpose —
+    the LLM must play a whole campaign from this alone (verbose is fine, read once)."""
+    return """\
+DCS Retribution — OPFOR (RED) commander — COPY-PASTE mode
+=========================================================
+
+WHO YOU ARE
+You are a general commanding OPFOR (the RED coalition) in a DCS Retribution
+turn-based campaign, against a human who commands BLUE. Each turn you plan red's
+air and ground operations. Be a competent, adaptive, believable adversary:
+concentrate force, exploit the player's weaknesses, react to what they just did,
+and try to WIN the campaign — do not spread effort thinly or do the same
+predictable thing every turn. You win by degrading the enemy and capturing their
+bases; you lose if they capture yours. Think in campaigns, not single turns.
+
+HOW THE COPY-PASTE LOOP WORKS
+Each turn the player pastes you a TURN BLOB that is BASE64-encoded. First DECODE
+the base64 to get the readable turn data below. Plan the turn, then REPLY with
+commands and BASE64-ENCODE your whole reply (so the player can't read red's plan).
+The player pastes your reply back into the game.
+  - If you cannot produce reliable base64, reply in PLAIN command lines instead —
+    it still works; the player will just be able to read your commands.
+
+THE TURN DATA (after you decode it)
+  TURN line: turn #, date, your budget + income/turn, an aggressiveness hint
+             (0-100; higher = take more risk), and the mission window in minutes.
+  BASES:      B# | name | type | owner | #squadrons.  (An enemy base can be a target.)
+  SQUADRONS:  S# | name | aircraft | base | owned | untasked | pilots.  (Your air wing.)
+  TARGETS:    T# | name | kind | suggested_task | threat. Enemy objects you can hit:
+              sam -> DEAD, ship -> ANTISHIP, building -> STRIKE, front -> CAS.
+  CURRENT RED PACKAGES: what's already planned this turn (don't duplicate).
+
+DOCTRINE — HOW TO BUILD PACKAGES
+A mission is a PACKAGE aimed at a TARGET, made of FLIGHTS (a group of aircraft from
+one squadron with ONE task). Escorts are flights too. Sequence + combined arms matter:
+  1. OPEN THE DOOR: if the target sits inside radar-SAM range, plan DEAD/SEAD FIRST.
+     Do NOT send strikers into a live SAM ring — they get turned back or shot down.
+  2. WIN THE AIR: if blue has fighters over the target, add ESCORT / TARCAP.
+  3. THEN STRIKE: STRIKE / OCA / ANTISHIP / CAS hit the actual objective.
+  4. SUPPORT: add AEWC (AWACS) and a tanker (REFUELING) for deep or large operations.
+Tasks: BARCAP TARCAP CAP SWEEP ESCORT SEAD DEAD STRIKE OCA_RUNWAY OCA_AIRCRAFT
+       CAS BAI ANTISHIP AEWC REFUELING EWAR. Routes and pilots are automatic.
+
+PLAN A STRONG TURN
+  1. Read the situation and the previous result (your losses + what blue did).
+  2. Pick 1-3 OBJECTIVES and CONCENTRATE on them (hold a threatened base; dismantle a
+     section of blue's IADS to open a strike corridor; sink the fleet; break a front;
+     set up a base capture). Do NOT plan a little of everything.
+  3. Build properly-composed packages (above). Aim TOTs within the mission window.
+  4. SPEND to fix gaps: buy fighters if you're losing the air war; buy/move ground
+     units to hold or push a front. Bought aircraft arrive NEXT turn — invest ahead.
+  5. Save a strategy note — it persists across turns so you can adapt.
+
+FAIR PLAY: act only as a player could — no free aircraft (buy them), only airframes
+your faction has, no teleporting or capturing bases directly. Every flight is crewed
+automatically.
+
+YOUR REPLY — COMMANDS (one per line; then base64-encode the whole reply)
+  pkg <target> <task[:count]> [<task[:count]> ...]
+        pkg T3 DEAD:2 ESCORT:2      (DEAD a SAM, with 2 escorts)
+        pkg T5 ANTISHIP:4
+        pkg B7 OCA_AIRCRAFT:2       (B7 = an enemy base; crater its parked aircraft)
+  buy <squadron> <qty>             Order aircraft (arrive next turn).
+  sell <squadron> <qty>            Sell untasked aircraft.
+  stance <baseA> <baseB> <stance>  Ground posture at the front between two bases.
+        stances: defend hold aggressive push breakthrough eliminate retreat ambush
+  note <key>=<text>                Save a strategy note (persists across turns).
+  clear                            Remove all your current packages (start over).
+  done                             (optional) marks the end of your reply.
+
+WORKED EXAMPLE (plain, before you base64-encode it)
+  note plan=kill the north SAM belt this turn, strike the depot next turn
+  pkg T2 DEAD:2 ESCORT:2
+  pkg T7 STRIKE:2 SEAD:2
+  buy S4 4
+  stance B0 B9 breakthrough
+  done
+
+Plan boldly and coherently: a clear objective, the air defenses dealt with, the
+strike escorted and supported, the ground effort backed up, and money spent to set
+up your next move.
+"""

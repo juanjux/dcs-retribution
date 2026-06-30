@@ -167,10 +167,7 @@ def run_opfor_fallback_if_needed() -> dict:
     """If OPFOR-AI is on but red's ATO is empty (the LLM never played), run the
     scripted commander so the turn is never empty. Called at Take Off."""
     game = _require_game()
-    enabled = getattr(game.settings, "opfor_ai_enabled", False) or getattr(
-        game.settings, "opfor_ai_copy_paste_mode", False
-    )
-    if not enabled:
+    if not getattr(game.settings, "opfor_ai_enabled", False):
         return {"ran": False, "reason": "opfor_ai disabled"}
     red = game.red
     if red.ato.packages:
@@ -183,18 +180,27 @@ def run_opfor_fallback_if_needed() -> dict:
     return {"ran": True, "packages": len(red.ato.packages)}
 
 
-def connect_url() -> str:
-    """The ready-to-paste connect URL+token for the OPFOR-AI REST API (/start)."""
-    from game.server.security import ApiKeyManager
+def _server_base() -> str:
     from game.server.settings import ServerSettings
 
     s = ServerSettings.get()
     host = str(s.server_bind_address)
     host_disp = f"[{host}]" if ":" in host else host
-    return (
-        f"http://{host_disp}:{s.server_port}/retribution-ai/start"
-        f"?token={ApiKeyManager.KEY}"
-    )
+    return f"http://{host_disp}:{s.server_port}"
+
+
+def connect_url() -> str:
+    """Ready-to-paste REST connect URL+token (GET /start) — for Claude Code / curl."""
+    from game.server.security import ApiKeyManager
+
+    return f"{_server_base()}/retribution-ai/start?token={ApiKeyManager.KEY}"
+
+
+def mcp_url() -> str:
+    """Ready-to-paste MCP connector URL+token (/mcp) — for claude.ai / Claude Code."""
+    from game.server.security import ApiKeyManager
+
+    return f"{_server_base()}/mcp?token={ApiKeyManager.KEY}"
 
 
 _DOCS_DIR = Path(__file__).parent / "docs"
