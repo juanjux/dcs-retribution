@@ -106,6 +106,24 @@ def _parking(cp):
         return None
 
 
+def _damage_word(tgo) -> str | None:
+    """A short damage state for a target ('damaged'/'heavily damaged'), or None if it
+    is at full strength — so the LLM doesn't waste sorties on a near-dead target."""
+    try:
+        units = list(tgo.units)
+        if not units:
+            return None
+        alive = sum(1 for u in units if getattr(u, "alive", True))
+        total = len(units)
+        if alive >= total:
+            return None
+        if alive == 0:
+            return "destroyed"
+        return "lightly damaged" if alive / total > 0.6 else "heavily damaged"
+    except Exception:
+        return None
+
+
 def _looks_like_commands(text: str) -> bool:
     return bool(re.search(r"(?im)^\s*(pkg|buyg|buy|sell|stance|note|clear)\b", text))
 
@@ -196,7 +214,17 @@ def _operational_picture(game, side, bases, targets) -> list[str]:
                 if (p and b)
                 else ""
             )
-            out.append(f"  {h} {t.name} ({t.threat_nm}nm){where}")
+            covers = ""
+            if p:
+                rng_m = (t.threat_nm or 0) * 1852
+                near = [
+                    handle_of_cp[str(eb.id)]
+                    for eb in enemy_bases
+                    if p.distance_to_point(eb.position) <= rng_m
+                ]
+                if near:
+                    covers = f"; covers {', '.join(near[:4])}"
+            out.append(f"  {h} {t.name} ({t.threat_nm}nm){where}{covers}")
 
     fronts = [(h, t) for h, t in targets.items() if t.kind == "front"]
     ships = [(h, t) for h, t in targets.items() if t.kind == "ship"]
@@ -231,6 +259,35 @@ def _operational_picture(game, side, bases, targets) -> list[str]:
                 out.append(
                     f"  {handle_of_cp[str(cp.id)]} {cp.name}: " + " | ".join(parts)
                 )
+
+    # Light commander's estimate (heuristic — a starting read, override it freely).
+    est: list[str] = []
+    if enemy_fleets and launch:
+        cp, f = min(
+            ((cp, f) for cp in launch for f in enemy_fleets),
+            key=lambda x: x[0].position.distance_to_point(x[1].position),
+        )
+        est.append(
+            f"  Primary opportunity: enemy {f.name} ({handle_of_cp[str(f.id)]}) "
+            f"{_nm(cp.position, f.position)}nm from {handle_of_cp[str(cp.id)]}."
+        )
+    if sams and launch:
+        h, t = min(
+            sams,
+            key=lambda x: (
+                pos_by_id[x[1].id].distance_to_point(
+                    near_red(pos_by_id[x[1].id]).position
+                )
+                if x[1].id in pos_by_id and near_red(pos_by_id[x[1].id])
+                else 9e9
+            ),
+        )
+        est.append(
+            f"  Primary threat: SAM {h} {t.name} ({t.threat_nm}nm) gating your approaches."
+        )
+    if est:
+        out.append("Commander's estimate (a starting read — adapt it):")
+        out += est
     return out
 
 
@@ -243,6 +300,11 @@ def _plain_outgoing(side: str) -> str:
     st = views.build_settings(game)
     bases, squadrons, targets, ground = _build_handles(game, side)
     handle_by_cp = {str(cp.id): h for h, cp in bases.items()}
+    obj_by_id = {
+        str(tgo.id): tgo
+        for cp in game.theater.controlpoints
+        for tgo in cp.ground_objects
+    }
 
     s, e = tc.situation, tc.economy
     out = [
@@ -320,12 +382,20 @@ def _plain_outgoing(side: str) -> str:
 
     out += [
         "",
-        "BASES (handle | name | type | owner | #squadrons) — yours = owner red",
+        "BASES (handle | name | type | owner | #squadrons | ground links) — yours = "
+        "owner red; 'links' are the adjacent bases for ground moves/fronts",
     ]
     for h, cp in bases.items():
         sqns = sum(1 for _ in cp.squadrons)
+        links = ", ".join(
+            handle_by_cp[str(n.id)]
+            for n in getattr(cp, "connected_points", [])
+            if str(n.id) in handle_by_cp
+        )
+        link_s = f" | links: {links}" if links else ""
         out.append(
-            f"{h} | {cp.name} | {cp.cptype.name} | {cp.captured.value.lower()} | {sqns}"
+            f"{h} | {cp.name} | {cp.cptype.name} | {cp.captured.value.lower()} | "
+            f"{sqns}{link_s}"
         )
     out += [
         "",
@@ -381,6 +451,16 @@ def _plain_outgoing(side: str) -> str:
                 info = f"threat {t.threat_nm}nm"
         else:
             info = f"threat {t.threat_nm}nm" if t.threat_nm else "-"
+        tgo = obj_by_id.get(t.id)
+        if t.kind == "ship" and tgo is not None:
+            grp = getattr(tgo, "control_point", None)
+            gh = handle_by_cp.get(str(getattr(grp, "id", "")))
+            if gh:
+                info += f"; group {gh} {grp.name}"
+        if tgo is not None:
+            dmg = _damage_word(tgo)
+            if dmg:
+                info += f"; {dmg}"
         out.append(f"{h} | {t.name} | {t.kind} | {t.suggested_task} | {info}")
     recruiters = [
         f"{h} {cp.name}"
@@ -629,17 +709,20 @@ THE TURN BLOB FORMAT
                engine auto-sets every package's time-over-target within this window of
                the turn start, so even deep targets get hit — you never set TOTs),
                map visibility (fog of war) and income multipliers. You read these.
-  OPERATIONAL PICTURE: the map the engine sees — theater + turn start time, where the
-               enemy fleet is (distance + compass from your nearest base), the long-
-               range SAM rings, and the nm distance from each of your launch bases to
-               the key objectives. Use it to choose WHICH base strikes WHAT.
+  OPERATIONAL PICTURE: the map the engine sees — theater + turn start time, the enemy
+               fleet's position, the long-range SAM rings (with which bases each
+               'covers' — DEAD those before striking there), the nm distance from each
+               launch base to the key objectives, and a short commander's estimate
+               (primary opportunity + threat). Use it to choose WHICH base strikes WHAT.
   GRAMMAR:     a one-screen cheat-sheet of the exact commands — it is AUTHORITATIVE,
                use exactly those verbs and the handles below.
   FLYABLE NOW: the ONLY aircraft you can task THIS turn — "S# | Nx aircraft | base |
                can: <tasks>". A pkg is auto-crewed only from these. If it says
                "transport/logistics only", that squadron can't fly combat tasks.
-  BASES:       "B# | name | type | owner | #squadrons". YOUR bases are owner=red; an
-               enemy base (owner=blue) is a valid OCA/strike target (use its B#).
+  BASES:       "B# | name | type | owner | #squadrons | links". YOUR bases are owner=red;
+               an enemy base (owner=blue) is a valid OCA/strike target (use its B#).
+               'links' are adjacent bases over land — they define ground moves (movg)
+               and where fronts can form.
   SQUADRONS:   "S# | aircraft | base | owned | untasked | pilots | buy-cost | note".
                owned 0 = no airframes (buy into it; arrives NEXT turn). A squadron
                marked GROUNDED sits at an enemy-held base and CANNOT fly this turn.
@@ -648,8 +731,10 @@ THE TURN BLOB FORMAT
                first (sell, or move a squadron out with `move`).
   TARGETS:     "T# | name | kind | task | info". sam->DEAD, ship->ANTISHIP,
                building->STRIKE, front->CAS. A SAM with "threat <=2nm (inert)" is
-               harmless at altitude — skip SEAD; only >=4nm radar SAMs need DEAD. A
-               'front' line shows its two base handles: "your B# vs enemy B#".
+               harmless at altitude — skip SEAD; only >=4nm radar SAMs need DEAD. SHIPS
+               show their naval group ("group B#") — concentrate ANTISHIP on ONE group.
+               A damaged target is flagged (don't waste sorties finishing a near-dead
+               one). A 'front' line shows its two base handles: "your B# vs enemy B#".
   GROUND UNITS YOU CAN BUY: "G# | name | price | kind". buyg at a RED base.
   YOUR GROUND FORCES: the armor on hand at each of your bases (with G# handles) — this
                is what you can MOVE between bases with movg.
