@@ -27,6 +27,18 @@ class AutoAtoBehavior(Enum):
 
 
 @unique
+class CloudPresetPack(Enum):
+    """A community cloud-preset weather mod whose presets the mission generator may
+    use. Only one can be active at a time: the packs share the same preset keys
+    (Preset35+) but map them to different clouds, so they must not be mixed."""
+
+    NONE = "None (stock DCS presets)"
+    BANDIT = "Bandit's Cloud Presets"
+    WEATHER2 = "Weather 2.0 (Bandit)"
+    ATMOSX = "ATMOS-X"
+
+
+@unique
 class NightMissions(Enum):
     DayAndNight = "nightmissions_nightandday"
     OnlyDay = "nightmissions_onlyday"
@@ -586,12 +598,18 @@ class Settings:
             "assigned to their primary task."
         ),
     )
-    use_bandit_clouds: bool = boolean_option(
-        "Use Bandit's clouds",
+    cloud_preset_pack: CloudPresetPack = choices_option(
+        "Custom cloud preset pack",
         page=CAMPAIGN_MANAGEMENT_PAGE,
         section=GENERAL_SECTION,
-        default=False,
-        detail=("If checked, Bandit's cloud presets will become available."),
+        default=CloudPresetPack.NONE,
+        choices={v.value: v for v in CloudPresetPack},
+        detail=(
+            "Make a community cloud-preset weather mod's presets available to the "
+            "mission generator. Pick the pack you have installed in DCS. Only one can "
+            "be active at a time, since the packs reuse the same preset keys for "
+            "different clouds. 'None' uses the stock DCS presets."
+        ),
     )
 
     # Pilots and Squadrons
@@ -1746,6 +1764,7 @@ class Settings:
         # restore Enum & timedelta types
         s = Settings()
         Settings._migrate_legacy_fast_forward(state)
+        Settings._migrate_legacy_bandit_clouds(state)
         for key, value in list(state.items()):
             default = s.__dict__.get(key)
             if isinstance(default, Enum):
@@ -1786,6 +1805,16 @@ class Settings:
             if isinstance(restored, enum_cls):
                 return restored
         return None
+
+    @staticmethod
+    def _migrate_legacy_bandit_clouds(state: dict[str, Any]) -> None:
+        """Pre-pack saves had a boolean ``use_bandit_clouds``; map it onto the new
+        ``cloud_preset_pack`` choice so a user who had Bandit's clouds on keeps them."""
+        legacy = state.pop("use_bandit_clouds", None)
+        if legacy is not None and "cloud_preset_pack" not in state:
+            state["cloud_preset_pack"] = (
+                CloudPresetPack.BANDIT if legacy else CloudPresetPack.NONE
+            )
 
     @staticmethod
     def _migrate_legacy_fast_forward(state: dict[str, Any]) -> None:
