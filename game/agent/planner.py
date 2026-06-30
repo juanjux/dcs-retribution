@@ -363,6 +363,66 @@ def buy_ground(
         return schemas.OpResult(ok=False, error=str(exc))
 
 
+def move_ship(
+    game: Game,
+    side: str,
+    ship_id: str,
+    lat: float | None = None,
+    lng: float | None = None,
+) -> schemas.OpResult:
+    """Reposition one of ``side``'s own movable ship groups (the player's movable-ships
+    feature, opened to the AI). Validates ownership, the per-turn range cap, and an
+    all-water route — the same checks the map UI enforces. The move applies at turn
+    processing (``commit_move``). Omit lat+lng to cancel a pending reposition."""
+    from dcs import Point
+    from dcs.mapping import LatLng
+
+    from game.theater.theatergroundobject import ShipGroundObject
+    from game.utils import meters
+
+    player = views.player_for_side(side)
+    try:
+        try:
+            uid = UUID(str(ship_id))
+        except (ValueError, AttributeError, TypeError):
+            raise ValueError(f"invalid ship id {ship_id!r}")
+        try:
+            tgo = game.db.tgos.get(uid)
+        except KeyError:
+            tgo = None
+        if not isinstance(tgo, ShipGroundObject) or not tgo.moveable:
+            raise ValueError(
+                f"no movable ship group with id {ship_id!r} "
+                f"(use an id from turn_context.naval)"
+            )
+        if tgo.control_point.captured != player:
+            raise ValueError(f"{tgo.name} is not yours to move")
+        if lat is None or lng is None:
+            tgo.target_position = None
+            return schemas.OpResult(
+                ok=True, detail=f"{tgo.name}: pending move cancelled (holds position)"
+            )
+        point = Point.from_latlng(LatLng(float(lat), float(lng)), game.theater.terrain)
+        moved_nm = round(meters(tgo.position.distance_to_point(point)).nautical_miles)
+        if not tgo.destination_in_range(point):
+            raise ValueError(
+                f"destination is {moved_nm}nm away — {tgo.name} can move at most "
+                f"{int(tgo.max_move_distance.nautical_miles)}nm per turn"
+            )
+        landmap = game.theater.landmap
+        if landmap is not None and landmap.land_inbetween(tgo.position, point):
+            raise ValueError(
+                f"can't move {tgo.name} over land — pick an all-water destination"
+            )
+        tgo.target_position = point
+        return schemas.OpResult(
+            ok=True,
+            detail=f"{tgo.name} repositioning {moved_nm}nm (applies at turn end)",
+        )
+    except Exception as exc:
+        return schemas.OpResult(ok=False, error=str(exc))
+
+
 def set_stance(
     game: Game, side: str, friendly_cp_id: str, enemy_cp_id: str, stance: str
 ) -> schemas.OpResult:

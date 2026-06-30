@@ -75,6 +75,7 @@ def capabilities() -> dict:
             "stances",
             "squadron/relocate",
             "ground/transfer",
+            "naval/move (reposition one of your ship groups, <=80nm over water)",
             "ai/active",
             "ai/status",
         ],
@@ -132,6 +133,12 @@ def set_stance(side, friendly_cp_id, enemy_cp_id, stance):
     return planner.set_stance(
         _require_game(), side, friendly_cp_id, enemy_cp_id, stance
     )
+
+
+def move_ship(side, ship_id, lat=None, lng=None):
+    from game.agent import planner
+
+    return planner.move_ship(_require_game(), side, ship_id, lat, lng)
 
 
 def relocate_squadron(side, squadron_id, dest_cp_id):

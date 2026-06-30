@@ -113,3 +113,10 @@ class TransferGroundRequest(BaseModel):
     unit_name: str
     quantity: int = 1
     by_air: bool = False
+
+
+class MoveShipRequest(BaseModel):
+    side: str = "red"
+    ship_id: str  # a ship-group id from turn_context.naval
+    lat: float | None = None  # destination; omit lat AND lng to cancel a pending move
+    lng: float | None = None

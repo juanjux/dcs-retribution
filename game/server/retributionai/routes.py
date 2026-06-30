@@ -185,6 +185,16 @@ def transfer_ground(body: schemas.TransferGroundRequest) -> schemas.OpResult:
     )
 
 
+@router.post(
+    "/naval/move",
+    operation_id="ai_move_ship",
+    response_model=schemas.OpResult,
+    response_model_exclude_none=True,
+)
+def move_ship(body: schemas.MoveShipRequest) -> schemas.OpResult:
+    return service.move_ship(body.side, body.ship_id, body.lat, body.lng)
+
+
 # --- session / Take-Off gate ---
 
 

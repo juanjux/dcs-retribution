@@ -48,8 +48,9 @@ def _dump(obj: Any) -> Any:
 
 @mcp.tool()
 def turn_context(side: str = "red") -> dict:
-    """Operational picture: situation, economy, control points, air wing, targets, and
-    threats (blue's air-defense umbrellas ranked by reach — incl. SAM-armed ships)."""
+    """Operational picture: situation, economy, control points, air wing, targets,
+    threats (blue's air-defense umbrellas ranked by reach — incl. SAM-armed ships), and
+    naval (YOUR movable ship groups — reposition them with move_ship)."""
     return _dump(service.turn_context(side))
 
 
@@ -148,6 +149,16 @@ def buy_ground(side: str, cp_id: str, unit_name: str, quantity: int = 1) -> dict
 def set_stance(side: str, friendly_cp_id: str, enemy_cp_id: str, stance: str) -> dict:
     """Set the ground stance at the front between two control points."""
     return _dump(service.set_stance(side, friendly_cp_id, enemy_cp_id, stance))
+
+
+@mcp.tool()
+def move_ship(
+    side: str, ship_id: str, lat: float | None = None, lng: float | None = None
+) -> dict:
+    """Reposition one of YOUR movable ship groups (an id from turn_context.naval) to
+    [lat, lng] — up to ~80 nm over water per turn (no land between). Omit lat/lng to
+    cancel a pending move. The move applies at turn end."""
+    return _dump(service.move_ship(side, ship_id, lat, lng))
 
 
 @mcp.tool()

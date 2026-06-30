@@ -52,8 +52,9 @@ tool/resource of the same name.
 - `GET /howtoplay` · `GET /settings` · `GET /human_notes`
 - `GET /capabilities` — what this install supports (check first; avoids unsupported ops)
 - `GET /turn_context?side=red` — campaign, map, red forces, detected blue (fog-aware),
-  `targets`, and **`threats`** — blue's air-defense umbrellas ranked by reach (incl.
-  SAM-armed ships like SM-6 frigates). **Read `threats` every turn and respect them.**
+  `targets`, **`threats`** (blue's air-defense umbrellas ranked by reach, incl. SAM-armed
+  ships like SM-6 frigates — **read every turn and respect them**), and `naval` (YOUR own
+  movable ship groups — reposition them with `POST /naval/move`).
 - `GET /prev_turns?n=1` — after-action of prior turns (losses, who-killed-what, captures)
 - `GET /packages?side=red` — current packages/flights (each with `id` + pilots + waypoints)
 - `GET /waypoints/{flight_id}` — a flight's waypoints
@@ -78,10 +79,9 @@ tool/resource of the same name.
 - `POST /stances` (front-line stance)
 
 **Plan — map moves (player-legal)**
-- `PUT /tgos/{id}/destination` (move a movable ship) ·
-  `GET /tgos/{id}/destination-in-range` · `DELETE /tgos/{id}/destination`
-- `POST /waypoints/{flight_id}/{idx}/position` (drag a waypoint; primary flight's
-  cascade to the package)
+- `POST /naval/move` `{side, ship_id, lat, lng}` — reposition one of your own ship groups
+  (an `id` from `turn_context.naval`) up to ~80 nm over water; applies at turn end. Omit
+  `lat`+`lng` to cancel a pending move.
 
 **Air wings** (turn-0 config always; mid-campaign only if the air-wing cheat is on)
 - `POST /squadrons` (create) · `DELETE /squadrons/{id}` (delete) — new squadrons

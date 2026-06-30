@@ -157,6 +157,22 @@ class ThreatView(BaseModel):
     pos: list[float]  # [lat, lng]
 
 
+class NavalView(BaseModel):
+    """One of YOUR movable ship groups — reposition it with move_ship."""
+
+    id: str  # ship-group id — pass to move_ship
+    name: str
+    pos: list[float]  # [lat, lng]
+    move_range_nm: int  # max reposition per turn (great-circle, over water)
+    destination: list[float] | None = (
+        None  # pending move target [lat, lng] (omitted when holding)
+    )
+    threat_nm: int | None = (
+        None  # its own air-defense umbrella reach — position it to cover what matters
+    )
+    damage: str | None = None  # 'lightly/heavily damaged' (omitted at full strength)
+
+
 class GroundUnitView(BaseModel):
     name: str
     price: int
@@ -190,6 +206,7 @@ class TurnContextView(BaseModel):
     air_wing: list[SquadronView]
     targets: list[TargetView]  # enemy objects this side can strike (aim by id)
     threats: list[ThreatView]  # blue's strongest air-defense umbrellas, ranked by reach
+    naval: list[NavalView]  # YOUR movable ship groups (reposition with move_ship)
     buyable_ground: list[GroundUnitView]  # ground units this faction can buy
 
 
@@ -385,6 +402,49 @@ def build_threats(targets: list[TargetView]) -> list[ThreatView]:
     ]
 
 
+def build_my_naval(game: Game, side: str) -> list[NavalView]:
+    """The side's OWN repositionable ship groups (carriers excluded — those are control
+    points). These are what ``move_ship`` can reposition; the LLM can't see them via the
+    enemy-only ``targets`` list, so surface them here with their move range and any
+    pending destination."""
+    from game.theater.theatergroundobject import ShipGroundObject
+
+    player = player_for_side(side)
+    out: list[NavalView] = []
+    for cp in game.theater.controlpoints:
+        if cp.captured != player:
+            continue
+        for tgo in cp.ground_objects:
+            if not isinstance(tgo, ShipGroundObject) or not tgo.moveable:
+                continue
+            if getattr(tgo, "is_dead", False):
+                continue
+            ll = DcsPoint(tgo.position.x, tgo.position.y, game.theater.terrain).latlng()
+            dest = None
+            tp = getattr(tgo, "target_position", None)
+            if tp is not None:
+                dll = DcsPoint(tp.x, tp.y, game.theater.terrain).latlng()
+                dest = [_r(dll.lat), _r(dll.lng)]
+            threat = None
+            try:
+                rng = tgo.max_threat_range()
+                threat = int(rng.nautical_miles) if rng else None
+            except Exception:
+                threat = None
+            out.append(
+                NavalView(
+                    id=str(tgo.id),
+                    name=tgo.name,
+                    pos=[_r(ll.lat), _r(ll.lng)],
+                    move_range_nm=int(tgo.max_move_distance.nautical_miles),
+                    destination=dest,
+                    threat_nm=threat or None,
+                    damage=_damage_word(tgo),
+                )
+            )
+    return out
+
+
 def build_buyable_ground(game: Game, side: str) -> list[GroundUnitView]:
     faction = coalition_for_side(game, side).faction
     out: list[GroundUnitView] = []
@@ -418,6 +478,7 @@ def build_turn_context(game: Game, side: str = "red") -> TurnContextView:
         ],
         targets=targets,
         threats=build_threats(targets),
+        naval=build_my_naval(game, side),
         buyable_ground=build_buyable_ground(game, side),
     )
 

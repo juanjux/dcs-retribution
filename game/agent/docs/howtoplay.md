@@ -271,6 +271,12 @@ means none/empty** (stated once so the per-turn payloads stay small).
   `name`, `kind` (sam/ship), `threat_nm`, `pos`}. These are the route-shapers: keep
   strike/transit routes outside them, or suppress/sink them first. (The full per-target
   ranges, including small point defenses, stay in `targets`.)
+- `naval[]` — **YOUR own movable ship groups** (not the enemy ships in `targets`) —
+  {`id`, `name`, `pos`, `move_range_nm` (max reposition per turn, ~80 nm over water),
+  `destination`? (a pending move target `[lat,lng]`, if any), `threat_nm`? (this group's
+  own SAM umbrella — reposition it to cover a contested coast/base), `damage`?};
+  **reposition by the `id`** with `POST /naval/move`. (Carriers are control points, moved
+  separately, not here.)
 - `buyable_ground[]` {`name`, `price`, `kind` (front/artillery)}; **buy by `name`**.
 
 `GET /settings` → {`opfor_aggressiveness_pct`, `map_coalition_visibility`,
@@ -311,6 +317,12 @@ Write bodies:
   another friendly base; arrives over time)
 - `POST /ground/transfer` `{side, origin_cp_id, dest_cp_id, unit_name, quantity, by_air}`
   (move existing ground units between your bases; route pre-validated)
+- `POST /naval/move` `{side, ship_id, lat, lng}` — reposition one of your own ship groups
+  (an `id` from `turn_context.naval`) up to ~80 nm over water; the move applies at turn
+  end. Omit `lat`+`lng` to cancel a pending move. Use it to pull a damaged or outmatched
+  group back under your SAM/air cover, push an area-defense ship's umbrella over a
+  contested coastal base, or screen toward a threatened sector — but keep ships **outside
+  the player's anti-ship reach** unless you mean to fight.
 - `DELETE /packages/{index}` (cancel one package) · `DELETE /packages` (clear all)
 - `PUT`/`POST /stored_context` `{key: value}` · `DELETE /stored_context/{key}`
 - `POST /ai/active?active=true|false` · `POST /ai/status?text=…`
