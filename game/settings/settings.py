@@ -205,28 +205,6 @@ class Settings:
             "this."
         ),
     )
-    opfor_ai_copy_paste_mode: bool = boolean_option(
-        "Copy-Paste mode (no API/MCP — for free AI accounts)",
-        page=CAMPAIGN_MANAGEMENT_PAGE,
-        section=OPFOR_AI_SECTION,
-        default=False,
-        detail=(
-            "Plan red via copy-paste instead of a live API: each turn you copy a "
-            "compact turn blob to any LLM (even a free chat account) and paste its "
-            "reply back. Open the copy-paste window from the OPFOR AI button in the "
-            "top panel."
-        ),
-    )
-    opfor_ai_copy_paste_rot13: bool = boolean_option(
-        "Obfuscate the copy-paste blob (uncheck for plain text)",
-        page=CAMPAIGN_MANAGEMENT_PAGE,
-        section=OPFOR_AI_SECTION,
-        default=True,
-        detail=(
-            "Do a soft obfuscation of the copy-pasted blobs so it's not obvious on a "
-            "first glance what OPFOR is planning."
-        ),
-    )
     external_views_allowed: bool = boolean_option(
         "Allow external views",
         DIFFICULTY_PAGE,

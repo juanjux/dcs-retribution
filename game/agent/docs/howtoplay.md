@@ -225,14 +225,20 @@ means none/empty** (stated once so the per-turn payloads stay small).
   not ongoing: red_winning / red_losing)};
 - `economy` {`budget`, `income_next_turn`};
 - `control_points[]` {`id`, `name`, `type` (AIRBASE / *_CARRIER_GROUP / LHA_GROUP /
-  FOB / FARP), `owner` (red/blue/neutral), `pos` `[lat,lng]`, `sqns`?};
+  FOB / FARP), `owner` (red/blue/neutral), `pos` `[lat,lng]`, `sqns`?,
+  `parking_free`?/`parking_total`? (room to buy/station aircraft),
+  `can_recruit_ground`? (true = you can `buy/ground` here), `links`? (adjacent
+  control-point ids — land moves and where fronts form), `ground`? (armor on hand,
+  `{unit: count}` — what you can `ground/transfer`)};
 - `air_wing[]` — your squadrons — {`id`, `name`, `aircraft`, `base`, `owned`?,
   `untasked`?, `pending`?, `pilots`, `grounded`? (true = base is enemy-held, the
   squadron cannot sortie this turn — only `untasked` aircraft at a friendly base
   fly)}; **buy/sell aircraft by the squadron `id`**;
 - `targets[]` — enemy objects you can attack — {`id`, `name`, `kind`
   (sam/ship/building/front), `suggested_task` (DEAD/ANTISHIP/STRIKE/CAS), `pos`,
-  `threat_nm`? (SAM reach), `friendly_cp_id`?/`enemy_cp_id`? (fronts only)};
+  `threat_nm`? (SAM reach), `friendly_cp_id`?/`enemy_cp_id`? (fronts only),
+  `group_id`? (ships: their naval-group id — concentrate ANTISHIP on one group),
+  `damage`? (a damaged target — don't waste sorties finishing it)};
   **aim a package at the `id`**;
 - `buyable_ground[]` {`name`, `price`, `kind` (front/artillery)}; **buy by `name`**.
 
@@ -250,6 +256,10 @@ red_air_killers?, blue_air_killers?}]` (killers = `{unit/weapon: count}`).
 Write bodies:
 - `POST /packages` `{side, packages:[{target_id, flights:[{task, count, escort?}],
   rationale}]}`
+- `POST /packages/evaluate` `{side, package:{target_id, flights:[…]}}` → a DRY RUN:
+  plans the package and returns its `package` (with `tot`), `tot_minutes_into_mission`,
+  `mission_window_min` and `within_window` — WITHOUT committing it. Use it to check a
+  strike's feasibility and timing (does it make the window?) before `POST /packages`.
 - `POST /buy/aircraft` · `POST /sell/aircraft` `{side, squadron_id, quantity}`
 - `POST /buy/ground` `{side, cp_id, unit_name, quantity}` (only at a base with a
   factory/front — `cp.has_ground_unit_source`)
