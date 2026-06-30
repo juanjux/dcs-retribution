@@ -1096,11 +1096,16 @@ function EWJD(jammer)
     local removalDist4 = 5000
     local removalDist5 = 7000
     -- PROBAILITY OF SUCCESFULL JAMMING  REMOVALDIST1 CORRESPOND TO PKILL1, REMOVALDIST2 CORRESPOND TO PKILL2, ETC...
-    local pkill_1 =95
-    local pkill_2 =65
-    local pkill_3 =50
-    local pkill_4 =30
-    local pkill_5 =15
+    -- Attenuated (orig 95/65/50/30/15 -> 60/45/30/18/8 -> now lower again): one
+    -- growler's defensive bubble was deleting ~47% of incoming SAMs on its own and
+    -- barely scaling with jammer count (saturated). Lowered ~20% so the OFFENSIVE
+    -- launcher-jam (which does scale with jammers) drives more of the effect and
+    -- the defence degrades a little less overall.
+    local pkill_1 =48
+    local pkill_2 =36
+    local pkill_3 =24
+    local pkill_4 =14
+    local pkill_5 =6
 
     -- Scale Defensive missile pkill by DEFENSIVE_POWER (capped at 100)
     local function scale_pkill(base)
@@ -1230,9 +1235,11 @@ local function checkMis(mis)
             if not mis.jamRolled then
                 mis.jamRolled = true
                 -- SARH rides the launcher's illumination, so jamming that radar
-                -- almost always breaks it; ARH has its own terminal seeker, so it
-                -- is only partly defeated. Rolled once per missile.
-                local p = (mis.guidance == 3) and 0.9 or 0.5
+                -- defeats it more often than ARH, which has its own terminal
+                -- seeker. Both kept well below 1.0 on purpose: a jammed ship
+                -- still fires live SAMs that fly and can intercept -- we degrade
+                -- its defence, not silence it. Rolled once per missile.
+                local p = (mis.guidance == 3) and 0.6 or 0.35
                 kill = math.random() < p
             end
             if kill then
