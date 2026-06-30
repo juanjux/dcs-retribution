@@ -174,6 +174,20 @@ class NavalView(BaseModel):
     damage: str | None = None  # 'lightly/heavily damaged' (omitted at full strength)
 
 
+class RepairView(BaseModel):
+    """One of YOUR damaged assets you can pay to repair — dead SAM/EWR units, a building,
+    or a cratered runway. The fix is instant or takes a few turns, per campaign settings.
+    """
+
+    id: str  # repair target id: a ground-object/building tgo id, or a control-point id (runway)
+    name: str
+    kind: str  # aa / ewr / building / runway / ... (what's damaged)
+    cost: int  # budget to repair it (sum of its dead units, or the flat runway cost)
+    dead_units: int | None = (
+        None  # dead units it would bring back (omitted for a runway)
+    )
+
+
 class GroundUnitView(BaseModel):
     name: str
     price: int
@@ -208,6 +222,9 @@ class TurnContextView(BaseModel):
     targets: list[TargetView]  # enemy objects this side can strike (aim by id)
     threats: list[ThreatView]  # blue's strongest air-defense umbrellas, ranked by reach
     naval: list[NavalView]  # YOUR movable ship groups (reposition with move_ship)
+    repairs: list[
+        RepairView
+    ]  # YOUR damaged assets you can pay to repair (with `repair`)
     buyable_ground: list[GroundUnitView]  # ground units this faction can buy
 
 
@@ -458,6 +475,82 @@ def build_my_naval(game: Game, side: str) -> list[NavalView]:
     return out
 
 
+def _tgo_repairables(tgo) -> tuple[int, list]:
+    """(total_cost, [(unit, cost), …]) for a ground object's dead, repairable, not-already-
+    repairing units — mirroring the player's manual-repair UI (any dead repairable unit,
+    not only critical SAM parts). Buildings are priced per static via repair_cost();
+    other ground units by their unit_type price. Empty list = nothing to repair here."""
+    from game.theater.theatergroundobject import BuildingGroundObject
+
+    is_building = isinstance(tgo, BuildingGroundObject)
+    units = list(getattr(tgo, "statics", [])) if is_building else list(tgo.units)
+    out: list = []
+    total = 0
+    for u in units:
+        if getattr(u, "alive", True) or not getattr(u, "repairable", False):
+            continue
+        if getattr(u, "repair_turns_remaining", None) is not None:
+            continue  # already under repair
+        if is_building:
+            try:
+                cost = int(tgo.repair_cost())
+            except Exception:
+                cost = 0
+        else:
+            ut = getattr(u, "unit_type", None)
+            cost = int(getattr(ut, "price", 0)) if ut else 0
+        if cost <= 0:
+            continue
+        total += cost
+        out.append((u, cost))
+    return total, out
+
+
+def build_repairs(game: Game, side: str) -> list[RepairView]:
+    """The side's OWN damaged-but-repairable assets it can pay to fix: dead SAM/EWR units,
+    buildings, and cratered runways. (Repairs also happen automatically from leftover
+    budget at end of turn — this list is what you can choose to fix *now*.)"""
+    from game.config import RUNWAY_REPAIR_COST
+    from game.theater.theatergroundobject import BuildingGroundObject
+
+    player = player_for_side(side)
+    out: list[RepairView] = []
+    for cp in game.theater.controlpoints:
+        if cp.captured != player:
+            continue
+        try:
+            if getattr(cp, "runway_can_be_repaired", False):
+                out.append(
+                    RepairView(
+                        id=str(cp.id),
+                        name=cp.name,
+                        kind="runway",
+                        cost=int(RUNWAY_REPAIR_COST),
+                    )
+                )
+        except Exception:
+            pass
+        for tgo in cp.ground_objects:
+            cost, units = _tgo_repairables(tgo)
+            if cost <= 0 or not units:
+                continue
+            kind = (
+                "building"
+                if isinstance(tgo, BuildingGroundObject)
+                else (getattr(tgo, "category", None) or "ground")
+            )
+            out.append(
+                RepairView(
+                    id=str(tgo.id),
+                    name=tgo.name,
+                    kind=str(kind),
+                    cost=cost,
+                    dead_units=len(units),
+                )
+            )
+    return out
+
+
 def build_buyable_ground(game: Game, side: str) -> list[GroundUnitView]:
     faction = coalition_for_side(game, side).faction
     out: list[GroundUnitView] = []
@@ -492,6 +585,7 @@ def build_turn_context(game: Game, side: str = "red") -> TurnContextView:
         targets=targets,
         threats=build_threats(targets),
         naval=build_my_naval(game, side),
+        repairs=build_repairs(game, side),
         buyable_ground=build_buyable_ground(game, side),
     )
 

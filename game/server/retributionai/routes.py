@@ -195,6 +195,16 @@ def move_ship(body: schemas.MoveShipRequest) -> schemas.OpResult:
     return service.move_ship(body.side, body.ship_id, body.lat, body.lng)
 
 
+@router.post(
+    "/repair",
+    operation_id="ai_repair",
+    response_model=schemas.OpResult,
+    response_model_exclude_none=True,
+)
+def repair(body: schemas.RepairRequest) -> schemas.OpResult:
+    return service.repair(body.side, body.id)
+
+
 # --- session / Take-Off gate ---
 
 

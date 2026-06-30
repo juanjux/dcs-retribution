@@ -49,8 +49,9 @@ def _dump(obj: Any) -> Any:
 @mcp.tool()
 def turn_context(side: str = "red") -> dict:
     """Operational picture: situation, economy, control points, air wing, targets,
-    threats (blue's air-defense umbrellas ranked by reach — incl. SAM-armed ships), and
-    naval (YOUR movable ship groups and carriers — reposition them with move_ship)."""
+    threats (blue's air-defense umbrellas ranked by reach — incl. SAM-armed ships),
+    naval (YOUR movable ship groups and carriers — reposition them with move_ship), and
+    repairs (YOUR damaged assets you can pay to fix with repair)."""
     return _dump(service.turn_context(side))
 
 
@@ -162,6 +163,15 @@ def move_ship(
     from turn_context.naval) — to [lat, lng], up to ~80 nm over water per turn (no land
     between). Omit lat/lng to cancel a pending move. The move applies at turn end."""
     return _dump(service.move_ship(side, ship_id, lat, lng))
+
+
+@mcp.tool()
+def repair(side: str, id: str) -> dict:
+    """Pay to repair one of YOUR damaged assets (an id from turn_context.repairs) — a dead
+    SAM/EWR/armor unit group, a building, or a cratered runway. Instant or over a few turns
+    per campaign settings; debits your budget. (Leftover budget also auto-repairs at turn end.)
+    """
+    return _dump(service.repair(side, id))
 
 
 @mcp.tool()

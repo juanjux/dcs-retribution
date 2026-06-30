@@ -503,6 +503,112 @@ def move_ship(
         return schemas.OpResult(ok=False, error=str(exc))
 
 
+def repair(game: Game, side: str, asset_id: str) -> schemas.OpResult:
+    """Pay to repair one of ``side``'s own damaged assets — dead SAM/EWR/armor units, a
+    building, or a cratered runway (the player's manual-repair feature, opened to the AI).
+    Mirrors the map UI: validates ownership and budget, repairs instantly or schedules it
+    over the campaign's repair turns, and debits the coalition budget."""
+    from game.config import RUNWAY_REPAIR_COST
+    from game.theater.theatergroundobject import BuildingGroundObject
+
+    coalition = views.coalition_for_side(game, side)
+    player = views.player_for_side(side)
+    try:
+        try:
+            uid = UUID(str(asset_id))
+        except (ValueError, AttributeError, TypeError):
+            raise ValueError(f"invalid id {asset_id!r}")
+
+        # 1) runway? (a control-point id)
+        cp = None
+        try:
+            cp = game.theater.find_control_point_by_id(uid)
+        except Exception:
+            cp = None
+        if cp is not None:
+            if cp.captured != player:
+                raise ValueError(f"{cp.name} is not yours")
+            if not getattr(cp, "runway_can_be_repaired", False):
+                raise ValueError(
+                    f"{cp.name}'s runway isn't damaged (or can't be repaired)"
+                )
+            cost = int(RUNWAY_REPAIR_COST)
+            if coalition.budget < cost:
+                raise ValueError(
+                    f"need {cost}M to repair the runway, have {round(coalition.budget)}M"
+                )
+            cp.begin_runway_repair()
+            coalition.budget -= cost
+            return schemas.OpResult(
+                ok=True,
+                detail=f"runway repair started at {cp.name} "
+                f"(-{cost}M; budget {round(coalition.budget)}M)",
+            )
+
+        # 2) ground object / building (a tgo id)
+        try:
+            tgo = game.db.tgos.get(uid)
+        except KeyError:
+            tgo = None
+        if tgo is None:
+            raise ValueError(
+                f"no repairable asset with id {asset_id!r} "
+                f"(use an id from turn_context.repairs)"
+            )
+        if tgo.control_point.captured != player:
+            raise ValueError(f"{tgo.name} is not yours")
+        is_building = isinstance(tgo, BuildingGroundObject)
+        repair_turns = (
+            game.settings.building_repair_turns
+            if is_building
+            else game.settings.ground_object_repair_turns
+        )
+        if repair_turns < 0:
+            raise ValueError("repairs are disabled in this campaign")
+        _, candidates = views._tgo_repairables(tgo)
+        if not candidates:
+            raise ValueError(
+                f"nothing to repair at {tgo.name} "
+                f"(no dead repairable units, or already under repair)"
+            )
+        revived = scheduled = spent = 0
+        for unit, cost in candidates:
+            if coalition.budget < cost:
+                break
+            coalition.budget -= cost
+            spent += cost
+            if repair_turns == 0:
+                from game.sim.gameupdateevents import GameUpdateEvents
+
+                unit.repair_turns_remaining = None
+                try:
+                    unit.revive(GameUpdateEvents())
+                except Exception:
+                    unit.alive = True
+                revived += 1
+            else:
+                unit.repair_turns_remaining = repair_turns
+                scheduled += 1
+        if not revived and not scheduled:
+            raise ValueError(
+                f"can't afford to repair {tgo.name} "
+                f"(have {round(coalition.budget)}M)"
+            )
+        if repair_turns == 0:
+            detail = (
+                f"repaired {revived} unit(s) at {tgo.name} "
+                f"(-{spent}M; budget {round(coalition.budget)}M)"
+            )
+        else:
+            detail = (
+                f"scheduled repair of {scheduled} unit(s) at {tgo.name} over "
+                f"{repair_turns} turns (-{spent}M; budget {round(coalition.budget)}M)"
+            )
+        return schemas.OpResult(ok=True, detail=detail)
+    except Exception as exc:
+        return schemas.OpResult(ok=False, error=str(exc))
+
+
 def set_stance(
     game: Game, side: str, friendly_cp_id: str, enemy_cp_id: str, stance: str
 ) -> schemas.OpResult:

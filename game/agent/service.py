@@ -76,6 +76,7 @@ def capabilities() -> dict:
             "squadron/relocate",
             "ground/transfer",
             "naval/move (reposition one of your ship groups or carriers, <=80nm over water)",
+            "repair (pay to repair a damaged SAM/EWR unit, building, or runway)",
             "ai/active",
             "ai/status",
         ],
@@ -139,6 +140,12 @@ def move_ship(side, ship_id, lat=None, lng=None):
     from game.agent import planner
 
     return planner.move_ship(_require_game(), side, ship_id, lat, lng)
+
+
+def repair(side, asset_id):
+    from game.agent import planner
+
+    return planner.repair(_require_game(), side, asset_id)
 
 
 def relocate_squadron(side, squadron_id, dest_cp_id):

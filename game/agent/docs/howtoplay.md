@@ -287,6 +287,11 @@ means none/empty** (stated once so the per-turn payloads stay small).
   reposition it to cover a contested coast/base), `damage`?}; **reposition by the `id`**
   with `POST /naval/move`. (A carrier's `id` is its control-point id; its escort ship
   groups appear as separate `kind:ship` entries you can move independently.)
+- `repairs[]` — **YOUR damaged assets you can pay to repair** — {`id`, `name`, `kind`
+  (aa/ewr/building/runway/…), `cost` (budget to fix it), `dead_units`? (how many it brings
+  back; omitted for a runway)}; **repair by the `id`** with `POST /repair`. Repairs also
+  happen automatically from leftover budget at turn end — this list is what you can choose
+  to fix **now** (and guarantee).
 - `buyable_ground[]` {`name`, `price`, `kind` (front/artillery)}; **buy by `name`**.
 
 `GET /settings` → {`opfor_aggressiveness_pct`, `map_coalition_visibility`,
@@ -330,6 +335,10 @@ Write bodies:
   another friendly base; arrives over time)
 - `POST /ground/transfer` `{side, origin_cp_id, dest_cp_id, unit_name, quantity, by_air}`
   (move existing ground units between your bases; route pre-validated)
+- `POST /repair` `{side, id}` — pay to repair one of your damaged assets (an `id` from
+  `turn_context.repairs`): a dead SAM/EWR/armor unit group, a building, or a cratered
+  runway. It revives instantly or over a few turns (campaign setting) and debits your
+  budget. Rebuild a key SAM to re-close a corridor, or a runway to get a base flying again.
 - `POST /naval/move` `{side, ship_id, lat, lng}` — reposition one of your own naval groups
   — a ship group or a carrier/LHA (an `id` from `turn_context.naval`) — up to ~80 nm over
   water; the move applies at turn end. Omit `lat`+`lng` to cancel a pending move. Use it
