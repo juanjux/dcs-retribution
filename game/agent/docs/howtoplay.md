@@ -90,7 +90,13 @@ Common roles and what they're for:
 - **OCA** — offensive counter-air: crater enemy runways or destroy parked aircraft.
 - **BAI / CAS** — hit enemy ground forces (interdiction behind the line / close
   support at the front).
-- **ANTISHIP** — strike enemy naval groups.
+- **ANTISHIP** — strike enemy naval groups. Against a ship with a long-range SAM (e.g.
+  SM-6, ~175 nm) only a platform whose anti-ship missile out-ranges the SAM can attack
+  from safe **standoff** — usually a long-range ASM bomber; shorter-ranged strikers
+  (carrier fighters) would have to enter the SAM bubble, and the planner scrubs them as
+  out of (safe) range. That standoff bomber is scarce — don't waste it, and
+  `evaluate_package` the strike first (it consumes no aircraft) so a probe doesn't tie up
+  the airframes a real package needs.
 - **AEW&C (AWACS)** and **REFUELING (tanker)** — support assets that extend your
   radar picture and range. Big offensives often need them.
 

@@ -103,6 +103,43 @@ def _coerce(spec: Union[schemas.PackageSpec, dict]) -> schemas.PackageSpec:
     )
 
 
+def _unfulfilled_reason(fulfiller, spec: schemas.PackageSpec) -> str:
+    """Why a package couldn't be planned, in actionable terms for the LLM.
+
+    ``plan_mission`` only returns ``None``, so re-derive the cause: a *capability* gap
+    (the faction has no airframe that can fly the role) vs *availability/range* (capable
+    aircraft exist but none are free, or none can reach the target from outside its
+    threat — e.g. only a long-range ASM bomber can stand off a long-range naval SAM, and
+    it's already tasked). The old message guessed 'flight into a live SAM', which is
+    misleading — the engine scrubs on no-aircraft-in-range, not at launch."""
+    incapable: list[str] = []
+    for f in spec.flights:
+        if f.escort:
+            continue  # escorts are pruned when unneeded, so not the primary cause
+        try:
+            task = _flight_type(f.task)
+        except ValueError:
+            continue
+        try:
+            if not fulfiller.air_wing_can_plan(task):
+                incapable.append(f.task.upper())
+        except Exception:
+            pass
+    if incapable:
+        roles = ", ".join(sorted(set(incapable)))
+        return (
+            f"your faction has no airframe able to fly {roles} — ask the human to add a "
+            f"capable type in the Air Wing window"
+        )
+    return (
+        "no capable aircraft were free AND within range for this target. Likely the only "
+        "platform that can reach it from outside the threat (standoff) is already tasked, "
+        "or the chosen airframe's weapons can't out-range the SAM. Free up the long-range "
+        "platform, lower the count, or suppress/avoid the threat first — and use "
+        "evaluate_package (which consumes no aircraft) to probe before committing"
+    )
+
+
 def create_packages(
     game: Game, side: str, specs: list[Union[schemas.PackageSpec, dict]]
 ) -> list[schemas.CreateResult]:
@@ -137,8 +174,8 @@ def create_packages(
                         schemas.CreateResult(
                             ok=False,
                             target=target_name,
-                            error="could not fulfil — no capable aircraft in range, "
-                            "or the mission was scrubbed (e.g. flight into a live SAM)",
+                            error="could not fulfil — "
+                            + _unfulfilled_reason(fulfiller, spec),
                         )
                     )
                     continue
@@ -189,8 +226,7 @@ def evaluate_package(
             return schemas.EvaluateResult(
                 ok=False,
                 target=target_name,
-                error="could not fulfil — no capable aircraft free/in range, or the "
-                "mission was scrubbed (e.g. flight into a live SAM)",
+                error="could not fulfil — " + _unfulfilled_reason(fulfiller, spec),
             )
         # plan_mission already CLAIMS the aircraft; add then remove so they are released
         # again (a package's aircraft are returned when it leaves the ATO) — net-zero.
