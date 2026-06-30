@@ -188,6 +188,7 @@ class AutoSettingsLayout(QGridLayout):
         connect URLs only in live API/MCP mode."""
         master = self.settings_map.get("opfor_ai_enabled")
         cp = self.settings_map.get("opfor_ai_copy_paste_mode")
+        rot13 = self.settings_map.get("opfor_ai_copy_paste_rot13")
 
         box = QWidget()
         v = QVBoxLayout(box)
@@ -204,6 +205,9 @@ class AutoSettingsLayout(QGridLayout):
                 cp.setEnabled(on)
                 if not on and cp.isChecked():
                     cp.setChecked(False)
+            # ROT13 obfuscation only applies in copy-paste mode.
+            if rot13 is not None:
+                rot13.setEnabled(on and bool(cp and cp.isChecked()))
             show = on and not bool(cp and cp.isChecked())
             self._opfor_ai_box.setVisible(show)
             if show:

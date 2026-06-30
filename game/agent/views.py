@@ -96,6 +96,9 @@ class SquadronView(BaseModel):
     untasked: int | None = None  # available to task (omitted when 0)
     pending: int | None = None  # arriving next turn (omitted when 0)
     pilots: int
+    grounded: bool | None = (
+        None  # base is enemy-held — can't sortie this turn (else omitted)
+    )
 
 
 class FlightView(BaseModel):
@@ -210,7 +213,11 @@ def build_control_point(game: Game, cp: ControlPoint) -> ControlPointView:
     )
 
 
-def build_squadron(sq: Squadron) -> SquadronView:
+def build_squadron(sq: Squadron, player: Player | None = None) -> SquadronView:
+    # A squadron stranded at an enemy-held base cannot generate sorties — the
+    # engine's mission planner excludes it — so flag it instead of advertising
+    # phantom flyable aircraft to the planner.
+    grounded = player is not None and sq.location.captured != player
     return SquadronView(
         id=str(sq.id),
         name=str(sq),
@@ -220,6 +227,7 @@ def build_squadron(sq: Squadron) -> SquadronView:
         untasked=sq.untasked_aircraft or None,
         pending=sq.pending_deliveries or None,
         pilots=sq.number_of_available_pilots,
+        grounded=grounded or None,
     )
 
 
@@ -299,7 +307,10 @@ def build_turn_context(game: Game, side: str = "red") -> TurnContextView:
         control_points=[
             build_control_point(game, cp) for cp in game.theater.controlpoints
         ],
-        air_wing=[build_squadron(sq) for sq in coalition.air_wing.iter_squadrons()],
+        air_wing=[
+            build_squadron(sq, player_for_side(side))
+            for sq in coalition.air_wing.iter_squadrons()
+        ],
         targets=build_targets(game, side),
         buyable_ground=build_buyable_ground(game, side),
     )

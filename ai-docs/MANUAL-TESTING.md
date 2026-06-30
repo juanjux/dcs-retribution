@@ -131,16 +131,25 @@ The new code is on `experiment-mcp` only; your current dist does **not** have it
 - [ ] Enable **"Allow OPFOR AI control"** (master) FIRST, then tick **"Copy-Paste mode"**
   (it's greyed out until the master is on). The top-panel **"OPFOR AI"** button turns blue:
   *"copy-paste — click to plan"*.
+- [ ] **"Obfuscate the copy-paste blob with ROT13"** is ticked by default. Untick it to send
+  plain text (100% reliable with any model; you can read the blob). Re-tick for obfuscation.
 - [ ] Click it → ✅ the window opens and explains the flow (briefing once, then copy/paste each turn).
 - [ ] **Briefing for your LLM** → ✅ a **copyable** window with a full briefing (role,
-  doctrine, package composition, planning, fair play, command grammar, a worked example,
-  and the base64 instructions). Paste it to your LLM **once**.
-- [ ] **Copy turn blob** → it's **base64** (you see gibberish, not red's state/plan). Paste
-  it to your LLM → it decodes + replies (ideally base64). Paste the reply → **Apply reply**
+  doctrine, package composition, planning, fair play, command grammar, a worked example).
+  It adapts to the ROT13/plain setting. Paste it to your LLM **once**.
+- [ ] **Copy turn blob** → with ROT13 on it's **scrambled** (gibberish, not red's state/plan).
+  Paste it to your LLM → it decodes + replies (ROT13 or plain). Paste the reply → **Apply reply**
   → ✅ per-line results (ok/FAIL) and the map shows the new red packages.
-- [ ] ✅ Works whether the LLM replied in **base64** or **plain** command lines.
-- [ ] 🔴 Note: base64 is **obfuscation, not encryption** — a determined player could still
-  decode it. And a weak/free LLM may struggle to decode/encode a few KB of base64 reliably.
+- [ ] ✅ Works whether the LLM replied in **ROT13** or **plain** command lines.
+- [ ] With ROT13 **off**, the blob is plain text and the reply is plain — verify both still apply.
+- [ ] 🔴 Note: ROT13 is **obfuscation, not encryption** — a determined player could still
+  decode it. base64 was dropped: hand-decoding a few KB of base64 made every model forfeit
+  the turn; ROT13 keeps digits/handles intact so capable LLMs decode it in their head.
+  (Weak models may scramble handles — untick ROT13 for them.)
+- [ ] The blob now also shows **FORCES** (red vs blue totals), a **GRAMMAR** cheat-sheet,
+  a **FLYABLE NOW** list (only taskable squadrons + their tasks), per-squadron **buy-cost**,
+  **GROUNDED** flags (squadrons at enemy-held bases can't fly), front lines with their **B#
+  handles**, and **inert** SAM tags.
 - [ ] Leave red empty (don't apply), Take Off → ✅ the scripted fallback fills red.
 
 ## Previously-pending items, now built (validate in-game)

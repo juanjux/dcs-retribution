@@ -207,6 +207,20 @@ class Settings:
             "fallback if you don't plan red."
         ),
     )
+    opfor_ai_copy_paste_rot13: bool = boolean_option(
+        "Obfuscate the copy-paste blob with ROT13 (uncheck for plain text)",
+        page=CAMPAIGN_MANAGEMENT_PAGE,
+        section=OPFOR_AI_SECTION,
+        default=True,
+        detail=(
+            "ROT13-scramble the turn blob (and accept a ROT13 reply) so you can't "
+            "read red's plan at a glance — capable LLMs decode ROT13 in their head. "
+            "Uncheck to send plain text instead: 100% reliable with any model "
+            "(including weak/free ones) but you can read the blob. Tip: leave this "
+            "on for GPT-4-class or Claude models; turn it off for smaller models "
+            "that may scramble the handles."
+        ),
+    )
     external_views_allowed: bool = boolean_option(
         "Allow external views",
         DIFFICULTY_PAGE,

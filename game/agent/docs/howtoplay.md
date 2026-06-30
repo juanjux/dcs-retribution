@@ -227,7 +227,9 @@ means none/empty** (stated once so the per-turn payloads stay small).
 - `control_points[]` {`id`, `name`, `type` (AIRBASE / *_CARRIER_GROUP / LHA_GROUP /
   FOB / FARP), `owner` (red/blue/neutral), `pos` `[lat,lng]`, `sqns`?};
 - `air_wing[]` — your squadrons — {`id`, `name`, `aircraft`, `base`, `owned`?,
-  `untasked`?, `pending`?, `pilots`}; **buy/sell aircraft by the squadron `id`**;
+  `untasked`?, `pending`?, `pilots`, `grounded`? (true = base is enemy-held, the
+  squadron cannot sortie this turn — only `untasked` aircraft at a friendly base
+  fly)}; **buy/sell aircraft by the squadron `id`**;
 - `targets[]` — enemy objects you can attack — {`id`, `name`, `kind`
   (sam/ship/building/front), `suggested_task` (DEAD/ANTISHIP/STRIKE/CAS), `pos`,
   `threat_nm`? (SAM reach), `friendly_cp_id`?/`enemy_cp_id`? (fronts only)};
