@@ -51,6 +51,8 @@ you lose if they capture yours. Think in terms of a campaign, not a single turn.
 - **Ground objects**: SAM sites, EWRs (early-warning radars), ships, and buildings
   (factories, ammo depots, fuel, etc.). SAMs/EWRs form the enemy's **IADS** (air
   defense network) and create **threat zones** your aircraft must avoid or suppress.
+  **Ships count too**: a SAM-armed warship (e.g. an SM-6 frigate) projects a long-range
+  air-defense umbrella just like a land SAM — see `turn_context.threats`.
 - **Fog of war**: depending on the campaign's map-visibility setting you may see only
   what red can detect of blue (via your radars/EWR and what last mission revealed).
   Plan with the intel you have; don't assume perfect knowledge of blue.
@@ -99,7 +101,11 @@ Sequence and combined arms matter:
 1. **Open the door**: if the target is defended by radar SAMs, plan **DEAD/SEAD
    first** to clear or suppress them. Do **not** send strikers into a live SAM ring —
    they'll be turned back or shot down. A DEAD that can't actually reach a SAM hidden
-   behind another live SAM won't clear it; deal with the outer belt first.
+   behind another live SAM won't clear it; deal with the outer belt first. **Threats
+   aren't only land SAMs**: an enemy **ship** can be a long-range naval-SAM umbrella
+   (e.g. an SM-6 frigate reaching 80+ nm), so a strike or even a transit near it must
+   route around the ship or sink/suppress it first (ANTISHIP), exactly like a SAM ring.
+   `turn_context.threats` ranks these for you.
 2. **Win the air**: if blue has fighters/CAP over the target, add **ESCORT/TARCAP**.
 3. **Then strike**: STRIKE/OCA/BAI flights hit the actual objective.
 4. **Support**: add **AEW&C** and a **tanker** for range/awareness on deep or large
@@ -122,11 +128,12 @@ bypass the automatic threat-avoidance.
      your own file.
 1. **Understand the situation.** Read the turn context, the previous turns (what you
    lost and to what, what blue did, what changed), and your own saved notes. If you
-   reason better from a picture, fetch the map image. `turn_context` also gives
-   **computed hints** (what you can afford, force-ratio trend vs blue, your
-   most-threatened bases, ranked threats) — use them instead of re-doing the maths.
-   The `OPFOR auto-planner aggressiveness` setting (in `/settings`) is a hint of how
-   risk-tolerant the player wants red to be — read it and weigh it, but you decide.
+   reason better from a picture, fetch the map image. `turn_context.threats` already
+   **ranks blue's strongest air-defense umbrellas** for you (so you needn't sort
+   `targets`); `economy` is your budget/income and `prev_turns` is the force-ratio /
+   attrition trend — read those instead of re-deriving them. The `OPFOR auto-planner
+   aggressiveness` setting (in `/settings`) is a hint of how risk-tolerant the player
+   wants red to be — read it and weigh it, but you decide.
 2. **Find blue's intent and weak points.** Where is blue pushing? What did they fly
    last turn? Which of their bases/SAMs/fleets are exposed? Where are *you* exposed?
 3. **Pick 1–3 objectives for this turn and concentrate on them.** Examples: hold a
@@ -242,10 +249,19 @@ means none/empty** (stated once so the per-turn payloads stay small).
   fly)}; **buy/sell aircraft by the squadron `id`**;
 - `targets[]` — enemy objects you can attack — {`id`, `name`, `kind`
   (sam/ship/building/front), `suggested_task` (DEAD/ANTISHIP/STRIKE/CAS), `pos`,
-  `threat_nm`? (SAM reach), `friendly_cp_id`?/`enemy_cp_id`? (fronts only),
+  `threat_nm`? (**air-defense umbrella radius in nm** — danger to ANY flight transiting
+  within it, not only the one attacking it; **ships carry it too** — naval SAMs such as
+  the SM-6 reach 80–175 nm, so a `kind:ship` is a floating SAM site, not just an ANTISHIP
+  target), `friendly_cp_id`?/`enemy_cp_id`? (fronts only),
   `group_id`? (ships: their naval-group id — concentrate ANTISHIP on one group),
   `damage`? (a damaged target — don't waste sorties finishing it)};
   **aim a package at the `id`**;
+- `threats[]` — blue's strongest air-defense umbrellas (radar SAMs + SAM-armed ships)
+  **ranked by reach** (largest first), a frugal digest of `targets` so you needn't sort
+  them — {`id` (same id as the target → DEAD a sam / ANTISHIP a ship to remove it),
+  `name`, `kind` (sam/ship), `threat_nm`, `pos`}. These are the route-shapers: keep
+  strike/transit routes outside them, or suppress/sink them first. (The full per-target
+  ranges, including small point defenses, stay in `targets`.)
 - `buyable_ground[]` {`name`, `price`, `kind` (front/artillery)}; **buy by `name`**.
 
 `GET /settings` → {`opfor_aggressiveness_pct`, `map_coalition_visibility`,

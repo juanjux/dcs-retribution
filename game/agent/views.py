@@ -133,13 +133,28 @@ class TargetView(BaseModel):
     kind: str  # sam / ship / building / front
     suggested_task: str  # DEAD / ANTISHIP / STRIKE / CAS
     pos: list[float]  # [lat, lng]
-    threat_nm: int | None = None  # SAM max threat range (omitted for non-radar)
+    threat_nm: int | None = (
+        None  # air-defense umbrella radius (nm) — danger to ANY flight transiting it,
+        # not only the attacker; ships carry it too (naval SAMs like SM-6 reach far)
+    )
     friendly_cp_id: str | None = None  # fronts only: your control point (for stances)
     enemy_cp_id: str | None = None  # fronts only: the enemy control point
     group_id: str | None = (
         None  # ships: their naval-group control-point id (concentrate)
     )
     damage: str | None = None  # 'lightly/heavily damaged' (omitted at full strength)
+
+
+class ThreatView(BaseModel):
+    """An enemy air-defense umbrella ranked by reach — the route-shaping threats to
+    avoid or suppress. Same ``id`` as the matching target, so you can DEAD/ANTISHIP it
+    directly."""
+
+    id: str  # same id as the target in targets[] — task DEAD (sam) / ANTISHIP (ship) on it
+    name: str
+    kind: str  # sam / ship (ships project naval-SAM umbrellas — SM-6 etc.)
+    threat_nm: int  # umbrella radius (nm): your flights are engaged within it
+    pos: list[float]  # [lat, lng]
 
 
 class GroundUnitView(BaseModel):
@@ -174,6 +189,7 @@ class TurnContextView(BaseModel):
     control_points: list[ControlPointView]
     air_wing: list[SquadronView]
     targets: list[TargetView]  # enemy objects this side can strike (aim by id)
+    threats: list[ThreatView]  # blue's strongest air-defense umbrellas, ranked by reach
     buyable_ground: list[GroundUnitView]  # ground units this faction can buy
 
 
@@ -346,6 +362,29 @@ def build_targets(game: Game, side: str) -> list[TargetView]:
     return targets
 
 
+_THREAT_TOP_N = (
+    12  # cap the ranked digest; the full per-target ranges stay in targets[]
+)
+
+
+def build_threats(targets: list[TargetView]) -> list[ThreatView]:
+    """The strongest enemy air-defense umbrellas (radar SAMs + SAM-armed ships), ranked
+    by reach — the route-shaping threats. A frugal digest derived from ``targets`` so the
+    planner doesn't have to sort them itself; the long-range ones dominate, which is
+    exactly what a strike route must avoid or suppress."""
+    ranked = sorted(
+        (t for t in targets if t.kind in ("sam", "ship") and t.threat_nm),
+        key=lambda t: t.threat_nm or 0,
+        reverse=True,
+    )
+    return [
+        ThreatView(
+            id=t.id, name=t.name, kind=t.kind, threat_nm=t.threat_nm or 0, pos=t.pos
+        )
+        for t in ranked[:_THREAT_TOP_N]
+    ]
+
+
 def build_buyable_ground(game: Game, side: str) -> list[GroundUnitView]:
     faction = coalition_for_side(game, side).faction
     out: list[GroundUnitView] = []
@@ -365,6 +404,7 @@ def build_buyable_ground(game: Game, side: str) -> list[GroundUnitView]:
 def build_turn_context(game: Game, side: str = "red") -> TurnContextView:
     side = side.lower()
     coalition = coalition_for_side(game, side)
+    targets = build_targets(game, side)
     return TurnContextView(
         side=side,
         situation=build_situation(game),
@@ -376,7 +416,8 @@ def build_turn_context(game: Game, side: str = "red") -> TurnContextView:
             build_squadron(sq, player_for_side(side))
             for sq in coalition.air_wing.iter_squadrons()
         ],
-        targets=build_targets(game, side),
+        targets=targets,
+        threats=build_threats(targets),
         buyable_ground=build_buyable_ground(game, side),
     )
 

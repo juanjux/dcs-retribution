@@ -48,7 +48,8 @@ def _dump(obj: Any) -> Any:
 
 @mcp.tool()
 def turn_context(side: str = "red") -> dict:
-    """Operational picture: situation, economy, control points, air wing."""
+    """Operational picture: situation, economy, control points, air wing, targets, and
+    threats (blue's air-defense umbrellas ranked by reach — incl. SAM-armed ships)."""
     return _dump(service.turn_context(side))
 
 
