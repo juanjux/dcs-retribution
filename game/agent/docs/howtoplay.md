@@ -250,6 +250,10 @@ red_air_killers?, blue_air_killers?}]` (killers = `{unit/weapon: count}`).
 Write bodies:
 - `POST /packages` `{side, packages:[{target_id, flights:[{task, count, escort?}],
   rationale}]}`
+- `POST /packages/evaluate` `{side, package:{target_id, flights:[…]}}` → a DRY RUN:
+  plans the package and returns its `package` (with `tot`), `tot_minutes_into_mission`,
+  `mission_window_min` and `within_window` — WITHOUT committing it. Use it to check a
+  strike's feasibility and timing (does it make the window?) before `POST /packages`.
 - `POST /buy/aircraft` · `POST /sell/aircraft` `{side, squadron_id, quantity}`
 - `POST /buy/ground` `{side, cp_id, unit_name, quantity}` (only at a base with a
   factory/front — `cp.has_ground_unit_source`)

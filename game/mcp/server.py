@@ -92,6 +92,14 @@ def create_packages(side: str, packages: list[dict]) -> list:
 
 
 @mcp.tool()
+def evaluate_package(side: str, package: dict) -> dict:
+    """Dry-run ONE package spec (target_id + flights[{task,count,escort?}]) to see its
+    time-over-target and whether it fits the mission window — WITHOUT committing it.
+    Use this to check a strike's feasibility/timing before create_packages."""
+    return _dump(service.evaluate_package(side, package))
+
+
+@mcp.tool()
 def delete_package(side: str, index: int) -> dict:
     """Remove a package by its index (frees its aircraft/pilots)."""
     return _dump(service.delete_package(side, index))

@@ -149,6 +149,62 @@ def create_packages(
     return results
 
 
+def evaluate_package(
+    game: Game, side: str, spec: Union[schemas.PackageSpec, dict]
+) -> schemas.EvaluateResult:
+    """Dry-run a package: plan it, compute its time-over-target, and report whether the
+    TOT fits the player's mission window — WITHOUT committing it (the plan is rolled
+    back). Lets the LLM check feasibility + timing before deciding to create it."""
+    coalition = views.coalition_for_side(game, side)
+    now = game.conditions.start_time
+    spec = _coerce(spec)
+    target_name = spec.target_id
+    try:
+        target = resolve_target(game, spec.target_id)
+        target_name = getattr(target, "name", spec.target_id)
+        proposed = [
+            ProposedFlight(_flight_type(f.task), f.count, _escort_type(f.escort))
+            for f in spec.flights
+        ]
+        with MultiEventTracer() as tracer:
+            fulfiller = PackageFulfiller(
+                coalition, game.theater, game.db.flights, game.settings
+            )
+            package = fulfiller.plan_mission(
+                ProposedMission(target, proposed, asap=spec.asap), 1, now, tracer
+            )
+        if package is None:
+            return schemas.EvaluateResult(
+                ok=False,
+                target=target_name,
+                error="could not fulfil — no capable aircraft in range, or the mission "
+                "was scrubbed (e.g. flight into a live SAM)",
+            )
+        # plan_mission already CLAIMS the aircraft; add then remove so they are released
+        # again (a package's aircraft are returned when it leaves the ATO) — net-zero.
+        coalition.ato.add_package(package)
+        try:
+            package.set_tot_asap(now)
+            view = views.build_package(-1, package)
+            tot = package.time_over_target
+            window = int(
+                getattr(game.settings, "desired_player_mission_duration_min", 60)
+            )
+            tot_min = round((tot - now).total_seconds() / 60) if tot else None
+            return schemas.EvaluateResult(
+                ok=True,
+                target=target_name,
+                package=view,
+                tot_minutes_into_mission=tot_min,
+                mission_window_min=window,
+                within_window=(tot_min is not None and tot_min <= window),
+            )
+        finally:
+            coalition.ato.remove_package(package)
+    except Exception as exc:
+        return schemas.EvaluateResult(ok=False, target=target_name, error=str(exc))
+
+
 def _resolve_squadron(game: Game, side: str, squadron_id: str):
     coalition = views.coalition_for_side(game, side)
     for squadron in coalition.air_wing.iter_squadrons():

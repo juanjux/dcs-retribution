@@ -71,6 +71,16 @@ def create_packages(body: schemas.CreatePackagesRequest) -> list[schemas.CreateR
     return service.create_packages(body.side, body.packages)
 
 
+@router.post(
+    "/packages/evaluate",
+    operation_id="ai_evaluate_package",
+    response_model=schemas.EvaluateResult,
+    response_model_exclude_none=True,
+)
+def evaluate_package(body: schemas.EvaluatePackageRequest) -> schemas.EvaluateResult:
+    return service.evaluate_package(body.side, body.package)
+
+
 @router.delete(
     "/packages",
     operation_id="ai_clear_packages",

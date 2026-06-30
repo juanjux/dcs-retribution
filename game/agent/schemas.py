@@ -31,6 +31,18 @@ class CreateResult(BaseModel):
     package: views.PackageView | None = None
 
 
+class EvaluateResult(BaseModel):
+    """Dry-run of a package: what it WOULD look like if created, without committing it."""
+
+    ok: bool
+    target: str
+    error: str | None = None
+    package: views.PackageView | None = None  # planned but NOT added to the ATO
+    tot_minutes_into_mission: int | None = None  # 0 = turn start
+    mission_window_min: int | None = None  # the player's setting
+    within_window: bool | None = None  # False = arrives late (wasted / needs a tanker)
+
+
 class OpResult(BaseModel):
     ok: bool
     detail: str | None = None
@@ -43,6 +55,11 @@ class OpResult(BaseModel):
 class CreatePackagesRequest(BaseModel):
     side: str = "red"
     packages: list[PackageSpec]
+
+
+class EvaluatePackageRequest(BaseModel):
+    side: str = "red"
+    package: PackageSpec
 
 
 class BuyAircraftRequest(BaseModel):

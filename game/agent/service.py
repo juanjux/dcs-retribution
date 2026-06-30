@@ -48,6 +48,13 @@ def create_packages(side, specs):
     return planner.create_packages(_require_game(), side, specs)
 
 
+def evaluate_package(side, spec):
+    """Dry-run a single package (plan + TOT + window fit) without committing it."""
+    from game.agent import planner
+
+    return planner.evaluate_package(_require_game(), side, spec)
+
+
 def delete_package(side, index):
     from game.agent import planner
 
