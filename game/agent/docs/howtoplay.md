@@ -263,5 +263,5 @@ Write bodies:
 - `POST /ai/active?active=true|false` · `POST /ai/status?text=…`
 
 Tasks: BARCAP TARCAP CAP SWEEP ESCORT SEAD DEAD STRIKE OCA_RUNWAY OCA_AIRCRAFT CAS
-BAI ANTISHIP AEWC REFUELING EWAR. Escort hints: air / sead / ewar / refuel.
+BAI ANTISHIP AEWC REFUELING. Escort hints: air / sead / refuel.
 Stances: defend hold aggressive push breakthrough eliminate retreat ambush.
