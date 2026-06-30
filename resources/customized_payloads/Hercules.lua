@@ -135,31 +135,6 @@ local unitPayloads = {
 				[1] = 32,
 			},
 		},
-		[11] = {
-			["displayName"] = "Retribution Jamming (Compass Call internal EW)",
-			["name"] = "Retribution Jamming",
-			["pylons"] = {
-				[1] = {
-					["CLSID"] = "Herc_Ext_Fuel_Tank",
-					["num"] = 2,
-				},
-				[2] = {
-					["CLSID"] = "Herc_Ext_Fuel_Tank",
-					["num"] = 3,
-				},
-				[3] = {
-					["CLSID"] = "Herc_Ext_Fuel_Tank",
-					["num"] = 4,
-				},
-				[4] = {
-					["CLSID"] = "Herc_Ext_Fuel_Tank",
-					["num"] = 5,
-				},
-			},
-			["tasks"] = {
-				[1] = 11,
-			},
-		},
 	},
 	["tasks"] = {
 	},
