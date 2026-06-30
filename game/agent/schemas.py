@@ -51,6 +51,13 @@ class BuyAircraftRequest(BaseModel):
     quantity: int = 1
 
 
+class BuyGroundRequest(BaseModel):
+    side: str = "red"
+    cp_id: str
+    unit_name: str
+    quantity: int = 1
+
+
 class StanceRequest(BaseModel):
     side: str = "red"
     friendly_cp_id: str

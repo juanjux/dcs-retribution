@@ -112,6 +112,16 @@ def sell_aircraft(body: schemas.BuyAircraftRequest) -> schemas.OpResult:
 
 
 @router.post(
+    "/buy/ground",
+    operation_id="ai_buy_ground",
+    response_model=schemas.OpResult,
+    response_model_exclude_none=True,
+)
+def buy_ground(body: schemas.BuyGroundRequest) -> schemas.OpResult:
+    return service.buy_ground(body.side, body.cp_id, body.unit_name, body.quantity)
+
+
+@router.post(
     "/stances",
     operation_id="ai_set_stance",
     response_model=schemas.OpResult,

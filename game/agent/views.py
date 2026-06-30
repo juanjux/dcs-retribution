@@ -130,6 +130,12 @@ class TargetView(BaseModel):
     enemy_cp_id: str | None = None  # fronts only: the enemy control point
 
 
+class GroundUnitView(BaseModel):
+    name: str
+    price: int
+    kind: str  # front (tanks/IFVs) / artillery
+
+
 class TurnForcesView(BaseModel):
     """Force totals at a past turn — the attrition trend the planner reacts to.
 
@@ -156,6 +162,7 @@ class TurnContextView(BaseModel):
     control_points: list[ControlPointView]
     air_wing: list[SquadronView]
     targets: list[TargetView]  # enemy objects this side can strike (aim by id)
+    buyable_ground: list[GroundUnitView]  # ground units this faction can buy
 
 
 class SettingsView(BaseModel):
@@ -266,6 +273,22 @@ def build_targets(game: Game, side: str) -> list[TargetView]:
     return targets
 
 
+def build_buyable_ground(game: Game, side: str) -> list[GroundUnitView]:
+    faction = coalition_for_side(game, side).faction
+    out: list[GroundUnitView] = []
+    for kind, units in (
+        ("front", faction.frontline_units),
+        ("artillery", faction.artillery_units),
+    ):
+        for u in sorted(units, key=lambda x: x.display_name):
+            out.append(
+                GroundUnitView(
+                    name=u.display_name, price=int(getattr(u, "price", 0)), kind=kind
+                )
+            )
+    return out
+
+
 def build_turn_context(game: Game, side: str = "red") -> TurnContextView:
     side = side.lower()
     coalition = coalition_for_side(game, side)
@@ -278,6 +301,7 @@ def build_turn_context(game: Game, side: str = "red") -> TurnContextView:
         ],
         air_wing=[build_squadron(sq) for sq in coalition.air_wing.iter_squadrons()],
         targets=build_targets(game, side),
+        buyable_ground=build_buyable_ground(game, side),
     )
 
 

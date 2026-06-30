@@ -72,6 +72,12 @@ def sell_aircraft(side, squadron_id, quantity=1):
     return planner.sell_aircraft(_require_game(), side, squadron_id, quantity)
 
 
+def buy_ground(side, cp_id, unit_name, quantity=1):
+    from game.agent import planner
+
+    return planner.buy_ground(_require_game(), side, cp_id, unit_name, quantity)
+
+
 def set_stance(side, friendly_cp_id, enemy_cp_id, stance):
     from game.agent import planner
 

@@ -214,3 +214,46 @@ icon in the toolbar shows you're busy and Take Off is blocked until you're done.
 Plan boldly and coherently. A good OPFOR turn looks like a real operation: a clear
 objective, the air defenses dealt with, the strike escorted and supported, the
 ground effort backed up, and money spent to set up the next move.
+
+## 9. Data format reference
+
+Reads return frugal JSON — **an absent numeric field means 0; an absent string
+means none/empty** (stated once so the per-turn payloads stay small).
+
+`GET /turn_context?side=red` →
+- `side`; `situation` {`turn`, `date`, `time_of_day`, `campaign_state`? (only when
+  not ongoing: red_winning / red_losing)};
+- `economy` {`budget`, `income_next_turn`};
+- `control_points[]` {`id`, `name`, `type` (AIRBASE / *_CARRIER_GROUP / LHA_GROUP /
+  FOB / FARP), `owner` (red/blue/neutral), `pos` `[lat,lng]`, `sqns`?};
+- `air_wing[]` — your squadrons — {`id`, `name`, `aircraft`, `base`, `owned`?,
+  `untasked`?, `pending`?, `pilots`}; **buy/sell aircraft by the squadron `id`**;
+- `targets[]` — enemy objects you can attack — {`id`, `name`, `kind`
+  (sam/ship/building/front), `suggested_task` (DEAD/ANTISHIP/STRIKE/CAS), `pos`,
+  `threat_nm`? (SAM reach), `friendly_cp_id`?/`enemy_cp_id`? (fronts only)};
+  **aim a package at the `id`**;
+- `buyable_ground[]` {`name`, `price`, `kind` (front/artillery)}; **buy by `name`**.
+
+`GET /settings` → {`opfor_aggressiveness_pct`, `map_coalition_visibility`,
+`desired_player_mission_duration_min`, `player_income_multiplier`,
+`enemy_income_multiplier`}.
+
+`GET /packages?side=red` → `[{index, target, task, tot (HH:MM), desc?,
+flights:[{id, task, aircraft, count, squadron, start?, dep?, clients?, uncrewed?}]}]`.
+
+`GET /prev_turns?n=` → `[{turn, blue_aircraft, blue_vehicles, red_aircraft,
+red_vehicles, blue_air_lost?, red_air_lost?, blue_ground_lost?, red_ground_lost?,
+red_air_killers?, blue_air_killers?}]` (killers = `{unit/weapon: count}`).
+
+Write bodies:
+- `POST /packages` `{side, packages:[{target_id, flights:[{task, count, escort?}],
+  rationale}]}`
+- `POST /buy/aircraft` · `POST /sell/aircraft` `{side, squadron_id, quantity}`
+- `POST /buy/ground` `{side, cp_id, unit_name, quantity}`
+- `POST /stances` `{side, friendly_cp_id, enemy_cp_id, stance}`
+- `PUT`/`POST /stored_context` `{key: value}` · `DELETE /stored_context/{key}`
+- `POST /ai/active?active=true|false` · `POST /ai/status?text=…`
+
+Tasks: BARCAP TARCAP CAP SWEEP ESCORT SEAD DEAD STRIKE OCA_RUNWAY OCA_AIRCRAFT CAS
+BAI ANTISHIP AEWC REFUELING EWAR. Escort hints: air / sead / ewar / refuel.
+Stances: defend hold aggressive push breakthrough eliminate retreat ambush.

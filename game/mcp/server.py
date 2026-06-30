@@ -116,6 +116,12 @@ def sell_aircraft(side: str, squadron_id: str, quantity: int = 1) -> dict:
 
 
 @mcp.tool()
+def buy_ground(side: str, cp_id: str, unit_name: str, quantity: int = 1) -> dict:
+    """Order ground units of a type (from turn_context.buyable_ground) at your base."""
+    return _dump(service.buy_ground(side, cp_id, unit_name, quantity))
+
+
+@mcp.tool()
 def set_stance(side: str, friendly_cp_id: str, enemy_cp_id: str, stance: str) -> dict:
     """Set the ground stance at the front between two control points."""
     return _dump(service.set_stance(side, friendly_cp_id, enemy_cp_id, stance))

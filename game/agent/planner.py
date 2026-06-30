@@ -231,6 +231,38 @@ def sell_aircraft(
         return schemas.OpResult(ok=False, error=str(exc))
 
 
+def buy_ground(
+    game: Game, side: str, cp_id: str, unit_name: str, quantity: int = 1
+) -> schemas.OpResult:
+    """Order ``quantity`` ground units of a type at one of ``side``'s bases."""
+    from game.purchaseadapter import GroundUnitPurchaseAdapter, TransactionError
+
+    coalition = views.coalition_for_side(game, side)
+    try:
+        cp = _resolve_cp(game, cp_id)
+        if cp.captured != views.player_for_side(side):
+            raise ValueError(f"{cp.name} is not yours")
+        buyable = coalition.faction.frontline_units | coalition.faction.artillery_units
+        unit = next(
+            (u for u in buyable if unit_name in (u.display_name, u.variant_id)),
+            None,
+        )
+        if unit is None:
+            raise ValueError(f"{unit_name!r} is not a ground unit this faction can buy")
+        if not cp.has_ground_unit_source(game):
+            raise ValueError(
+                f"{cp.name} can't recruit ground units (needs a factory/front nearby)"
+            )
+        GroundUnitPurchaseAdapter(cp, coalition, game).buy(unit, quantity)
+        return schemas.OpResult(
+            ok=True,
+            detail=f"ordered {quantity} {unit.display_name} at {cp.name}; "
+            f"budget now {round(coalition.budget)}",
+        )
+    except (TransactionError, ValueError) as exc:
+        return schemas.OpResult(ok=False, error=str(exc))
+
+
 def set_stance(
     game: Game, side: str, friendly_cp_id: str, enemy_cp_id: str, stance: str
 ) -> schemas.OpResult:
