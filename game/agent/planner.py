@@ -59,6 +59,21 @@ def _escort_type(name: str | None) -> EscortType | None:
         raise ValueError(f"unknown escort type {name!r}")
 
 
+def _mission_window_min(game: Game) -> int:
+    """The player's desired mission duration in whole minutes (the TOT window).
+
+    Settings stores it as a ``timedelta`` named ``desired_player_mission_duration``;
+    an earlier ``..._min`` attribute lookup never matched and silently fell back to 60,
+    so a non-default window (e.g. 80) was ignored by evaluate/validate."""
+    dur = getattr(game.settings, "desired_player_mission_duration", None)
+    if dur is None:
+        return 60
+    try:
+        return int(dur.total_seconds() // 60)
+    except AttributeError:
+        return int(dur)  # tolerate a plain-number setting
+
+
 def resolve_target(game: Game, target_id: str) -> MissionTarget:
     """Resolve a target id to a control point or ground object."""
     try:
@@ -184,9 +199,7 @@ def evaluate_package(
             package.set_tot_asap(now)
             view = views.build_package(-1, package)
             tot = package.time_over_target
-            window = int(
-                getattr(game.settings, "desired_player_mission_duration_min", 60)
-            )
+            window = _mission_window_min(game)
             tot_min = round((tot - now).total_seconds() / 60) if tot else None
             return schemas.EvaluateResult(
                 ok=True,
@@ -206,7 +219,7 @@ def validate_plan(game: Game, side: str) -> schemas.ValidateResult:
     """Health-check the whole committed plan (no changes): every package's TOT vs the
     mission window and whether any flight is uncrewed (not enough pilots)."""
     coalition = views.coalition_for_side(game, side)
-    window = int(getattr(game.settings, "desired_player_mission_duration_min", 60))
+    window = _mission_window_min(game)
     now = game.conditions.start_time
     checks: list[schemas.PackageCheck] = []
     issues: list[str] = []
