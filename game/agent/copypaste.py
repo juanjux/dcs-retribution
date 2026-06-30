@@ -447,7 +447,14 @@ def _plain_outgoing(side: str) -> str:
         if t.kind == "front":
             fh = handle_by_cp.get(t.friendly_cp_id or "", "?")
             eh = handle_by_cp.get(t.enemy_cp_id or "", "?")
-            info = f"your {fh} vs enemy {eh} (stance: stance {fh} {eh} <stance>)"
+            ra = getattr(getattr(bases.get(fh), "base", None), "total_armor", None)
+            ba = getattr(getattr(bases.get(eh), "base", None), "total_armor", None)
+            bal = (
+                f"; ground you {ra} vs enemy {ba}"
+                if ra is not None and ba is not None
+                else ""
+            )
+            info = f"your {fh} vs enemy {eh}{bal} (stance: stance {fh} {eh} <stance>)"
         elif t.kind == "sam":
             if not t.threat_nm:
                 info = "threat unknown/destroyed"
@@ -740,7 +747,9 @@ THE TURN BLOB FORMAT
                harmless at altitude — skip SEAD; only >=4nm radar SAMs need DEAD. SHIPS
                show their naval group ("group B#") — concentrate ANTISHIP on ONE group.
                A damaged target is flagged (don't waste sorties finishing a near-dead
-               one). A 'front' line shows its two base handles: "your B# vs enemy B#".
+               one). A 'front' line shows its two base handles AND the ground balance
+               ("ground you N vs enemy M") — push/breakthrough where you outnumber,
+               hold and buyg where you're behind.
   GROUND UNITS YOU CAN BUY: "G# | name | price | kind". buyg at a RED base.
   YOUR GROUND FORCES: the armor on hand at each of your bases (with G# handles) — this
                is what you can MOVE between bases with movg.
