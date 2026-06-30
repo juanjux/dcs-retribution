@@ -120,6 +120,11 @@ class Game:
         self.stored_context: dict[str, str] = {}
         # Per-turn loss summaries for the OPFOR-AI prev_turns after-action.
         self.debrief_history: list[dict[str, int]] = []
+        # Opaque JSON blob with the web client's map-layer panel state (which layers
+        # are visible, base map, which groups are open). The client owns the
+        # (de)serialization; the game just stores it so the choices travel with the
+        # save instead of being lost on reload.
+        self.client_map_layers: Optional[str] = None
         self.ground_planners: dict[UUID, GroundPlanner] = {}
         self.informations: list[Information] = []
         self.message("Game Start", "-" * 40)
@@ -181,6 +186,8 @@ class Game:
             self.stored_context = {}
         if not hasattr(self, "debrief_history"):
             self.debrief_history = []
+        if not hasattr(self, "client_map_layers"):
+            self.client_map_layers = None
         # Regenerate any state that was not persisted.
         self.on_load()
 
