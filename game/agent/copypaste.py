@@ -268,10 +268,10 @@ def _plain_outgoing(side: str) -> str:
     out += [
         "",
         "GRAMMAR — reply with these commands, ONE PER LINE:",
-        "  pkg <T#|enemyB#> <TASK[:count]> [<TASK[:count]> ...]   buy <S#> <n>   "
-        "sell <S#> <n>",
-        "  buyg <yourB#> <G#> <n>   stance <yourB#> <enemyB#> <stance>   "
-        "note <key>=<text>   clear",
+        "  pkg <T#|enemyB#> <TASK[:count]> [<TASK[:count]> ...]   (create an air package)",
+        "  buy <S#> <n>   sell <S#> <n>   buyg <yourB#> <G#> <n>   (buy/sell aircraft; buy ground)",
+        "  move <S#> <yourB#>   (relocate a squadron)   movg <fromB#> <toB#> <G#> <n> [air]   (transfer ground units)",
+        "  stance <yourB#> <enemyB#> <stance>   del <#index>   clear   note <key>=<text>",
         "  tasks: DEAD SEAD STRIKE CAS OCA_AIRCRAFT OCA_RUNWAY ANTISHIP BARCAP TARCAP "
         "ESCORT SWEEP AEWC REFUELING EWAR",
         "  stances: defend hold aggressive push breakthrough eliminate retreat ambush",
@@ -355,12 +355,40 @@ def _plain_outgoing(side: str) -> str:
     ]
     for h, gv in ground.items():
         out.append(f"{h} | {gv.name} | {gv.price} | {gv.kind}")
+
+    name_to_gh = {gv.name: h for h, gv in ground.items()}
+    red_armor = [
+        (h, cp)
+        for h, cp in bases.items()
+        if cp.captured == player and getattr(getattr(cp, "base", None), "armor", None)
+    ]
+    if red_armor:
+        out += [
+            "",
+            "YOUR GROUND FORCES (base | units on hand — move them with movg)",
+        ]
+        for h, cp in red_armor:
+            units = ", ".join(
+                f"{n}x {ut.display_name}"
+                + (
+                    f" ({name_to_gh[ut.display_name]})"
+                    if ut.display_name in name_to_gh
+                    else ""
+                )
+                for ut, n in cp.base.armor.items()
+                if n
+            )
+            if units:
+                out.append(f"{h} {cp.name}: {units}")
+
     out += [
         "",
-        "CURRENT RED PACKAGES — already planned this turn (index | target | task | tot)",
+        "CURRENT RED PACKAGES — already planned this turn (index | target | task | tot | "
+        "aircraft used). Their aircraft are ALREADY removed from FLYABLE NOW; del to undo.",
     ]
     for p in pkgs:
-        out.append(f"#{p.index} | {p.target} | {p.task} | {p.tot or '?'}")
+        used = "; ".join(f"{f.count}x {f.aircraft}" for f in p.flights) or "-"
+        out.append(f"#{p.index} | {p.target} | {p.task} | {p.tot or '?'} | {used}")
     return "\n".join(out)
 
 
@@ -455,13 +483,37 @@ def apply_incoming(side: str, text: str) -> str:
             elif cmd == "clear":
                 service.clear_packages(side)
                 results.append("cleared all red packages")
+            elif cmd == "del":
+                idx = int(parts[1].lstrip("#"))
+                r = service.delete_package(side, idx)
+                results.append(
+                    f"del #{idx}: " + (r.detail if r.ok else f"FAIL {r.error}")
+                )
+            elif cmd == "move":
+                sq, cp = squadrons[parts[1]], bases[parts[2]]
+                r = service.relocate_squadron(side, str(sq.id), str(cp.id))
+                results.append(
+                    f"move {parts[1]} {parts[2]}: "
+                    + (r.detail if r.ok else f"FAIL {r.error}")
+                )
+            elif cmd == "movg":
+                src, dst, gv = bases[parts[1]], bases[parts[2]], ground[parts[3]]
+                qty = int(parts[4]) if len(parts) > 4 else 1
+                by_air = any(p.lower() in ("air", "airlift") for p in parts[5:])
+                r = service.transfer_ground(
+                    side, str(src.id), str(dst.id), gv.name, qty, by_air
+                )
+                results.append(
+                    f"movg {parts[1]}->{parts[2]} {parts[3]}: "
+                    + (r.detail if r.ok else f"FAIL {r.error}")
+                )
             else:
                 results.append(f"{line}: ERROR unknown command {cmd!r}")
         except Exception as exc:  # keep going; report per line
             results.append(f"{line}: ERROR {exc}")
     if not results:
         results.append(
-            "(no commands found — paste the LLM's reply: the base64 block or plain "
+            "(no commands found — paste the LLM's reply: the obfuscated block or plain "
             "command lines)"
         )
     return "\n".join(results)

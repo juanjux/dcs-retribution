@@ -86,6 +86,22 @@ def set_stance(side, friendly_cp_id, enemy_cp_id, stance):
     )
 
 
+def relocate_squadron(side, squadron_id, dest_cp_id):
+    from game.agent import planner
+
+    return planner.relocate_squadron(_require_game(), side, squadron_id, dest_cp_id)
+
+
+def transfer_ground(
+    side, origin_cp_id, dest_cp_id, unit_name, quantity=1, by_air=False
+):
+    from game.agent import planner
+
+    return planner.transfer_ground(
+        _require_game(), side, origin_cp_id, dest_cp_id, unit_name, quantity, by_air
+    )
+
+
 # --- session / Take-Off gate ---
 
 

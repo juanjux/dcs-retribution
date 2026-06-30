@@ -302,3 +302,80 @@ def set_stance(
         )
     except ValueError as exc:
         return schemas.OpResult(ok=False, error=str(exc))
+
+
+def relocate_squadron(
+    game: Game, side: str, squadron_id: str, dest_cp_id: str
+) -> schemas.OpResult:
+    """Order a squadron to relocate to another of your bases (arrives over time)."""
+    try:
+        squadron = _resolve_squadron(game, side, squadron_id)
+        dest = _resolve_cp(game, dest_cp_id)
+        if dest.captured != views.player_for_side(side):
+            raise ValueError(f"{dest.name} is not yours — can't relocate there")
+        if dest == squadron.location:
+            raise ValueError(f"{squadron} is already at {dest.name}")
+        origin = squadron.location.name
+        squadron.plan_relocation(dest, game.conditions.start_time)
+        return schemas.OpResult(
+            ok=True, detail=f"{squadron} relocating {origin} -> {dest.name}"
+        )
+    except Exception as exc:
+        return schemas.OpResult(ok=False, error=str(exc))
+
+
+def transfer_ground(
+    game: Game,
+    side: str,
+    origin_cp_id: str,
+    dest_cp_id: str,
+    unit_name: str,
+    quantity: int = 1,
+    by_air: bool = False,
+) -> schemas.OpResult:
+    """Transfer existing ground units between two of your bases (land or air)."""
+    from game.transfers import TransferOrder
+
+    coalition = views.coalition_for_side(game, side)
+    player = views.player_for_side(side)
+    try:
+        origin = _resolve_cp(game, origin_cp_id)
+        dest = _resolve_cp(game, dest_cp_id)
+        if origin.captured != player or dest.captured != player:
+            raise ValueError("both the origin and destination base must be yours")
+        if origin == dest:
+            raise ValueError("origin and destination are the same base")
+        armor = origin.base.armor
+        unit = next(
+            (
+                u
+                for u in armor
+                if unit_name in (u.display_name, getattr(u, "variant_id", None))
+            ),
+            None,
+        )
+        if unit is None or armor.get(unit, 0) <= 0:
+            have = (
+                ", ".join(f"{u.display_name} x{n}" for u, n in armor.items()) or "none"
+            )
+            raise ValueError(
+                f"{origin.name} has no {unit_name!r} to move (it has: {have})"
+            )
+        qty = max(1, min(quantity, armor[unit]))
+        order = TransferOrder(origin, dest, {unit: qty}, request_airflift=by_air)
+        # Validate the route BEFORE new_transfer — new_transfer debits the origin base
+        # up front, so an unreachable destination would otherwise lose the units.
+        if not order.is_completable(coalition.transfers.network_for(origin)):
+            raise ValueError(
+                f"no route from {origin.name} to {dest.name} for a ground transfer "
+                f"(the destination isn't reachable over the supply network)"
+            )
+        coalition.transfers.new_transfer(order, game.conditions.start_time)
+        mode = "by air" if by_air else "by land"
+        return schemas.OpResult(
+            ok=True,
+            detail=f"transferring {qty} {unit.display_name} {origin.name} -> "
+            f"{dest.name} {mode} (arrives over the next turns)",
+        )
+    except Exception as exc:
+        return schemas.OpResult(ok=False, error=str(exc))
