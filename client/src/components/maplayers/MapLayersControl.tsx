@@ -1,9 +1,17 @@
-import { Fragment, ReactNode, useEffect, useMemo, useState } from "react";
+import {
+  Fragment,
+  ReactNode,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { createPortal } from "react-dom";
 import { useMap } from "react-leaflet";
 import { BasemapLayer } from "react-esri-leaflet";
 import L from "leaflet";
 
+import backend from "../../api/backend";
 import {
   setHighlightEmitters,
   setShowDestroyedNonRepairable,
@@ -33,7 +41,8 @@ import "./MapLayersControl.css";
 // A custom, dark-themed replacement for the two stock Leaflet layer controls.
 // Everything lives in one collapsible, grouped panel: common layers up top,
 // advanced/debug overlays (threat zones, navmesh, terrain) tucked into groups
-// that start collapsed so the list stays short. Choices persist across sessions.
+// that start collapsed so the list stays short. Choices are persisted into the
+// campaign save (with a localStorage cache), so they survive turns and reopening.
 
 type LayerId =
   | "controlPoints"
@@ -348,6 +357,9 @@ export default function MapLayersControl() {
     ...defaultGroups(),
     ...(persisted.openGroups ?? {}),
   }));
+  // Becomes true once the saved state has been pulled from the campaign (or the
+  // fetch failed); gates the write-back so the default seed can't clobber it.
+  const loadedRef = useRef(false);
 
   useEffect(() => {
     const control = new L.Control({ position: "topright" });
@@ -362,11 +374,48 @@ export default function MapLayersControl() {
     };
   }, [map]);
 
+  // On mount, pull the map-layer state out of the campaign save. It travels with
+  // the .retribution file, unlike localStorage, which QtWebEngine drops on reload
+  // (so the panel forgot its layers after every turn). The save wins over the
+  // localStorage seed when present.
   useEffect(() => {
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({ visible, baseMap, openGroups })
-    );
+    let cancelled = false;
+    backend
+      .get("game/map-layers")
+      .then((res) => {
+        if (cancelled) return;
+        const raw: string | null | undefined = res.data?.state;
+        if (!raw) return;
+        const saved = JSON.parse(raw) as {
+          visible?: Partial<Record<LayerId, boolean>>;
+          baseMap?: BaseMap;
+          openGroups?: Record<string, boolean>;
+        };
+        if (saved.visible) setVisible((v) => ({ ...v, ...saved.visible }));
+        if (saved.baseMap) setBaseMap(saved.baseMap);
+        if (saved.openGroups) setOpenGroups((g) => ({ ...g, ...saved.openGroups }));
+      })
+      .catch(() => {
+        // No game loaded yet or backend offline: keep the localStorage seed.
+      })
+      .finally(() => {
+        if (!cancelled) loadedRef.current = true;
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Persist on change: localStorage as an instant local cache, plus a debounced
+  // write into the campaign save so the choices survive turns and reopening.
+  useEffect(() => {
+    const payload = JSON.stringify({ visible, baseMap, openGroups });
+    localStorage.setItem(STORAGE_KEY, payload);
+    if (!loadedRef.current) return;
+    const id = setTimeout(() => {
+      backend.put("game/map-layers", { state: payload }).catch(() => {});
+    }, 500);
+    return () => clearTimeout(id);
   }, [visible, baseMap, openGroups]);
 
   // Radar-emitter highlight is a pure client flag; keep the slice in sync with
