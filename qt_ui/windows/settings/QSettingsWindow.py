@@ -9,6 +9,7 @@ from PySide6.QtCore import QItemSelectionModel, QPoint, QSize, Qt
 from PySide6.QtGui import QStandardItem, QStandardItemModel, QCloseEvent
 from PySide6.QtWidgets import (
     QAbstractItemView,
+    QApplication,
     QCheckBox,
     QComboBox,
     QDialog,
@@ -16,6 +17,7 @@ from PySide6.QtWidgets import (
     QGroupBox,
     QHBoxLayout,
     QLabel,
+    QLineEdit,
     QListView,
     QPushButton,
     QScrollArea,
@@ -41,6 +43,7 @@ from game.settings import (
     Settings,
 )
 from game.settings.ISettingsContainer import SettingsContainer
+from game.settings.settings import OPFOR_AI_SECTION
 from game.sim import GameUpdateEvents
 from pydcs_extensions import BanditClouds
 from qt_ui.widgets.QLabeledWidget import QLabeledWidget
@@ -325,6 +328,40 @@ class AutoSettingsPageLayout(QVBoxLayout):
                 AutoSettingsGroup(page, section, sc, write_full_settings)
             )
             self.addWidget(self.widgets[-1])
+        if OPFOR_AI_SECTION in Settings.sections(page):
+            # Not in self.widgets: it has no update_from_settings and the URL is
+            # static per process.
+            self.addWidget(self._build_opfor_ai_connection_box())
+
+    @staticmethod
+    def _build_opfor_ai_connection_box() -> QGroupBox:
+        box = QGroupBox("OPFOR AI connection")
+        layout = QVBoxLayout()
+        layout.addWidget(
+            QLabel("Paste into your LLM agent (Claude Code / curl) to command red:")
+        )
+        row = QHBoxLayout()
+        field = QLineEdit()
+        field.setReadOnly(True)
+        try:
+            from game.agent import service
+
+            field.setText(service.connect_url())
+        except Exception:
+            field.setText("(start/continue a campaign to generate the URL)")
+        row.addWidget(field)
+        copy = QPushButton("Copy")
+        copy.clicked.connect(lambda: QApplication.clipboard().setText(field.text()))
+        row.addWidget(copy)
+        layout.addLayout(row)
+        layout.addWidget(
+            QLabel(
+                "MCP (claude.ai / Claude Code): same host:port with /mcp?token=… "
+                "(expose the port with a tunnel for the web)."
+            )
+        )
+        box.setLayout(layout)
+        return box
 
     def update_from_settings(self) -> None:
         for w in self.widgets:

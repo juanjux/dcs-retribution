@@ -192,9 +192,17 @@ class QTopPanel(QFrame):
     def _refresh_ai_status(self) -> None:
         from game.agent.session import AI_SESSION
 
-        enabled = bool(self.game and self.game.settings.opfor_ai_enabled)
-        self.ai_status_button.setVisible(enabled)
-        if not enabled:
+        s = self.game.settings if self.game else None
+        cp_mode = bool(s and getattr(s, "opfor_ai_copy_paste_mode", False))
+        api_mode = bool(s and s.opfor_ai_enabled)
+        self.ai_status_button.setVisible(api_mode or cp_mode)
+        if not (api_mode or cp_mode):
+            return
+        if cp_mode:
+            self.ai_status_button.setText("OPFOR AI: copy-paste — click to plan")
+            self.ai_status_button.setStyleSheet(
+                "color: white; background-color: #1565c0; font-weight: bold;"
+            )
             return
         snap = AI_SESSION.snapshot()
         if snap["active"]:
@@ -209,15 +217,29 @@ class QTopPanel(QFrame):
             self.ai_status_button.setStyleSheet("color: gray;")
 
     def _show_ai_status(self) -> None:
+        # In copy-paste mode the button opens the copy-paste planning window.
+        if self.game and getattr(self.game.settings, "opfor_ai_copy_paste_mode", False):
+            from qt_ui.windows.copypaste_ai_dialog import CopyPasteAiDialog
+
+            self.dialog = CopyPasteAiDialog("red", self.window())
+            self.dialog.show()
+            return
+
+        from game.agent import service
         from game.agent.session import AI_SESSION
 
         snap = AI_SESSION.snapshot()
+        try:
+            url = service.connect_url()
+        except Exception:
+            url = "(unavailable)"
         box = QMessageBox(self)
         box.setWindowTitle("OPFOR AI commander")
         box.setText(
             f"Active: {snap['active']}\n"
             f"Status: {snap['status'] or '(none)'}\n"
-            f"Last update: {snap['updated_at'] or '(never)'}"
+            f"Last update: {snap['updated_at'] or '(never)'}\n\n"
+            f"Connect an LLM to:\n{url}"
         )
         cancel_btn = None
         if snap["active"]:

@@ -167,7 +167,10 @@ def run_opfor_fallback_if_needed() -> dict:
     """If OPFOR-AI is on but red's ATO is empty (the LLM never played), run the
     scripted commander so the turn is never empty. Called at Take Off."""
     game = _require_game()
-    if not getattr(game.settings, "opfor_ai_enabled", False):
+    enabled = getattr(game.settings, "opfor_ai_enabled", False) or getattr(
+        game.settings, "opfor_ai_copy_paste_mode", False
+    )
+    if not enabled:
         return {"ran": False, "reason": "opfor_ai disabled"}
     red = game.red
     if red.ato.packages:
@@ -178,6 +181,20 @@ def run_opfor_fallback_if_needed() -> dict:
         }
     red.plan_missions(game.conditions.start_time)
     return {"ran": True, "packages": len(red.ato.packages)}
+
+
+def connect_url() -> str:
+    """The ready-to-paste connect URL+token for the OPFOR-AI REST API (/start)."""
+    from game.server.security import ApiKeyManager
+    from game.server.settings import ServerSettings
+
+    s = ServerSettings.get()
+    host = str(s.server_bind_address)
+    host_disp = f"[{host}]" if ":" in host else host
+    return (
+        f"http://{host_disp}:{s.server_port}/retribution-ai/start"
+        f"?token={ApiKeyManager.KEY}"
+    )
 
 
 _DOCS_DIR = Path(__file__).parent / "docs"

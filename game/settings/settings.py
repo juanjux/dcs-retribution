@@ -194,6 +194,19 @@ class Settings:
             "printed in the log: .../retribution-ai/start?token=<key>."
         ),
     )
+    opfor_ai_copy_paste_mode: bool = boolean_option(
+        "Copy-Paste mode (no API/MCP — for free AI accounts)",
+        page=CAMPAIGN_MANAGEMENT_PAGE,
+        section=OPFOR_AI_SECTION,
+        default=False,
+        detail=(
+            "Plan red via copy-paste instead of a live API: each turn you copy a "
+            "compact turn blob to any LLM (even a free chat account) and paste its "
+            "reply back. Open the copy-paste window from the OPFOR AI button in the "
+            "top panel. Like API mode, the scripted commander still runs as a "
+            "fallback if you don't plan red."
+        ),
+    )
     external_views_allowed: bool = boolean_option(
         "Allow external views",
         DIFFICULTY_PAGE,
