@@ -131,12 +131,17 @@ def _unfulfilled_reason(fulfiller, spec: schemas.PackageSpec) -> str:
             f"your faction has no airframe able to fly {roles} — ask the human to add a "
             f"capable type in the Air Wing window"
         )
+    force_hint = (
+        ""
+        if spec.ignore_range
+        else " A capable airframe may just be beyond the auto-planner's range limit; set "
+        "ignore_range:true to send it anyway (the human can task it manually, so you can "
+        "too — accept the fuel risk)."
+    )
     return (
-        "no capable aircraft were free AND within range for this target. Likely the only "
-        "platform that can reach it from outside the threat (standoff) is already tasked, "
-        "or the chosen airframe's weapons can't out-range the SAM. Free up the long-range "
-        "platform, lower the count, or suppress/avoid the threat first — and use "
-        "evaluate_package (which consumes no aircraft) to probe before committing"
+        "no capable aircraft were free AND within range for this target. The platform that "
+        "reaches it may be tasked already, or out of the auto-planner's range."
+        + force_hint
     )
 
 
@@ -168,6 +173,7 @@ def create_packages(
                     1,
                     now,
                     tracer,
+                    ignore_range=spec.ignore_range,
                 )
                 if package is None:
                     results.append(
@@ -220,7 +226,11 @@ def evaluate_package(
                 coalition, game.theater, game.db.flights, game.settings
             )
             package = fulfiller.plan_mission(
-                ProposedMission(target, proposed, asap=spec.asap), 1, now, tracer
+                ProposedMission(target, proposed, asap=spec.asap),
+                1,
+                now,
+                tracer,
+                ignore_range=spec.ignore_range,
             )
         if package is None or not package.flights:
             return schemas.EvaluateResult(
