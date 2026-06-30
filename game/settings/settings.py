@@ -34,6 +34,7 @@ class CloudPresetPack(Enum):
 
     NONE = "None (stock DCS presets)"
     BANDIT = "Bandit's Cloud Presets"
+    WEATHER2 = "Weather 2.0 (Bandit)"
     ATMOSX = "ATMOS-X"
 
 
