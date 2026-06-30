@@ -250,7 +250,10 @@ means none/empty** (stated once so the per-turn payloads stay small).
 
 `GET /settings` → {`opfor_aggressiveness_pct`, `map_coalition_visibility`,
 `desired_player_mission_duration_min`, `player_income_multiplier`,
-`enemy_income_multiplier`}.
+`enemy_income_multiplier`, `pilot_replenishment_per_squadron`? (new pilots each
+squadron regains per turn, up to the limit — paces how fast you can rebuild after
+losses), `squadron_pilot_limit`? (max active pilots per squadron; both omitted when
+pilot limits are off = unlimited)}.
 
 `GET /packages?side=red` → `[{index, target, task, tot (HH:MM), desc?,
 flights:[{id, task, aircraft, count, squadron, start?, dep?, clients?, uncrewed?}]}]`.

@@ -185,6 +185,12 @@ class SettingsView(BaseModel):
     desired_player_mission_duration_min: int  # TOT window the player flies within
     player_income_multiplier: float
     enemy_income_multiplier: float
+    pilot_replenishment_per_squadron: int | None = (
+        None  # new pilots each squadron regains per turn (up to the limit); omitted = no pilot limits (unlimited)
+    )
+    squadron_pilot_limit: int | None = (
+        None  # max active pilots per squadron (omitted = no limit)
+    )
 
 
 # --- builders ---
@@ -387,6 +393,16 @@ def build_settings(game: Game) -> SettingsView:
         ),
         player_income_multiplier=s.player_income_multiplier,
         enemy_income_multiplier=s.enemy_income_multiplier,
+        pilot_replenishment_per_squadron=(
+            int(s.squadron_replenishment_rate)
+            if getattr(s, "enable_squadron_pilot_limits", True)
+            else None
+        ),
+        squadron_pilot_limit=(
+            int(s.squadron_pilot_limit)
+            if getattr(s, "enable_squadron_pilot_limits", True)
+            else None
+        ),
     )
 
 
