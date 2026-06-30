@@ -75,7 +75,7 @@ def capabilities() -> dict:
             "stances",
             "squadron/relocate",
             "ground/transfer",
-            "naval/move (reposition one of your ship groups, <=80nm over water)",
+            "naval/move (reposition one of your ship groups or carriers, <=80nm over water)",
             "ai/active",
             "ai/status",
         ],

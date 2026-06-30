@@ -158,10 +158,11 @@ class ThreatView(BaseModel):
 
 
 class NavalView(BaseModel):
-    """One of YOUR movable ship groups — reposition it with move_ship."""
+    """One of YOUR movable naval groups — reposition it with move_ship."""
 
-    id: str  # ship-group id — pass to move_ship
+    id: str  # group id — pass to move_ship (ships: a tgo id; carriers: a control-point id)
     name: str
+    kind: str  # ship (combatant group) / carrier (CV/LHA control point)
     pos: list[float]  # [lat, lng]
     move_range_nm: int  # max reposition per turn (great-circle, over water)
     destination: list[float] | None = (
@@ -402,11 +403,41 @@ def build_threats(targets: list[TargetView]) -> list[ThreatView]:
     ]
 
 
+def _naval_view(game: Game, obj, kind: str) -> NavalView:
+    """A NavalView from either a ShipGroundObject (kind='ship') or a movable naval
+    control point / carrier (kind='carrier') — both expose position, max_move_distance,
+    and target_position the same way."""
+    ll = DcsPoint(obj.position.x, obj.position.y, game.theater.terrain).latlng()
+    dest = None
+    tp = getattr(obj, "target_position", None)
+    if tp is not None:
+        dll = DcsPoint(tp.x, tp.y, game.theater.terrain).latlng()
+        dest = [_r(dll.lat), _r(dll.lng)]
+    threat = None
+    max_range = getattr(obj, "max_threat_range", None)
+    if callable(max_range):
+        try:
+            rng = max_range()
+            threat = int(rng.nautical_miles) if rng else None
+        except Exception:
+            threat = None
+    return NavalView(
+        id=str(obj.id),
+        name=obj.name,
+        kind=kind,
+        pos=[_r(ll.lat), _r(ll.lng)],
+        move_range_nm=int(obj.max_move_distance.nautical_miles),
+        destination=dest,
+        threat_nm=threat or None,
+        damage=_damage_word(obj),
+    )
+
+
 def build_my_naval(game: Game, side: str) -> list[NavalView]:
-    """The side's OWN repositionable ship groups (carriers excluded — those are control
-    points). These are what ``move_ship`` can reposition; the LLM can't see them via the
-    enemy-only ``targets`` list, so surface them here with their move range and any
-    pending destination."""
+    """The side's OWN repositionable naval groups — combatant ship groups
+    (ShipGroundObject) AND carriers/LHAs (movable naval control points). These are what
+    ``move_ship`` can reposition; the LLM can't see them via the enemy-only ``targets``
+    list, so surface them here with their move range and any pending destination."""
     from game.theater.theatergroundobject import ShipGroundObject
 
     player = player_for_side(side)
@@ -414,34 +445,16 @@ def build_my_naval(game: Game, side: str) -> list[NavalView]:
     for cp in game.theater.controlpoints:
         if cp.captured != player:
             continue
+        # the carrier/LHA itself is a movable control point (a different id namespace
+        # than its escort ship groups below)
+        if getattr(cp, "moveable", False) and getattr(cp, "is_fleet", False):
+            out.append(_naval_view(game, cp, "carrier"))
         for tgo in cp.ground_objects:
             if not isinstance(tgo, ShipGroundObject) or not tgo.moveable:
                 continue
             if getattr(tgo, "is_dead", False):
                 continue
-            ll = DcsPoint(tgo.position.x, tgo.position.y, game.theater.terrain).latlng()
-            dest = None
-            tp = getattr(tgo, "target_position", None)
-            if tp is not None:
-                dll = DcsPoint(tp.x, tp.y, game.theater.terrain).latlng()
-                dest = [_r(dll.lat), _r(dll.lng)]
-            threat = None
-            try:
-                rng = tgo.max_threat_range()
-                threat = int(rng.nautical_miles) if rng else None
-            except Exception:
-                threat = None
-            out.append(
-                NavalView(
-                    id=str(tgo.id),
-                    name=tgo.name,
-                    pos=[_r(ll.lat), _r(ll.lng)],
-                    move_range_nm=int(tgo.max_move_distance.nautical_miles),
-                    destination=dest,
-                    threat_nm=threat or None,
-                    damage=_damage_word(tgo),
-                )
-            )
+            out.append(_naval_view(game, tgo, "ship"))
     return out
 
 

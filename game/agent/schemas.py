@@ -117,6 +117,6 @@ class TransferGroundRequest(BaseModel):
 
 class MoveShipRequest(BaseModel):
     side: str = "red"
-    ship_id: str  # a ship-group id from turn_context.naval
+    ship_id: str  # a ship-group OR carrier id from turn_context.naval
     lat: float | None = None  # destination; omit lat AND lng to cancel a pending move
     lng: float | None = None
