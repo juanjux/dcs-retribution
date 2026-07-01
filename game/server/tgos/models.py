@@ -7,6 +7,7 @@ from pydantic import BaseModel
 
 from game.data.groups import GroupTask
 from game.server.leaflet import LeafletPoint
+from game.theater.theatergroundobject import ShipGroundObject
 
 if TYPE_CHECKING:
     from game import Game
@@ -31,9 +32,7 @@ class TgoJs(BaseModel):
     purchasable: bool
     sidc: str  # TODO: Event stream
     task: Optional[GroupTask]
-    #: True if the owner can reposition this group on the campaign map.
-    moveable: bool
-    #: Pending end-of-turn reposition target, if one has been set.
+    mobile: bool
     destination: Optional[LeafletPoint]
 
     class Config:
@@ -58,7 +57,14 @@ class TgoJs(BaseModel):
             blue = True
         else:
             blue = False
-        target_position = getattr(tgo, "target_position", None)
+        mobile = isinstance(tgo, ShipGroundObject) and blue
+        destination: Optional[LeafletPoint] = None
+        if (
+            isinstance(tgo, ShipGroundObject)
+            and blue
+            and tgo.target_position is not None
+        ):
+            destination = LeafletPoint.from_latlng(tgo.target_position.latlng())
         return TgoJs(
             id=tgo.id,
             name=tgo.name,
@@ -73,10 +79,8 @@ class TgoJs(BaseModel):
             purchasable=tgo.repairable,
             sidc=str(tgo.sidc()),
             task=tgo.groups[0].ground_object.task if tgo.groups else None,
-            moveable=getattr(tgo, "moveable", False),
-            destination=(
-                target_position.latlng() if target_position is not None else None
-            ),
+            mobile=mobile,
+            destination=destination,
         )
 
     @staticmethod

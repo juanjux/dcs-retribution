@@ -21,7 +21,6 @@ from game.sidc import (
     Status,
     SymbolSet,
 )
-from game.data.units import UnitClass
 from game.theater.presetlocation import PresetLocation
 from .missiontarget import MissionTarget
 from .player import Player
@@ -736,11 +735,6 @@ class EwrGroundObject(IadsGroundObject):
 
 
 class ShipGroundObject(NavalGroundObject):
-    #: Straight-line distance a ship group may be repositioned in one turn. Flat,
-    #: like carriers/LHA (NavalControlPoint.max_move_distance), rather than
-    #: per-hull-speed, to keep the campaign-map reposition simple.
-    MAX_MOVE_DISTANCE = nautical_miles(80)
-
     def __init__(
         self, name: str, location: PresetLocation, control_point: ControlPoint
     ) -> None:
@@ -752,7 +746,8 @@ class ShipGroundObject(NavalGroundObject):
             sea_object=True,
             task=GroupTask.NAVY,
         )
-        #: End-of-turn reposition target set from the map; None = hold position.
+        # Movement state (mirrors NavalControlPoint). Blue ownership is enforced
+        # at the API/serialization layer, not here.
         self.target_position: Optional[Point] = None
 
     @property
@@ -761,35 +756,15 @@ class ShipGroundObject(NavalGroundObject):
 
     @property
     def moveable(self) -> bool:
-        """Combatant ship groups can be repositioned on the campaign map."""
         return True
 
     @property
     def max_move_distance(self) -> Distance:
-        return self.MAX_MOVE_DISTANCE
+        return nautical_miles(80)
 
     def destination_in_range(self, destination: Point) -> bool:
-        distance = meters(self.position.distance_to_point(destination))
+        distance = meters(destination.distance_to_point(self.position))
         return distance <= self.max_move_distance
-
-    def commit_move(self) -> None:
-        """Apply a pending reposition at turn processing.
-
-        Shifts the group's position and every unit by the same delta, the way a
-        carrier control point drags its escorts (see ControlPoint.process_turn).
-        ``getattr`` keeps this safe for groups loaded from pre-feature saves.
-        """
-        target = getattr(self, "target_position", None)
-        if target is None:
-            return
-        delta = target - self.position
-        self.position.x += delta.x
-        self.position.y += delta.y
-        for group in self.groups:
-            for unit in group.units:
-                unit.position.x += delta.x
-                unit.position.y += delta.y
-        self.target_position = None
 
 
 class IadsBuildingGroundObject(BuildingGroundObject):

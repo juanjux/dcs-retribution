@@ -162,7 +162,10 @@ const injectedRtkApi = api.injectEndpoints({
         method: "POST",
       }),
     }),
-    selectFlight: build.mutation<SelectFlightApiResponse, SelectFlightApiArg>({
+    selectFlight: build.mutation<
+      SelectFlightApiResponse,
+      SelectFlightApiArg
+    >({
       query: (queryArg) => ({
         url: `/qt/select-flight/${queryArg.flightId}`,
         method: "POST",
@@ -342,7 +345,8 @@ export type OpenControlPointInfoDialogApiResponse =
 export type OpenControlPointInfoDialogApiArg = {
   cpId: string;
 };
-export type SelectFlightApiResponse = /** status 200 Successful Response */ any;
+export type SelectFlightApiResponse =
+  /** status 200 Successful Response */ any;
 export type SelectFlightApiArg = {
   flightId: string;
 };
@@ -405,11 +409,11 @@ export type ControlPoint = {
   mobile: boolean;
   destination?: LatLng;
   sidc: string;
+  tacan?: string | null;
+  atc_frequency?: string | null;
   units: string[];
   threat_ranges: number[];
   detection_ranges: number[];
-  tacan?: string | null;
-  atc_frequency?: string | null;
 };
 export type ValidationError = {
   loc: (string | number)[];
@@ -476,7 +480,7 @@ export type Tgo = {
   purchasable: boolean;
   sidc: string;
   task?: string[];
-  moveable: boolean;
+  mobile: boolean;
   destination?: LatLng;
 };
 export type SupplyRoute = {
