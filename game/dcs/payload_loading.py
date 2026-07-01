@@ -47,7 +47,7 @@ def install_resilient_payload_loading() -> None:
             from dcs import task
 
             FlyingType._UnitPayloadGlobals = {
-                v.internal_name: v.id for k, v in task.MainTask.map.items()
+                str(v.internal_name): v.id for k, v in task.MainTask.map.items()
             }
 
         FlyingType.scan_payload_dir()
