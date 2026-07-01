@@ -35,7 +35,7 @@ class F_15CGE(PlaneType):
     flare_charge_size = 1
     eplrs = True
     category = "Interceptor"
-    radio_frequency = 251
+    radio_frequency = 124
 
     livery_name = "F15CGE"
 

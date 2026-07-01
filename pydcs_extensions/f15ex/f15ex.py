@@ -155,7 +155,7 @@ class F_15EX(PlaneType):
     flare_charge_size = 1
     eplrs = True
     category = "Multirole fighter"
-    radio_frequency = 251
+    radio_frequency = 124
 
     livery_name = "F15EX"
 

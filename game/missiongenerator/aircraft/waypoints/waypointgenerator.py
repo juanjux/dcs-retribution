@@ -142,10 +142,18 @@ class WaypointGenerator:
         return mission_start_time, kneeboard_waypoints
 
     def _resolve_locked_speed_time_conflicts(self) -> None:
-        """Unlock the speed on any waypoint that has a locked speed between two
-        time-locked (TOT) waypoints. DCS rejects that combination at mission start;
-        the bounding TOTs already determine the segment speed, so the speed lock is
-        redundant. The times are kept (needed to sync with the escorted package).
+        """Unlock the speed on any waypoint that has a locked speed while sitting
+        between time-locked (TOT) waypoints.
+
+        DCS rejects that combination at mission start ("All waypoints (N-M) have
+        locked speed and surrounded by waypoints ... with locked time"): the
+        bounding TOTs already determine the segment's speed, so a locked speed in
+        between is contradictory. It happens e.g. on a carrier escort whose JOIN
+        TOT clamps to the mission start -- the waypoint then gets a locked speed
+        (because ETA == 0) and is trapped between TOT-locked neighbours. Keep the
+        times (needed to sync with the escorted package) and drop the speed lock
+        so DCS can honour them. Split/RTB legs keep their locked speed since no
+        TOT-locked waypoint follows them.
         """
         points = self.group.points
         n = len(points)

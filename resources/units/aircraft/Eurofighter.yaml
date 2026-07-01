@@ -14,8 +14,8 @@ max_range: 1389
 variants:
   Eurofighter Typhoon: {}
 radios:
-  intra_flight: R&S M3AR VHF
-  inter_flight: R&S M3AR UHF
+  intra_flight: AN/ARC-186(V) AM
+  inter_flight: AN/ARC-186(V) AM
 tasks:
   Intercept: 850
   Fighter sweep: 820

@@ -15,8 +15,8 @@ max_range: 1968
 variants:
   F-15EX Eagle II: {}
 radios:
-  intra_flight: AN/ARC-210
-  inter_flight: AN/ARC-164
+  intra_flight: AN/ARC-186(V) AM
+  inter_flight: AN/ARC-186(V) AM
 tasks:
   Intercept: 850
   Fighter sweep: 820
