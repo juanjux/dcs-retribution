@@ -39,6 +39,7 @@ from .su15 import *
 from .su30 import *
 from .su35s import *
 from .f15ex import *
+from .f15cge import *
 from .su57 import *
 from .swedishmilitaryassetspack import *
 from .coldwarassets import *
