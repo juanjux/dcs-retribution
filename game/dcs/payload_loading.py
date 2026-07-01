@@ -21,7 +21,7 @@ the payload directories.
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict
+from typing import Any, Dict, cast
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +47,7 @@ def install_resilient_payload_loading() -> None:
             from dcs import task
 
             FlyingType._UnitPayloadGlobals = {
-                str(v.internal_name): v.id for k, v in task.MainTask.map.items()
+                v.internal_name: v.id for k, v in task.MainTask.map.items()
             }
 
         FlyingType.scan_payload_dir()
@@ -68,7 +68,9 @@ def install_resilient_payload_loading() -> None:
                 try:
                     payload_main = lua.loads(
                         payload_path.read_text(),
-                        _globals=FlyingType._UnitPayloadGlobals,
+                        # The pydcs stub types _UnitPayloadGlobals' keys as str | None;
+                        # loads wants dict[str, Any]. Cast (a widening, never redundant).
+                        _globals=cast("Dict[str, Any]", FlyingType._UnitPayloadGlobals),
                     )
                     pays = payload_main["unitPayloads"]
                     if pays["unitType"] != cls.id:
