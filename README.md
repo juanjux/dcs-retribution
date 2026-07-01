@@ -108,8 +108,6 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   this turn (all object types, not just runways), and your side's in-progress
   repairs with turns remaining.
   ([#43](https://github.com/juanjux/dcs-retribution/pull/43))
-- **Movable ships** — reposition non-carrier naval groups on the campaign map.
-  ([#30](https://github.com/juanjux/dcs-retribution/pull/30))
 - **Naval groups always defend** — ships are generated on a hot (RED) alarm state
   so fleets actually fight back (radars/SAM/CIWS/AAA) instead of sitting passive
   with radars off when the performance "red alert state" toggle is off.
