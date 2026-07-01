@@ -519,9 +519,13 @@ def move_ship(
                 f"{int(mover.max_move_distance.nautical_miles)}nm per turn"
             )
         landmap = game.theater.landmap
-        if landmap is not None and landmap.land_inbetween(mover.position, point):
+        if landmap is not None and (
+            not game.theater.is_in_sea(point)
+            or landmap.land_inbetween(mover.position, point)
+        ):
             raise ValueError(
-                f"can't move {mover.name} over land — pick an all-water destination"
+                f"can't move {mover.name} over land or out of the sea — "
+                f"pick an all-water destination"
             )
         mover.target_position = point
         _refresh(mover)
