@@ -30,6 +30,7 @@
 * **[EW]** EW jamming now degrades enemy air defenses instead of silencing them. The scripted offensive jamming drops a jammed radar's group to return-fire (intermittently, scaled by the new `OFFENSIVE_POWER` multiplier) rather than weapon-hold, and EW flights also emit the DCS engine's own ECM (`OptECMUsing`) to degrade enemy radar lock — so jammed SAM sites and naval groups keep defending: radar-guided engagement is degraded while IR missiles and gun/CIWS point-defense are unaffected.
 * **[Modding]** Add CurrentHill UK Assets Pack support (v1.1.2)
 * **[Modding]** Add support for Su-35S mod (v2.0.27b)
+* **[Modding]** Add support for the F-15EX Eagle II mod (by Spino).
 * **[Data]** Add Refueling/Recovery tasks to A-6E Intruder mod
 * **[Layouts]** Add signature to layouts' binary file for automatic reloading of updated layouts.
 * **[Mission Generator]** New campaign setting "Default laser code for Player flights" controls whether newly-created player flights are assigned a unique allocated TGP/weapon laser code (the new default, matching existing behavior) or stay on 1688. When a code is allocated it is applied to both the TGP/kneeboard code and the weapon code by default, so LGBs home on the player's own code without extra clicks; both remain independently overridable in the payload tab.
