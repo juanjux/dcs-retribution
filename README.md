@@ -122,10 +122,22 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   ([#53](https://github.com/juanjux/dcs-retribution/pull/53))
 
 ### Modding & data
-- *(WIP on `master`, not yet PR'd)* **F-15EX, F-15C EG (Golden Eagle) and
-  Eurofighter Typhoon** mod aircraft.
+- **F-15EX Eagle II, F-15C EG (Golden Eagle) and Eurofighter Typhoon** mod aircraft.
+  ([#31](https://github.com/juanjux/dcs-retribution/pull/31),
+  [#32](https://github.com/juanjux/dcs-retribution/pull/32),
+  [#33](https://github.com/juanjux/dcs-retribution/pull/33))
 
 ### Fixes
+- Enemy (and friendly) fleets now actively fight instead of sitting passive: every
+  ship group — including submarines — is generated with weapon-free ROE and a
+  search-and-engage task, so they use their SAMs on aircraft and their anti-ship
+  missiles / guns / torpedoes on the enemy once detected (they still hold position —
+  aggressive defense, not a hunt).
+  ([#55](https://github.com/juanjux/dcs-retribution/pull/55))
+- Relaunching the executable while it is already running no longer spawns orphaned,
+  windowless duplicate processes; a second instance detects the first via an OS file
+  lock and exits immediately.
+  ([#50](https://github.com/juanjux/dcs-retribution/pull/50))
 - Bumped PySide6/Qt to 6.8.3 which switches acceleration to D3D11 and thus fixes
   some OpenGL hangs that probably happened in combination with other software.
   ([#52](https://github.com/juanjux/dcs-retribution/pull/52))
