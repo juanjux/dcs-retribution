@@ -36,10 +36,13 @@ from dcs.task import (
     ActivateLink4Command,
     ActivateACLSCommand,
     ControlledTask,
+    EngageTargets,
     Hold,
     EPLRS,
     FireAtPoint,
     OptAlarmState,
+    OptROE,
+    Targets,
 )
 from dcs.terrain import Airport
 from dcs.translation import String
@@ -370,6 +373,7 @@ class GroundObjectGenerator:
                     ship_group.set_frequency(frequency.hertz)
                 ship_group.units[0].name = unit.unit_name
                 self.set_alarm_state(ship_group, force_red=True)
+                self.set_ship_engagement(ship_group)
                 NavalForcePainter(faction, ship_group.units[0]).apply_livery()
             else:
                 ship_unit = self.m.ship(unit.unit_name, unit.type)
@@ -401,15 +405,25 @@ class GroundObjectGenerator:
         if eplrs_enabled and unit_type.eplrs:
             group.points[0].tasks.append(EPLRS(group.id))
 
-    def set_alarm_state(
-        self, group: MovingGroup[Any], force_red: bool = False
-    ) -> None:
+    def set_alarm_state(self, group: MovingGroup[Any], force_red: bool = False) -> None:
         # Ships pass force_red so they always defend; the perf toggle only exists
         # to let ground SAMs start "dark" for Skynet IADS, not to disarm fleets.
         if force_red or self.game.settings.perf_red_alert_state:
             group.points[0].tasks.append(OptAlarmState(2))
         else:
             group.points[0].tasks.append(OptAlarmState(1))
+
+    def set_ship_engagement(self, group: ShipGroup) -> None:
+        # Make fleets fight, not just sit there. RED alarm alone leaves engagement
+        # to the ROE default, and without an explicit search-and-engage task the AI
+        # is passive. Set weapon-free ROE and an EngageTargets task so ships use
+        # their SAMs on aircraft and their anti-ship missiles/guns/torpedoes on enemy
+        # ships (incl. submarines firing torpedoes) once they detect them. They still
+        # hold position — no attack waypoints — so this is aggressive defense, not a hunt.
+        group.points[0].tasks.append(OptROE(OptROE.Values.WeaponFree))
+        group.points[0].tasks.append(
+            EngageTargets(targets=[Targets.All.Air, Targets.All.Naval])
+        )
 
     def _register_theater_unit(
         self,
