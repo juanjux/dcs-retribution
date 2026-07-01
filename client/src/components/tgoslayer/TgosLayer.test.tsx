@@ -36,7 +36,6 @@ function fakeTgo(o: {
     dead: o.dead,
     purchasable: o.purchasable,
     sidc: "",
-    moveable: false,
   };
 }
 
