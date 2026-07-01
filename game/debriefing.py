@@ -130,7 +130,7 @@ class StateData:
 
     #: Structured S_EVENT_KILL records ({target, initiator, initiator_type,
     #: initiator_player, weapon}), used to attribute air losses in the UI feed.
-    kill_details: List[Dict[str, Any]] = field(default_factory=list)
+    kill_details: List[Any] = field(default_factory=list)
 
     #: DCS mission model time in seconds (timer.getTime()); None for older states.
     model_time: Optional[float] = None
@@ -252,7 +252,7 @@ class Debriefing:
         """Resolve a killed unit name to its loss object, mirroring how
         dead_aircraft/dead_ground_units resolve names, so id() lines up."""
         um = self.unit_map
-        obj = um.flight(name)
+        obj: Optional[Any] = um.flight(name)
         if obj is not None:
             return obj
         obj = um.front_line_unit(name) or um.front_line_unit_from_tic_clone(name)

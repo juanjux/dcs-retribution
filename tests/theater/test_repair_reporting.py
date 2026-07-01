@@ -76,7 +76,9 @@ def test_finished_runway_reported_for_both_sides() -> None:
     for side in (Player.BLUE, Player.RED):
         game = _FakeGame()
         # Operational again (repair() result): not damaged, no turns remaining.
-        cp = _control_point(side, RunwayStatus(damaged=False, repair_turns_remaining=None))
+        cp = _control_point(
+            side, RunwayStatus(damaged=False, repair_turns_remaining=None)
+        )
         _report(cp, game, runway_was_repairing=True, gos=[])
         assert any("finished repairing the runway" in m for m in game.messages), side
         assert all("in progress" not in m for m in game.messages)
@@ -105,7 +107,9 @@ def test_finished_ground_object_reported_for_both_sides() -> None:
         # Object was repairing before; now all units alive -> finished.
         go = _ground_object("Ammo depot Alpha", [_unit(alive=True, turns=None)])
         _report(cp, game, runway_was_repairing=False, gos=[go])
-        assert any("finished repairs at Ammo depot Alpha" in m for m in game.messages), side
+        assert any(
+            "finished repairs at Ammo depot Alpha" in m for m in game.messages
+        ), side
 
 
 def test_in_progress_ground_object_player_only() -> None:

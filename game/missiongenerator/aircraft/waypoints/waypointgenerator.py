@@ -173,38 +173,6 @@ class WaypointGenerator:
             if getattr(points[i], "ETA_locked", False):
                 eta_locked_after = True
 
-    def _resolve_locked_speed_time_conflicts(self) -> None:
-        """Unlock the speed on any waypoint that has a locked speed between two
-        time-locked (TOT) waypoints. DCS rejects that combination at mission start;
-        the bounding TOTs already determine the segment speed, so the speed lock is
-        redundant. The times are kept (needed to sync with the escorted package).
-        """
-        points = self.group.points
-        n = len(points)
-        eta_locked_before = [False] * n
-        seen = False
-        for i in range(n):
-            eta_locked_before[i] = seen
-            if getattr(points[i], "ETA_locked", False):
-                seen = True
-        eta_locked_after = False
-        for i in range(n - 1, -1, -1):
-            if (
-                getattr(points[i], "speed_locked", False)
-                and eta_locked_before[i]
-                and eta_locked_after
-            ):
-                points[i].speed_locked = False
-                logging.debug(
-                    "%s: unlocked speed on waypoint %d (%s); a locked speed "
-                    "between TOT-locked waypoints is rejected by DCS.",
-                    self.flight,
-                    i,
-                    getattr(points[i], "name", ""),
-                )
-            if getattr(points[i], "ETA_locked", False):
-                eta_locked_after = True
-
     def builder_for_waypoint(self, waypoint: FlightWaypoint) -> PydcsWaypointBuilder:
         builders = {
             FlightWaypointType.CARGO_STOP: CargoStopBuilder,

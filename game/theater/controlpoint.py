@@ -1117,7 +1117,10 @@ class ControlPoint(MissionTarget, SidcDescribable, ABC):
 
         runway_status = self.runway_status
         if runway_was_repairing and runway_status is not None:
-            if runway_status.repair_turns_remaining is None and not runway_status.damaged:
+            if (
+                runway_status.repair_turns_remaining is None
+                and not runway_status.damaged
+            ):
                 game.message(f"{who} finished repairing the runway at {self}")
             elif is_player and runway_status.repair_turns_remaining is not None:
                 game.message(
