@@ -152,6 +152,8 @@ class GeneratorOptions(QtWidgets.QWizardPage):
         self.registerField("f15ex", self.f15ex)
         self.f15cge = QtWidgets.QCheckBox()
         self.registerField("f15cge", self.f15cge)
+        self.eurofighter = QtWidgets.QCheckBox()
+        self.registerField("eurofighter", self.eurofighter)
         self.su57_felon = QtWidgets.QCheckBox()
         self.registerField("su57_felon", self.su57_felon)
         self.ov10a_bronco = QtWidgets.QCheckBox()
@@ -270,6 +272,7 @@ class GeneratorOptions(QtWidgets.QWizardPage):
             ("Su-35S Flanker-M (v2.0.27b)", self.su35s_flanker_m),
             ("F-15EX Eagle II (v2.3 by Spino)", self.f15ex),
             ("F-15C EG Golden Eagle (v1.5 by Spino)", self.f15cge),
+            ("Eurofighter Typhoon (v1.1.4 by Lechuzas Negras)", self.eurofighter),
             ("Su-57 Felon (build-04)", self.su57_felon),
             ("Super Étendard (v2.5.5)", self.super_etendard),
             ("Tornado F3 ADV (1.0)", self.tornado_adv),
