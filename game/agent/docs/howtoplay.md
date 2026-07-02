@@ -137,7 +137,8 @@ bypass the automatic threat-avoidance.
      your own file.
 1. **Understand the situation.** Read the turn context, the previous turns (what you
    lost and to what, what blue did, what changed), and your own saved notes. If you
-   reason better from a picture, fetch the map image. `turn_context.threats` already
+   reason better from a picture, fetch the map image (`GET /map/image` — plots both
+   sides' SAM/naval umbrellas, the fronts and your naval). `turn_context.threats` already
    **ranks blue's strongest air-defense umbrellas** for you (so you needn't sort
    `targets`); `economy` is your budget/income and `prev_turns` is the force-ratio /
    attrition trend — read those instead of re-deriving them. The `OPFOR auto-planner
@@ -303,6 +304,12 @@ pilot limits are off = unlimited)}.
 
 `GET /packages?side=red` → `[{index, target, task, tot (HH:MM), desc?,
 flights:[{id, task, aircraft, count, squadron, start?, dep?, clients?, uncrewed?}]}]`.
+
+`GET /map/image?side=red[&bbox=s,w,n,e]` → a rendered **PNG** strategic map (binary, not
+JSON) for visual analysis: control points coloured by owner, front lines, your naval, and
+SAM/naval air-defense umbrellas for BOTH sides (yours red, blue's blue). Drawn from the same
+intel as `turn_context`, so image and text agree. `bbox` (lat/lng south,west,north,east)
+zooms in; omit it for the whole theater.
 
 `GET /validate?side=red` → a health check of the WHOLE committed plan (no changes):
 `{ok, mission_window_min, packages:[{index, target, tot, tot_minutes_into_mission,
