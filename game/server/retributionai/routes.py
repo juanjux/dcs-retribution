@@ -6,7 +6,7 @@ Every route requires the per-process token (``?token=`` or ``X-API-Key``).
 Per-turn reads serialise with ``exclude_none`` to stay token-frugal.
 """
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Request, Response
 from fastapi.responses import PlainTextResponse
 
 from game.agent import schemas, service, views
@@ -55,6 +55,12 @@ def packages(side: str = "red") -> list[views.PackageView]:
 )
 def validate_plan(side: str = "red") -> schemas.ValidateResult:
     return service.validate_plan(side)
+
+
+@router.get("/map/image", operation_id="ai_map_image")
+def map_image(side: str = "red", bbox: str | None = None) -> Response:
+    """Rendered PNG strategic map for ``side`` (optional ``bbox`` = s,w,n,e)."""
+    return Response(content=service.map_image(side, bbox), media_type="image/png")
 
 
 @router.get("/capabilities", operation_id="ai_capabilities")

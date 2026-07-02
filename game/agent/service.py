@@ -35,6 +35,13 @@ def settings() -> views.SettingsView:
     return views.build_settings(_require_game())
 
 
+def map_image(side: str = "red", bbox: str | None = None) -> bytes:
+    """PNG strategic map for ``side``, drawn from the same intel as turn_context."""
+    from game.agent import mapimage
+
+    return mapimage.render(views.build_turn_context(_require_game(), side), bbox)
+
+
 def get_packages(side: str = "red") -> list[views.PackageView]:
     """Current ATO for ``side`` — packages and their flights (with stable ids)."""
     return views.build_packages(_require_game(), side)

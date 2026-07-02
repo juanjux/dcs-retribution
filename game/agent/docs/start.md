@@ -59,7 +59,7 @@ tool/resource of the same name.
 - `GET /prev_turns?n=1` — after-action of prior turns (losses, who-killed-what, captures)
 - `GET /packages?side=red` — current packages/flights (each with `id` + pilots + waypoints)
 - `GET /waypoints/{flight_id}` — a flight's waypoints
-- `GET /map/image?side=red[&bbox=…]` — rendered map (PNG) for visual analysis
+- `GET /map/image?side=red[&bbox=s,w,n,e]` — rendered PNG strategic map (control points, front lines, threat umbrellas, your naval) for visual analysis; `bbox` (lat/lng south,west,north,east) zooms in
 - `GET /faction/aircraft?side=red` — airframes your faction may field
 - `GET /turn_status` — turn #, phase, whose turn
 
