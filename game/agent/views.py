@@ -397,6 +397,21 @@ def build_targets(game: Game, side: str) -> list[TargetView]:
     return targets
 
 
+def build_own_sams(game: Game, side: str) -> list[TargetView]:
+    """Your own live SAM sites (friendly IADS) — for drawing your air-defense
+    umbrellas alongside the enemy's. Not part of the text turn_context."""
+    from game.commander.objectivefinder import ObjectiveFinder
+    from game.theater.theatergroundobject import IadsGroundObject
+
+    finder = ObjectiveFinder(game, player_for_side(side))
+    out: list[TargetView] = []
+    for cp in finder.friendly_control_points():
+        for go in cp.ground_objects:
+            if not go.is_dead and isinstance(go, IadsGroundObject):
+                out.append(_build_target(game, go, "sam", "DEAD"))
+    return out
+
+
 _THREAT_TOP_N = (
     12  # cap the ranked digest; the full per-target ranges stay in targets[]
 )

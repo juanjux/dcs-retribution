@@ -47,10 +47,16 @@ def _parse_bbox(bbox: Optional[str]) -> Optional[tuple[float, float, float, floa
     return s, w, n, e
 
 
-def render(ctx: views.TurnContextView, bbox: Optional[str] = None) -> bytes:
+def render(
+    ctx: views.TurnContextView,
+    bbox: Optional[str] = None,
+    own_sams: Optional[list[views.TargetView]] = None,
+) -> bytes:
+    own_sams = own_sams or []
     pts = [cp.pos for cp in ctx.control_points]
     pts += [t.pos for t in ctx.targets]
     pts += [n.pos for n in ctx.naval]
+    pts += [s.pos for s in own_sams]
 
     box = _parse_bbox(bbox)
     if box is not None:
@@ -143,6 +149,9 @@ def render(ctx: views.TurnContextView, bbox: Optional[str] = None) -> bytes:
     for t in ctx.targets:
         if t.threat_nm:
             ring(t.pos, t.threat_nm, _BLUE)
+    for s in own_sams:
+        if s.threat_nm:
+            ring(s.pos, s.threat_nm, _RED)
     for n in ctx.naval:
         if n.threat_nm:
             ring(n.pos, n.threat_nm, _RED)
@@ -160,6 +169,11 @@ def render(ctx: views.TurnContextView, bbox: Optional[str] = None) -> bytes:
             d.polygon([(x, y - 4), (x - 4, y + 3), (x + 4, y + 3)], fill=_BLUE)
         else:
             d.ellipse([x - 2, y - 2, x + 2, y + 2], fill=_BLUE)
+
+    # Your own SAM sites (red triangles) — enemy SAMs are blue triangles.
+    for s in own_sams:
+        x, y = to_px(s.pos)
+        d.polygon([(x, y - 4), (x - 4, y + 3), (x + 4, y + 3)], fill=_RED)
 
     # Your naval groups: red diamond, with a line to any pending destination.
     for n in ctx.naval:
@@ -210,6 +224,7 @@ def _draw_chrome(
         d.rectangle([12, ly + 3, 22, ly + 13], fill=color)
         d.text((28, ly), label, font=_font(12), fill=_TEXT_DIM)
         ly += 18
+    d.text((12, ly), "rings = SAM/naval reach", font=_font(11), fill=_TEXT_DIM)
 
     # Scale bar: a round-ish nm distance near the bottom-left.
     target_px = 150
