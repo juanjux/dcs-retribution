@@ -47,6 +47,12 @@ def _parse_bbox(bbox: Optional[str]) -> Optional[tuple[float, float, float, floa
     return s, w, n, e
 
 
+def _boxes_overlap(
+    a: tuple[float, float, float, float], b: tuple[float, float, float, float]
+) -> bool:
+    return a[0] < b[2] and a[2] > b[0] and a[1] < b[3] and a[3] > b[1]
+
+
 def render(
     ctx: views.TurnContextView,
     bbox: Optional[str] = None,
@@ -134,29 +140,44 @@ def render(
             if f and e:
                 d.line([to_px(f.pos), to_px(e.pos)], fill=_FRONT, width=3)
 
-    # Threat umbrellas on a translucent overlay so overlaps blend with the map.
-    # Ring colour = owner: enemy (blue) SAMs/ships blue, your own naval red.
-    overlay = Image.new("RGBA", (_W, _H), (0, 0, 0, 0))
-    od = ImageDraw.Draw(overlay)
+    # Threat umbrellas. Each coalition's fills go on their OWN overlay so blue and red
+    # blend where they overlap — ImageDraw overwrites alpha within one image, so a single
+    # shared overlay would show only the last colour drawn in the overlap (the reported
+    # "only red shows" bug). Outlines are stroked opaque on top afterwards, so every
+    # ring's edge stays legible even where fills stack. Ring colour = owner (enemy blue,
+    # yours red).
+    blue_fill = Image.new("RGBA", (_W, _H), (0, 0, 0, 0))
+    red_fill = Image.new("RGBA", (_W, _H), (0, 0, 0, 0))
+    bd, rd = ImageDraw.Draw(blue_fill), ImageDraw.Draw(red_fill)
+    outlines: list[tuple[float, float, float, tuple[int, int, int]]] = []
 
-    def ring(pos: list[float], nm: int, rgb: tuple[int, int, int]) -> None:
+    def ring(
+        pos: list[float],
+        nm: int,
+        rgb: tuple[int, int, int],
+        fill_draw: ImageDraw.ImageDraw,
+    ) -> None:
         r = nm * scale
         if r < 2:
             return
         x, y = to_px(pos)
-        od.ellipse([x - r, y - r, x + r, y + r], fill=(*rgb, 26), outline=(*rgb, 120))
+        fill_draw.ellipse([x - r, y - r, x + r, y + r], fill=(*rgb, 28))
+        outlines.append((x, y, r, rgb))
 
     for t in ctx.targets:
         if t.threat_nm:
-            ring(t.pos, t.threat_nm, _BLUE)
+            ring(t.pos, t.threat_nm, _BLUE, bd)
     for s in own_sams:
         if s.threat_nm:
-            ring(s.pos, s.threat_nm, _RED)
+            ring(s.pos, s.threat_nm, _RED, rd)
     for n in ctx.naval:
         if n.threat_nm:
-            ring(n.pos, n.threat_nm, _RED)
-    base = Image.alpha_composite(base, overlay)
+            ring(n.pos, n.threat_nm, _RED, rd)
+    base = Image.alpha_composite(base, blue_fill)
+    base = Image.alpha_composite(base, red_fill)
     d = ImageDraw.Draw(base)
+    for x, y, r, rgb in outlines:
+        d.ellipse([x - r, y - r, x + r, y + r], outline=rgb, width=2)
 
     # Enemy target markers (small): sam triangle, ship square, else dot.
     for t in ctx.targets:
@@ -187,13 +208,31 @@ def render(
             )
         d.polygon([(x, y - 5), (x - 5, y), (x, y + 5), (x + 5, y)], fill=_RED)
 
-    # Control points on top: filled dot + name.
+    # Control points on top: filled dot + name. Labels are decluttered — where dots
+    # cluster (carrier groups near a base) each label is nudged down until it clears the
+    # ones already placed, with a leader line back to its dot so the tie stays clear.
     f_cp = _font(12)
-    for cp in ctx.control_points:
-        x, y = to_px(cp.pos)
-        c = cp_color(cp.owner)
-        d.ellipse([x - 6, y - 6, x + 6, y + 6], fill=c, outline=(240, 240, 240))
-        d.text((x + 9, y - 7), cp.name, font=f_cp, fill=_TEXT)
+    dots = [(to_px(cp.pos), cp) for cp in ctx.control_points]
+    for (x, y), cp in dots:
+        d.ellipse(
+            [x - 6, y - 6, x + 6, y + 6],
+            fill=cp_color(cp.owner),
+            outline=(240, 240, 240),
+        )
+    placed: list[tuple[float, float, float, float]] = []
+    for (x, y), cp in sorted(dots, key=lambda it: it[0][1]):
+        w = d.textlength(cp.name, font=f_cp)
+        ly0 = y - 7
+        lx, ly = x + 9, ly0
+        for _ in range(10):
+            box = (lx - 2, ly, lx + w + 2, ly + 13)
+            if not any(_boxes_overlap(box, p) for p in placed):
+                break
+            ly += 14
+        placed.append((lx - 2, ly, lx + w + 2, ly + 13))
+        if ly > ly0 + 2:
+            d.line([(x + 6, y), (lx, ly + 6)], fill=_TEXT_DIM)
+        d.text((lx, ly), cp.name, font=f_cp, fill=_TEXT)
 
     _draw_chrome(d, ctx, scale)
 
