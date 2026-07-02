@@ -68,6 +68,11 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   base map and open groups in the campaign save, so they survive turns and
   reopening the app instead of resetting to defaults.
   ([#54](https://github.com/juanjux/dcs-retribution/pull/54))
+- **Orange health bar for repairing wrecks** — a ground object that is fully
+  destroyed but being repaired shows an orange health bar instead of yellow, so
+  it reads distinctly from a partially-damaged group (some units dead, some
+  alive), which stays yellow.
+  ([#56](https://github.com/juanjux/dcs-retribution/pull/56))
 
 ### Kneeboards
 - **Friendly-packages list** plus a **package-targets map** page.
