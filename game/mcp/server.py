@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server.fastmcp import FastMCP, Image
 from mcp.server.transport_security import TransportSecuritySettings
 
 from game.agent import service
@@ -59,6 +59,14 @@ def turn_context(side: str = "red") -> dict:
 def settings() -> dict:
     """Campaign settings the planner reads (aggressiveness, fog, mission window)."""
     return _dump(service.settings())
+
+
+@mcp.tool()
+def map_image(side: str = "red", bbox: str | None = None) -> Image:
+    """Rendered PNG strategic map for `side` (control points, front lines, threat
+    umbrellas, your naval) for visual analysis. Optional `bbox` = "s,w,n,e" (lat/lng
+    south,west,north,east) zooms in."""
+    return Image(data=service.map_image(side, bbox), format="png")
 
 
 @mcp.tool()
