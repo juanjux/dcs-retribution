@@ -72,6 +72,7 @@ def capabilities() -> dict:
             "turn_context",
             "settings",
             "packages",
+            "map/image (rendered PNG strategic map — both sides' SAM/naval umbrellas)",
             "validate",
             "prev_turns",
             "turn_status",
