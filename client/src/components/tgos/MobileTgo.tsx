@@ -89,9 +89,9 @@ function PrimaryMarker(props: PrimaryMarkerProps) {
   // so a re-render can't swap it mid-drag; both change only at turn processing,
   // never during a drag. `dead` is needed because a fully-dead-repairing group
   // keeps the same (damaged) sidc as a partial one but must show the orange bar.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const icon = useMemo(
     () => iconForTgo(props.tgo),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [props.tgo.sidc, props.tgo.dead]
   );
 
@@ -248,9 +248,9 @@ interface SecondaryMarkerProps {
  */
 function SecondaryMarker(props: SecondaryMarkerProps) {
   const dispatch = useAppDispatch();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const icon = useMemo(
     () => iconForTgo(props.tgo),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [props.tgo.sidc, props.tgo.dead]
   );
   const [openInfoDialog] = useOpenTgoInfoDialogMutation();
