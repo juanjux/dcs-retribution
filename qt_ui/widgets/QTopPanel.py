@@ -3,8 +3,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
 
-from PySide6.QtCore import Qt, QTimer
-from PySide6.QtGui import QAction
+from PySide6.QtCore import Qt, QTimer, QSize
+from PySide6.QtGui import QAction, QIcon, QMovie
 from PySide6.QtWidgets import (
     QApplication,
     QDialog,
@@ -20,6 +20,7 @@ from PySide6.QtWidgets import (
 )
 
 import qt_ui.uiconstants as CONST
+from qt_ui.liberation_theme import get_theme_icons
 from game import Game, persistency
 from game.ato.flight import Flight
 from game.ato.flightstate import Uninitialized
@@ -103,6 +104,20 @@ class QTopPanel(QFrame):
         self.ai_status_button.setToolTip("LLM OPFOR commander — click for status")
         self.ai_status_button.clicked.connect(self._show_ai_status)
         self.ai_status_button.setVisible(False)
+        # Robot-general icon, with a looping "thinking" animation while the LLM plans.
+        theme = get_theme_icons()
+        self._ai_idle_icon = QIcon(f"./resources/ui/misc/{theme}/opfor-commander.png")
+        self.ai_status_button.setIcon(self._ai_idle_icon)
+        self.ai_status_button.setIconSize(QSize(20, 20))
+        self._ai_thinking_movie = QMovie(
+            f"./resources/ui/misc/{theme}/opfor-commander-thinking.gif"
+        )
+        self._ai_thinking_movie.setScaledSize(QSize(20, 20))
+        self._ai_thinking_movie.frameChanged.connect(
+            lambda: self.ai_status_button.setIcon(
+                QIcon(self._ai_thinking_movie.currentPixmap())
+            )
+        )
         self.buttonBoxLayout.addWidget(self.ai_status_button)
         self.buttonBox.setLayout(self.buttonBoxLayout)
 
@@ -205,9 +220,14 @@ class QTopPanel(QFrame):
             self.ai_status_button.setStyleSheet(
                 "color: white; background-color: #2e7d32; font-weight: bold;"
             )
+            if self._ai_thinking_movie.state() != QMovie.MovieState.Running:
+                self._ai_thinking_movie.start()
         else:
             self.ai_status_button.setText("OPFOR AI: idle")
             self.ai_status_button.setStyleSheet("color: gray;")
+            if self._ai_thinking_movie.state() == QMovie.MovieState.Running:
+                self._ai_thinking_movie.stop()
+                self.ai_status_button.setIcon(self._ai_idle_icon)
 
     def _show_ai_status(self) -> None:
         from game.agent import service
