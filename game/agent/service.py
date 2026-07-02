@@ -283,7 +283,13 @@ def _server_base() -> str:
 
     s = ServerSettings.get()
     host = str(s.server_bind_address)
-    host_disp = f"[{host}]" if ":" in host else host
+    # Show "localhost" for any loopback/any-interface bind instead of a raw address:
+    # the default "::1" renders as "[::1]", which reads as broken and trips up clients
+    # that assume IPv4. localhost resolves to whatever loopback the server is on.
+    if host in ("::1", "::", "0.0.0.0", "127.0.0.1", ""):
+        host_disp = "localhost"
+    else:
+        host_disp = f"[{host}]" if ":" in host else host
     return f"http://{host_disp}:{s.server_port}"
 
 
