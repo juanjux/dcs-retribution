@@ -36,10 +36,16 @@ def settings() -> views.SettingsView:
 
 
 def map_image(side: str = "red", bbox: str | None = None) -> bytes:
-    """PNG strategic map for ``side``, drawn from the same intel as turn_context."""
+    """PNG strategic map for ``side``, drawn from the same intel as turn_context
+    (plus this side's own SAM umbrellas, which the text context omits)."""
     from game.agent import mapimage
 
-    return mapimage.render(views.build_turn_context(_require_game(), side), bbox)
+    game = _require_game()
+    return mapimage.render(
+        views.build_turn_context(game, side),
+        bbox,
+        own_sams=views.build_own_sams(game, side),
+    )
 
 
 def get_packages(side: str = "red") -> list[views.PackageView]:
