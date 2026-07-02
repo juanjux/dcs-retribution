@@ -85,10 +85,15 @@ function PrimaryMarker(props: PrimaryMarkerProps) {
   // component while unrelated ships/SAMs update), react-leaflet would call
   // marker.setIcon() with the new ref and abort the in-progress drag. Memoize
   // on the sidc so the ref only changes when the symbol actually changes.
-  // Intentionally keyed on sidc only: the icon must stay referentially stable
-  // across drags so a re-render can't swap it mid-drag (see comment above).
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const icon = useMemo(() => iconForTgo(props.tgo), [props.tgo.sidc]);
+  // Keyed on sidc + dead: the icon must stay referentially stable across drags
+  // so a re-render can't swap it mid-drag; both change only at turn processing,
+  // never during a drag. `dead` is needed because a fully-dead-repairing group
+  // keeps the same (damaged) sidc as a partial one but must show the orange bar.
+  const icon = useMemo(
+    () => iconForTgo(props.tgo),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [props.tgo.sidc, props.tgo.dead]
+  );
 
   const [hasDestination, setHasDestination] = useState<boolean>(
     props.tgo.destination != null
@@ -243,8 +248,11 @@ interface SecondaryMarkerProps {
  */
 function SecondaryMarker(props: SecondaryMarkerProps) {
   const dispatch = useAppDispatch();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const icon = useMemo(() => iconForTgo(props.tgo), [props.tgo.sidc]);
+  const icon = useMemo(
+    () => iconForTgo(props.tgo),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [props.tgo.sidc, props.tgo.dead]
+  );
   const [openInfoDialog] = useOpenTgoInfoDialogMutation();
   const [openNewPackageDialog] = useOpenNewTgoPackageDialogMutation();
   const raised = useAppSelector(
