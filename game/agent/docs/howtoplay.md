@@ -297,10 +297,13 @@ means none/empty** (stated once so the per-turn payloads stay small).
 
 `GET /settings` → {`opfor_aggressiveness_pct`, `map_coalition_visibility`,
 `desired_player_mission_duration_min`, `player_income_multiplier`,
-`enemy_income_multiplier`, `pilot_replenishment_per_squadron`? (new pilots each
-squadron regains per turn, up to the limit — paces how fast you can rebuild after
-losses), `squadron_pilot_limit`? (max active pilots per squadron; both omitted when
-pilot limits are off = unlimited)}.
+`enemy_income_multiplier`, `crashes_dont_count` (bool — when true, a non-combat air
+loss (crash/collision, no credited shooter) does NOT deplete the squadron or kill the
+pilot; those show as `*_air_crashed` in `prev_turns`, so subtract them to get real
+combat losses), `pilot_replenishment_per_squadron`? (new pilots each squadron regains
+per turn, up to the limit — paces how fast you can rebuild after losses),
+`squadron_pilot_limit`? (max active pilots per squadron; both omitted when pilot
+limits are off = unlimited)}.
 
 `GET /packages?side=red` → `[{index, target, task, tot (HH:MM), desc?,
 flights:[{id, task, aircraft, count, squadron, start?, dep?, clients?, uncrewed?}]}]`.
@@ -328,12 +331,18 @@ or packages whose TOT is past the window. (`evaluate` checks ONE not-yet-created
 guess endpoint names). Full prose is here in `/howtoplay`.
 
 `GET /prev_turns?n=` → `[{turn, blue_aircraft, blue_vehicles, red_aircraft,
-red_vehicles, blue_air_lost?, red_air_lost?, blue_ground_lost?, red_ground_lost?,
-red_air_killers?, blue_air_killers?}]` (killers = `{unit/weapon: count}`).
+red_vehicles, blue_air_lost?, red_air_lost?, blue_air_crashed?, red_air_crashed?,
+blue_ground_lost?, red_ground_lost?, red_air_killers?, blue_air_killers?}]` (killers =
+`{unit/weapon: count}`). `*_air_crashed` is the **non-combat subset** of `*_air_lost`
+(crashes/collisions with no credited shooter) — so `combat losses = air_lost -
+air_crashed`. If the `crashes_dont_count` setting (`/settings`) is ON, those crashed
+aircraft do NOT actually deplete the squadron or kill the pilot, so weigh them lightly
+when judging attrition; if it's OFF, a crash costs you the airframe and pilot like any
+loss.
 
 Write bodies:
 - `POST /packages` `{side, packages:[{target_id, flights:[{task, count, escort?,
-  squadron_id?, loadout?}], rationale, ignore_range?}]}` — `ignore_range:true` plans even
+  squadron_id?, loadout?}], rationale, ignore_range?, tot_minutes?}]}` — `ignore_range:true` plans even
   when the target is past the auto-planner's range limit. Per-flight you may FORCE the
   airframe with `squadron_id` (from `turn_context.air_wing`) — even one the auto-planner
   wouldn't pick, exactly like the human tasking it by hand — and set the `loadout`: either
@@ -343,6 +352,11 @@ Write bodies:
   A flight's `count` is CAPPED at the airframe's max_group_size (usually 4) — the same
   limit the human's flight creator has — so for a big raid create SEVERAL flights (e.g.
   24 H-6J = six 4-ship flights), not one flight of 24 (which would silently field only 4).
+  Set `tot_minutes` (minutes after mission start, 0 = start; same unit `evaluate` returns as
+  `tot_minutes_into_mission`) to fix that package's Time-On-Target; omit it for ASAP. Use it to
+  **stagger or synchronise** packages — e.g. give co-target flights slightly different TOTs so
+  they don't stack on the same waypoint (AI groups sharing a route can collide), or line up a
+  multi-axis strike to hit together. Keep TOTs inside the mission window (see `/settings`).
 - `POST /payload/validate` `{side, squadron_id, payload:{pylon: clsid}}` → `{ok, aircraft,
   errors?:{pylon: reason}}` — check a custom payload is valid for the airframe before you
   use it (unknown weapon, wrong pylon, etc.).
@@ -354,6 +368,9 @@ Write bodies:
   plans the package and returns its `package` (with `tot`), `tot_minutes_into_mission`,
   `mission_window_min` and `within_window` — WITHOUT committing it. Use it to check a
   strike's feasibility and timing (does it make the window?) before `POST /packages`.
+- `POST /packages/{index}/tot` `{side, tot_minutes}` — set/clear the TOT of an ALREADY-created
+  package (`tot_minutes` = minutes into the mission; `null` resets it to ASAP). Same as setting
+  `tot_minutes` at creation, but for a package already in your ATO — adjust timing after the fact.
 - `POST /buy/aircraft` · `POST /sell/aircraft` `{side, squadron_id, quantity}`
 - `POST /buy/ground` `{side, cp_id, unit_name, quantity}` (only at a base with a
   factory/front — `cp.has_ground_unit_source`)

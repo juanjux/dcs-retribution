@@ -211,6 +211,12 @@ class TurnForcesView(BaseModel):
     red_vehicles: int
     blue_air_lost: int | None = None
     red_air_lost: int | None = None
+    blue_air_crashed: int | None = (
+        None  # of blue_air_lost, how many were non-combat (crash/collision, no shooter)
+    )
+    red_air_crashed: int | None = (
+        None  # of red_air_lost, how many were non-combat (crash/collision, no shooter)
+    )
     blue_ground_lost: int | None = None
     red_ground_lost: int | None = None
     red_air_killers: dict[str, int] | None = None  # what killed red's aircraft
@@ -240,6 +246,10 @@ class SettingsView(BaseModel):
     desired_player_mission_duration_min: int  # TOT window the player flies within
     player_income_multiplier: float
     enemy_income_multiplier: float
+    crashes_dont_count: (
+        bool  # if True, a non-combat air loss (crash/collision, no credited
+    )
+    # shooter) does NOT deplete the squadron or kill the pilot — see *_air_crashed in prev_turns
     pilot_replenishment_per_squadron: int | None = (
         None  # new pilots each squadron regains per turn (up to the limit); omitted = no pilot limits (unlimited)
     )
@@ -621,6 +631,7 @@ def build_settings(game: Game) -> SettingsView:
         ),
         player_income_multiplier=s.player_income_multiplier,
         enemy_income_multiplier=s.enemy_income_multiplier,
+        crashes_dont_count=s.ignore_non_combat_air_losses,
         pilot_replenishment_per_squadron=(
             int(s.squadron_replenishment_rate)
             if getattr(s, "enable_squadron_pilot_limits", True)
@@ -713,6 +724,8 @@ def build_prev_turns(game: Game, n: int = 3) -> list[TurnForcesView]:
                 red_vehicles=td.enemy_units.vehicles_count,
                 blue_air_lost=loss.get("blue_air_lost") or None,
                 red_air_lost=loss.get("red_air_lost") or None,
+                blue_air_crashed=loss.get("blue_air_crashed") or None,
+                red_air_crashed=loss.get("red_air_crashed") or None,
                 blue_ground_lost=loss.get("blue_ground_lost") or None,
                 red_ground_lost=loss.get("red_ground_lost") or None,
                 red_air_killers=loss.get("red_air_killers") or None,

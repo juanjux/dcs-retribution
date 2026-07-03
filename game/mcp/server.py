@@ -181,6 +181,14 @@ def delete_package(side: str, index: int) -> dict:
 
 
 @mcp.tool()
+def set_package_tot(side: str, index: int, tot_minutes: int | None = None) -> dict:
+    """Set/clear a committed package's Time-On-Target. tot_minutes = minutes into the
+    mission (0 = mission start); None resets to ASAP. Stagger or synchronise packages to
+    deconflict a multi-axis strike (parity with the player's TOT/ASAP controls)."""
+    return _dump(service.set_package_tot(side, index, tot_minutes))
+
+
+@mcp.tool()
 def clear_packages(side: str) -> dict:
     """Remove all of a side's packages (start the turn over)."""
     return _dump(service.clear_packages(side))

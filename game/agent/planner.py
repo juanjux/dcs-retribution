@@ -10,6 +10,7 @@ structured per-item result so partial failures are reported, not raised.
 from __future__ import annotations
 
 import contextlib
+from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Union
 from uuid import UUID
 
@@ -150,6 +151,18 @@ def _apply_loadouts(package, flight_specs) -> None:
                 member.use_custom_loadout = True
             used.add(id(flight))
             break
+
+
+def _apply_tot(package, spec, now: datetime) -> None:
+    """Set the package's Time-On-Target from the spec: a manual TOT (``tot_minutes`` into
+    the mission) when given, else ASAP. Mirrors the player's set_tot/set_asap — flight-plan
+    TOTs derive from ``package.time_over_target``, so setting it is enough."""
+    tot_minutes = getattr(spec, "tot_minutes", None)
+    if tot_minutes is not None:
+        package.auto_asap = False
+        package.time_over_target = now + timedelta(minutes=tot_minutes)
+    else:
+        package.set_tot_asap(now)
 
 
 def _mission_window_min(game: Game) -> int:
@@ -302,8 +315,8 @@ def create_packages(
                     )
                     continue
                 coalition.ato.add_package(package)
-                package.set_tot_asap(now)
                 _apply_loadouts(package, spec.flights)
+                _apply_tot(package, spec, now)
                 if spec.rationale:
                     package.custom_name = spec.rationale
                 index = len(coalition.ato.packages) - 1
@@ -365,7 +378,7 @@ def evaluate_package(
         coalition.ato.add_package(package)
         try:
             _apply_loadouts(package, spec.flights)
-            package.set_tot_asap(now)
+            _apply_tot(package, spec, now)
             view = views.build_package(-1, package)
             tot = package.time_over_target
             window = _mission_window_min(game)
@@ -505,6 +518,34 @@ def _resolve_cp(game: Game, cp_id: str):
     if cp is None:
         raise ValueError(f"no control point with id {cp_id!r}")
     return cp
+
+
+def set_package_tot(
+    game: Game, side: str, index: int, tot_minutes: int | None
+) -> schemas.OpResult:
+    """Set or clear a committed package's Time-On-Target. ``tot_minutes`` = minutes into the
+    mission (0 = mission start); ``None`` resets to ASAP. Mirrors the player's TOT/ASAP
+    controls — use it to stagger or synchronise packages (deconflict a multi-axis strike,
+    avoid self-collisions)."""
+    try:
+        ato = views.coalition_for_side(game, side).ato
+        if index < 0 or index >= len(ato.packages):
+            raise ValueError(f"no package at index {index}")
+        pkg = ato.packages[index]
+        now = game.conditions.start_time
+        if tot_minutes is None:
+            pkg.auto_asap = True
+            pkg.set_tot_asap(now)
+            return schemas.OpResult(
+                ok=True, detail=f"package {index} TOT reset to ASAP"
+            )
+        pkg.auto_asap = False
+        pkg.time_over_target = now + timedelta(minutes=tot_minutes)
+        return schemas.OpResult(
+            ok=True, detail=f"package {index} TOT set to +{tot_minutes} min"
+        )
+    except ValueError as exc:
+        return schemas.OpResult(ok=False, error=str(exc))
 
 
 def delete_package(game: Game, side: str, index: int) -> schemas.OpResult:
