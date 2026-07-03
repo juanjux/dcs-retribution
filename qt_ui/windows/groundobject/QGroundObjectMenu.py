@@ -145,7 +145,12 @@ class QGroundObjectMenu(QDialog):
                         repair = QPushButton(f"Repair [{price}M]")
                         repair.setProperty("style", "btn-success")
                         repair.clicked.connect(
-                            lambda u=unit, p=price: self.repair_unit(u, p)
+                            # clicked emits a `checked` bool as the first positional
+                            # arg; absorb it so it doesn't clobber the captured unit
+                            # default (it was binding u=False -> crash in repair_unit).
+                            lambda checked=False, u=unit, p=price: self.repair_unit(
+                                u, p
+                            )
                         )
                         self.intelLayout.addWidget(repair, i, 1)
                     else:

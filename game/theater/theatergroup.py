@@ -144,8 +144,10 @@ class TheaterUnit:
 
     @property
     def repairable(self) -> bool:
-        # Only let units with UnitType be repairable as we just have prices for them
-        return self.unit_type is not None
+        # Only ground objects with a priced UnitType are repairable. Ships/naval are
+        # not part of the repair economy (losses are permanent, and their price is 0),
+        # so exclude them — otherwise a dead cruiser wrongly showed a "Repair [0M]".
+        return self.unit_type is not None and not issubclass(self.type, ShipType)
 
     @property
     def detection_range(self) -> Distance:
