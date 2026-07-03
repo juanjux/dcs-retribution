@@ -311,6 +311,12 @@ SAM/naval air-defense umbrellas for BOTH sides (yours red, blue's blue). Drawn f
 intel as `turn_context`, so image and text agree. `bbox` (lat/lng south,west,north,east)
 zooms in; omit it for the whole theater.
 
+`GET /aircraft/pylons?squadron_id=…` → `{aircraft, pylons:{pylon_num:[clsids]},
+weapons:{clsid:name}}` — the weapons EACH pylon of that squadron's airframe accepts (only
+those available this campaign). Use it to build a valid custom payload for a flight.
+`GET /aircraft/loadouts?squadron_id=…` → `{aircraft, loadouts:[names]}` — the ready-made
+named loadouts you can pick instead of building one by hand.
+
 `GET /validate?side=red` → a health check of the WHOLE committed plan (no changes):
 `{ok, mission_window_min, packages:[{index, target, tot, tot_minutes_into_mission,
 within_window, uncrewed?}], issues?}`. `ok:false` + `issues` lists any uncrewed flights

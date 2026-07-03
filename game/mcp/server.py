@@ -70,6 +70,21 @@ def map_image(side: str = "red", bbox: str | None = None) -> Image:
 
 
 @mcp.tool()
+def aircraft_pylons(squadron_id: str, side: str = "red") -> dict:
+    """Weapons each pylon of a squadron's airframe accepts (only weapons available this
+    campaign), so you can build a valid custom payload. Returns
+    {aircraft, pylons: {pylon_num: [clsids]}, weapons: {clsid: human name}}."""
+    return service.aircraft_pylons(side, squadron_id)
+
+
+@mcp.tool()
+def aircraft_loadouts(squadron_id: str, side: str = "red") -> dict:
+    """Named ready-made loadouts for a squadron's airframe (pick one by name in a flight,
+    or build a custom payload from aircraft_pylons)."""
+    return service.aircraft_loadouts(side, squadron_id)
+
+
+@mcp.tool()
 def get_packages(side: str = "red") -> list:
     """Current ATO for a side — packages and flights with stable ids."""
     return _dump(service.get_packages(side))

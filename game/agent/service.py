@@ -48,6 +48,44 @@ def map_image(side: str = "red", bbox: str | None = None) -> bytes:
     )
 
 
+def aircraft_pylons(side: str = "red", squadron_id: str = "") -> dict:
+    """Per-pylon weapon options for a squadron's airframe (only weapons available this
+    campaign/date), so the LLM can build a valid custom payload. ``pylons``: pylon
+    number -> [clsids it accepts]; ``weapons``: clsid -> human name (deduped)."""
+    from game.agent import planner
+    from game.data.weapons import Pylon
+
+    game = _require_game()
+    squadron = planner._resolve_squadron(game, side, squadron_id)
+    aircraft = squadron.aircraft
+    faction = views.coalition_for_side(game, side).faction
+    pylons: dict[int, list[str]] = {}
+    weapons: dict[str, str] = {}
+    for pylon in Pylon.iter_pylons(aircraft):
+        clsids = []
+        for weapon in sorted(
+            pylon.available_on(game.date, faction), key=lambda w: w.name
+        ):
+            clsids.append(weapon.clsid)
+            weapons[weapon.clsid] = weapon.name
+        if clsids:
+            pylons[pylon.number] = clsids
+    return {"aircraft": aircraft.display_name, "pylons": pylons, "weapons": weapons}
+
+
+def aircraft_loadouts(side: str = "red", squadron_id: str = "") -> dict:
+    """Named ready-made loadouts for a squadron's airframe — pick one by name in a
+    FlightSpec, or build a custom payload from ``aircraft_pylons``."""
+    from game.agent import planner
+    from game.ato.loadouts import Loadout
+
+    game = _require_game()
+    squadron = planner._resolve_squadron(game, side, squadron_id)
+    aircraft = squadron.aircraft
+    names = sorted({loadout.name for loadout in Loadout.iter_for_aircraft(aircraft)})
+    return {"aircraft": aircraft.display_name, "loadouts": names}
+
+
 def get_packages(side: str = "red") -> list[views.PackageView]:
     """Current ATO for ``side`` — packages and their flights (with stable ids)."""
     return views.build_packages(_require_game(), side)
@@ -73,6 +111,8 @@ def capabilities() -> dict:
             "settings",
             "packages",
             "map/image (rendered PNG strategic map — both sides' SAM/naval umbrellas)",
+            "aircraft/pylons (weapons each pylon accepts, to build a custom payload)",
+            "aircraft/loadouts (named ready-made loadouts for an airframe)",
             "validate",
             "prev_turns",
             "turn_status",

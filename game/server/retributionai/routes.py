@@ -63,6 +63,18 @@ def map_image(side: str = "red", bbox: str | None = None) -> Response:
     return Response(content=service.map_image(side, bbox), media_type="image/png")
 
 
+@router.get("/aircraft/pylons", operation_id="ai_aircraft_pylons")
+def aircraft_pylons(squadron_id: str, side: str = "red") -> dict:
+    """Weapons each pylon of a squadron's airframe accepts (campaign-available)."""
+    return service.aircraft_pylons(side, squadron_id)
+
+
+@router.get("/aircraft/loadouts", operation_id="ai_aircraft_loadouts")
+def aircraft_loadouts(squadron_id: str, side: str = "red") -> dict:
+    """Named ready-made loadouts for a squadron's airframe."""
+    return service.aircraft_loadouts(side, squadron_id)
+
+
 @router.get("/capabilities", operation_id="ai_capabilities")
 def capabilities() -> dict:
     return service.capabilities()
