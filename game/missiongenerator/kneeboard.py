@@ -651,7 +651,7 @@ class SupportPage(KneeboardPage):
                     str(self.flight.flight_type),
                     KneeboardPageWriter.wrap_line(str(self.flight.aircraft_type), 23),
                     str(len(self.flight.units)),
-                    self.format_frequency(comm.freq),
+                    self.format_frequency(comm.freq, stack=True),
                 ]
             )
         for f in self.package_flights:
@@ -664,7 +664,7 @@ class SupportPage(KneeboardPage):
                     str(f.flight_type),
                     KneeboardPageWriter.wrap_line(str(f.aircraft_type), 23),
                     str(len(f.units)),
-                    self.format_frequency(f.intra_flight_channel),
+                    self.format_frequency(f.intra_flight_channel, stack=True),
                 ]
             )
 
@@ -689,7 +689,7 @@ class SupportPage(KneeboardPage):
             aewc_ladder.append(
                 [
                     str(single_aewc.callsign),
-                    self.format_frequency(single_aewc.freq),
+                    self.format_frequency(single_aewc.freq, stack=True),
                     str(single_aewc.depature_location),
                     "TOT: " + tot + "\n" + "TOS: " + tos,
                 ]
@@ -710,7 +710,7 @@ class SupportPage(KneeboardPage):
                     tanker.callsign,
                     KneeboardPageWriter.wrap_line(tanker.variant, 21),
                     str(tanker.tacan) if tanker.tacan else "N/A",
-                    self.format_frequency(tanker.freq),
+                    self.format_frequency(tanker.freq, stack=True),
                     "TOT: " + tot + "\n" + "TOS: " + tos,
                 ]
             )
@@ -743,14 +743,21 @@ class SupportPage(KneeboardPage):
 
         writer.write(path)
 
-    def format_frequency(self, frequency: Optional[RadioFrequency]) -> str:
+    def format_frequency(
+        self, frequency: Optional[RadioFrequency], stack: bool = False
+    ) -> str:
         if frequency is None:
             return ""
         channels = self.flight.channels_for(frequency)
         if not channels:
             return str(frequency)
 
-        names = " / ".join(
+        # In tables, stack COMM1/COMM2 on separate lines so the FREQ column stays
+        # narrow. Since a frequency now mirrors onto both radios, joining them inline
+        # ("COMM1 Ch 3 / COMM2 Ch 4") widened the column and clipped COMM2 off the
+        # right edge of the page. The full-width package-header line still uses inline.
+        sep = "\n" if stack else " / "
+        names = sep.join(
             self.flight.aircraft_type.channel_name(c.radio_id, c.channel)
             for c in channels
         )
