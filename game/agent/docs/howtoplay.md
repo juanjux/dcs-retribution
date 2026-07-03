@@ -297,10 +297,13 @@ means none/empty** (stated once so the per-turn payloads stay small).
 
 `GET /settings` → {`opfor_aggressiveness_pct`, `map_coalition_visibility`,
 `desired_player_mission_duration_min`, `player_income_multiplier`,
-`enemy_income_multiplier`, `pilot_replenishment_per_squadron`? (new pilots each
-squadron regains per turn, up to the limit — paces how fast you can rebuild after
-losses), `squadron_pilot_limit`? (max active pilots per squadron; both omitted when
-pilot limits are off = unlimited)}.
+`enemy_income_multiplier`, `crashes_dont_count` (bool — when true, a non-combat air
+loss (crash/collision, no credited shooter) does NOT deplete the squadron or kill the
+pilot; those show as `*_air_crashed` in `prev_turns`, so subtract them to get real
+combat losses), `pilot_replenishment_per_squadron`? (new pilots each squadron regains
+per turn, up to the limit — paces how fast you can rebuild after losses),
+`squadron_pilot_limit`? (max active pilots per squadron; both omitted when pilot
+limits are off = unlimited)}.
 
 `GET /packages?side=red` → `[{index, target, task, tot (HH:MM), desc?,
 flights:[{id, task, aircraft, count, squadron, start?, dep?, clients?, uncrewed?}]}]`.
@@ -328,8 +331,14 @@ or packages whose TOT is past the window. (`evaluate` checks ONE not-yet-created
 guess endpoint names). Full prose is here in `/howtoplay`.
 
 `GET /prev_turns?n=` → `[{turn, blue_aircraft, blue_vehicles, red_aircraft,
-red_vehicles, blue_air_lost?, red_air_lost?, blue_ground_lost?, red_ground_lost?,
-red_air_killers?, blue_air_killers?}]` (killers = `{unit/weapon: count}`).
+red_vehicles, blue_air_lost?, red_air_lost?, blue_air_crashed?, red_air_crashed?,
+blue_ground_lost?, red_ground_lost?, red_air_killers?, blue_air_killers?}]` (killers =
+`{unit/weapon: count}`). `*_air_crashed` is the **non-combat subset** of `*_air_lost`
+(crashes/collisions with no credited shooter) — so `combat losses = air_lost -
+air_crashed`. If the `crashes_dont_count` setting (`/settings`) is ON, those crashed
+aircraft do NOT actually deplete the squadron or kill the pilot, so weigh them lightly
+when judging attrition; if it's OFF, a crash costs you the airframe and pilot like any
+loss.
 
 Write bodies:
 - `POST /packages` `{side, packages:[{target_id, flights:[{task, count, escort?,

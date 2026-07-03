@@ -226,6 +226,14 @@ class Game:
                 "turn": self.turn,
                 "blue_air_lost": len(debriefing.air_losses.player),
                 "red_air_lost": len(debriefing.air_losses.enemy),
+                "blue_air_crashed": sum(
+                    debriefing.is_non_combat_loss(u)
+                    for u in debriefing.air_losses.player
+                ),
+                "red_air_crashed": sum(
+                    debriefing.is_non_combat_loss(u)
+                    for u in debriefing.air_losses.enemy
+                ),
                 "blue_ground_lost": sum(
                     debriefing.front_line_losses_by_type(Player.BLUE).values()
                 ),
