@@ -13,7 +13,8 @@ from game.agent import views
 
 class FlightSpec(BaseModel):
     task: str  # FlightType, e.g. STRIKE / DEAD / BARCAP / OCA_RUNWAY / CAS / ANTISHIP
-    count: int = 2
+    count: int = 2  # aircraft in this flight; CAPPED at the airframe's max_group_size
+    # (usually 4), same as the player's flight creator — for a bigger raid add more flights
     escort: str | None = None  # air / sead / ewar / refuel — pruned if not needed
     squadron_id: str | None = (
         None  # force this squadron/airframe (from turn_context.air_wing) instead of
