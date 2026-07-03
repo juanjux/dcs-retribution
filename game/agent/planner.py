@@ -67,6 +67,30 @@ def _preferred_aircraft(game: Game, side: str, squadron_id: str | None):
     return _resolve_squadron(game, side, squadron_id).aircraft
 
 
+def _clamped_count(game: Game, side: str, flight_spec) -> int:
+    """Cap the requested count at the airframe's max_group_size — the SAME limit the
+    player's flight creator enforces (`min(available, aircraft.max_group_size)`). Without
+    it an over-large flight (e.g. 24 H-6J, whose max is 4) silently generates only
+    max_group_size units at mission build and loses the rest. For a bigger raid the LLM
+    must create several flights, exactly like the human."""
+    count = int(getattr(flight_spec, "count", 2))
+    aircraft = None
+    squadron_id = getattr(flight_spec, "squadron_id", None)
+    if squadron_id:
+        try:
+            aircraft = _resolve_squadron(game, side, squadron_id).aircraft
+        except Exception:
+            aircraft = None
+    if aircraft is None:
+        from game.dcs.aircrafttype import AircraftType
+
+        candidates = AircraftType.priority_list_for_task(_flight_type(flight_spec.task))
+        aircraft = candidates[0] if candidates else None
+    if aircraft is not None:
+        return max(1, min(count, aircraft.max_group_size))
+    return count
+
+
 @contextlib.contextmanager
 def _forced_task_assign(game: Game, side: str, specs):
     """Temporarily let the LLM-chosen squadrons be auto-assigned to their flight's task,
@@ -250,7 +274,7 @@ def create_packages(
                 proposed = [
                     ProposedFlight(
                         _flight_type(f.task),
-                        f.count,
+                        _clamped_count(game, side, f),
                         _escort_type(f.escort),
                         preferred_type=_preferred_aircraft(game, side, f.squadron_id),
                     )
@@ -313,7 +337,7 @@ def evaluate_package(
         proposed = [
             ProposedFlight(
                 _flight_type(f.task),
-                f.count,
+                _clamped_count(game, side, f),
                 _escort_type(f.escort),
                 preferred_type=_preferred_aircraft(game, side, f.squadron_id),
             )

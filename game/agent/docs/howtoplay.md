@@ -340,6 +340,9 @@ Write bodies:
   a name (from `/aircraft/loadouts`) or a custom `{pylon: clsid}` map (build it from
   `/aircraft/pylons`, check it with `/payload/validate`). The created flights come back
   with their `loadout` name + `weapons` ({pylon: clsid}) so you can verify what they carry.
+  A flight's `count` is CAPPED at the airframe's max_group_size (usually 4) — the same
+  limit the human's flight creator has — so for a big raid create SEVERAL flights (e.g.
+  24 H-6J = six 4-ship flights), not one flight of 24 (which would silently field only 4).
 - `POST /payload/validate` `{side, squadron_id, payload:{pylon: clsid}}` → `{ok, aircraft,
   errors?:{pylon: reason}}` — check a custom payload is valid for the airframe before you
   use it (unknown weapon, wrong pylon, etc.).
