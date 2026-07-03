@@ -311,6 +311,12 @@ SAM/naval air-defense umbrellas for BOTH sides (yours red, blue's blue). Drawn f
 intel as `turn_context`, so image and text agree. `bbox` (lat/lng south,west,north,east)
 zooms in; omit it for the whole theater.
 
+`GET /aircraft/pylons?squadron_id=…` → `{aircraft, pylons:{pylon_num:[clsids]},
+weapons:{clsid:name}}` — the weapons EACH pylon of that squadron's airframe accepts (only
+those available this campaign). Use it to build a valid custom payload for a flight.
+`GET /aircraft/loadouts?squadron_id=…` → `{aircraft, loadouts:[names]}` — the ready-made
+named loadouts you can pick instead of building one by hand.
+
 `GET /validate?side=red` → a health check of the WHOLE committed plan (no changes):
 `{ok, mission_window_min, packages:[{index, target, tot, tot_minutes_into_mission,
 within_window, uncrewed?}], issues?}`. `ok:false` + `issues` lists any uncrewed flights
@@ -325,11 +331,21 @@ red_vehicles, blue_air_lost?, red_air_lost?, blue_ground_lost?, red_ground_lost?
 red_air_killers?, blue_air_killers?}]` (killers = `{unit/weapon: count}`).
 
 Write bodies:
-- `POST /packages` `{side, packages:[{target_id, flights:[{task, count, escort?}],
-  rationale, ignore_range?}]}` — `ignore_range:true` plans the package even when the
-  target is past the auto-planner's range limit, so you can send a capable airframe the
-  conservative auto-planner would refuse (the human can task it manually from the map —
-  this gives you the same reach; you accept the fuel/attrition risk).
+- `POST /packages` `{side, packages:[{target_id, flights:[{task, count, escort?,
+  squadron_id?, loadout?}], rationale, ignore_range?}]}` — `ignore_range:true` plans even
+  when the target is past the auto-planner's range limit. Per-flight you may FORCE the
+  airframe with `squadron_id` (from `turn_context.air_wing`) — even one the auto-planner
+  wouldn't pick, exactly like the human tasking it by hand — and set the `loadout`: either
+  a name (from `/aircraft/loadouts`) or a custom `{pylon: clsid}` map (build it from
+  `/aircraft/pylons`, check it with `/payload/validate`). The created flights come back
+  with their `loadout` name + `weapons` ({pylon: clsid}) so you can verify what they carry.
+- `POST /payload/validate` `{side, squadron_id, payload:{pylon: clsid}}` → `{ok, aircraft,
+  errors?:{pylon: reason}}` — check a custom payload is valid for the airframe before you
+  use it (unknown weapon, wrong pylon, etc.).
+- `POST /waypoints/edit` `{side, flight_id, waypoint_idx, lat?, lng?, alt_m?}` → move/adjust
+  a flight's waypoint (position and/or altitude), like dragging it on the map. Waypoint 0
+  (takeoff) is immovable, and waypoints can NEVER be deleted (a deleted waypoint crashes
+  the AI flight plan). Read a flight's waypoints first with `GET /waypoints/{flight_id}`.
 - `POST /packages/evaluate` `{side, package:{target_id, flights:[…]}}` → a DRY RUN:
   plans the package and returns its `package` (with `tot`), `tot_minutes_into_mission`,
   `mission_window_min` and `within_window` — WITHOUT committing it. Use it to check a

@@ -9,6 +9,7 @@ structured per-item result so partial failures are reported, not raised.
 
 from __future__ import annotations
 
+import contextlib
 from typing import TYPE_CHECKING, Union
 from uuid import UUID
 
@@ -57,6 +58,74 @@ def _escort_type(name: str | None) -> EscortType | None:
         return _ESCORTS[key]
     except KeyError:
         raise ValueError(f"unknown escort type {name!r}")
+
+
+def _preferred_aircraft(game: Game, side: str, squadron_id: str | None):
+    """AircraftType to bias the squadron picker toward (None = let the engine pick)."""
+    if not squadron_id:
+        return None
+    return _resolve_squadron(game, side, squadron_id).aircraft
+
+
+@contextlib.contextmanager
+def _forced_task_assign(game: Game, side: str, specs):
+    """Temporarily let the LLM-chosen squadrons be auto-assigned to their flight's task,
+    so the engine picks a squadron it otherwise would not auto-assign — exactly what the
+    player does assigning a flight by hand. Physical limits (range/fuel/availability)
+    still apply; only the auto-assign toggle is bypassed. Restored on exit."""
+    added: list = []
+    for spec in specs:
+        for flight in getattr(spec, "flights", []):
+            squadron_id = getattr(flight, "squadron_id", None)
+            if not squadron_id:
+                continue
+            squadron = _resolve_squadron(game, side, squadron_id)
+            task = _flight_type(flight.task)
+            if task not in squadron.auto_assignable_mission_types:
+                squadron.auto_assignable_mission_types.add(task)
+                added.append((squadron, task))
+    try:
+        yield
+    finally:
+        for squadron, task in added:
+            squadron.auto_assignable_mission_types.discard(task)
+
+
+def _build_loadout(aircraft, task: FlightType, spec):
+    """Build a Loadout from a FlightSpec.loadout: a named loadout or {pylon: clsid} map."""
+    from game.ato.loadouts import Loadout
+    from game.data.weapons import Weapon
+
+    if isinstance(spec, dict):
+        pylons = {int(num): Weapon.with_clsid(clsid) for num, clsid in spec.items()}
+        return Loadout("Custom (AI)", pylons, date=None, is_custom=True)
+    payload = aircraft.dcs_unit_type.loadout_by_name(str(spec))
+    if payload is None:
+        raise ValueError(f"no loadout named {spec!r} for {aircraft.display_name}")
+    return Loadout(
+        str(spec),
+        {i: Weapon.with_clsid(d["clsid"]) for i, d in payload},
+        date=None,
+    )
+
+
+def _apply_loadouts(package, flight_specs) -> None:
+    """Set each spec'd loadout on the matching package flight (by task, first unused)."""
+    used: set[int] = set()
+    for flight_spec in flight_specs:
+        loadout_spec = getattr(flight_spec, "loadout", None)
+        if not loadout_spec:
+            continue
+        task = _flight_type(flight_spec.task)
+        for flight in package.flights:
+            if id(flight) in used or flight.flight_type != task:
+                continue
+            loadout = _build_loadout(flight.unit_type, task, loadout_spec)
+            for member in flight.iter_members():
+                member.loadout = loadout
+                member.use_custom_loadout = True
+            used.add(id(flight))
+            break
 
 
 def _mission_window_min(game: Game) -> int:
@@ -180,20 +249,24 @@ def create_packages(
                 target_name = getattr(target, "name", spec.target_id)
                 proposed = [
                     ProposedFlight(
-                        _flight_type(f.task), f.count, _escort_type(f.escort)
+                        _flight_type(f.task),
+                        f.count,
+                        _escort_type(f.escort),
+                        preferred_type=_preferred_aircraft(game, side, f.squadron_id),
                     )
                     for f in spec.flights
                 ]
                 fulfiller = PackageFulfiller(
                     coalition, game.theater, game.db.flights, game.settings
                 )
-                package = fulfiller.plan_mission(
-                    ProposedMission(target, proposed, asap=spec.asap),
-                    1,
-                    now,
-                    tracer,
-                    ignore_range=spec.ignore_range,
-                )
+                with _forced_task_assign(game, side, [spec]):
+                    package = fulfiller.plan_mission(
+                        ProposedMission(target, proposed, asap=spec.asap),
+                        1,
+                        now,
+                        tracer,
+                        ignore_range=spec.ignore_range,
+                    )
                 if package is None:
                     results.append(
                         schemas.CreateResult(
@@ -206,6 +279,7 @@ def create_packages(
                     continue
                 coalition.ato.add_package(package)
                 package.set_tot_asap(now)
+                _apply_loadouts(package, spec.flights)
                 if spec.rationale:
                     package.custom_name = spec.rationale
                 index = len(coalition.ato.packages) - 1
@@ -237,10 +311,15 @@ def evaluate_package(
         target = resolve_target(game, spec.target_id)
         target_name = getattr(target, "name", spec.target_id)
         proposed = [
-            ProposedFlight(_flight_type(f.task), f.count, _escort_type(f.escort))
+            ProposedFlight(
+                _flight_type(f.task),
+                f.count,
+                _escort_type(f.escort),
+                preferred_type=_preferred_aircraft(game, side, f.squadron_id),
+            )
             for f in spec.flights
         ]
-        with MultiEventTracer() as tracer:
+        with MultiEventTracer() as tracer, _forced_task_assign(game, side, [spec]):
             fulfiller = PackageFulfiller(
                 coalition, game.theater, game.db.flights, game.settings
             )
@@ -261,6 +340,7 @@ def evaluate_package(
         # again (a package's aircraft are returned when it leaves the ATO) — net-zero.
         coalition.ato.add_package(package)
         try:
+            _apply_loadouts(package, spec.flights)
             package.set_tot_asap(now)
             view = views.build_package(-1, package)
             tot = package.time_over_target
@@ -278,6 +358,65 @@ def evaluate_package(
             coalition.ato.remove_package(package)
     except Exception as exc:
         return schemas.EvaluateResult(ok=False, target=target_name, error=str(exc))
+
+
+def edit_waypoint(
+    game: Game,
+    side: str,
+    flight_id: str,
+    waypoint_idx: int,
+    lat: float | None = None,
+    lng: float | None = None,
+    alt_m: float | None = None,
+) -> schemas.OpResult:
+    """Move/adjust an existing flight waypoint (position and/or altitude), like the
+    player dragging it on the map. Waypoint 0 (takeoff) is immovable, and waypoints can
+    NEVER be deleted — a deleted waypoint breaks the AI flight plan and crashes DCS, so
+    this only edits one that already exists."""
+    from dcs.mapping import LatLng, Point
+    from game.server import GameContext
+    from game.server.waypoints.routes import (
+        update_package_waypoints_if_primary_flight,
+    )
+    from game.utils import meters
+
+    try:
+        flight = game.db.flights.get(UUID(str(flight_id)))
+    except Exception:
+        return schemas.OpResult(ok=False, error=f"no flight with id {flight_id!r}")
+    try:
+        if waypoint_idx <= 0:
+            return schemas.OpResult(
+                ok=False, error="waypoint 0 (takeoff) can't be moved"
+            )
+        waypoints = flight.flight_plan.waypoints
+        if waypoint_idx > len(waypoints):
+            return schemas.OpResult(
+                ok=False, error=f"flight has no waypoint {waypoint_idx}"
+            )
+        waypoint = waypoints[waypoint_idx - 1]
+        if lat is not None and lng is not None:
+            waypoint.position = Point.from_latlng(
+                LatLng(lat, lng), game.theater.terrain
+            )
+        if alt_m is not None:
+            waypoint.alt = meters(alt_m)
+        events = _new_map_events()
+        update_package_waypoints_if_primary_flight(waypoint, flight, events)
+        try:  # recalc TOT via the Qt model when available (no-op headless)
+            model = GameContext.get_model()
+            package_model = model.ato_model_for(
+                flight.blue
+            ).find_matching_package_model(flight.package)
+            if package_model is not None:
+                package_model.update_tot()
+        except Exception:
+            pass
+        events.update_flight(flight)
+        _push_map_events(events)
+        return schemas.OpResult(ok=True, detail=f"waypoint {waypoint_idx} updated")
+    except Exception as exc:
+        return schemas.OpResult(ok=False, error=str(exc))
 
 
 def validate_plan(game: Game, side: str) -> schemas.ValidateResult:

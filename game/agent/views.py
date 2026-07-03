@@ -116,6 +116,10 @@ class FlightView(BaseModel):
     dep: str | None = None
     clients: int | None = None  # player-controlled seats (omitted when 0)
     uncrewed: int | None = None  # missing pilots — present only when >0 (an alert)
+    loadout: str | None = None  # payload name ("Retribution Anti-ship" / "Custom (AI)")
+    weapons: dict[int, str] | None = (
+        None  # pylon number -> weapon clsid — what this flight actually carries
+    )
 
 
 class PackageView(BaseModel):
@@ -630,9 +634,27 @@ def build_settings(game: Game) -> SettingsView:
     )
 
 
+def _flight_loadout(flight):
+    """(loadout name, {pylon: clsid}) from the flight's first member, or (None, None)."""
+    try:
+        member = next(iter(flight.iter_members()), None)
+    except Exception:
+        member = None
+    loadout = getattr(member, "loadout", None)
+    if loadout is None:
+        return None, None
+    weapons = {
+        num: weapon.clsid
+        for num, weapon in loadout.pylons.items()
+        if weapon is not None
+    }
+    return loadout.name, (weapons or None)
+
+
 def build_flight(flight) -> FlightView:
     missing = flight.missing_pilots
     missing_count = len(missing) if hasattr(missing, "__len__") else int(missing)
+    loadout_name, weapons = _flight_loadout(flight)
     return FlightView(
         id=str(flight.id),
         task=_enum_str(flight.flight_type),
@@ -643,6 +665,8 @@ def build_flight(flight) -> FlightView:
         dep=getattr(flight.departure, "name", None),
         clients=flight.client_count or None,
         uncrewed=missing_count or None,
+        loadout=loadout_name,
+        weapons=weapons,
     )
 
 

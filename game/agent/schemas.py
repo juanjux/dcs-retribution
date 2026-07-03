@@ -15,6 +15,16 @@ class FlightSpec(BaseModel):
     task: str  # FlightType, e.g. STRIKE / DEAD / BARCAP / OCA_RUNWAY / CAS / ANTISHIP
     count: int = 2
     escort: str | None = None  # air / sead / ewar / refuel — pruned if not needed
+    squadron_id: str | None = (
+        None  # force this squadron/airframe (from turn_context.air_wing) instead of
+        # letting the engine auto-pick; works even if the engine wouldn't auto-assign it
+        # (mirrors the player picking it by hand)
+    )
+    loadout: str | dict[int, str] | None = (
+        None  # payload: a named loadout ("Retribution Anti-ship", from /aircraft/loadouts)
+        # OR a custom {pylon_number: weapon_clsid} map (build it from /aircraft/pylons).
+        # Omit to use the engine default for the task.
+    )
 
 
 class PackageSpec(BaseModel):
@@ -82,6 +92,21 @@ class CreatePackagesRequest(BaseModel):
 class EvaluatePackageRequest(BaseModel):
     side: str = "red"
     package: PackageSpec
+
+
+class ValidatePayloadRequest(BaseModel):
+    side: str = "red"
+    squadron_id: str
+    payload: dict[int, str]  # {pylon_number: weapon_clsid} to check
+
+
+class WaypointEditRequest(BaseModel):
+    side: str = "red"
+    flight_id: str
+    waypoint_idx: int  # 1-based; 0 (takeoff) is immovable. Waypoints can't be deleted.
+    lat: float | None = None
+    lng: float | None = None
+    alt_m: float | None = None  # new altitude in metres (optional)
 
 
 class BuyAircraftRequest(BaseModel):

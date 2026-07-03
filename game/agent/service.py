@@ -48,6 +48,74 @@ def map_image(side: str = "red", bbox: str | None = None) -> bytes:
     )
 
 
+def aircraft_pylons(side: str = "red", squadron_id: str = "") -> dict:
+    """Per-pylon weapon options for a squadron's airframe (only weapons available this
+    campaign/date), so the LLM can build a valid custom payload. ``pylons``: pylon
+    number -> [clsids it accepts]; ``weapons``: clsid -> human name (deduped)."""
+    from game.agent import planner
+    from game.data.weapons import Pylon
+
+    game = _require_game()
+    squadron = planner._resolve_squadron(game, side, squadron_id)
+    aircraft = squadron.aircraft
+    faction = views.coalition_for_side(game, side).faction
+    pylons: dict[int, list[str]] = {}
+    weapons: dict[str, str] = {}
+    for pylon in Pylon.iter_pylons(aircraft):
+        clsids = []
+        for weapon in sorted(
+            pylon.available_on(game.date, faction), key=lambda w: w.name
+        ):
+            clsids.append(weapon.clsid)
+            weapons[weapon.clsid] = weapon.name
+        if clsids:
+            pylons[pylon.number] = clsids
+    return {"aircraft": aircraft.display_name, "pylons": pylons, "weapons": weapons}
+
+
+def aircraft_loadouts(side: str = "red", squadron_id: str = "") -> dict:
+    """Named ready-made loadouts for a squadron's airframe — pick one by name in a
+    FlightSpec, or build a custom payload from ``aircraft_pylons``."""
+    from game.agent import planner
+    from game.ato.loadouts import Loadout
+
+    game = _require_game()
+    squadron = planner._resolve_squadron(game, side, squadron_id)
+    aircraft = squadron.aircraft
+    names = sorted({loadout.name for loadout in Loadout.iter_for_aircraft(aircraft)})
+    return {"aircraft": aircraft.display_name, "loadouts": names}
+
+
+def validate_payload(
+    side: str = "red", squadron_id: str = "", payload: dict | None = None
+) -> dict:
+    """Check a proposed ``{pylon: clsid}`` payload against a squadron's airframe: is each
+    weapon real and accepted on that pylon? Returns ``{ok, aircraft, errors:{pylon: msg}}``
+    (errors omitted when valid)."""
+    from game.agent import planner
+    from game.data.weapons import Pylon, Weapon
+
+    game = _require_game()
+    squadron = planner._resolve_squadron(game, side, squadron_id)
+    aircraft = squadron.aircraft
+    pylons = {pylon.number: pylon for pylon in Pylon.iter_pylons(aircraft)}
+    errors: dict[int, str] = {}
+    for raw_num, clsid in (payload or {}).items():
+        num = int(raw_num)
+        weapon = Weapon.with_clsid(clsid)
+        if weapon is None:
+            errors[num] = f"unknown weapon clsid {clsid!r}"
+        elif num not in pylons:
+            errors[num] = f"airframe has no pylon {num}"
+        elif not pylons[num].can_equip(weapon):
+            errors[num] = f"pylon {num} does not accept {weapon.name}"
+    return {
+        "ok": not errors,
+        "aircraft": aircraft.display_name,
+        "errors": errors or None,
+    }
+
+
 def get_packages(side: str = "red") -> list[views.PackageView]:
     """Current ATO for ``side`` — packages and their flights (with stable ids)."""
     return views.build_packages(_require_game(), side)
@@ -73,6 +141,8 @@ def capabilities() -> dict:
             "settings",
             "packages",
             "map/image (rendered PNG strategic map — both sides' SAM/naval umbrellas)",
+            "aircraft/pylons (weapons each pylon accepts, to build a custom payload)",
+            "aircraft/loadouts (named ready-made loadouts for an airframe)",
             "validate",
             "prev_turns",
             "turn_status",
@@ -80,8 +150,10 @@ def capabilities() -> dict:
             "human_notes",
         ],
         "writes": [
-            "packages (create)",
+            "packages (create; each flight may set squadron_id + loadout)",
             "packages/evaluate (dry-run a package's TOT, no commit)",
+            "payload/validate (check a {pylon: clsid} loadout is valid for an airframe)",
+            "waypoints/edit (move/adjust a flight waypoint — never deletes)",
             "packages/{index} (delete)",
             "buy/aircraft",
             "sell/aircraft",
@@ -110,6 +182,15 @@ def evaluate_package(side, spec):
     from game.agent import planner
 
     return planner.evaluate_package(_require_game(), side, spec)
+
+
+def edit_waypoint(side, flight_id, waypoint_idx, lat=None, lng=None, alt_m=None):
+    """Move/adjust a flight waypoint (position and/or altitude). Never deletes."""
+    from game.agent import planner
+
+    return planner.edit_waypoint(
+        _require_game(), side, flight_id, waypoint_idx, lat, lng, alt_m
+    )
 
 
 def delete_package(side, index):
