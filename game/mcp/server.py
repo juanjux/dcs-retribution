@@ -85,6 +85,31 @@ def aircraft_loadouts(squadron_id: str, side: str = "red") -> dict:
 
 
 @mcp.tool()
+def validate_payload(
+    squadron_id: str, payload: dict[int, str], side: str = "red"
+) -> dict:
+    """Check a {pylon: clsid} payload against a squadron's airframe before putting it on a
+    flight. Returns {ok, aircraft, errors: {pylon: reason}} — errors omitted when valid.
+    """
+    return service.validate_payload(side, squadron_id, payload)
+
+
+@mcp.tool()
+def edit_waypoint(
+    flight_id: str,
+    waypoint_idx: int,
+    lat: float | None = None,
+    lng: float | None = None,
+    alt_m: float | None = None,
+    side: str = "red",
+) -> dict:
+    """Move/adjust a flight's waypoint (position lat/lng and/or altitude alt_m), like the
+    player dragging it on the map. Waypoint 0 (takeoff) is immovable and waypoints can
+    NEVER be deleted (that crashes DCS). Returns {ok, detail/error}."""
+    return _dump(service.edit_waypoint(side, flight_id, waypoint_idx, lat, lng, alt_m))
+
+
+@mcp.tool()
 def get_packages(side: str = "red") -> list:
     """Current ATO for a side — packages and flights with stable ids."""
     return _dump(service.get_packages(side))

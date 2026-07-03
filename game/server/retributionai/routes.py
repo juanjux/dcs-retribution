@@ -75,6 +75,21 @@ def aircraft_loadouts(squadron_id: str, side: str = "red") -> dict:
     return service.aircraft_loadouts(side, squadron_id)
 
 
+@router.post("/payload/validate", operation_id="ai_validate_payload")
+def validate_payload(body: schemas.ValidatePayloadRequest) -> dict:
+    """Check a {pylon: clsid} payload against a squadron's airframe before using it."""
+    return service.validate_payload(body.side, body.squadron_id, body.payload)
+
+
+@router.post("/waypoints/edit", operation_id="ai_edit_waypoint")
+def edit_waypoint(body: schemas.WaypointEditRequest) -> schemas.OpResult:
+    """Move/adjust a flight waypoint (position and/or altitude). Never deletes; waypoint
+    0 (takeoff) is immovable."""
+    return service.edit_waypoint(
+        body.side, body.flight_id, body.waypoint_idx, body.lat, body.lng, body.alt_m
+    )
+
+
 @router.get("/capabilities", operation_id="ai_capabilities")
 def capabilities() -> dict:
     return service.capabilities()

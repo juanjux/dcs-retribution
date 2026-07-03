@@ -66,10 +66,14 @@ tool/resource of the same name.
 - `GET /turn_status` — turn #, phase, whose turn
 
 **Plan — missions**
-- `POST /packages` — create packages & flights (body: target + flights; each flight =
-  task, squadron, count, pilots?, start_type?, payload?, waypoints?; give each package
-  a one-line `rationale`; optional `ignore_range:true` sends a capable airframe past the
-  auto-planner's range limit, matching the human's manual reach). Escort/SEAD are flights.
+- `POST /packages` — create packages & flights. Each flight = `task, count, escort?` and
+  optionally `squadron_id` (FORCE a specific airframe, even one the auto-planner wouldn't
+  pick — like the human by hand) and `loadout` (a name from `/aircraft/loadouts`, or a
+  custom `{pylon: clsid}` map). Give each package a one-line `rationale`; `ignore_range:true`
+  reaches past the auto-planner's range limit. Created flights return their `loadout`+`weapons`.
+- `POST /payload/validate` — check a custom `{pylon: clsid}` payload is valid for an airframe.
+- `POST /waypoints/edit` — move/adjust a flight waypoint (position/altitude); never deletes
+  (waypoint 0 immovable). Read them first with `GET /waypoints/{flight_id}`.
 - `POST /plan/validate` — dry-run lint of a plan (TOT window, SAM coverage, pilots,
   budget…); fix warnings before committing.
 - `DELETE /packages/{id}` · `DELETE /packages/{pkg_id}/flights/{flight_id}` ·

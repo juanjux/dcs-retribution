@@ -86,6 +86,36 @@ def aircraft_loadouts(side: str = "red", squadron_id: str = "") -> dict:
     return {"aircraft": aircraft.display_name, "loadouts": names}
 
 
+def validate_payload(
+    side: str = "red", squadron_id: str = "", payload: dict | None = None
+) -> dict:
+    """Check a proposed ``{pylon: clsid}`` payload against a squadron's airframe: is each
+    weapon real and accepted on that pylon? Returns ``{ok, aircraft, errors:{pylon: msg}}``
+    (errors omitted when valid)."""
+    from game.agent import planner
+    from game.data.weapons import Pylon, Weapon
+
+    game = _require_game()
+    squadron = planner._resolve_squadron(game, side, squadron_id)
+    aircraft = squadron.aircraft
+    pylons = {pylon.number: pylon for pylon in Pylon.iter_pylons(aircraft)}
+    errors: dict[int, str] = {}
+    for raw_num, clsid in (payload or {}).items():
+        num = int(raw_num)
+        weapon = Weapon.with_clsid(clsid)
+        if weapon is None:
+            errors[num] = f"unknown weapon clsid {clsid!r}"
+        elif num not in pylons:
+            errors[num] = f"airframe has no pylon {num}"
+        elif not pylons[num].can_equip(weapon):
+            errors[num] = f"pylon {num} does not accept {weapon.name}"
+    return {
+        "ok": not errors,
+        "aircraft": aircraft.display_name,
+        "errors": errors or None,
+    }
+
+
 def get_packages(side: str = "red") -> list[views.PackageView]:
     """Current ATO for ``side`` — packages and their flights (with stable ids)."""
     return views.build_packages(_require_game(), side)
@@ -120,8 +150,10 @@ def capabilities() -> dict:
             "human_notes",
         ],
         "writes": [
-            "packages (create)",
+            "packages (create; each flight may set squadron_id + loadout)",
             "packages/evaluate (dry-run a package's TOT, no commit)",
+            "payload/validate (check a {pylon: clsid} loadout is valid for an airframe)",
+            "waypoints/edit (move/adjust a flight waypoint — never deletes)",
             "packages/{index} (delete)",
             "buy/aircraft",
             "sell/aircraft",
@@ -150,6 +182,15 @@ def evaluate_package(side, spec):
     from game.agent import planner
 
     return planner.evaluate_package(_require_game(), side, spec)
+
+
+def edit_waypoint(side, flight_id, waypoint_idx, lat=None, lng=None, alt_m=None):
+    """Move/adjust a flight waypoint (position and/or altitude). Never deletes."""
+    from game.agent import planner
+
+    return planner.edit_waypoint(
+        _require_game(), side, flight_id, waypoint_idx, lat, lng, alt_m
+    )
 
 
 def delete_package(side, index):
