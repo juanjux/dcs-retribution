@@ -150,11 +150,12 @@ def capabilities() -> dict:
             "human_notes",
         ],
         "writes": [
-            "packages (create; each flight may set squadron_id + loadout)",
+            "packages (create; each flight may set squadron_id + loadout; package may set tot_minutes)",
             "packages/evaluate (dry-run a package's TOT, no commit)",
             "payload/validate (check a {pylon: clsid} loadout is valid for an airframe)",
             "waypoints/edit (move/adjust a flight waypoint — never deletes)",
             "packages/{index} (delete)",
+            "packages/{index}/tot (set/clear a committed package's TOT — stagger multi-axis strikes)",
             "buy/aircraft",
             "sell/aircraft",
             "buy/ground",
@@ -231,6 +232,13 @@ def delete_package(side, index):
     from game.agent import planner
 
     return planner.delete_package(_require_game(), side, index)
+
+
+def set_package_tot(side, index, tot_minutes):
+    """Set/clear a committed package's Time-On-Target (minutes into the mission; None = ASAP)."""
+    from game.agent import planner
+
+    return planner.set_package_tot(_require_game(), side, index, tot_minutes)
 
 
 def clear_packages(side):

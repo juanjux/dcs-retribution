@@ -37,6 +37,11 @@ class PackageSpec(BaseModel):
         False  # plan even if the target is past the auto-planner's range limit — a
         # capable but far airframe the human could send manually (accept the fuel risk)
     )
+    tot_minutes: int | None = (
+        None  # desired Time-On-Target as MINUTES after mission start (0 = start), the same
+        # unit evaluate returns as tot_minutes_into_mission. Omit for ASAP. Use it to stagger
+        # or synchronise packages (deconflict a multi-axis strike, avoid self-collisions).
+    )
 
 
 class CreateResult(BaseModel):
@@ -93,6 +98,11 @@ class CreatePackagesRequest(BaseModel):
 class EvaluatePackageRequest(BaseModel):
     side: str = "red"
     package: PackageSpec
+
+
+class PackageTotRequest(BaseModel):
+    side: str = "red"
+    tot_minutes: int | None = None  # minutes into the mission; null resets to ASAP
 
 
 class ValidatePayloadRequest(BaseModel):

@@ -156,6 +156,18 @@ def delete_package(index: int, side: str = "red") -> schemas.OpResult:
 
 
 @router.post(
+    "/packages/{index}/tot",
+    operation_id="ai_set_package_tot",
+    response_model=schemas.OpResult,
+    response_model_exclude_none=True,
+)
+def set_package_tot(index: int, body: schemas.PackageTotRequest) -> schemas.OpResult:
+    """Set/clear a committed package's Time-On-Target (minutes into the mission; null =
+    ASAP). Stagger or synchronise packages to deconflict a multi-axis strike."""
+    return service.set_package_tot(body.side, index, body.tot_minutes)
+
+
+@router.post(
     "/buy/aircraft",
     operation_id="ai_buy_aircraft",
     response_model=schemas.OpResult,

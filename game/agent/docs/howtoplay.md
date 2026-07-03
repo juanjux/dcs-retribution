@@ -333,7 +333,7 @@ red_air_killers?, blue_air_killers?}]` (killers = `{unit/weapon: count}`).
 
 Write bodies:
 - `POST /packages` `{side, packages:[{target_id, flights:[{task, count, escort?,
-  squadron_id?, loadout?}], rationale, ignore_range?}]}` — `ignore_range:true` plans even
+  squadron_id?, loadout?}], rationale, ignore_range?, tot_minutes?}]}` — `ignore_range:true` plans even
   when the target is past the auto-planner's range limit. Per-flight you may FORCE the
   airframe with `squadron_id` (from `turn_context.air_wing`) — even one the auto-planner
   wouldn't pick, exactly like the human tasking it by hand — and set the `loadout`: either
@@ -343,6 +343,11 @@ Write bodies:
   A flight's `count` is CAPPED at the airframe's max_group_size (usually 4) — the same
   limit the human's flight creator has — so for a big raid create SEVERAL flights (e.g.
   24 H-6J = six 4-ship flights), not one flight of 24 (which would silently field only 4).
+  Set `tot_minutes` (minutes after mission start, 0 = start; same unit `evaluate` returns as
+  `tot_minutes_into_mission`) to fix that package's Time-On-Target; omit it for ASAP. Use it to
+  **stagger or synchronise** packages — e.g. give co-target flights slightly different TOTs so
+  they don't stack on the same waypoint (AI groups sharing a route can collide), or line up a
+  multi-axis strike to hit together. Keep TOTs inside the mission window (see `/settings`).
 - `POST /payload/validate` `{side, squadron_id, payload:{pylon: clsid}}` → `{ok, aircraft,
   errors?:{pylon: reason}}` — check a custom payload is valid for the airframe before you
   use it (unknown weapon, wrong pylon, etc.).
@@ -354,6 +359,9 @@ Write bodies:
   plans the package and returns its `package` (with `tot`), `tot_minutes_into_mission`,
   `mission_window_min` and `within_window` — WITHOUT committing it. Use it to check a
   strike's feasibility and timing (does it make the window?) before `POST /packages`.
+- `POST /packages/{index}/tot` `{side, tot_minutes}` — set/clear the TOT of an ALREADY-created
+  package (`tot_minutes` = minutes into the mission; `null` resets it to ASAP). Same as setting
+  `tot_minutes` at creation, but for a package already in your ATO — adjust timing after the fact.
 - `POST /buy/aircraft` · `POST /sell/aircraft` `{side, squadron_id, quantity}`
 - `POST /buy/ground` `{side, cp_id, unit_name, quantity}` (only at a base with a
   factory/front — `cp.has_ground_unit_source`)
