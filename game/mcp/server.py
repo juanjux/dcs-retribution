@@ -95,6 +95,13 @@ def validate_payload(
 
 
 @mcp.tool()
+def get_waypoints(flight_id: str, side: str = "red") -> dict:
+    """A flight's waypoints (idx, type, pos [lat,lng], alt_m) — read them before editing a
+    route with edit_waypoint. Waypoint 0 is takeoff (immovable); none can be deleted."""
+    return service.get_waypoints(side, flight_id)
+
+
+@mcp.tool()
 def edit_waypoint(
     flight_id: str,
     waypoint_idx: int,

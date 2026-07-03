@@ -49,23 +49,22 @@ def map_image(side: str = "red", bbox: str | None = None) -> bytes:
 
 
 def aircraft_pylons(side: str = "red", squadron_id: str = "") -> dict:
-    """Per-pylon weapon options for a squadron's airframe (only weapons available this
-    campaign/date), so the LLM can build a valid custom payload. ``pylons``: pylon
-    number -> [clsids it accepts]; ``weapons``: clsid -> human name (deduped)."""
+    """Every weapon each pylon of a squadron's airframe accepts, so the LLM can build a
+    valid custom payload. Lists ALL loadable weapons (matches what /payload/validate
+    accepts and what named loadouts can carry — NOT filtered by campaign availability).
+    ``pylons``: pylon number -> [clsids it accepts]; ``weapons``: clsid -> name (deduped).
+    """
     from game.agent import planner
     from game.data.weapons import Pylon
 
     game = _require_game()
     squadron = planner._resolve_squadron(game, side, squadron_id)
     aircraft = squadron.aircraft
-    faction = views.coalition_for_side(game, side).faction
     pylons: dict[int, list[str]] = {}
     weapons: dict[str, str] = {}
     for pylon in Pylon.iter_pylons(aircraft):
         clsids = []
-        for weapon in sorted(
-            pylon.available_on(game.date, faction), key=lambda w: w.name
-        ):
+        for weapon in sorted(pylon.allowed, key=lambda w: w.name):
             clsids.append(weapon.clsid)
             weapons[weapon.clsid] = weapon.name
         if clsids:
@@ -143,6 +142,7 @@ def capabilities() -> dict:
             "map/image (rendered PNG strategic map — both sides' SAM/naval umbrellas)",
             "aircraft/pylons (weapons each pylon accepts, to build a custom payload)",
             "aircraft/loadouts (named ready-made loadouts for an airframe)",
+            "waypoints/{flight_id} (a flight's waypoints, to adjust its route)",
             "validate",
             "prev_turns",
             "turn_status",
@@ -191,6 +191,40 @@ def edit_waypoint(side, flight_id, waypoint_idx, lat=None, lng=None, alt_m=None)
     return planner.edit_waypoint(
         _require_game(), side, flight_id, waypoint_idx, lat, lng, alt_m
     )
+
+
+def get_waypoints(side: str = "red", flight_id: str = "") -> dict:
+    """A flight's waypoints so the LLM can adjust its route with /waypoints/edit. Returns
+    ``{flight_id, waypoints:[{idx, type, pos:[lat,lng], name?, alt_m?}]}``. Waypoint 0 is
+    takeoff (immovable); waypoints can never be deleted."""
+    from uuid import UUID
+
+    from dcs.mapping import Point as DcsPoint
+
+    game = _require_game()
+    flight = game.db.flights.get(UUID(str(flight_id)))
+    terrain = game.theater.terrain
+
+    def to_ll(pos) -> list[float]:
+        latlng = DcsPoint(pos.x, pos.y, terrain).latlng()
+        return [round(latlng.lat, 5), round(latlng.lng, 5)]
+
+    waypoints: list[dict] = [
+        {"idx": 0, "type": "TAKEOFF", "pos": to_ll(flight.departure.position)}
+    ]
+    for index, waypoint in enumerate(flight.flight_plan.waypoints, 1):
+        entry: dict = {
+            "idx": index,
+            "type": waypoint.waypoint_type.name,
+            "pos": to_ll(waypoint.position),
+        }
+        if waypoint.name:
+            entry["name"] = waypoint.name
+        alt = getattr(waypoint, "alt", None)
+        if alt is not None:
+            entry["alt_m"] = round(alt.meters)
+        waypoints.append(entry)
+    return {"flight_id": str(flight_id), "waypoints": waypoints}
 
 
 def delete_package(side, index):

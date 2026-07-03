@@ -81,6 +81,12 @@ def validate_payload(body: schemas.ValidatePayloadRequest) -> dict:
     return service.validate_payload(body.side, body.squadron_id, body.payload)
 
 
+@router.get("/waypoints/{flight_id}", operation_id="ai_get_waypoints")
+def get_waypoints(flight_id: str, side: str = "red") -> dict:
+    """A flight's waypoints (idx, type, position, altitude) — read before /waypoints/edit."""
+    return service.get_waypoints(side, flight_id)
+
+
 @router.post("/waypoints/edit", operation_id="ai_edit_waypoint")
 def edit_waypoint(body: schemas.WaypointEditRequest) -> schemas.OpResult:
     """Move/adjust a flight waypoint (position and/or altitude). Never deletes; waypoint

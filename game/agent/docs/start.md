@@ -61,7 +61,7 @@ tool/resource of the same name.
 - `GET /waypoints/{flight_id}` — a flight's waypoints
 - `GET /map/image?side=red[&bbox=s,w,n,e]` — rendered PNG strategic map (control points, front lines, threat umbrellas, your naval) for visual analysis; `bbox` (lat/lng south,west,north,east) zooms in
 - `GET /faction/aircraft?side=red` — airframes your faction may field
-- `GET /aircraft/pylons?squadron_id=…` — weapons each pylon of that squadron's airframe accepts (campaign-available), to build a custom payload
+- `GET /aircraft/pylons?squadron_id=…` — every weapon each pylon of that squadron's airframe accepts, to build a custom payload
 - `GET /aircraft/loadouts?squadron_id=…` — named ready-made loadouts for that airframe
 - `GET /turn_status` — turn #, phase, whose turn
 

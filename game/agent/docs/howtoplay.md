@@ -312,8 +312,9 @@ intel as `turn_context`, so image and text agree. `bbox` (lat/lng south,west,nor
 zooms in; omit it for the whole theater.
 
 `GET /aircraft/pylons?squadron_id=…` → `{aircraft, pylons:{pylon_num:[clsids]},
-weapons:{clsid:name}}` — the weapons EACH pylon of that squadron's airframe accepts (only
-those available this campaign). Use it to build a valid custom payload for a flight.
+weapons:{clsid:name}}` — EVERY weapon each pylon of that squadron's airframe accepts (the
+same set `/payload/validate` accepts and named loadouts can carry). Use it to build a
+valid custom payload for a flight.
 `GET /aircraft/loadouts?squadron_id=…` → `{aircraft, loadouts:[names]}` — the ready-made
 named loadouts you can pick instead of building one by hand.
 
