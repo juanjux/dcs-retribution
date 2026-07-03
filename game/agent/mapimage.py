@@ -29,7 +29,7 @@ _TEXT = (225, 228, 232)
 _TEXT_DIM = (150, 158, 168)
 
 
-def _font(size: int) -> ImageFont.FreeTypeFont:
+def _font(size: int) -> ImageFont.ImageFont:
     # Pillow >=10 load_default(size) returns a bundled scalable font — no path
     # dependency, so it survives the PyInstaller bundle.
     return ImageFont.load_default(size=size)
@@ -185,7 +185,7 @@ def render(
             continue
         x, y = to_px(t.pos)
         if t.kind == "ship":
-            d.rectangle([x - 3, y - 3, x + 3, y + 3], fill=_BLUE)
+            d.rectangle((x - 3, y - 3, x + 3, y + 3), fill=_BLUE)
         elif t.kind == "sam":
             d.polygon([(x, y - 4), (x - 4, y + 3), (x + 4, y + 3)], fill=_BLUE)
         else:
@@ -260,7 +260,7 @@ def _draw_chrome(
     ]
     ly = 30
     for color, label in legend:
-        d.rectangle([12, ly + 3, 22, ly + 13], fill=color)
+        d.rectangle((12, ly + 3, 22, ly + 13), fill=color)
         d.text((28, ly), label, font=_font(12), fill=_TEXT_DIM)
         ly += 18
     d.text((12, ly), "rings = SAM/naval reach", font=_font(11), fill=_TEXT_DIM)

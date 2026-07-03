@@ -1,4 +1,5 @@
 import contextlib
+from collections.abc import AsyncIterator
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -26,11 +27,11 @@ from .settings import ServerSettings
 try:
     from game.mcp.server import mcp as _mcp
 except Exception:  # pragma: no cover - mcp[cli] is an optional dependency
-    _mcp = None
+    _mcp = None  # type: ignore[assignment]
 
 
 @contextlib.asynccontextmanager
-async def _lifespan(_app: FastAPI):
+async def _lifespan(_app: FastAPI) -> AsyncIterator[None]:
     async with contextlib.AsyncExitStack() as stack:
         if _mcp is not None:
             # Required for the streamable-HTTP MCP app mounted at /mcp.

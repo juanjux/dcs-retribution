@@ -210,7 +210,7 @@ class Game:
         def killers(losses: Any) -> dict[str, int]:
             try:
                 index = getattr(debriefing, "kill_info_by_unit_id", {}) or {}
-                counts: Counter = Counter()
+                counts: Counter[str] = Counter()
                 for loss in losses:
                     detail = index.get(id(loss))
                     if detail:
