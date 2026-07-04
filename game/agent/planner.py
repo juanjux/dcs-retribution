@@ -228,46 +228,114 @@ def _coerce(spec: Union[schemas.PackageSpec, dict]) -> schemas.PackageSpec:
     )
 
 
-def _unfulfilled_reason(fulfiller, spec: schemas.PackageSpec) -> str:
-    """Why a package couldn't be planned, in actionable terms for the LLM.
+def _unfulfilled_reason(game: Game, side: str, spec: schemas.PackageSpec) -> str:
+    """Per-FLIGHT diagnosis of why a package couldn't be planned. A package is atomic —
+    ``plan_mission`` returns ``None`` if ANY flight can't be filled, discarding the whole
+    package — and only returns None, so re-derive the cause flight by flight and name the
+    culprit(s): capability (the faction has no airframe for the role), availability (no
+    capable squadron has enough untasked aircraft, COUNTING earlier flights in the same
+    package that draw from the same squadron), else out-of-range or — for an escort — a
+    strike parent it couldn't attach to. Runs only on failure and is fully guarded, so it
+    degrades to a generic note rather than raising."""
+    from collections import defaultdict
 
-    ``plan_mission`` only returns ``None``, so re-derive the cause: a *capability* gap
-    (the faction has no airframe that can fly the role) vs *availability/range* (capable
-    aircraft exist but none are free, or none can reach the target from outside its
-    threat — e.g. only a long-range ASM bomber can stand off a long-range naval SAM, and
-    it's already tasked). The old message guessed 'flight into a live SAM', which is
-    misleading — the engine scrubs on no-aircraft-in-range, not at launch."""
-    incapable: list[str] = []
-    for f in spec.flights:
-        if f.escort:
-            continue  # escorts are pruned when unneeded, so not the primary cause
+    def _try(fn, *a):
+        try:
+            return fn(*a)
+        except Exception:
+            return None
+
+    try:
+        squadrons = list(views.coalition_for_side(game, side).air_wing.iter_squadrons())
+    except Exception:
+        return "could not fulfil (unable to inspect the air wing)"
+    target = _try(resolve_target, game, spec.target_id)
+
+    used: dict[int, int] = defaultdict(
+        int
+    )  # squadron -> aircraft reserved by earlier flights
+    problems: list[str] = []
+    for i, f in enumerate(spec.flights):
         try:
             task = _flight_type(f.task)
         except ValueError:
+            problems.append(f"flight {i} ({f.task}): unknown task")
             continue
-        try:
-            if not fulfiller.air_wing_can_plan(task):
-                incapable.append(f.task.upper())
-        except Exception:
-            pass
-    if incapable:
-        roles = ", ".join(sorted(set(incapable)))
-        return (
-            f"your faction has no airframe able to fly {roles} — ask the human to add a "
-            f"capable type in the Air Wing window"
+        label = (
+            f"flight {i} ({f.task.upper()}"
+            + (f", {f.squadron_id}" if f.squadron_id else "")
+            + ")"
         )
-    force_hint = (
-        ""
-        if spec.ignore_range
-        else " A capable airframe may just be beyond the auto-planner's range limit; set "
-        "ignore_range:true to send it anyway (the human can task it manually, so you can "
-        "too — accept the fuel risk)."
-    )
-    return (
-        "no capable aircraft were free AND within range for this target. The platform that "
-        "reaches it may be tasked already, or out of the auto-planner's range."
-        + force_hint
-    )
+        count = _try(_clamped_count, game, side, f) or int(getattr(f, "count", 2))
+        capable = [s for s in squadrons if _try(s.capable_of, task)]
+        if not capable:
+            problems.append(
+                f"{label}: your faction has no airframe able to fly this role"
+            )
+            continue
+        if f.squadron_id:
+            sq = _try(_resolve_squadron, game, side, f.squadron_id)
+            if sq is None:
+                problems.append(f"{label}: no squadron with id {f.squadron_id!r}")
+                continue
+            if not _try(sq.capable_of, task):
+                problems.append(f"{label}: {sq.name} can't fly {f.task.upper()}")
+                continue
+            candidates = [sq]
+        else:
+            candidates = capable
+        free = [s for s in candidates if (s.untasked_aircraft - used[id(s)]) >= count]
+        if not free:
+            most = max(
+                (s.untasked_aircraft - used[id(s)] for s in candidates), default=0
+            )
+            after = (
+                " (after earlier flights in this package took theirs)"
+                if any(used[id(s)] for s in candidates)
+                else ""
+            )
+            problems.append(
+                f"{label}: needs {count} aircraft but the most any candidate squadron "
+                f"has free is {most}{after}"
+            )
+            continue
+        assignable = None
+        for s in free:
+            if target is None or _try(
+                s.can_auto_assign_mission,
+                target,
+                task,
+                count,
+                False,
+                True,
+                spec.ignore_range,
+            ):
+                assignable = s
+                break
+        if assignable is not None:
+            used[id(assignable)] += count  # this flight is fine on its own — reserve it
+            continue
+        if f.escort:
+            problems.append(
+                f"{label}: escort — it attaches to the package's strike flights; it fails if "
+                f"those couldn't be planned or it can't reach them"
+            )
+        else:
+            hint = (
+                ""
+                if spec.ignore_range
+                else " — set ignore_range:true to send it past the range limit"
+            )
+            problems.append(
+                f"{label}: capable and free, but out of the auto-planner's range{hint}"
+            )
+    if not problems:
+        return (
+            "every flight looks individually satisfiable — the package most likely failed on "
+            "an escort that couldn't attach to its strikers; try the flights as separate "
+            "1-flight packages to isolate it"
+        )
+    return "; ".join(problems)
 
 
 def create_packages(
@@ -310,7 +378,7 @@ def create_packages(
                             ok=False,
                             target=target_name,
                             error="could not fulfil — "
-                            + _unfulfilled_reason(fulfiller, spec),
+                            + _unfulfilled_reason(game, side, spec),
                         )
                     )
                     continue
@@ -371,7 +439,7 @@ def evaluate_package(
             return schemas.EvaluateResult(
                 ok=False,
                 target=target_name,
-                error="could not fulfil — " + _unfulfilled_reason(fulfiller, spec),
+                error="could not fulfil — " + _unfulfilled_reason(game, side, spec),
             )
         # plan_mission already CLAIMS the aircraft; add then remove so they are released
         # again (a package's aircraft are returned when it leaves the ATO) — net-zero.

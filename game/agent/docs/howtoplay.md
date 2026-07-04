@@ -426,6 +426,14 @@ Write bodies:
   **stagger or synchronise** packages — e.g. give co-target flights slightly different TOTs so
   they don't stack on the same waypoint (AI groups sharing a route can collide), or line up a
   multi-axis strike to hit together. Keep TOTs inside the mission window (see `/settings`).
+  A package is **atomic** — if ANY one of its flights can't be filled, the WHOLE package is
+  discarded (a strike without its planned SEAD/escort would be a death-ride, so it's all-or-
+  nothing). On failure the `error` now names the culprit **per flight** (which flight index,
+  and whether it's capability / not enough free aircraft — counting other flights that draw
+  from the same squadron / out of range / an escort with no strike parent), so you can fix
+  that one flight and retry. **To saturate a target with several squadrons of uncertain
+  availability, prefer many 1-flight packages** (independent, so a shortfall drops only the
+  extra flight, not the whole raid) over one big multi-flight package.
 - `POST /payload/validate` `{side, squadron_id, payload:{pylon: clsid}}` → `{ok, aircraft,
   errors?:{pylon: reason}}` — check a custom payload is valid for the airframe before you
   use it (unknown weapon, wrong pylon, etc.).
