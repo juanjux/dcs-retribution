@@ -137,21 +137,23 @@ The DCS AI that actually flies these missions is limited. Plan robustly around i
   huge blob. The defense can't suppress them all at once, so more flights reach their launch
   range before reacting to fire. Saturation works by **dispersion in space and time**, not by
   one big formation (which all aborts together).
-- **Long-range anti-ship: MOVE THE INGRESS OUT — this is the big one.** The auto-planned
-  **INGRESS** waypoint (where the attack *begins*) is capped at ~45 nm from the target. That's
-  fine for a short-range weapon (a Harpoon-class ASM is already in range at 45 nm), but a
-  **long-range** anti-ship missile (e.g. a ~160 nm ASM like the YJ-12) needs to begin its
-  attack near its LAUNCH range. Left at 45 nm, the bomber flies **past** its own launch range
-  to the ingress **without firing**, deep into the fleet's SAM/CAP umbrella, and is shot down
-  (or aborts) before it ever shoots — the classic "flew straight in and never launched".
-  **Fix it exactly like the human does** (a player routinely drags a Harpoon ingress out to
-  ~85 nm and the AI then attacks from there): after creating the package,
-  `GET /waypoints/{flight_id}`, find the **INGRESS** waypoint, and MOVE it out to ~the
-  missile's launch range (e.g. ~140 nm for a ~160 nm ASM) with `/waypoints/edit` — push it
-  straight **away from the target**, on the bearing it already sits. Move it, don't delete it;
-  the engine respects a moved ingress. For a long-range ASM this is often THE difference
-  between a launch and a massacre. (Also: soften the defense with DEAD/ANTISHIP and add
-  **ESCORT** to pull blue's CAP off the bombers.)
+- **Match the INGRESS to the weapon's range — for ANY stand-off attack, this is the big one.**
+  The auto-planned **INGRESS** waypoint (where the attack *begins*) is placed close to the
+  target (~45 nm) for EVERY attack type. That's fine for short-range / direct-attack weapons
+  (dumb or guided bombs, a Harpoon-class ASM already in range at 45 nm), but for **any
+  long-range stand-off weapon** — a ~160 nm ASM like the YJ-12 on ANTISHIP, a cruise missile
+  on **STRIKE** (Kh-59 / SLAM-ER / JASSM), a long-range anti-radiation missile on **DEAD**, a
+  glide bomb — the aircraft flies **past** its own launch range to the 45 nm ingress **without
+  firing** (the attack task isn't active until it reaches the ingress), straight into the
+  target's defenses, and is shot down or aborts before it ever shoots — the classic "flew
+  straight in and never launched". **Fix it exactly like the human does** (a player routinely
+  drags an ingress out — e.g. a Harpoon to ~85 nm — and the AI then attacks from there): after
+  creating the package, `GET /waypoints/{flight_id}`, find the **INGRESS**, and MOVE it out to
+  roughly the weapon's launch range (e.g. ~140 nm for a ~160 nm missile) with `/waypoints/edit`
+  — push it straight **away from the target**, on the bearing it already sits. Move it, don't
+  delete it; the engine respects a moved ingress. **Rule of thumb: whenever a flight's weapon
+  out-ranges the ~45 nm auto-ingress, move the ingress out to that range.** (Plus: soften the
+  defense with DEAD/ANTISHIP and add **ESCORT** to pull blue's CAP off the strikers.)
 
 ## 5. How to plan a strong turn
 
