@@ -228,15 +228,28 @@ def _coerce(spec: Union[schemas.PackageSpec, dict]) -> schemas.PackageSpec:
     )
 
 
-def _unfulfilled_reason(game: Game, side: str, spec: schemas.PackageSpec) -> str:
-    """Per-FLIGHT diagnosis of why a package couldn't be planned. A package is atomic —
-    ``plan_mission`` returns ``None`` if ANY flight can't be filled, discarding the whole
-    package — and only returns None, so re-derive the cause flight by flight and name the
-    culprit(s): capability (the faction has no airframe for the role), availability (no
-    capable squadron has enough untasked aircraft, COUNTING earlier flights in the same
-    package that draw from the same squadron), else out-of-range or — for an escort — a
-    strike parent it couldn't attach to. Runs only on failure and is fully guarded, so it
-    degrades to a generic note rather than raising."""
+def _flight_label(f) -> str:
+    """Short human id for a flight spec (task + squadron + escort), for error/dropped reports."""
+    parts = [str(getattr(f, "task", "?")).upper()]
+    sq = getattr(f, "squadron_id", None)
+    if sq:
+        parts.append(f"from {sq}")
+    esc = getattr(f, "escort", None)
+    if esc:
+        parts.append(f"(escort {esc})")
+    return " ".join(parts)
+
+
+def _diagnose_flights(
+    game: Game, side: str, spec: schemas.PackageSpec, flights: list
+) -> list[tuple[int, str, str | None]]:
+    """Per-flight satisfiability check. For each flight returns ``(pos, label, problem)`` where
+    ``problem`` is a short reason it can't be filled — capability (the faction has no airframe
+    for the role), availability (no capable squadron has enough untasked aircraft, COUNTING
+    earlier flights that draw from the same squadron), out-of-range, or an escort with no strike
+    parent — or ``None`` if it looks individually fillable. Fully guarded (degrades to 'no
+    problem' rather than raising). Reused by the failure message AND the partial-fulfilment
+    pre-filter."""
     from collections import defaultdict
 
     def _try(fn, *a):
@@ -248,38 +261,31 @@ def _unfulfilled_reason(game: Game, side: str, spec: schemas.PackageSpec) -> str
     try:
         squadrons = list(views.coalition_for_side(game, side).air_wing.iter_squadrons())
     except Exception:
-        return "could not fulfil (unable to inspect the air wing)"
+        return [(i, _flight_label(f), None) for i, f in enumerate(flights)]
     target = _try(resolve_target, game, spec.target_id)
-
     used: dict[int, int] = defaultdict(
         int
     )  # squadron -> aircraft reserved by earlier flights
-    problems: list[str] = []
-    for i, f in enumerate(spec.flights):
+    out: list[tuple[int, str, str | None]] = []
+    for i, f in enumerate(flights):
+        label = _flight_label(f)
         try:
             task = _flight_type(f.task)
         except ValueError:
-            problems.append(f"flight {i} ({f.task}): unknown task")
+            out.append((i, label, "unknown task"))
             continue
-        label = (
-            f"flight {i} ({f.task.upper()}"
-            + (f", {f.squadron_id}" if f.squadron_id else "")
-            + ")"
-        )
         count = _try(_clamped_count, game, side, f) or int(getattr(f, "count", 2))
         capable = [s for s in squadrons if _try(s.capable_of, task)]
         if not capable:
-            problems.append(
-                f"{label}: your faction has no airframe able to fly this role"
-            )
+            out.append((i, label, "your faction has no airframe able to fly this role"))
             continue
         if f.squadron_id:
             sq = _try(_resolve_squadron, game, side, f.squadron_id)
             if sq is None:
-                problems.append(f"{label}: no squadron with id {f.squadron_id!r}")
+                out.append((i, label, f"no squadron with id {f.squadron_id!r}"))
                 continue
             if not _try(sq.capable_of, task):
-                problems.append(f"{label}: {sq.name} can't fly {f.task.upper()}")
+                out.append((i, label, f"{sq.name} can't fly {f.task.upper()}"))
                 continue
             candidates = [sq]
         else:
@@ -294,9 +300,12 @@ def _unfulfilled_reason(game: Game, side: str, spec: schemas.PackageSpec) -> str
                 if any(used[id(s)] for s in candidates)
                 else ""
             )
-            problems.append(
-                f"{label}: needs {count} aircraft but the most any candidate squadron "
-                f"has free is {most}{after}"
+            out.append(
+                (
+                    i,
+                    label,
+                    f"needs {count} aircraft but the most any candidate squadron has free is {most}{after}",
+                )
             )
             continue
         assignable = None
@@ -312,36 +321,52 @@ def _unfulfilled_reason(game: Game, side: str, spec: schemas.PackageSpec) -> str
             ):
                 assignable = s
                 break
-        if assignable is not None:
-            used[id(assignable)] += count  # this flight is fine on its own — reserve it
+        if assignable is None:
+            if f.escort:
+                out.append(
+                    (
+                        i,
+                        label,
+                        "escort — attaches to the strike flights; fails if those weren't "
+                        "planned or it can't reach them",
+                    )
+                )
+            else:
+                hint = (
+                    ""
+                    if spec.ignore_range
+                    else " — set ignore_range:true to send it past the range limit"
+                )
+                out.append(
+                    (
+                        i,
+                        label,
+                        f"capable and free, but out of the auto-planner's range{hint}",
+                    )
+                )
             continue
-        if f.escort:
-            problems.append(
-                f"{label}: escort — it attaches to the package's strike flights; it fails if "
-                f"those couldn't be planned or it can't reach them"
-            )
-        else:
-            hint = (
-                ""
-                if spec.ignore_range
-                else " — set ignore_range:true to send it past the range limit"
-            )
-            problems.append(
-                f"{label}: capable and free, but out of the auto-planner's range{hint}"
-            )
-    if not problems:
-        return (
-            "every flight looks individually satisfiable — the package most likely failed on "
-            "an escort that couldn't attach to its strikers; try the flights as separate "
-            "1-flight packages to isolate it"
-        )
-    return "; ".join(problems)
+        used[id(assignable)] += count  # this flight is fine on its own — reserve it
+        out.append((i, label, None))
+    return out
+
+
+def _unfulfilled_reason(game: Game, side: str, spec: schemas.PackageSpec) -> str:
+    """Human string of why a package (or the flights of one) couldn't be planned."""
+    probs = [
+        f"{label}: {p}"
+        for _, label, p in _diagnose_flights(game, side, spec, list(spec.flights))
+        if p
+    ]
+    return "; ".join(probs) if probs else "no capable aircraft were free and in range"
 
 
 def create_packages(
     game: Game, side: str, specs: list[Union[schemas.PackageSpec, dict]]
 ) -> list[schemas.CreateResult]:
-    """Plan one package per spec, reusing PackageFulfiller, and add it to the ATO."""
+    """Plan one package per spec, reusing PackageFulfiller, and add it to the ATO. PARTIAL by
+    default: each spec's flights are pre-checked (``_diagnose_flights``) and only the fillable
+    ones are planned; the rest are returned in ``CreateResult.dropped`` instead of scrubbing the
+    whole package. Only if nothing is fillable is the package a failure."""
     coalition = views.coalition_for_side(game, side)
     now = game.conditions.start_time
     results: list[schemas.CreateResult] = []
@@ -352,6 +377,30 @@ def create_packages(
             try:
                 target = resolve_target(game, spec.target_id)
                 target_name = getattr(target, "name", spec.target_id)
+                # Partial by default: pre-check each flight and keep only the fillable ones,
+                # so one unfillable flight (no free aircraft / out of range / escort w/o
+                # parent) doesn't discard the whole package — it's dropped + reported instead.
+                diag = _diagnose_flights(game, side, spec, list(spec.flights))
+                keep = [
+                    f for f, (_i, _l, prob) in zip(spec.flights, diag) if prob is None
+                ]
+                dropped = [
+                    schemas.DroppedFlight(flight=label, reason=prob)
+                    for _i, label, prob in diag
+                    if prob
+                ]
+                if not keep:
+                    reason = "; ".join(
+                        f"{d.flight}: {d.reason}" for d in dropped
+                    ) or _unfulfilled_reason(game, side, spec)
+                    results.append(
+                        schemas.CreateResult(
+                            ok=False,
+                            target=target_name,
+                            error="could not fulfil — " + reason,
+                        )
+                    )
+                    continue
                 proposed = [
                     ProposedFlight(
                         _flight_type(f.task),
@@ -359,7 +408,7 @@ def create_packages(
                         _escort_type(f.escort),
                         preferred_type=_preferred_aircraft(game, side, f.squadron_id),
                     )
-                    for f in spec.flights
+                    for f in keep
                 ]
                 fulfiller = PackageFulfiller(
                     coalition, game.theater, game.db.flights, game.settings
@@ -372,7 +421,8 @@ def create_packages(
                         tracer,
                         ignore_range=spec.ignore_range,
                     )
-                if package is None:
+                if package is None or not package.flights:
+                    # the planner disagreed with the pre-check (rare) — report the diagnosis
                     results.append(
                         schemas.CreateResult(
                             ok=False,
@@ -383,7 +433,7 @@ def create_packages(
                     )
                     continue
                 coalition.ato.add_package(package)
-                _apply_loadouts(package, spec.flights)
+                _apply_loadouts(package, keep)
                 _apply_tot(package, spec, now)
                 if spec.rationale:
                     package.custom_name = spec.rationale
@@ -393,6 +443,7 @@ def create_packages(
                         ok=True,
                         target=target_name,
                         package=views.build_package(index, package),
+                        dropped=dropped or None,
                     )
                 )
             except Exception as exc:  # report, don't abort the whole batch

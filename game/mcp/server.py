@@ -162,7 +162,9 @@ def create_packages(side: str, packages: list[dict]) -> list:
     """Plan packages: each spec is target_id + flights[{task,count,escort?}] + rationale.
     Optional per-package ignore_range:true sends a capable airframe even past the
     auto-planner's range limit (parity with the human's manual planner; accept the risk).
-    """
+    PARTIAL by default: flights that can't be filled are dropped and returned in the result's
+    `dropped:[{flight,reason}]` — ALWAYS check it (a strike may have lost its SEAD/escort or be
+    under-strength). ok:false only when nothing could be filled."""
     return _dump(service.create_packages(side, packages))
 
 

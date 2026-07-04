@@ -44,11 +44,23 @@ class PackageSpec(BaseModel):
     )
 
 
+class DroppedFlight(BaseModel):
+    """A flight that was requested but could NOT be included in the package."""
+
+    flight: str  # which flight (task + squadron), e.g. "DEAD from Won Pat"
+    reason: str  # why it was dropped (no free aircraft / out of range / escort w/o parent …)
+
+
 class CreateResult(BaseModel):
     ok: bool
     target: str
     error: str | None = None
     package: views.PackageView | None = None
+    dropped: list[DroppedFlight] | None = (
+        None  # flights that COULDN'T be filled and were left out (the package is planned
+        # with the rest — partial by default). Present only when something was dropped —
+        # ALWAYS check it: the strike may be missing its SEAD/escort, or be under-strength.
+    )
 
 
 class EvaluateResult(BaseModel):
