@@ -141,10 +141,6 @@ The DCS AI that actually flies these missions is limited. Plan robustly around i
   envelope reaches farther than your archer's launch range, the AI is engaged (and aborts)
   before it can fire. Soften the defense first (DEAD, or ANTISHIP the SAM ships) and add
   **ESCORT** to pull blue's CAP off the strikers.
-- **Give the AI simple weapons.** It employs **GPS/dumb bombs** (JDAM, Mk-8x) fine, but
-  handles **laser-guided bombs and datalink missiles** (needs self-lasing / man-in-the-loop)
-  poorly — especially on **mod aircraft**, where it often won't employ them at all. Prefer a
-  loadout the AI will actually drop over a "better" one it flies over the target holding.
 
 ## 5. How to plan a strong turn
 
