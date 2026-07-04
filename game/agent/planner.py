@@ -444,6 +444,7 @@ def create_packages(
                         target=target_name,
                         package=views.build_package(index, package),
                         dropped=dropped or None,
+                        idle_flyable_remaining=views.idle_flyable_total(game, side),
                     )
                 )
             except Exception as exc:  # report, don't abort the whole batch
@@ -609,8 +610,17 @@ def validate_plan(game: Game, side: str) -> schemas.ValidateResult:
                 uncrewed=uncrewed or None,
             )
         )
+    hard = list(
+        issues
+    )  # only crewing/window/empty flip ok; idle aircraft is a soft warning
+    idle = views.idle_flyable_total(game, side)
+    if idle:
+        issues.append(
+            f"{idle} flyable aircraft left idle — task them (reinforce or extend a BARCAP, add "
+            f"a probe, more saturation) or hold them on purpose; don't leave force on the ramp"
+        )
     return schemas.ValidateResult(
-        ok=not issues,
+        ok=not hard,
         mission_window_min=window,
         packages=checks,
         issues=issues or None,

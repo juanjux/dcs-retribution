@@ -99,6 +99,10 @@ class SquadronView(BaseModel):
     base: str
     owned: int | None = None  # aircraft on hand (omitted when 0)
     untasked: int | None = None  # available to task (omitted when 0)
+    flyable: int | None = (
+        None  # aircraft you can actually LAUNCH now = min(untasked, pilots), 0 if grounded —
+        # the real number to plan with (untasked can exceed available pilots); omitted when 0
+    )
     pending: int | None = None  # arriving next turn (omitted when 0)
     pilots: int
     grounded: bool | None = (
@@ -229,6 +233,12 @@ class TurnContextView(BaseModel):
     economy: EconomyView
     control_points: list[ControlPointView]
     air_wing: list[SquadronView]
+    idle_flyable: (
+        int  # total aircraft you can LAUNCH right now that are still untasked (sum of
+    )
+    # each squadron's `flyable`). Standing reminder — if this is >0 when you finish the turn you
+    # left force on the ramp: task it (more/bigger/staggered BARCAPs, a probe, extra saturation)
+    # or hold it on purpose. DRIVE IT TOWARD 0. (0 shown as confirmation.)
     targets: list[TargetView]  # enemy objects this side can strike (aim by id)
     threats: list[ThreatView]  # blue's strongest air-defense umbrellas, ranked by reach
     naval: list[NavalView]  # YOUR movable ship groups (reposition with move_ship)
@@ -320,6 +330,27 @@ def build_control_point(game: Game, cp: ControlPoint) -> ControlPointView:
     )
 
 
+def _squadron_flyable(sq: Squadron, grounded: bool) -> int:
+    """Aircraft this squadron can actually launch this turn: min(untasked, available pilots),
+    0 if grounded (enemy-held base) or pilotless. Pilots don't cap it when pilot limits are
+    off. This is what the planner can really field — untasked alone overstates it."""
+    if grounded or sq.untasked_aircraft <= 0:
+        return 0
+    if not sq.pilot_limits_enabled:
+        return sq.untasked_aircraft
+    return min(sq.untasked_aircraft, sq.number_of_available_pilots)
+
+
+def idle_flyable_total(game: Game, side: str) -> int:
+    """Total launchable-now aircraft still untasked across the side's air wing (the headline
+    'force left on the ramp' number)."""
+    player = player_for_side(side)
+    return sum(
+        _squadron_flyable(sq, sq.location.captured != player)
+        for sq in coalition_for_side(game, side).air_wing.iter_squadrons()
+    )
+
+
 def build_squadron(sq: Squadron, player: Player | None = None) -> SquadronView:
     # A squadron stranded at an enemy-held base cannot generate sorties — the
     # engine's mission planner excludes it — so flag it instead of advertising
@@ -332,6 +363,7 @@ def build_squadron(sq: Squadron, player: Player | None = None) -> SquadronView:
         base=sq.location.name,
         owned=sq.owned_aircraft or None,
         untasked=sq.untasked_aircraft or None,
+        flyable=_squadron_flyable(sq, grounded) or None,
         pending=sq.pending_deliveries or None,
         pilots=sq.number_of_available_pilots,
         grounded=grounded or None,
@@ -616,6 +648,7 @@ def build_turn_context(game: Game, side: str = "red") -> TurnContextView:
             build_squadron(sq, player_for_side(side))
             for sq in coalition.air_wing.iter_squadrons()
         ],
+        idle_flyable=idle_flyable_total(game, side),
         targets=targets,
         threats=build_threats(targets),
         naval=build_my_naval(game, side),

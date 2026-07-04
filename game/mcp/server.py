@@ -126,7 +126,8 @@ def get_packages(side: str = "red") -> list:
 def validate_plan(side: str = "red") -> dict:
     """Health-check the committed plan: each package's TOT vs the mission window and any
     uncrewed flights. ok=true means every package is crewed and on time (no changes made).
-    """
+    Leftover crewed aircraft on the ramp are reported as a soft `issues` warning (they don't
+    flip ok — you may be holding them back on purpose)."""
     return _dump(service.validate_plan(side))
 
 
@@ -164,7 +165,9 @@ def create_packages(side: str, packages: list[dict]) -> list:
     auto-planner's range limit (parity with the human's manual planner; accept the risk).
     PARTIAL by default: flights that can't be filled are dropped and returned in the result's
     `dropped:[{flight,reason}]` — ALWAYS check it (a strike may have lost its SEAD/escort or be
-    under-strength). ok:false only when nothing could be filled."""
+    under-strength). ok:false only when nothing could be filled. The result's
+    `idle_flyable_remaining` is how many crewed aircraft are still on the ramp — keep tasking
+    until it's 0."""
     return _dump(service.create_packages(side, packages))
 
 

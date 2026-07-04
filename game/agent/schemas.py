@@ -61,6 +61,10 @@ class CreateResult(BaseModel):
         # with the rest — partial by default). Present only when something was dropped —
         # ALWAYS check it: the strike may be missing its SEAD/escort, or be under-strength.
     )
+    idle_flyable_remaining: int | None = (
+        None  # aircraft you can still LAUNCH after this package (untasked + crewed) — keep
+        # tasking until it's 0, so you don't leave force on the ramp. Set on a successful create.
+    )
 
 
 class EvaluateResult(BaseModel):
