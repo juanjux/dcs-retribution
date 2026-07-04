@@ -195,6 +195,22 @@ The DCS AI that actually flies these missions is limited. Plan robustly around i
 Think like a real air commander: clear intent, combined arms, economy of force,
 and adaptation to the enemy.
 
+### Keep your token use low
+
+This is a long campaign — many turns in one session. Don't let your own context bloat:
+
+- **Compact as you go.** Don't carry the full transcript of old turns. Summarize a finished
+  turn in a line or two and drop the raw tool dumps. Anything you must remember across turns
+  goes in **`stored_context`** (persists in the save) — not the chat thread — and the
+  attrition trend is already in **`prev_turns`**, so you never need to re-read old turn data.
+- **Read narrowly.** `turn_context` is the biggest read (though already frugal — rounded, empty
+  fields omitted). Pull it **once** per turn, then use the **small endpoints** for follow-ups
+  instead of re-fetching the whole picture: `/packages` (your ATO), `/settings`, `/validate`
+  (plan health), `/prev_turns` (history), `/waypoints/{id}` (one flight).
+- **Batch your writes.** `create_packages` takes a **list** — create ALL your packages in one
+  call, not one call per package. Group operations so you make **fewer round-trips**; each
+  extra call is another response you re-read.
+
 ## 6. Rules you must respect (fair play)
 
 You act **only as a player could**, through the same actions:
