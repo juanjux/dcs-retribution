@@ -671,6 +671,21 @@ def _resolve_naval(game: Game, naval_id: str):
     return None
 
 
+def _naval_is_dead(mover) -> bool:
+    """True if a naval mover has nothing left alive to reposition — a ship group whose units
+    are all destroyed, or a carrier/LHA whose hull is sunk (``runway_is_operational`` is the
+    game's own carrier-alive check)."""
+    if getattr(mover, "is_dead", False):  # ShipGroundObject
+        return True
+    op = getattr(mover, "runway_is_operational", None)  # carrier/LHA control point
+    if callable(op):
+        try:
+            return not op()
+        except Exception:
+            pass
+    return False
+
+
 def move_ship(
     game: Game,
     side: str,
@@ -709,6 +724,8 @@ def move_ship(
         owner = getattr(getattr(mover, "control_point", mover), "captured", None)
         if owner != player:
             raise ValueError(f"{mover.name} is not yours to move")
+        if _naval_is_dead(mover):
+            raise ValueError(f"{mover.name} is destroyed and can't be repositioned")
         if lat is None or lng is None:
             mover.target_position = None
             _refresh(mover)

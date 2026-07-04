@@ -492,8 +492,13 @@ def build_my_naval(game: Game, side: str) -> list[NavalView]:
         if cp.captured != player:
             continue
         # the carrier/LHA itself is a movable control point (a different id namespace
-        # than its escort ship groups below)
-        if getattr(cp, "moveable", False) and getattr(cp, "is_fleet", False):
+        # than its escort ship groups below) — skip a sunk carrier (nothing to move),
+        # mirroring the is_dead skip for ship groups below
+        if (
+            getattr(cp, "moveable", False)
+            and getattr(cp, "is_fleet", False)
+            and cp.runway_is_operational()
+        ):
             out.append(_naval_view(game, cp, "carrier"))
         for tgo in cp.ground_objects:
             if not isinstance(tgo, ShipGroundObject) or not tgo.moveable:

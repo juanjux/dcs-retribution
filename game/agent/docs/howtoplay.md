@@ -124,6 +124,28 @@ Let flight plans (routes/waypoints) build automatically — the engine routes ar
 threats. Only hand-edit waypoints when you have a specific reason; hand-drawn routes
 bypass the automatic threat-avoidance.
 
+### The AI that flies your plans is not clever — plan around it
+
+The DCS AI that actually flies these missions is limited. Plan robustly around it:
+
+- **It goes defensive and ABORTS the attack the moment it's fired on — as a formation.**
+  One ship opening fire on a big package can make the **whole** package break off without
+  launching. Observed: a 14-flight anti-ship strike fired **zero** missiles after a single
+  frigate's SM-6 — the formation cascaded into an abort within seconds.
+- **Anti-ship: several SMALL packages, not one mega-package.** Send **several small packages
+  (a few flights each) on different axes with staggered TOTs** (`tot_minutes`) instead of one
+  huge blob. The defense can't suppress them all at once, so more flights reach their launch
+  range before reacting to fire. Saturation works by **dispersion in space and time**, not by
+  one big formation (which all aborts together).
+- **If the defense out-ranges your missile, the AI never shoots.** When blue's SAM/CAP
+  envelope reaches farther than your archer's launch range, the AI is engaged (and aborts)
+  before it can fire. Soften the defense first (DEAD, or ANTISHIP the SAM ships) and add
+  **ESCORT** to pull blue's CAP off the strikers.
+- **Give the AI simple weapons.** It employs **GPS/dumb bombs** (JDAM, Mk-8x) fine, but
+  handles **laser-guided bombs and datalink missiles** (needs self-lasing / man-in-the-loop)
+  poorly — especially on **mod aircraft**, where it often won't employ them at all. Prefer a
+  loadout the AI will actually drop over a "better" one it flies over the target holding.
+
 ## 5. How to plan a strong turn
 
 0. **Reflect on last turn first.** Read `prev_turns`/the debrief and compare it to
