@@ -91,15 +91,16 @@ Common roles and what they're for:
 - **BAI / CAS** — hit enemy ground forces (interdiction behind the line / close
   support at the front).
 - **ANTISHIP** — strike enemy naval groups. Against a ship with a long-range SAM (e.g.
-  SM-6, ~175 nm) only a platform whose anti-ship missile out-ranges the SAM can attack
-  from safe **standoff** — usually a long-range ASM bomber; shorter-ranged strikers
-  (carrier fighters) would have to enter the SAM bubble, and the planner scrubs them as
-  out of (safe) range. That standoff bomber is scarce — don't waste it, and
-  `evaluate_package` the strike first (it consumes no aircraft) so a probe doesn't tie up
-  the airframes a real package needs. If your only standoff platform is tasked, a
-  shorter-legged but anti-ship-capable airframe sitting just past the auto-planner's
-  range limit can still be sent with `ignore_range:true` (a costlier, riskier strike — but
-  an option the human has too).
+  SM-6, ~175 nm), only a platform whose anti-ship missile out-ranges the SAM can attack from
+  **safe standoff** — usually a long-range ASM bomber. A shorter-ranged striker (a carrier
+  fighter with a Harpoon) is **NOT blocked**, though: it just has to enter the SAM bubble to
+  reach launch range — a riskier, maybe one-way strike. **That trade-off is your call, not the
+  planner's.** The auto-planner only ever scrubs for **fuel range** (can the jet physically
+  reach the target), never for the SAM bubble — and even the fuel scrub you override with
+  `ignore_range:true` (exactly the deep / suicide strike the human can order). So the *advice*
+  is: prefer the standoff bomber — it's scarce, don't waste it, and `evaluate_package` first
+  (consumes no aircraft) to check timing. But if you judge a costly strike worth it, **send
+  it — nothing stops you.**
 - **AEW&C (AWACS)** and **REFUELING (tanker)** — support assets that extend your
   radar picture and range. Big offensives often need them.
 
