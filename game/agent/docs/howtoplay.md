@@ -155,6 +155,19 @@ The DCS AI that actually flies these missions is limited. Plan robustly around i
   delete it; the engine respects a moved ingress. **Rule of thumb: whenever a flight's weapon
   out-ranges the ~45 nm auto-ingress, move the ingress out to that range.** (Plus: soften the
   defense with DEAD/ANTISHIP and add **ESCORT** to pull blue's CAP off the strikers.)
+- **SEAD and ESCORT waypoints sit too close too — move them out as well.** The same close-in
+  placement bites more than the strike ingress:
+  - **SEAD / SEAD_ESCORT / SEAD_SWEEP:** the **SEAD SEARCH** and **INGRESS** waypoints are put
+    right up on the target. Against a SAM site — or a SAM-armed **ship** — that's a death
+    sentence: the SEADer is killed before it suppresses anything. Move **SEAD SEARCH / INGRESS**
+    OUT to where its anti-radiation missile still reaches but the jet stays outside the threat's
+    lethal envelope (same idea as the ingress rule — match it to the ARM's range).
+  - **ESCORT:** the **ESCORT SEARCH** waypoint is dragged almost onto the target, so the escort
+    leaves the strikers and flies into the defenses alone. Move **ESCORT SEARCH** back to the
+    **ingress zone** (where the package forms up and the strikers actually need cover) — the
+    same move used for a jamming/EWAR escort.
+  Read `GET /waypoints/{flight_id}` and reposition these with `/waypoints/edit` (move, never
+  delete), exactly like the strike ingress above.
 
 ## 5. How to plan a strong turn
 
