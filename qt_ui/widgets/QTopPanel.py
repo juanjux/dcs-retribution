@@ -218,7 +218,8 @@ class QTopPanel(QFrame):
                 f"OPFOR AI: {snap['status'] or 'planning...'}"
             )
             self.ai_status_button.setStyleSheet(
-                "color: white; background-color: #2e7d32; font-weight: bold;"
+                # red so the button contrasts with the green "thinking" animation balls
+                "color: white; background-color: #c62828; font-weight: bold;"
             )
             if self._ai_thinking_movie.state() != QMovie.MovieState.Running:
                 self._ai_thinking_movie.start()
