@@ -91,11 +91,7 @@
     "[CH] M777 LTH M982 Excalibur",
     "[CH] M777 LTH M982 Excalibur (MTVR)",
     "[CH] M777 LTH M795 (MTVR)",
-    "[CH] M270A1 MLRS (GLSDB)",
-    "MLRS M142 HIMARS ATACMS CM [CH]",
-    "MLRS M142 HIMARS ATACMS HE [CH]",
-    "MLRS M142 HIMARS GMLRS CM [CH]",
-    "MLRS M142 HIMARS GMLRS HE [CH]"
+    "[CH] M270A1 MLRS (GLSDB)"
   ],
   "logistics_units": [
     "Truck M818 6x6",
@@ -141,10 +137,7 @@
     "[CH] Ticonderoga CMP Cruiser"
   ],
   "missiles": [
-    "[CH] M270A1 MLRS (ATACMS)",
-    "[CH] M142 HIMARS (ATACMS)",
-    "[CH] M142 HIMARS (PrSM)",
-    "[CH] M142 HIMARS (PrSM AShM)"
+    "[CH] M270A1 MLRS (ATACMS)"
   ],
   "air_defense_units": [
     "EWR AN/FPS-117 Radar",
