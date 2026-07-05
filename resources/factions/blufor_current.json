@@ -103,10 +103,6 @@
     "[CH] M777 LTH M982 Excalibur",
     "[CH] M777 LTH M982 Excalibur (MTVR)",
     "[CH] M777 LTH M795 (MTVR)",
-    "MLRS M142 HIMARS ATACMS CM [CH]",
-    "MLRS M142 HIMARS ATACMS HE [CH]",
-    "MLRS M142 HIMARS GMLRS CM [CH]",
-    "MLRS M142 HIMARS GMLRS HE [CH]",
     "[CH] Grkpbv 90 SPM",
     "[CH] Archer SPG SGR77B",
     "[CH] Archer SPG M982 Excalibur",
@@ -190,10 +186,7 @@
     "[CH] Type 45 Destroyer"
   ],
   "missiles": [
-    "[CH] M270A1 MLRS (ATACMS)",
-    "[CH] M142 HIMARS (ATACMS)",
-    "[CH] M142 HIMARS (PrSM)",
-    "[CH] M142 HIMARS (PrSM AShM)"
+    "[CH] M270A1 MLRS (ATACMS)"
   ],
   "air_defense_units": [
     "EWR AN/FPS-117 Radar",
