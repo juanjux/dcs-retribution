@@ -131,6 +131,14 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   [#33](https://github.com/juanjux/dcs-retribution/pull/33))
 
 ### Fixes
+- **Currenthill USA pack** — MIM-104 Patriot units now spawn. Their DCS type ids
+  were missing the `CH_` prefix the current pack uses, so a generated Patriot
+  battery came up with only its C-RAM (no launchers, radar, ECS or EPP).
+  ([#61](https://github.com/juanjux/dcs-retribution/pull/61))
+- HIMARS units the current Currenthill USA pack (1.5.0) no longer ships are dropped
+  from the `blufor_current` / `usa_2020` factions in favour of the M270A1 MLRS it
+  does ship, so they stop silently failing to spawn.
+  ([#62](https://github.com/juanjux/dcs-retribution/pull/62))
 - Enemy (and friendly) fleets now actively fight instead of sitting passive: every
   ship group — including submarines — is generated with weapon-free ROE and a
   search-and-engage task, so they use their SAMs on aircraft and their anti-ship
