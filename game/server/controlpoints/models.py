@@ -27,6 +27,10 @@ class ControlPointJs(BaseModel):
     # (e.g. enemy control point, or no TACAN allocated yet).
     tacan: str | None
     atc_frequency: str | None
+    # Carrier/LHA control points only: True when the whole ship group is sunk, so the
+    # map's "destroyed (non-repairable)" layer can hide it like a destroyed naval TGO.
+    # Always False for airfields/FOBs (a base is not a "destroyed" object).
+    dead: bool = False
 
     class Config:
         title = "ControlPoint"
@@ -50,9 +54,13 @@ class ControlPointJs(BaseModel):
         units: list[str] = []
         threat_ranges: list[float] = []
         detection_ranges: list[float] = []
+        dead = False
         for tgo in control_point.ground_objects:
             if not tgo.is_control_point:
                 continue
+            # A carrier/LHA is "destroyed" once its whole ship group (carrier + escorts)
+            # is sunk; naval losses are permanent, so this is a non-repairable death.
+            dead = tgo.is_dead
             # Show every unit (display_name already tags dead ones with
             # " [DEAD]"), matching how ordinary naval groups list their losses.
             units.extend(unit.display_name for unit in tgo.units)
@@ -79,6 +87,7 @@ class ControlPointJs(BaseModel):
             detection_ranges=detection_ranges,
             tacan=tacan,
             atc_frequency=atc_frequency,
+            dead=dead,
         )
 
     @staticmethod
