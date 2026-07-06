@@ -194,10 +194,16 @@ class RepairView(BaseModel):
 
     id: str  # repair target id: a ground-object/building tgo id, or a control-point id (runway)
     name: str
-    kind: str  # aa / ewr / building / runway / ... (what's damaged)
-    cost: int  # budget to repair it (sum of its dead units, or the flat runway cost)
+    kind: str  # aa / ewr / oil / factory / ammo / runway / ... (what's damaged; economy
+    # buildings use their category, so 'oil'/'factory' flag an income asset worth restoring)
+    cost: int  # budget to repair it (sum of its dead units, or the flat runway/building cost)
     dead_units: int | None = (
         None  # dead units it would bring back (omitted for a runway)
+    )
+    income_per_turn: int | None = (
+        None  # economy buildings only: the income this asset restores each turn once
+        # repaired — prioritise a dead oil/factory over cosmetic damage (a strangled
+        # budget is usually a dead income building you can rebuild here)
     )
 
 
@@ -571,29 +577,45 @@ def build_my_naval(game: Game, side: str) -> list[NavalView]:
 
 
 def _tgo_repairables(tgo) -> tuple[int, list]:
-    """(total_cost, [(unit, cost), …]) for a ground object's dead, repairable, not-already-
-    repairing units — mirroring the player's manual-repair UI (any dead repairable unit,
-    not only critical SAM parts). Buildings are priced per static via repair_cost();
-    other ground units by their unit_type price. Empty list = nothing to repair here."""
+    """(total_cost, [(unit, cost), …]) for a ground object's dead, not-already-repairing
+    units, mirroring the player's manual-repair UI. A BUILDING (oil/factory/ammo/…) is
+    repaired as a WHOLE for one ``repair_cost()`` — its income statics have no unit_type
+    (so their unit-level ``repairable`` is False), yet the building itself is repairable
+    whenever it has a repair cost; this was the gap that hid oil/econ from ``repairs``.
+    Other ground objects are priced per dead unit. Empty list = nothing to repair here.
+    """
     from game.theater.theatergroundobject import BuildingGroundObject
 
-    is_building = isinstance(tgo, BuildingGroundObject)
-    units = list(getattr(tgo, "statics", [])) if is_building else list(tgo.units)
+    if isinstance(tgo, BuildingGroundObject):
+        if not getattr(tgo, "repairable", False):
+            return 0, []
+        dead = [
+            u
+            for u in tgo.statics
+            if not getattr(u, "alive", True)
+            and getattr(u, "repair_turns_remaining", None) is None
+        ]
+        if not dead:
+            return 0, []
+        try:
+            cost = int(tgo.repair_cost())
+        except Exception:
+            cost = 0
+        if cost <= 0:
+            return 0, []
+        # Billed once for the whole building: the first dead static carries the cost,
+        # the rest carry 0 so they all revive without being charged again.
+        return cost, [(dead[0], cost)] + [(u, 0) for u in dead[1:]]
+
     out: list = []
     total = 0
-    for u in units:
+    for u in tgo.units:
         if getattr(u, "alive", True) or not getattr(u, "repairable", False):
             continue
         if getattr(u, "repair_turns_remaining", None) is not None:
             continue  # already under repair
-        if is_building:
-            try:
-                cost = int(tgo.repair_cost())
-            except Exception:
-                cost = 0
-        else:
-            ut = getattr(u, "unit_type", None)
-            cost = int(getattr(ut, "price", 0)) if ut else 0
+        ut = getattr(u, "unit_type", None)
+        cost = int(getattr(ut, "price", 0)) if ut else 0
         if cost <= 0:
             continue
         total += cost
@@ -629,18 +651,22 @@ def build_repairs(game: Game, side: str) -> list[RepairView]:
             cost, units = _tgo_repairables(tgo)
             if cost <= 0 or not units:
                 continue
-            kind = (
-                "building"
-                if isinstance(tgo, BuildingGroundObject)
-                else (getattr(tgo, "category", None) or "ground")
-            )
+            # Category is the kind for everything: SAM sites -> aa/ewr, economy buildings
+            # -> oil/factory/ammo (so a dead income asset is identifiable, not just "building").
+            kind = str(getattr(tgo, "category", None) or "ground")
+            income = None
+            if isinstance(tgo, BuildingGroundObject):
+                from game.config import REWARDS
+
+                income = int(REWARDS.get(kind, 0)) or None
             out.append(
                 RepairView(
                     id=str(tgo.id),
                     name=tgo.name,
-                    kind=str(kind),
+                    kind=kind,
                     cost=cost,
                     dead_units=len(units),
+                    income_per_turn=income,
                 )
             )
     return out
