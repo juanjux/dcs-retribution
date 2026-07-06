@@ -72,14 +72,19 @@ class LossGrid(QGridLayout):
                     unit_type = loss.flight.unit_type
                     not_counted[unit_type] = not_counted.get(unit_type, 0) + 1
         for unit_type, count in debriefing.air_losses.by_type(player).items():
+            nc = not_counted.get(unit_type, 0)
+            counted = count - nc
+            if counted <= 0:
+                # Every loss of this type was a non-combat crash the doctrine
+                # ignores — don't show a row that reads as a real loss.
+                continue
             row = self.rowCount()
             try:
                 name = unit_type.display_name
             except AttributeError:
                 name = unit_type.id
             self.addWidget(QLabel(name), row, 0)
-            self.addWidget(QLabel(str(count)), row, 1)
-            nc = not_counted.get(unit_type, 0)
+            self.addWidget(QLabel(str(counted)), row, 1)
             if nc:
                 self.addWidget(
                     QLabel(
