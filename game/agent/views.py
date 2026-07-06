@@ -150,6 +150,11 @@ class TargetView(BaseModel):
     group_id: str | None = (
         None  # ships: their naval-group control-point id (concentrate)
     )
+    composition: dict[str, int] | None = (
+        None  # ships: alive-hull count per class, e.g. {"Constellation": 2} — so you can
+        # spot Aegis escorts (Constellation/Ticonderoga) and count hulls before an ANTISHIP
+        # strike, instead of seeing only the group's aggregate threat
+    )
     damage: str | None = None  # 'lightly/heavily damaged' (omitted at full strength)
 
 
@@ -387,6 +392,27 @@ def _damage_word(tgo) -> str | None:
         return None
 
 
+def _ship_composition(tgo) -> dict[str, int] | None:
+    """Alive-hull count per ship class for a naval target, so the planner can identify
+    Aegis escorts (Constellation/Ticonderoga) and count hulls, not just the aggregate.
+    """
+    comp: dict[str, int] = {}
+    for u in getattr(tgo, "units", []):
+        if not getattr(u, "alive", True):
+            continue
+        name = None
+        try:
+            ut = u.unit_type
+            name = getattr(ut, "display_name", None) if ut else None
+        except Exception:
+            name = None
+        if not name:
+            name = getattr(getattr(u, "type", None), "name", None)
+        if name:
+            comp[str(name)] = comp.get(str(name), 0) + 1
+    return comp or None
+
+
 def _build_target(game: Game, tgo, kind: str, task: str) -> TargetView:
     ll = DcsPoint(tgo.position.x, tgo.position.y, game.theater.terrain).latlng()
     threat = None
@@ -398,9 +424,11 @@ def _build_target(game: Game, tgo, kind: str, task: str) -> TargetView:
         except Exception:
             threat = None
     group_id = None
+    composition = None
     if kind == "ship":
         grp = getattr(tgo, "control_point", None)
         group_id = str(grp.id) if grp is not None else None
+        composition = _ship_composition(tgo)
     return TargetView(
         id=str(tgo.id),
         name=tgo.name,
@@ -409,6 +437,7 @@ def _build_target(game: Game, tgo, kind: str, task: str) -> TargetView:
         pos=[_r(ll.lat), _r(ll.lng)],
         threat_nm=threat or None,
         group_id=group_id,
+        composition=composition,
         damage=_damage_word(tgo),
     )
 

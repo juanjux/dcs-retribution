@@ -352,6 +352,9 @@ means none/empty** (stated once so the per-turn payloads stay small).
   the SM-6 reach 80–175 nm, so a `kind:ship` is a floating SAM site, not just an ANTISHIP
   target), `friendly_cp_id`?/`enemy_cp_id`? (fronts only),
   `group_id`? (ships: their naval-group id — concentrate ANTISHIP on one group),
+  `composition`? (**ships only**: alive-hull count per class, e.g. `{"Constellation": 2}` —
+  so you can spot **Aegis escorts** (Constellation/Ticonderoga) and count hulls before
+  committing an ANTISHIP strike, instead of judging the group by its aggregate `threat_nm`),
   `damage`? (a damaged target — don't waste sorties finishing it)};
   **aim a package at the `id`**;
 - `threats[]` — blue's strongest air-defense umbrellas (radar SAMs + SAM-armed ships)
