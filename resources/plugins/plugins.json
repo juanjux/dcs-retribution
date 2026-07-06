@@ -15,5 +15,6 @@
     "airboss",
     "MooseSoundhandler",    
     "MooseAutolase",
-    "MooseMarkerOps"
+    "MooseMarkerOps",
+    "ai_reaction"
 ]
