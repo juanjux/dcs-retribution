@@ -371,10 +371,13 @@ means none/empty** (stated once so the per-turn payloads stay small).
   with `POST /naval/move`. (A carrier's `id` is its control-point id; its escort ship
   groups appear as separate `kind:ship` entries you can move independently.)
 - `repairs[]` — **YOUR damaged assets you can pay to repair** — {`id`, `name`, `kind`
-  (aa/ewr/building/runway/…), `cost` (budget to fix it), `dead_units`? (how many it brings
-  back; omitted for a runway)}; **repair by the `id`** with `POST /repair`. Repairs also
-  happen automatically from leftover budget at turn end — this list is what you can choose
-  to fix **now** (and guarantee).
+  (aa/ewr/**oil**/**factory**/ammo/runway/…), `cost` (budget to fix it), `dead_units`? (how
+  many it brings back; omitted for a runway), `income_per_turn`? (**economy buildings only**:
+  the per-turn income restored once repaired)}; **repair by the `id`** with `POST /repair`.
+  Repairs also happen automatically from leftover budget at turn end — this list is what you
+  can choose to fix **now** (and guarantee). **If your income has collapsed, look here first:**
+  a dead **oil**/**factory** building is a huge economic lever — rebuilding it (over a few
+  turns) restores its `income_per_turn`, which usually beats spending the same budget on units.
 - `buyable_ground[]` {`name`, `price`, `kind` (front/artillery)}; **buy by `name`**.
 
 `GET /settings` → {`opfor_aggressiveness_pct`, `map_coalition_visibility`,
