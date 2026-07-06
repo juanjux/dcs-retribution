@@ -7,6 +7,8 @@ from dcs.task import (
     AttackGroup,
     Expend,
     OptECMUsing,
+    SetImmortalCommand,
+    SetInvisibleCommand,
     WeaponType as DcsWeaponType,
     OptRestrictAfterburner,
 )
@@ -158,6 +160,11 @@ class SeadIngressBuilder(PydcsWaypointBuilder):
                 position=aim,
             )
             bait.hidden = True
+            # Invisible to AI so the rest of the fleet doesn't waste missiles on it,
+            # yet the SEAD flight (tasked by group id) still attacks it; immortal so a
+            # stray hit can't turn it into a bogus kill in the debrief.
+            bait.points[0].tasks.append(SetInvisibleCommand(True))
+            bait.points[0].tasks.append(SetImmortalCommand(True))
             return bait.id
         except Exception:
             logging.exception("Could not spawn SEAD decoy bait; using normal attack")
