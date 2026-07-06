@@ -73,11 +73,11 @@ class LossGrid(QGridLayout):
                     not_counted[unit_type] = not_counted.get(unit_type, 0) + 1
         for unit_type, count in debriefing.air_losses.by_type(player).items():
             nc = not_counted.get(unit_type, 0)
+            # Show the counted figure as the headline — which may be 0 when every
+            # loss of this type was an ignored non-combat crash — so the player
+            # still sees the type went down; the parenthetical explains why it
+            # didn't count.
             counted = count - nc
-            if counted <= 0:
-                # Every loss of this type was a non-combat crash the doctrine
-                # ignores — don't show a row that reads as a real loss.
-                continue
             row = self.rowCount()
             try:
                 name = unit_type.display_name
