@@ -38,30 +38,35 @@ class SeadIngressBuilder(PydcsWaypointBuilder):
         burn_restrict = OptRestrictAfterburner(True)
         waypoint.tasks.append(burn_restrict)
 
-        # Stand-off decoy run (prototype) -----------------------------------------
-        # A pure-decoy (e.g. all-TALD) SEAD flight carries nothing that can actually
-        # hit the target, so the default AttackGroup makes it close to the decoy's
-        # launch range — deep inside the SAM envelope — where it just gets shot and
-        # goes defensive before ever releasing. Instead, aim the decoys at a point
-        # ~just inside the threat ring on the ingress->target bearing: the AI
-        # releases from stand-off (outside the SAM's reach) and the decoys glide
-        # into the detection zone, baiting the SAMs. We deliberately do NOT need the
-        # decoys to reach the target — only to be seen.
+        # Stand-off release (opt-in per flight) -----------------------------------
+        # Weapons that don't need a locked target (decoys, unguided) are normally
+        # delivered by closing to their launch range -- for a decoy run that means
+        # penetrating the SAM envelope, where the flight just gets shot before it
+        # releases. When the flight opts in (release_at_ingress), aim those weapons
+        # at a point ~just inside the threat ring on the ingress->target bearing
+        # instead: the AI releases from stand-off (outside the SAM's reach) and they
+        # sail into the detection zone to bait the SAMs (or lay unguided fire)
+        # without penetrating. We deliberately don't need them to reach the target,
+        # only to be seen. Guided/anti-radiation weapons still engage normally below.
         threat = target.max_threat_range()
-        if self._decoys_only() and threat.meters > 0:
+        standoff = self.flight.release_at_ingress and threat.meters > 0
+        if standoff:
+            ingress_dist = target.position.distance_to_point(waypoint.position)
+            # Keep the aim point inside the threat ring *and* inbound of the ingress
+            # (so it's a point the flight is flying toward, within glide range).
+            offset = min(threat.meters * 0.9, ingress_dist * 0.9)
             bearing = target.position.heading_between_point(waypoint.position)
-            aim = target.position.point_from_heading(bearing, threat.meters * 0.9)
-            waypoint.tasks.append(
-                Bombing(
-                    position=aim,
-                    weapon_type=DcsWeaponType.Decoy,
-                    group_attack=True,
-                    expend=Expend.All,
-                    altitude=round(waypoint.alt * 1.5),  # climb for a longer glide
+            aim = target.position.point_from_heading(bearing, offset)
+            for weapon_type in (DcsWeaponType.Decoy, DcsWeaponType.Unguided):
+                waypoint.tasks.append(
+                    Bombing(
+                        position=aim,
+                        weapon_type=weapon_type,
+                        group_attack=True,
+                        expend=Expend.All,
+                        altitude=round(waypoint.alt * 1.5),  # climb for a longer glide
+                    )
                 )
-            )
-            waypoint.tasks.append(OptRestrictAfterburner(False))
-            return
 
         for group in target.groups:
             miz_group = self.mission.find_group(group.group_name)
@@ -71,66 +76,62 @@ class SeadIngressBuilder(PydcsWaypointBuilder):
                 )
                 continue
 
-            # Use decoys first
-            attack_task = AttackGroup(
-                miz_group.id,
-                weapon_type=DcsWeaponType.Decoy,
-                group_attack=True,
-                expend=Expend.All,
-                altitude=round(waypoint.alt * 1.5),  # 50% increase to force a climb
-            )
-            waypoint.tasks.append(attack_task)
+            if not standoff:
+                # Use decoys first
+                waypoint.tasks.append(
+                    AttackGroup(
+                        miz_group.id,
+                        weapon_type=DcsWeaponType.Decoy,
+                        group_attack=True,
+                        expend=Expend.All,
+                        altitude=round(waypoint.alt * 1.5),  # force a climb
+                    )
+                )
 
-            attack_task = AttackGroup(
-                miz_group.id,
-                weapon_type=DcsWeaponType.ARM,
-                expend=Expend.All,
-                altitude=waypoint.alt,
-                group_attack=True,
+            # Anti-radiation / anti-ship / guided bombs need a real target, so they
+            # always engage the group directly regardless of the stand-off option.
+            waypoint.tasks.append(
+                AttackGroup(
+                    miz_group.id,
+                    weapon_type=DcsWeaponType.ARM,
+                    expend=Expend.All,
+                    altitude=waypoint.alt,
+                    group_attack=True,
+                )
             )
-            waypoint.tasks.append(attack_task)
 
-            attack_task = AttackGroup(
-                miz_group.id,
-                weapon_type=DcsWeaponType.ASM,
-                expend=Expend.All,
-                altitude=waypoint.alt,
-                group_attack=True,
+            waypoint.tasks.append(
+                AttackGroup(
+                    miz_group.id,
+                    weapon_type=DcsWeaponType.ASM,
+                    expend=Expend.All,
+                    altitude=waypoint.alt,
+                    group_attack=True,
+                )
             )
-            waypoint.tasks.append(attack_task)
 
-            attack_task = AttackGroup(
-                miz_group.id,
-                weapon_type=DcsWeaponType.GuidedBombs,
-                expend=Expend.All,
-                altitude=waypoint.alt,
-                group_attack=True,
+            waypoint.tasks.append(
+                AttackGroup(
+                    miz_group.id,
+                    weapon_type=DcsWeaponType.GuidedBombs,
+                    expend=Expend.All,
+                    altitude=waypoint.alt,
+                    group_attack=True,
+                )
             )
-            waypoint.tasks.append(attack_task)
 
-            dir = target.position.heading_between_point(waypoint.position)
-
-            attack_task = AttackGroup(
-                miz_group.id,
-                weapon_type=DcsWeaponType.Unguided,
-                attack_limit=1,
-                expend=Expend.All,
-                direction=math.radians(dir),
-                altitude=waypoint.alt,
-            )
-            waypoint.tasks.append(attack_task)
+            if not standoff:
+                dir = target.position.heading_between_point(waypoint.position)
+                waypoint.tasks.append(
+                    AttackGroup(
+                        miz_group.id,
+                        weapon_type=DcsWeaponType.Unguided,
+                        attack_limit=1,
+                        expend=Expend.All,
+                        direction=math.radians(dir),
+                        altitude=waypoint.alt,
+                    )
+                )
 
         burn_free = OptRestrictAfterburner(False)
         waypoint.tasks.append(burn_free)
-
-    def _decoys_only(self) -> bool:
-        """True if this SEAD flight is a pure decoy (e.g. TALD) run: it carries
-        decoys and none of the strike weapons (HARM / laser-guided bombs) that need
-        to close to a real target. Such a flight can release its decoys from
-        stand-off instead of penetrating the SAM envelope."""
-        f = self.flight
-        return (
-            f.any_member_has_weapon_of_type(WeaponType.DECOY)
-            and not f.any_member_has_weapon_of_type(WeaponType.ARM)
-            and not f.any_member_has_weapon_of_type(WeaponType.LGB)
-        )

@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
 )
 
 from game import Game
+from game.ato import FlightType
 from game.ato.flight import Flight
 from game.ato.flightplans.planningerror import PlanningError
 from qt_ui.models import PackageModel
@@ -97,6 +98,33 @@ class FlightPlanPropertiesGroup(QGroupBox):
             self.divert.setCurrentText(flight.divert.name)
         layout.addLayout(QLabeledWidget("Divert:", self.divert))
 
+        if flight.flight_type == FlightType.SEAD:
+            self.release_at_ingress_checkbox = QCheckBox(
+                "Release unguided weapons or decoys at ingress point ignoring the "
+                "weapon range"
+            )
+            self.release_at_ingress_checkbox.setChecked(flight.release_at_ingress)
+            self.release_at_ingress_checkbox.setToolTip(
+                "Normally the AI closes to a weapon's launch range before releasing, "
+                "which for a decoy run (e.g. TALDs) means flying deep into the SAM "
+                "envelope and getting shot before it fires. With this on, weapons that "
+                "don't need a locked target -- decoys and unguided rockets/bombs -- are "
+                "released from the ingress point instead, aimed just inside the threat "
+                "ring, so the flight fires from stand-off (outside the SAM's reach) and "
+                "the decoys glide in to bait the SAMs (or lay unguided fire) without "
+                "penetrating.\n\n"
+                "Only works correctly with weapons that don't require a fixed/locked "
+                "target (decoys, unguided ordnance). Guided and anti-radiation weapons "
+                "(HARM, JDAM, Mavericks) still close to the target as usual and are "
+                "unaffected.\n\n"
+                "Tip: place the flight's ingress waypoint OUTSIDE the SAM ring for the "
+                "stand-off effect to matter."
+            )
+            self.release_at_ingress_checkbox.toggled.connect(
+                self.set_release_at_ingress
+            )
+            layout.addWidget(self.release_at_ingress_checkbox)
+
         self.setLayout(layout)
 
     def update_departure_time(self) -> None:
@@ -144,3 +172,6 @@ class FlightPlanPropertiesGroup(QGroupBox):
         self.flight.flight_plan.tot_offset = -self.flight.flight_plan.tot_offset
         self.package_model.update_tot()
         self.update_departure_time()
+
+    def set_release_at_ingress(self, checked: bool) -> None:
+        self.flight.release_at_ingress = checked
