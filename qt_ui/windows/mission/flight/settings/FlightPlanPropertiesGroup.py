@@ -100,23 +100,19 @@ class FlightPlanPropertiesGroup(QGroupBox):
 
         if flight.flight_type == FlightType.SEAD:
             self.release_at_ingress_checkbox = QCheckBox(
-                "Release unguided weapons or decoys at ingress point ignoring the "
-                "weapon range"
+                "Release decoys at ingress point ignoring the weapon range"
             )
             self.release_at_ingress_checkbox.setChecked(flight.release_at_ingress)
             self.release_at_ingress_checkbox.setToolTip(
-                "Normally the AI closes to a weapon's launch range before releasing, "
-                "which for a decoy run (e.g. TALDs) means flying deep into the SAM "
-                "envelope and getting shot before it fires. With this on, weapons that "
-                "don't need a locked target -- decoys and unguided rockets/bombs -- are "
-                "released from the ingress point instead, aimed just inside the threat "
-                "ring, so the flight fires from stand-off (outside the SAM's reach) and "
-                "the decoys glide in to bait the SAMs (or lay unguided fire) without "
-                "penetrating.\n\n"
-                "Only works correctly with weapons that don't require a fixed/locked "
-                "target (decoys, unguided ordnance). Guided and anti-radiation weapons "
-                "(HARM, JDAM, Mavericks) still close to the target as usual and are "
-                "unaffected.\n\n"
+                "For a decoy (e.g. TALD) SEAD run. Normally the AI closes to the "
+                "decoy's launch range before releasing, which means flying deep into "
+                "the SAM envelope and getting shot before it fires. With this on, the "
+                "flight releases its decoys from stand-off instead -- at a hidden bait "
+                "point just inside the threat ring -- so it fires from outside the "
+                "SAM's reach and the decoys glide the rest of the way in to draw "
+                "fire.\n\n"
+                "Only affects decoys; guided and anti-radiation weapons (HARM, JDAM) "
+                "still close to the target as usual.\n\n"
                 "Tip: place the flight's ingress waypoint OUTSIDE the SAM ring for the "
                 "stand-off effect to matter."
             )
