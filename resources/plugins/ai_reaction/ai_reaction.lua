@@ -31,6 +31,23 @@ local function dbg(msg)
     if DEBUG then trigger.action.outText("AIReaction: " .. msg, 8) end
 end
 
+-- Log-only (no on-screen text) for high-frequency outcomes that would spam the HUD.
+local function info(msg)
+    env.info("AIReaction| " .. msg)
+end
+
+local function wname(w)
+    local ok, n = pcall(function() return w:getTypeName() end)
+    return (ok and n) or "?"
+end
+
+-- How many distinct flights are currently evading at least one missile.
+local function evadingCount()
+    local n = 0
+    for _, c in pairs(threatCount) do if (c or 0) > 0 then n = n + 1 end end
+    return n
+end
+
 local function setOpt(grp, val)
     pcall(function()
         local c = grp:getController()
@@ -38,20 +55,22 @@ local function setOpt(grp, val)
     end)
 end
 
--- Tag the flight a weapon is guiding on -> Evade Fire. Returns true if tagged.
+-- Tag the flight a weapon is guiding on -> Evade Fire.
+-- Returns a status: "evade" (tagged), "notarget" (getTarget gave no unit — e.g. a
+-- JDAM/GPS weapon aimed at a point), or "notair" (target resolved but not an airplane).
 local function tryTag(w)
     local ok, tgt = pcall(function() return w:getTarget() end)
-    if not ok or not tgt then return false end
+    if not ok or not tgt then return "notarget" end
     local okg, grp = pcall(function() return tgt:getGroup() end)
-    if not okg or not grp then return false end
+    if not okg or not grp then return "notarget" end
     local okc, cat = pcall(function() return grp:getCategory() end)
-    if not okc or cat ~= Group.Category.AIRPLANE then return false end
+    if not okc or cat ~= Group.Category.AIRPLANE then return "notair" end
     local gname = grp:getName()
     setOpt(grp, EVADE)
     threatCount[gname] = (threatCount[gname] or 0) + 1
     live[w] = gname
-    dbg("missile -> " .. gname .. " : EVADE")
-    return true
+    dbg("SHOT " .. wname(w) .. " -> EVADE " .. gname .. "  [" .. evadingCount() .. " flights evading]")
+    return "evade"
 end
 
 -- Baseline: every airplane not currently dodging a missile -> Passive Defense.
@@ -80,7 +99,9 @@ local function watch(_, time)
         if not (ok and ex) then
             live[w] = nil
             threatCount[gname] = math.max(0, (threatCount[gname] or 1) - 1)
-            if (threatCount[gname] or 0) == 0 then dbg(gname .. " clear -> Passive") end
+            if (threatCount[gname] or 0) == 0 then
+                dbg(gname .. " clear -> Passive  [" .. evadingCount() .. " flights evading]")
+            end
         end
     end
     return time + 1
@@ -90,11 +111,21 @@ local handler = {}
 function handler:onEvent(event)
     if not event or event.id ~= world.event.S_EVENT_SHOT or not event.weapon then return end
     local w = event.weapon
-    if not tryTag(w) then
-        -- Target may not be resolved at the instant of launch; re-check once.
+    if tryTag(w) ~= "evade" then
+        -- Target may not be resolved at the instant of launch; re-check once after 1s,
+        -- then log the definitive outcome so EVERY shot leaves a trace in the log.
         timer.scheduleFunction(function()
             local ok, ex = pcall(function() return w:isExist() end)
-            if ok and ex and not live[w] then tryTag(w) end
+            if not (ok and ex) then
+                info("SHOT " .. wname(w) .. " -> gone before a target resolved (likely no unit target)")
+            elseif not live[w] then
+                local s = tryTag(w)
+                if s == "notair" then
+                    info("SHOT " .. wname(w) .. " -> not tagged: target is not an airplane")
+                elseif s == "notarget" then
+                    info("SHOT " .. wname(w) .. " -> not tagged: no unit target (getTarget nil; JDAM/GPS to a point)")
+                end
+            end
             return nil
         end, nil, timer.getTime() + 1)
     end
