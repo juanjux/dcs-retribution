@@ -117,6 +117,11 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   so fleets actually fight back (radars/SAM/CIWS/AAA) instead of sitting passive
   with radars off when the performance "red alert state" toggle is off.
   ([#47](https://github.com/juanjux/dcs-retribution/pull/47))
+- **Smart Threat Reaction** — a plugin that keeps AI aircraft at Passive Defense
+  by default and switches only the flight a missile is actually guiding on to
+  Evade Fire (read from the engine via `weapon:getTarget`), so one SAM launch no
+  longer sends every nearby package defensive. Prototype.
+  ([#63](https://github.com/juanjux/dcs-retribution/pull/63))
 - **Custom cloud preset packs** — a campaign setting that makes a community
   cloud-preset weather mod's presets available to the mission generator: choose
   Bandit's Cloud Presets, Weather 2.0 or ATMOS-X to match the pack you have
