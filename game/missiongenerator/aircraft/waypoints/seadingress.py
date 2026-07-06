@@ -4,6 +4,7 @@ import math
 from dcs.point import MovingPoint
 from dcs.task import (
     AttackGroup,
+    Bombing,
     EngageGroup,
     Expend,
     OptECMUsing,
@@ -36,6 +37,31 @@ class SeadIngressBuilder(PydcsWaypointBuilder):
         # Avoid having AI burn all of its fuel while loitering until next weapon release
         burn_restrict = OptRestrictAfterburner(True)
         waypoint.tasks.append(burn_restrict)
+
+        # Stand-off decoy run (prototype) -----------------------------------------
+        # A pure-decoy (e.g. all-TALD) SEAD flight carries nothing that can actually
+        # hit the target, so the default AttackGroup makes it close to the decoy's
+        # launch range — deep inside the SAM envelope — where it just gets shot and
+        # goes defensive before ever releasing. Instead, aim the decoys at a point
+        # ~just inside the threat ring on the ingress->target bearing: the AI
+        # releases from stand-off (outside the SAM's reach) and the decoys glide
+        # into the detection zone, baiting the SAMs. We deliberately do NOT need the
+        # decoys to reach the target — only to be seen.
+        threat = target.max_threat_range()
+        if self._decoys_only() and threat.meters > 0:
+            bearing = target.position.heading_between_point(waypoint.position)
+            aim = target.position.point_from_heading(bearing, threat.meters * 0.9)
+            waypoint.tasks.append(
+                Bombing(
+                    position=aim,
+                    weapon_type=DcsWeaponType.Decoy,
+                    group_attack=True,
+                    expend=Expend.All,
+                    altitude=round(waypoint.alt * 1.5),  # climb for a longer glide
+                )
+            )
+            waypoint.tasks.append(OptRestrictAfterburner(False))
+            return
 
         for group in target.groups:
             miz_group = self.mission.find_group(group.group_name)
@@ -96,3 +122,15 @@ class SeadIngressBuilder(PydcsWaypointBuilder):
 
         burn_free = OptRestrictAfterburner(False)
         waypoint.tasks.append(burn_free)
+
+    def _decoys_only(self) -> bool:
+        """True if this SEAD flight is a pure decoy (e.g. TALD) run: it carries
+        decoys and none of the strike weapons (HARM / laser-guided bombs) that need
+        to close to a real target. Such a flight can release its decoys from
+        stand-off instead of penetrating the SAM envelope."""
+        f = self.flight
+        return (
+            f.any_member_has_weapon_of_type(WeaponType.DECOY)
+            and not f.any_member_has_weapon_of_type(WeaponType.ARM)
+            and not f.any_member_has_weapon_of_type(WeaponType.LGB)
+        )
