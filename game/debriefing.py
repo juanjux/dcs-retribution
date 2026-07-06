@@ -515,8 +515,15 @@ class Debriefing:
             ground_objects = gl.enemy_ground_objects
             scenery = gl.enemy_scenery
             airfields = gl.enemy_airfields
+        # Match the per-type casualty rows (and the campaign itself): when the
+        # "crashes don't count" doctrine is on, non-combat write-offs are not
+        # applied, so keep them out of the aircraft headline too.
+        if getattr(self.game.settings, "ignore_non_combat_air_losses", False):
+            aircraft_lost = sum(1 for loss in air if not self.is_non_combat_loss(loss))
+        else:
+            aircraft_lost = len(air)
         return SideLossCounts(
-            aircraft=len(air),
+            aircraft=aircraft_lost,
             front_line=len(front_line),
             convoy=len(convoy),
             cargo_ships=len(cargo_ships),
