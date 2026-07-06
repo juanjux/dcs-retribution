@@ -83,6 +83,12 @@ class Flight(
         self.custom_name = custom_name
         self.group_id: int = 0
 
+        # When True, weapons that don't need a locked target (decoys, unguided) are
+        # released at the ingress point regardless of range instead of the AI closing
+        # to weapon range, so a stand-off decoy/harassment run can bait SAMs from
+        # outside their reach. Player/planner toggled; honored by SEAD ingress.
+        self.release_at_ingress = False
+
         # Transient (not persisted): when set, the next time this flight
         # transitions out of WaitingForStart the simulation halts. Used by
         # the pre-launch mismatch dialog so the user can opt to "halt
@@ -181,6 +187,7 @@ class Flight(
         if "use_same_loadout_for_all_members" not in state:
             state["use_same_loadout_for_all_members"] = True
         state.setdefault("halt_sim_on_spawn", False)
+        state.setdefault("release_at_ingress", False)
         self.__dict__.update(state)
         if isinstance(self.roster, FlightRoster):
             self.roster = FlightMembers.from_roster(self, self.roster)
