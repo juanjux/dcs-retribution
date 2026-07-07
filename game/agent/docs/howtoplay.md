@@ -352,9 +352,12 @@ means none/empty** (stated once so the per-turn payloads stay small).
   the SM-6 reach 80–175 nm, so a `kind:ship` is a floating SAM site, not just an ANTISHIP
   target), `friendly_cp_id`?/`enemy_cp_id`? (fronts only),
   `group_id`? (ships: their naval-group id — concentrate ANTISHIP on one group),
-  `composition`? (**ships only**: alive-hull count per class, e.g. `{"Constellation": 2}` —
-  so you can spot **Aegis escorts** (Constellation/Ticonderoga) and count hulls before
-  committing an ANTISHIP strike, instead of judging the group by its aggregate `threat_nm`),
+  `composition`? (alive-unit count per class — **ships:** hulls per class, e.g.
+  `{"Constellation": 2}`, so you can spot **Aegis escorts** (Constellation/Ticonderoga)
+  and count hulls before committing an ANTISHIP strike; **SAM sites:** alive
+  launchers/radars per type, exposing **partial battle damage** — 2 of 4 TELs left, radar
+  still up — not just alive/dead, so you can tell a lightly-scratched SA-10 from a
+  nearly-dead one and not over-commit a DEAD package),
   `damage`? (a damaged target — don't waste sorties finishing it)};
   **aim a package at the `id`**;
 - `threats[]` — blue's strongest air-defense umbrellas (radar SAMs + SAM-armed ships)
@@ -419,13 +422,25 @@ guess endpoint names). Full prose is here in `/howtoplay`.
 
 `GET /prev_turns?n=` → `[{turn, blue_aircraft, blue_vehicles, red_aircraft,
 red_vehicles, blue_air_lost?, red_air_lost?, blue_air_crashed?, red_air_crashed?,
-blue_ground_lost?, red_ground_lost?, red_air_killers?, blue_air_killers?}]` (killers =
-`{unit/weapon: count}`). `*_air_crashed` is the **non-combat subset** of `*_air_lost`
-(crashes/collisions with no credited shooter) — so `combat losses = air_lost -
-air_crashed`. If the `crashes_dont_count` setting (`/settings`) is ON, those crashed
-aircraft do NOT actually deplete the squadron or kill the pilot, so weigh them lightly
-when judging attrition; if it's OFF, a crash costs you the airframe and pilot like any
-loss.
+blue_air_combat?, red_air_combat?, blue_ground_lost?, red_ground_lost?,
+blue_sites_lost?, red_sites_lost?, red_air_killers?, blue_air_killers?}]`.
+
+**Air losses (precomputed, no arithmetic needed).** `*_air_lost` is the total;
+`*_air_crashed` is the **non-combat subset** (crashes/collisions, no credited shooter);
+`*_air_combat` is the **shot-down remainder** (`= air_lost − air_crashed`, given to you
+directly); and `*_air_killers` (`{unit/weapon: count}`) breaks that combat count down by
+what killed them. If the `crashes_dont_count` setting (`/settings`) is ON, crashed
+aircraft do NOT deplete the squadron or kill the pilot, so weigh them lightly; if OFF, a
+crash costs the airframe and pilot like any loss.
+
+**Site/naval losses — the concrete result of the turn's strikes.** `*_sites_lost` is
+`{unit-type-id: count}` of the ground/naval **units destroyed that turn** — ships by hull
+class (e.g. `{"Type_052C": 1}`), SAM launchers/radars, etc. `red_sites_lost` is what YOUR
+strikes (red) actually killed this turn; `blue_sites_lost` is what you lost to blue. This
+is your after-action report: it tells you whether that anti-ship alpha **sank a hull or
+merely scratched paint**, and which DEAD strikes landed. (Per-missile shot/intercept/
+impact counts are not tracked — read the *result* here, plus the target's live
+`damage`/`composition` in `turn_context`, to judge how close a strike came.)
 
 Write bodies:
 - `POST /packages` `{side, packages:[{target_id, flights:[{task, count, escort?,

@@ -240,6 +240,18 @@ class TurnForcesView(BaseModel):
     red_ground_lost: int | None = None
     red_air_killers: dict[str, int] | None = None  # what killed red's aircraft
     blue_air_killers: dict[str, int] | None = None  # what killed blue's aircraft
+    blue_air_combat: int | None = (
+        None  # of blue_air_lost, how many were SHOT DOWN (= lost - crashed); the
+    )
+    # weapon breakdown is blue_air_killers, the remainder are non-combat blue_air_crashed
+    red_air_combat: int | None = None  # of red_air_lost, how many were shot down
+    blue_sites_lost: dict[str, int] | None = (
+        None  # blue site/naval UNITS destroyed this turn, per unit-type id — ships by
+    )
+    # class ({"Type_052C": 1}) + SAM launchers/radars: the concrete result of RED's strikes
+    red_sites_lost: dict[str, int] | None = (
+        None  # red site/naval units destroyed this turn — the result of BLUE's strikes
+    )
 
 
 class TurnContextView(BaseModel):
@@ -402,9 +414,11 @@ def _damage_word(tgo) -> str | None:
         return None
 
 
-def _ship_composition(tgo) -> dict[str, int] | None:
-    """Alive-hull count per ship class for a naval target, so the planner can identify
-    Aegis escorts (Constellation/Ticonderoga) and count hulls, not just the aggregate.
+def _unit_composition(tgo) -> dict[str, int] | None:
+    """Alive-unit count per class for a target group. For ships: hulls per class, so the
+    planner can identify Aegis escorts (Constellation/Ticonderoga). For SAM sites: alive
+    launchers/radars per type, exposing PARTIAL damage (2 of 4 TELs left), not just
+    alive/dead.
     """
     comp: dict[str, int] = {}
     for u in getattr(tgo, "units", []):
@@ -438,7 +452,11 @@ def _build_target(game: Game, tgo, kind: str, task: str) -> TargetView:
     if kind == "ship":
         grp = getattr(tgo, "control_point", None)
         group_id = str(grp.id) if grp is not None else None
-        composition = _ship_composition(tgo)
+        composition = _unit_composition(tgo)
+    elif kind == "sam":
+        # Alive launchers/radars per type — shows partial battle damage on a SAM site
+        # (e.g. TELs killed but the radar still up), not just alive/dead.
+        composition = _unit_composition(tgo)
     return TargetView(
         id=str(tgo.id),
         name=tgo.name,
@@ -538,14 +556,14 @@ def _naval_view(game: Game, obj, kind: str) -> NavalView:
             threat = int(rng.nautical_miles) if rng else None
         except Exception:
             threat = None
-    comp = _ship_composition(obj)
+    comp = _unit_composition(obj)
     if comp is None:
         # A carrier/LHA is a control point whose hulls live in its is_control_point
         # ship ground object rather than on the CP itself; dig them out so carriers
         # report composition too.
         for sub in getattr(obj, "ground_objects", []):
             if getattr(sub, "is_control_point", False):
-                comp = _ship_composition(sub)
+                comp = _unit_composition(sub)
                 break
     return NavalView(
         id=str(obj.id),
@@ -837,6 +855,16 @@ def build_prev_turns(game: Game, n: int = 3) -> list[TurnForcesView]:
                 red_ground_lost=loss.get("red_ground_lost") or None,
                 red_air_killers=loss.get("red_air_killers") or None,
                 blue_air_killers=loss.get("blue_air_killers") or None,
+                blue_air_combat=(
+                    (loss.get("blue_air_lost", 0) - loss.get("blue_air_crashed", 0))
+                    or None
+                ),
+                red_air_combat=(
+                    (loss.get("red_air_lost", 0) - loss.get("red_air_crashed", 0))
+                    or None
+                ),
+                blue_sites_lost=loss.get("blue_sites_lost") or None,
+                red_sites_lost=loss.get("red_sites_lost") or None,
             )
         )
     return out
