@@ -6,11 +6,14 @@ from dcs.point import MovingPoint
 from dcs.task import (
     AttackGroup,
     Expend,
+    OptAlarmState,
     OptECMUsing,
+    OptROE,
     SetImmortalCommand,
     WeaponType as DcsWeaponType,
     OptRestrictAfterburner,
 )
+from dcs.unittype import ShipType
 
 from game.theater import TheaterGroundObject
 from game.utils import Distance
@@ -133,11 +136,13 @@ class SeadIngressBuilder(PydcsWaypointBuilder):
     def _spawn_decoy_bait(
         self, target: TheaterGroundObject, waypoint: MovingPoint, threat: Distance
     ) -> Optional[int]:
-        """Plant a hidden, unarmed enemy "bait" ship just inside the target's threat
-        ring, on the ingress->target bearing, and return its group id (or None if we
-        can't build one). Decoys released at this bait fall inside the SAM detection
-        zone while the flight fires from stand-off. The bait lives only in the
-        generated mission, not in the campaign save."""
+        """Plant a hidden enemy radar "bait" ship just inside the target's threat ring,
+        on the ingress->target bearing, and return its group id (or None if we can't
+        build one). The SEAD AI only prosecutes radar emitters, so the bait is a real
+        warship type from the target fleet (a cargo ship, having no radar, was ignored);
+        it holds fire so it can't shoot the attacker, and is immortal so the friendly
+        fleet can't sink it before the SEAD flight releases its decoys at it. The bait
+        lives only in the generated mission, not in the campaign save."""
         # The target's coalition is by definition the flight's opponent, so its
         # faction/country make the bait an enemy of the attacking flight (either side).
         # Any failure here must degrade to the normal decoy attack, never break
@@ -147,23 +152,27 @@ class SeadIngressBuilder(PydcsWaypointBuilder):
             country = self.mission.country(faction.country.name)
             if country is None:
                 return None
+            # A radar-emitting warship straight from the target fleet; a cargo ship has
+            # no radar and the SEAD AI won't attack it.
+            ship_type = next(
+                (u.type for u in target.units if issubclass(u.type, ShipType)), None
+            )
+            if ship_type is None:
+                return None
             ingress_dist = target.position.distance_to_point(waypoint.position)
             # Just inside the threat ring, never beyond the ingress (keep it inbound).
             offset = min(threat.meters * 0.9, ingress_dist * 0.9)
             bearing = target.position.heading_between_point(waypoint.position)
             aim = target.position.point_from_heading(bearing, offset)
             bait = self.mission.ship_group(
-                country,
-                f"{self.group.name} decoy bait",
-                faction.cargo_ship.dcs_unit_type,
-                position=aim,
+                country, f"{self.group.name} decoy bait", ship_type, position=aim
             )
             bait.hidden = True
-            # Immortal so the friendly fleet's fire can't sink the bait before the
-            # SEAD flight arrives to release its decoys at it. (SetInvisible also stops
-            # the fleet firing, but it hides the bait from the SEAD flight too, so the
-            # flight finds no target and never releases -- so we can't use it here.)
-            bait.points[0].tasks.append(SetImmortalCommand(True))
+            bait.points[0].tasks.append(OptAlarmState(2))  # red: radar on (SEAD target)
+            bait.points[0].tasks.append(OptROE(OptROE.Values.WeaponHold))  # never fire
+            bait.points[0].tasks.append(
+                SetImmortalCommand(True)
+            )  # survive friendly fire
             return bait.id
         except Exception:
             logging.exception("Could not spawn SEAD decoy bait; using normal attack")
