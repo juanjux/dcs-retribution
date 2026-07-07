@@ -8,7 +8,6 @@ from dcs.task import (
     Expend,
     OptECMUsing,
     SetImmortalCommand,
-    SetInvisibleCommand,
     WeaponType as DcsWeaponType,
     OptRestrictAfterburner,
 )
@@ -160,10 +159,10 @@ class SeadIngressBuilder(PydcsWaypointBuilder):
                 position=aim,
             )
             bait.hidden = True
-            # Invisible to AI so the rest of the fleet doesn't waste missiles on it,
-            # yet the SEAD flight (tasked by group id) still attacks it; immortal so a
-            # stray hit can't turn it into a bogus kill in the debrief.
-            bait.points[0].tasks.append(SetInvisibleCommand(True))
+            # Immortal so the friendly fleet's fire can't sink the bait before the
+            # SEAD flight arrives to release its decoys at it. (SetInvisible also stops
+            # the fleet firing, but it hides the bait from the SEAD flight too, so the
+            # flight finds no target and never releases -- so we can't use it here.)
             bait.points[0].tasks.append(SetImmortalCommand(True))
             return bait.id
         except Exception:
