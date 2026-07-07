@@ -185,6 +185,10 @@ class NavalView(BaseModel):
         None  # its own air-defense umbrella reach — position it to cover what matters
     )
     damage: str | None = None  # 'lightly/heavily damaged' (omitted at full strength)
+    composition: dict[str, int] | None = (
+        None  # alive hull count per class, e.g. {"Type 052C": 1, "Type 054A": 2}; lets
+        # you see which hulls are still up (not just the aggregate damage %)
+    )
 
 
 class RepairView(BaseModel):
@@ -534,6 +538,15 @@ def _naval_view(game: Game, obj, kind: str) -> NavalView:
             threat = int(rng.nautical_miles) if rng else None
         except Exception:
             threat = None
+    comp = _ship_composition(obj)
+    if comp is None:
+        # A carrier/LHA is a control point whose hulls live in its is_control_point
+        # ship ground object rather than on the CP itself; dig them out so carriers
+        # report composition too.
+        for sub in getattr(obj, "ground_objects", []):
+            if getattr(sub, "is_control_point", False):
+                comp = _ship_composition(sub)
+                break
     return NavalView(
         id=str(obj.id),
         name=obj.name,
@@ -543,6 +556,7 @@ def _naval_view(game: Game, obj, kind: str) -> NavalView:
         destination=dest,
         threat_nm=threat or None,
         damage=_damage_word(obj),
+        composition=comp,
     )
 
 

@@ -367,7 +367,9 @@ means none/empty** (stated once so the per-turn payloads stay small).
   combatant ship groups AND carriers/LHAs — {`id`, `name`, `kind` (ship/carrier), `pos`,
   `move_range_nm` (max reposition per turn, ~80 nm over water), `destination`? (a pending
   move target `[lat,lng]`, if any), `threat_nm`? (this group's own SAM umbrella —
-  reposition it to cover a contested coast/base), `damage`?}; **reposition by the `id`**
+  reposition it to cover a contested coast/base), `damage`? (aggregate state),
+  `composition`? (alive-hull count per class, e.g. `{"Type 052C": 1, "Type 054A": 2}` —
+  see which hulls survived, not just the damage %)}; **reposition by the `id`**
   with `POST /naval/move`. (A carrier's `id` is its control-point id; its escort ship
   groups appear as separate `kind:ship` entries you can move independently.)
 - `repairs[]` — **YOUR damaged assets you can pay to repair** — {`id`, `name`, `kind`
