@@ -16,7 +16,7 @@ from dcs.task import (
 from dcs.unittype import ShipType
 
 from game.theater import TheaterGroundObject
-from game.utils import Distance
+from game.utils import Distance, nautical_miles
 from .pydcswaypointbuilder import PydcsWaypointBuilder
 
 
@@ -160,10 +160,12 @@ class SeadIngressBuilder(PydcsWaypointBuilder):
             if ship_type is None:
                 return None
             ingress_dist = target.position.distance_to_point(waypoint.position)
-            # Just inside the threat ring, never beyond the ingress (keep it inbound).
-            offset = min(threat.meters * 0.9, ingress_dist * 0.9)
-            bearing = target.position.heading_between_point(waypoint.position)
-            aim = target.position.point_from_heading(bearing, offset)
+            # Place the bait ~15 nm ahead of the ingress toward the target -- within the
+            # flight's decoy launch range, so it releases at the ingress instead of
+            # having to penetrate the SAM ring (where it goes defensive and aborts).
+            lead = min(nautical_miles(15).meters, ingress_dist * 0.5)
+            bearing = waypoint.position.heading_between_point(target.position)
+            aim = waypoint.position.point_from_heading(bearing, lead)
             bait = self.mission.ship_group(
                 country, f"{self.group.name} decoy bait", ship_type, position=aim
             )
