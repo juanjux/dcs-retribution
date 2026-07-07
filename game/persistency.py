@@ -41,6 +41,7 @@ class MigrationUnpickler(pickle.Unpickler):
             self._handle_airport_migrations,
             self._handle_weather_classes,
             self._handle_ch_russian_assets,
+            self._handle_ch_usa_assets,
             self._handle_su30,
             self._handle_misc,
         ]
@@ -219,6 +220,17 @@ class MigrationUnpickler(pickle.Unpickler):
         
         return None
     
+    def _handle_ch_usa_assets(self, module: str, name: str) -> Any:
+        """Handle migrations for the US military assets pack: the MIM-104 Patriot
+        classes were renamed with the pack's CH_ prefix (MIM104_* -> CH_MIM104_*)."""
+        if module != "pydcs_extensions.usamilitaryassetspack.usamilitaryassetspack":
+            return None
+        if name.startswith("MIM104_"):
+            from pydcs_extensions.usamilitaryassetspack import usamilitaryassetspack
+
+            return getattr(usamilitaryassetspack, "CH_" + name, None)
+        return None
+
     def _handle_su30(self, module: str, name: str) -> Any:
         """Handle migrations for Su-30 aircraft variants"""
         if name == "Su_30MKA_AG":
