@@ -242,6 +242,15 @@ class Game:
                 ),
                 "red_air_killers": killers(debriefing.air_losses.enemy),
                 "blue_air_killers": killers(debriefing.air_losses.player),
+                # Per-type site/naval unit losses this turn (ships by class, SAM
+                # launchers/radars, etc.) — the concrete result of each side's strikes:
+                # what actually died, not just "target damaged". e.g. {"Type_052C": 1}.
+                "blue_sites_lost": dict(
+                    debriefing.ground_object_losses_by_type(Player.BLUE)
+                ),
+                "red_sites_lost": dict(
+                    debriefing.ground_object_losses_by_type(Player.RED)
+                ),
             }
         except Exception:
             logging.exception("OPFOR-AI: failed to record debrief summary")
