@@ -47,7 +47,10 @@ def clsid_migrator(clsid: str) -> str:
         "{SUPERHORNET_PYLON_09_IB_FT_1X_FPU-8A_HV}": "{SUPERHORNET_PYLON_09_IB_FT_1X_FPU-12A_HV}",
         "{SUPERHORNET_PYLON_03_MB_FT_1X_FPU-8A_HV}": "{SUPERHORNET_PYLON_03_MB_FT_1X_FPU-12A_HV}",
         "{SUPERHORNET_PYLON_09_MB_FT_1X_FPU-8A_HV}": "{SUPERHORNET_PYLON_09_MB_FT_1X_FPU-12A_HV}",
-        "{SUPERHORNET_PYLON_02_MB_JS_2X_BRU_AGM-154C}": "{SUPERHORNET_PYLON_02_MB_JS_2X_BRU55_AGM-154A}",
+        # CJS 2.4.5 renamed the JSOW BRU->BRU55 clsids; we deliberately DON'T remap them.
+        # The pydcs_data fallback passes the installed mod's own clsid straight to the .miz,
+        # so a loadout works on whichever CJS version is installed. The old 02_MB remap sent
+        # JSOW-C to a BRU55/AGM-154A clsid absent from mod 2.4.4, silently emptying that pylon.
     }
     while clsid in migration_map:
         clsid = migration_map[clsid]
@@ -90,7 +93,20 @@ class Weapon:
                 "name": "Clean",
                 "weight": 0,
             }
-        return weapon_ids[self.clsid]
+        try:
+            return weapon_ids[self.clsid]
+        except KeyError:
+            # CLSID present in a loadout/save but absent from the weapon DB — typically a
+            # mod weapon our bundled pydcs_extensions don't mirror (e.g. a CJS Super
+            # Hornet pylon variant the mod exposes but our copy lacks). Don't abort the
+            # whole mission generation: pass the CLSID through verbatim so it lands in the
+            # .miz (DCS has the mod and will load it). Weight is unknown → planning as 0.
+            logging.warning(
+                "Weapon CLSID %r not in the weapon DB (unmirrored mod weapon); passing "
+                "it through to the mission with placeholder metadata.",
+                self.clsid,
+            )
+            return {"clsid": self.clsid, "name": self.clsid, "weight": 0}
 
     @property
     def name(self) -> str:
