@@ -119,6 +119,15 @@ class GroundUnitType(UnitType[Type[VehicleType]]):
             "[CH] Tor M2 SHORAD": 'SAM SA-15 Tor M2 "Gauntlet" [CH]',
             "[CH] Tor M2M SHORAD": 'SAM SA-15 Tor M2 "Gauntlet" [CH]',
             "[CH] Iskander-M SRBM": "SRBM 9K720 Iskander HE [CH]",
+            # CH USA pack 1.5.0 export refresh: units renamed/removed in the mod ->
+            # migrate old saves to the closest surviving unit (by display name).
+            "[CH] M142 HIMARS (GLSDB)": "[CH] M270A1 MLRS (GLSDB)",
+            "[CH] M142 HIMARS (ATACMS)": "[CH] M270A1 MLRS (ATACMS)",
+            "[CH] M142 HIMARS (GMLRS)": "[CH] M270A1 MLRS (GMLRS)",
+            "[CH] M142 HIMARS (PrSM)": "[CH] M270A1 MLRS (ATACMS)",
+            "[CH] M142 HIMARS (PrSM AShM)": "[CH] M270A1 MLRS (ATACMS)",
+            "[CH] Oshkosh FMTV M1083": "[CH] Oshkosh MTVR MK23",
+            "[CH] Oshkosh M-ATV MRAP (M2)": "[CH] Oshkosh L-ATV (M2)",
         }
 
     @classmethod
