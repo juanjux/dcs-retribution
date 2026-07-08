@@ -12,6 +12,9 @@ from ..ato.airtaaskingorder import AirTaskingOrder
 
 if TYPE_CHECKING:
     from ..game import Game
+    from ..coalition import Coalition
+    from ..dcs.aircrafttype import AircraftType
+    from ..theater.missiontarget import MissionTarget
 
 
 MINOR_DEFEAT_INFLUENCE = 0.1
@@ -50,6 +53,10 @@ class MissionResultsProcessor:
                 self.commit_front_line_battle_impact(debriefing, events)
             with logged_duration("commit_captures"):
                 self.commit_captures(debriefing, events)
+            # After captures: base ownership is final, so we can tell whether a
+            # "remain at destination" assault reached a base we now hold.
+            with logged_duration("commit_air_assault_remain"):
+                self.commit_air_assault_remain(debriefing)
             with logged_duration("record_carcasses"):
                 self.record_carcasses(debriefing)
 
@@ -83,6 +90,80 @@ class MissionResultsProcessor:
             logging.info(f"{aircraft} destroyed from {squadron}")
             squadron.owned_aircraft -= 1
             squadron.destroyed_aircraft += 1
+
+    def commit_air_assault_remain(self, debriefing: Debriefing) -> None:
+        """Resolve helo air-assault flights flagged to remain at the objective.
+
+        A "remain" flight does not fly home: its survivors land at the objective.
+        If we hold that base once captures are resolved they redeploy there (a free
+        forward ferry); otherwise the aircraft are written off. Must run after
+        commit_captures so base ownership is final.
+        """
+        for coalition in self.game.coalitions:
+            for package in coalition.ato.packages:
+                for flight in package.flights:
+                    if not getattr(flight, "remain_at_destination", False):
+                        continue
+                    if not flight.is_helo:
+                        continue
+                    survivors = debriefing.air_losses.surviving_flight_members(flight)
+                    if survivors <= 0:
+                        continue
+                    origin = flight.squadron
+                    objective = self._objective_control_point(flight.package.target)
+                    # The flight does not return: pull its survivors from home.
+                    origin.owned_aircraft = max(0, origin.owned_aircraft - survivors)
+                    if objective is not None and objective.captured == coalition.player:
+                        self._ferry_to_captured_base(
+                            flight.unit_type, survivors, objective, coalition
+                        )
+                        logging.info(
+                            f"{survivors} {flight.unit_type} remained at captured "
+                            f"{objective} (ferried from {origin})"
+                        )
+                    else:
+                        where = objective.name if objective is not None else "objective"
+                        logging.info(
+                            f"{survivors} {flight.unit_type} from {origin} lost: "
+                            f"{where} not captured"
+                        )
+
+    @staticmethod
+    def _objective_control_point(target: MissionTarget) -> ControlPoint | None:
+        if isinstance(target, ControlPoint):
+            return target
+        control_point = getattr(target, "control_point", None)
+        return control_point if isinstance(control_point, ControlPoint) else None
+
+    def _ferry_to_captured_base(
+        self,
+        aircraft: AircraftType,
+        count: int,
+        base: ControlPoint,
+        coalition: Coalition,
+    ) -> None:
+        # Reinforce an existing squadron of the type already at the base...
+        for squadron in base.squadrons:
+            if squadron.aircraft == aircraft:
+                squadron.owned_aircraft += count
+                return
+        # ...otherwise stand up a new squadron for the ferried aircraft.
+        from ..ato import FlightType
+        from ..squadrons.squadron import Squadron
+
+        squadron_def = coalition.air_wing.squadron_def_generator.generate_for_aircraft(
+            aircraft
+        )
+        squadron = Squadron.create_from(
+            squadron_def,
+            FlightType.AIR_ASSAULT,
+            count,
+            base,
+            coalition,
+            self.game,
+        )
+        squadron.owned_aircraft = count
+        coalition.air_wing.add_squadron(squadron)
 
     @staticmethod
     def _commit_pilot_experience(ato: AirTaskingOrder) -> None:
