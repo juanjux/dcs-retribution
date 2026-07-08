@@ -222,13 +222,27 @@ class MigrationUnpickler(pickle.Unpickler):
     
     def _handle_ch_usa_assets(self, module: str, name: str) -> Any:
         """Handle migrations for the US military assets pack: the MIM-104 Patriot
-        classes were renamed with the pack's CH_ prefix (MIM104_* -> CH_MIM104_*)."""
+        classes were renamed with the pack's CH_ prefix (MIM104_* -> CH_MIM104_*), and
+        the mod 2.4.x export refresh renamed/removed units (HIMARS M142 -> M270A1, the
+        FMTV/M-ATV trucks, B-21) -> map old saves to the closest current class."""
         if module != "pydcs_extensions.usamilitaryassetspack.usamilitaryassetspack":
             return None
-        if name.startswith("MIM104_"):
-            from pydcs_extensions.usamilitaryassetspack import usamilitaryassetspack
+        from pydcs_extensions.usamilitaryassetspack import usamilitaryassetspack
 
+        if name.startswith("MIM104_"):
             return getattr(usamilitaryassetspack, "CH_" + name, None)
+        renames = {
+            "B_21": "CH_B_21",
+            "M142_HIMARS_GLSDB": "CH_M270A1_GLSDB",
+            "M142_HIMARS_ATACMS": "CH_M270A1_ATACMS",
+            "M142_HIMARS_GMLRS": "CH_M270A1_GMLRS",
+            "M142_HIMARS_PRSM": "CH_M270A1_GMLRS",
+            "M142_HIMARS_PRSM_ASHM": "CH_M270A1_GMLRS",
+            "CH_FMTV_M1083": "CH_MTVR",
+            "CH_OshkoshMATV_M2": "CH_OshkoshLATV_M2",
+        }
+        if name in renames:
+            return getattr(usamilitaryassetspack, renames[name], None)
         return None
 
     def _handle_su30(self, module: str, name: str) -> Any:
