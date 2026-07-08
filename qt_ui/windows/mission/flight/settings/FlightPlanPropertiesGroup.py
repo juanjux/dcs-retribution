@@ -168,3 +168,12 @@ class FlightPlanPropertiesGroup(QGroupBox):
 
     def set_remain_at_destination(self, checked: bool) -> None:
         self.flight.remain_at_destination = checked
+        # Toggling the flag alone does not regenerate the route: rebuild the flight
+        # plan so the return leg is dropped (or restored) and refresh the list.
+        try:
+            self.flight.recreate_flight_plan()
+        except PlanningError:
+            self.flight.remain_at_destination = not checked
+            logging.exception("Could not recreate flight plan after toggling remain")
+            return
+        self.flight_wpt_list.update_list()
