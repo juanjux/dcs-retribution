@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
 )
 
 from game import Game
+from game.ato import FlightType
 from game.ato.flight import Flight
 from game.ato.flightplans.planningerror import PlanningError
 from qt_ui.models import PackageModel
@@ -97,6 +98,26 @@ class FlightPlanPropertiesGroup(QGroupBox):
             self.divert.setCurrentText(flight.divert.name)
         layout.addLayout(QLabeledWidget("Divert:", self.divert))
 
+        if flight.flight_type == FlightType.AIR_ASSAULT and flight.is_helo:
+            self.remain_at_destination_checkbox = QCheckBox(
+                "Remain at the assault destination (do not return)"
+            )
+            self.remain_at_destination_checkbox.setChecked(flight.remain_at_destination)
+            self.remain_at_destination_checkbox.setToolTip(
+                "The helicopters land at the objective and do NOT fly home. At the "
+                "end of the turn:\n"
+                " - if you CAPTURE the objective's base, the helicopters redeploy "
+                "there (a free ferry to the new base);\n"
+                " - if you do NOT capture it, the helicopters are LOST.\n\n"
+                "Lets a one-way assault use the helicopter's full ferry range instead "
+                "of its round-trip radius, and forward-stages the aircraft on the "
+                "captured base. Helicopters only."
+            )
+            self.remain_at_destination_checkbox.toggled.connect(
+                self.set_remain_at_destination
+            )
+            layout.addWidget(self.remain_at_destination_checkbox)
+
         self.setLayout(layout)
 
     def update_departure_time(self) -> None:
@@ -144,3 +165,6 @@ class FlightPlanPropertiesGroup(QGroupBox):
         self.flight.flight_plan.tot_offset = -self.flight.flight_plan.tot_offset
         self.package_model.update_tot()
         self.update_departure_time()
+
+    def set_remain_at_destination(self, checked: bool) -> None:
+        self.flight.remain_at_destination = checked

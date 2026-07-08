@@ -33,6 +33,9 @@ class AirAssaultLayout(FormationAttackLayout):
     drop_off: FlightWaypoint | None = None
     # This is an implementation detail used by CTLD. The aircraft will not go to this
     # waypoint. It is used by CTLD as the destination for unloaded troops.
+    # When True (a "remain at destination" helo assault) the route ends at the
+    # objective with no return leg -- the helos land there and stay.
+    remain: bool = False
 
     def iter_waypoints(self) -> Iterator[FlightWaypoint]:
         yield self.departure
@@ -44,10 +47,11 @@ class AirAssaultLayout(FormationAttackLayout):
         if self.drop_off is not None:
             yield self.drop_off
         yield self.targets[0]
-        yield from self.nav_from
-        yield self.arrival
-        if self.divert is not None:
-            yield self.divert
+        if not self.remain:
+            yield from self.nav_from
+            yield self.arrival
+            if self.divert is not None:
+                yield self.divert
         yield self.bullseye
         yield from self.custom_waypoints
 
@@ -174,6 +178,8 @@ class Builder(FormationAttackBuilder[AirAssaultFlightPlan, AirAssaultLayout]):
             ),
             ingress=ingress,
             drop_off=dz,
+            remain=getattr(self.flight, "remain_at_destination", False)
+            and self.flight.is_helo,
             targets=[assault_area],
             nav_from=builder.nav_path(
                 drop_off_zone.position,
