@@ -339,8 +339,10 @@ means none/empty** (stated once so the per-turn payloads stay small).
   `untasked`?, `flyable`? (**the number to plan with**: aircraft you can actually
   LAUNCH this turn = `min(untasked, pilots)`, or 0 if grounded — `untasked` can exceed
   your pilots, `flyable` can't; omitted when 0), `pending`?, `pilots`, `grounded`?
-  (true = base is enemy-held, the squadron cannot sortie this turn — only `untasked`
-  aircraft at a friendly base fly)}; **buy/sell aircraft by the squadron `id`**;
+  (true = the squadron cannot sortie this turn: its base is enemy-held OR its runway is
+  cratered / carrier hull sunk — `flyable` is 0 while grounded, so don't plan from it
+  until the base is retaken or the runway repaired)}; **buy/sell aircraft by the
+  squadron `id`**;
 - `idle_flyable` — **headline: total flyable aircraft still untasked across the whole
   wing** (sum of every squadron's `flyable`). This is force sitting on the ramp with
   crews. **Drive it toward 0** — every one is a jet you could commit (see step 7). `0`
@@ -454,6 +456,8 @@ Write bodies:
   A flight's `count` is CAPPED at the airframe's max_group_size (usually 4) — the same
   limit the human's flight creator has — so for a big raid create SEVERAL flights (e.g.
   24 H-6J = six 4-ship flights), not one flight of 24 (which would silently field only 4).
+  `count` is ALSO auto-trimmed to the aircraft actually free (ask 4 with 3 free -> a
+  3-ship flight is planned, not a rejection), so you needn't pre-match it to `flyable`.
   Set `tot_minutes` (minutes after mission start, 0 = start; same unit `evaluate` returns as
   `tot_minutes_into_mission`) to fix that package's Time-On-Target; omit it for ASAP. Use it to
   **stagger or synchronise** packages — e.g. give co-target flights slightly different TOTs so
