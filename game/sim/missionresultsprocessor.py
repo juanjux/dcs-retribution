@@ -13,6 +13,7 @@ from ..ato.airtaaskingorder import AirTaskingOrder
 if TYPE_CHECKING:
     from ..game import Game
     from ..coalition import Coalition
+    from ..ato.flight import Flight
     from ..dcs.aircrafttype import AircraftType
     from ..theater.missiontarget import MissionTarget
 
@@ -94,10 +95,12 @@ class MissionResultsProcessor:
     def commit_air_assault_remain(self, debriefing: Debriefing) -> None:
         """Resolve helo air-assault flights flagged to remain at the objective.
 
-        A "remain" flight does not fly home: its survivors land at the objective.
-        If we hold that base once captures are resolved they redeploy there (a free
-        forward ferry); otherwise the aircraft are written off. Must run after
-        commit_captures so base ownership is final.
+        A "remain" flight is committed forward and never flies home, so its origin
+        loses the whole flight -- no matter how the sim classified each airframe (kill,
+        crash, or landed-and-abandoned). If we hold the objective once captures are
+        resolved, the airframes that made it redeploy there (a free forward ferry);
+        otherwise every one is written off. Must run after commit_captures so base
+        ownership is final.
         """
         for coalition in self.game.coalitions:
             for package in coalition.ato.packages:
@@ -106,27 +109,49 @@ class MissionResultsProcessor:
                         continue
                     if not flight.is_helo:
                         continue
-                    survivors = debriefing.air_losses.surviving_flight_members(flight)
-                    if survivors <= 0:
-                        continue
                     origin = flight.squadron
+                    # Take the whole flight off the origin. commit_air_losses already
+                    # removed the losses it counts, so subtract only the remainder --
+                    # otherwise a non-combat "crash" write-back silently keeps a
+                    # committed helo that should be gone.
+                    to_remove = flight.count - self._depleting_air_losses(
+                        debriefing, flight
+                    )
+                    if to_remove > 0:
+                        origin.owned_aircraft = max(
+                            0, origin.owned_aircraft - to_remove
+                        )
                     objective = self._objective_control_point(flight.package.target)
-                    # The flight does not return: pull its survivors from home.
-                    origin.owned_aircraft = max(0, origin.owned_aircraft - survivors)
                     if objective is not None and objective.captured == coalition.player:
-                        self._ferry_to_captured_base(
-                            flight.unit_type, survivors, objective, coalition
-                        )
-                        logging.info(
-                            f"{survivors} {flight.unit_type} remained at captured "
-                            f"{objective} (ferried from {origin})"
-                        )
+                        arrived = debriefing.air_losses.surviving_flight_members(flight)
+                        if arrived > 0:
+                            self._ferry_to_captured_base(
+                                flight.unit_type, arrived, objective, coalition
+                            )
+                            logging.info(
+                                f"{arrived} {flight.unit_type} remained at captured "
+                                f"{objective} (from {origin})"
+                            )
                     else:
                         where = objective.name if objective is not None else "objective"
                         logging.info(
-                            f"{survivors} {flight.unit_type} from {origin} lost: "
+                            f"Remain flight of {flight.unit_type} from {origin} lost: "
                             f"{where} not captured"
                         )
+
+    def _depleting_air_losses(self, debriefing: Debriefing, flight: Flight) -> int:
+        """This flight's air losses that commit_air_losses removed from the squadron,
+        skipping the non-combat write-offs it forgives (so survivor math lines up)."""
+        count = 0
+        for loss in debriefing.air_losses.losses:
+            if loss.flight != flight:
+                continue
+            if self.game.settings.ignore_non_combat_air_losses and (
+                debriefing.is_non_combat_loss(loss)
+            ):
+                continue
+            count += 1
+        return count
 
     @staticmethod
     def _objective_control_point(target: MissionTarget) -> ControlPoint | None:
