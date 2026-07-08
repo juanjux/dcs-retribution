@@ -1,4 +1,5 @@
 class: Helicopter
+max_range: 105
 carrier_capable: true
 description:
   The UH-1 Iroquois, better known as the Huey, is one of the most iconic
