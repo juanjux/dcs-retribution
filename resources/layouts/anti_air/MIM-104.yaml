@@ -6,8 +6,6 @@ groups:
     - name: Patriot Battery 0
       unit_count:
         - 2
-      unit_types:
-        - CH_MIM104_ANMPQ53_KAT1
       unit_classes:
         - SearchTrackRadar
     - name: Patriot Battery 1
@@ -35,8 +33,6 @@ groups:
     - name: Patriot Battery 5
       unit_count:
         - 8
-      unit_types:
-        - CH_MIM104_M901_PAC2_KAT1
       unit_classes:
         - Launcher
   - PD:
