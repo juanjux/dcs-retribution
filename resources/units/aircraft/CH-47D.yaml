@@ -1,4 +1,5 @@
 class: Helicopter
+max_range: 150
 carrier_capable: true
 lha_capable: true
 cabin_size: 24 # It should have 33 but we do not want so much for CTLD to be possible
