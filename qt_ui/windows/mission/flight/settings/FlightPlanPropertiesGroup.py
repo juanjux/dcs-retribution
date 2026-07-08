@@ -121,6 +121,26 @@ class FlightPlanPropertiesGroup(QGroupBox):
             )
             layout.addWidget(self.release_at_ingress_checkbox)
 
+        if flight.flight_type == FlightType.AIR_ASSAULT and flight.is_helo:
+            self.remain_at_destination_checkbox = QCheckBox(
+                "Remain at the assault destination (do not return)"
+            )
+            self.remain_at_destination_checkbox.setChecked(flight.remain_at_destination)
+            self.remain_at_destination_checkbox.setToolTip(
+                "The helicopters land at the objective and do NOT fly home. At the "
+                "end of the turn:\n"
+                " - if you CAPTURE the objective's base, the helicopters redeploy "
+                "there (a free ferry to the new base);\n"
+                " - if you do NOT capture it, the helicopters are LOST.\n\n"
+                "Lets a one-way assault use the helicopter's full ferry range instead "
+                "of its round-trip radius, and forward-stages the aircraft on the "
+                "captured base. Helicopters only."
+            )
+            self.remain_at_destination_checkbox.toggled.connect(
+                self.set_remain_at_destination
+            )
+            layout.addWidget(self.remain_at_destination_checkbox)
+
         self.setLayout(layout)
 
     def update_departure_time(self) -> None:
@@ -171,3 +191,6 @@ class FlightPlanPropertiesGroup(QGroupBox):
 
     def set_release_at_ingress(self, checked: bool) -> None:
         self.flight.release_at_ingress = checked
+
+    def set_remain_at_destination(self, checked: bool) -> None:
+        self.flight.remain_at_destination = checked

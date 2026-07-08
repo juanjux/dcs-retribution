@@ -89,6 +89,11 @@ class Flight(
         # outside their reach. Player/planner toggled; honored by SEAD ingress.
         self.release_at_ingress = False
 
+        # When set on an AIR_ASSAULT helicopter flight, the helos land at the
+        # objective and do NOT return home: at turn end they redeploy to the base
+        # if it was captured, otherwise they are lost. Player/planner toggled.
+        self.remain_at_destination = False
+
         # Transient (not persisted): when set, the next time this flight
         # transitions out of WaitingForStart the simulation halts. Used by
         # the pre-launch mismatch dialog so the user can opt to "halt
@@ -188,6 +193,7 @@ class Flight(
             state["use_same_loadout_for_all_members"] = True
         state.setdefault("halt_sim_on_spawn", False)
         state.setdefault("release_at_ingress", False)
+        state.setdefault("remain_at_destination", False)
         self.__dict__.update(state)
         if isinstance(self.roster, FlightRoster):
             self.roster = FlightMembers.from_roster(self, self.roster)
