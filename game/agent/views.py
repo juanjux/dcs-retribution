@@ -106,7 +106,8 @@ class SquadronView(BaseModel):
     pending: int | None = None  # arriving next turn (omitted when 0)
     pilots: int
     grounded: bool | None = (
-        None  # base is enemy-held — can't sortie this turn (else omitted)
+        None  # can't sortie this turn: base enemy-held OR runway cratered / hull sunk
+        # (else omitted). flyable is 0 while grounded.
     )
 
 
@@ -359,8 +360,9 @@ def build_control_point(game: Game, cp: ControlPoint) -> ControlPointView:
 
 def _squadron_flyable(sq: Squadron, grounded: bool) -> int:
     """Aircraft this squadron can actually launch this turn: min(untasked, available pilots),
-    0 if grounded (enemy-held base) or pilotless. Pilots don't cap it when pilot limits are
-    off. This is what the planner can really field — untasked alone overstates it."""
+    0 if grounded (enemy-held base or cratered runway / sunk hull) or pilotless. Pilots don't
+    cap it when pilot limits are off. This is what the planner can really field — untasked
+    alone overstates it."""
     if grounded or sq.untasked_aircraft <= 0:
         return 0
     if not sq.pilot_limits_enabled:
@@ -368,21 +370,30 @@ def _squadron_flyable(sq: Squadron, grounded: bool) -> int:
     return min(sq.untasked_aircraft, sq.number_of_available_pilots)
 
 
+def _squadron_grounded(sq: Squadron, player: Player | None) -> bool:
+    """The squadron can't launch this turn: its base is enemy-held, or the runway is
+    cratered / the carrier hull is sunk. The engine's mission planner excludes it either
+    way, so flag it rather than advertise phantom flyable aircraft to the planner."""
+    if player is not None and sq.location.captured != player:
+        return True
+    return not sq.location.runway_is_operational()
+
+
 def idle_flyable_total(game: Game, side: str) -> int:
     """Total launchable-now aircraft still untasked across the side's air wing (the headline
     'force left on the ramp' number)."""
     player = player_for_side(side)
     return sum(
-        _squadron_flyable(sq, sq.location.captured != player)
+        _squadron_flyable(sq, _squadron_grounded(sq, player))
         for sq in coalition_for_side(game, side).air_wing.iter_squadrons()
     )
 
 
 def build_squadron(sq: Squadron, player: Player | None = None) -> SquadronView:
-    # A squadron stranded at an enemy-held base cannot generate sorties — the
-    # engine's mission planner excludes it — so flag it instead of advertising
-    # phantom flyable aircraft to the planner.
-    grounded = player is not None and sq.location.captured != player
+    # A squadron that can't sortie (enemy-held base, or a cratered runway / sunk
+    # hull) is excluded by the engine's mission planner, so flag it instead of
+    # advertising phantom flyable aircraft to the planner.
+    grounded = _squadron_grounded(sq, player)
     return SquadronView(
         id=str(sq.id),
         name=str(sq),

@@ -68,12 +68,39 @@ def _preferred_aircraft(game: Game, side: str, squadron_id: str | None):
     return _resolve_squadron(game, side, squadron_id).aircraft
 
 
+def _free_aircraft_for(game: Game, side: str, flight_spec) -> int:
+    """Most untasked aircraft a single squadron has free for this flight — the pinned
+    squadron if `squadron_id` is set, else the best among squadrons capable of the task.
+    0 means none free (leave the count alone; the planner reports the shortage)."""
+    squadron_id = getattr(flight_spec, "squadron_id", None)
+    if squadron_id:
+        try:
+            return _resolve_squadron(game, side, squadron_id).untasked_aircraft
+        except Exception:
+            return 0
+    try:
+        task = _flight_type(flight_spec.task)
+    except ValueError:
+        return 0
+
+    def _capable(sq) -> bool:
+        try:
+            return bool(sq.capable_of(task))
+        except Exception:
+            return False
+
+    squadrons = views.coalition_for_side(game, side).air_wing.iter_squadrons()
+    return max((sq.untasked_aircraft for sq in squadrons if _capable(sq)), default=0)
+
+
 def _clamped_count(game: Game, side: str, flight_spec) -> int:
-    """Cap the requested count at the airframe's max_group_size — the SAME limit the
-    player's flight creator enforces (`min(available, aircraft.max_group_size)`). Without
-    it an over-large flight (e.g. 24 H-6J, whose max is 4) silently generates only
-    max_group_size units at mission build and loses the rest. For a bigger raid the LLM
-    must create several flights, exactly like the human."""
+    """Cap the requested count at the airframe's max_group_size AND at the aircraft
+    actually free — the SAME `min(available, aircraft.max_group_size)` the player's
+    flight creator enforces. The max_group_size cap stops an over-large flight (e.g. 24
+    H-6J, whose max is 4) silently generating only max_group_size units and losing the
+    rest; the availability cap auto-trims an over-ask (request 4, only 3 free -> plan 3)
+    into a partial flight instead of rejecting it. For a bigger raid than one squadron
+    can field the LLM still creates several flights, exactly like the human."""
     count = int(getattr(flight_spec, "count", 2))
     aircraft = None
     squadron_id = getattr(flight_spec, "squadron_id", None)
@@ -88,8 +115,11 @@ def _clamped_count(game: Game, side: str, flight_spec) -> int:
         candidates = AircraftType.priority_list_for_task(_flight_type(flight_spec.task))
         aircraft = candidates[0] if candidates else None
     if aircraft is not None:
-        return max(1, min(count, aircraft.max_group_size))
-    return count
+        count = min(count, aircraft.max_group_size)
+    available = _free_aircraft_for(game, side, flight_spec)
+    if available > 0:
+        count = min(count, available)
+    return max(1, count)
 
 
 @contextlib.contextmanager
