@@ -1,4 +1,5 @@
 class: Helicopter
+max_range: 130
 cabin_size: 6
 can_carry_crates: true
 carrier_capable: true

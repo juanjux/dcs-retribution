@@ -92,6 +92,10 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   ([#1](https://github.com/juanjux/dcs-retribution/pull/1))
 - **Best standoff/PGM loadouts for AI DEAD flights**, per airframe.
   ([#6](https://github.com/juanjux/dcs-retribution/pull/6))
+- **Realistic helicopter range** — carrier/LHA-capable transport helos (CH-53E,
+  CH-47D/F, SH-60B, UH-60A/L, UH-1H) get a proper `max_range` (their round-trip
+  combat radius) instead of the 50 nm helicopter default, so air-assault flights
+  are no longer under-ranged by the planner.
 - **Manual DEAD tasking** — non-DEAD-role aircraft can fly DEAD as a secondary task.
   ([#4](https://github.com/juanjux/dcs-retribution/pull/4))
 - **Money cheat for both coalitions** (OWNFOR + OPFOR).
