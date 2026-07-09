@@ -96,6 +96,12 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   CH-47D/F, SH-60B, UH-60A/L, UH-1H) get a proper `max_range` (their round-trip
   combat radius) instead of the 50 nm helicopter default, so air-assault flights
   are no longer under-ranged by the planner.
+  ([#64](https://github.com/juanjux/dcs-retribution/pull/64))
+- **One-way air assault ("remain at destination")** — a helicopter-only Air Assault
+  option: the helos land at the objective and do NOT return home, so a one-way assault
+  uses their full ferry range instead of a round-trip radius. At turn end the survivors
+  redeploy there if you capture the base, otherwise they are lost.
+  ([#64](https://github.com/juanjux/dcs-retribution/pull/64))
 - **Manual DEAD tasking** — non-DEAD-role aircraft can fly DEAD as a secondary task.
   ([#4](https://github.com/juanjux/dcs-retribution/pull/4))
 - **Money cheat for both coalitions** (OWNFOR + OPFOR).
