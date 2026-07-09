@@ -231,18 +231,26 @@ class MigrationUnpickler(pickle.Unpickler):
 
         if name.startswith("MIM104_"):
             return getattr(usamilitaryassetspack, "CH_" + name, None)
-        renames = {
-            "B_21": "CH_B_21",
-            "M142_HIMARS_GLSDB": "CH_M270A1_GLSDB",
-            "M142_HIMARS_ATACMS": "CH_M270A1_ATACMS",
-            "M142_HIMARS_GMLRS": "CH_M270A1_GMLRS",
-            "M142_HIMARS_PRSM": "CH_M270A1_GMLRS",
-            "M142_HIMARS_PRSM_ASHM": "CH_M270A1_GMLRS",
-            "CH_FMTV_M1083": "CH_MTVR",
-            "CH_OshkoshMATV_M2": "CH_OshkoshLATV_M2",
+        # Mod -> native DCS: ED shipped these as CHAP units, so migrate old saves to the
+        # native class (mirrors the CH Russia handler above and the groundunittype
+        # display-name migrator). The HIMARS variants ED didn't add (GLSDB / PrSM /
+        # PrSM-AShM) fall back to the closest native CHAP HIMARS.
+        from dcs.vehicles import Armor, Artillery, Unarmed
+
+        native = {
+            "M142_HIMARS_GLSDB": Artillery.CHAP_M142_GMLRS_M31,
+            "M142_HIMARS_ATACMS": Artillery.CHAP_M142_ATACMS_M48,
+            "M142_HIMARS_GMLRS": Artillery.CHAP_M142_GMLRS_M31,
+            "M142_HIMARS_PRSM": Artillery.CHAP_M142_ATACMS_M48,
+            "M142_HIMARS_PRSM_ASHM": Artillery.CHAP_M142_ATACMS_M48,
+            "CH_FMTV_M1083": Unarmed.CHAP_M1083,
+            "CH_OshkoshMATV_M2": Armor.CHAP_MATV,
         }
-        if name in renames:
-            return getattr(usamilitaryassetspack, renames[name], None)
+        if name in native:
+            return native[name]
+        # The B-21 has no native DCS equivalent -> a rename within the mod.
+        if name == "B_21":
+            return getattr(usamilitaryassetspack, "CH_B_21", None)
         return None
 
     def _handle_su30(self, module: str, name: str) -> Any:
