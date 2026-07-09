@@ -1,4 +1,5 @@
 class: Helicopter
+max_range: 145
 carrier_capable: true
 description:  # from https://en.wikipedia.org/wiki/Boeing_CH-47_Chinook
   In 2001, the CH-47F, an upgraded CH-47D, made its maiden flight. The first production model rolled out at Boeing's
