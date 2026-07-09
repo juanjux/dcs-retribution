@@ -155,6 +155,27 @@ class BuyGroundRequest(BaseModel):
     quantity: int = 1
 
 
+class RebuildGroupSpec(BaseModel):
+    group_name: str  # a group_name from ground_object_options
+    unit_type: str | None = (
+        None  # display name; None = the layout's first/default unit type
+    )
+    count: int | None = (
+        None  # None = the layout's default group_size; clamped to [1, max]
+    )
+    enabled: bool = True  # optional groups can be turned off
+
+
+class RebuildGroundObjectRequest(BaseModel):
+    side: str = "red"
+    tgo_id: str
+    force_group: str  # a force-group name from ground_object_options
+    layout: str  # a layout name from ground_object_options
+    groups: list[RebuildGroupSpec] = (
+        []
+    )  # optional per-group overrides; omit to use defaults
+
+
 class StanceRequest(BaseModel):
     side: str = "red"
     friendly_cp_id: str

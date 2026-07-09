@@ -296,6 +296,35 @@ class SettingsView(BaseModel):
     )
 
 
+class UnitTypeOption(BaseModel):
+    name: str
+    price: int
+
+
+class GroupSlotView(BaseModel):
+    group_name: str
+    optional: bool
+    default_count: int
+    max_count: int
+    unit_types: list[UnitTypeOption]
+
+
+class LayoutOption(BaseModel):
+    force_group: str
+    layout: str
+    price: int  # default price (all groups at default unit type + group_size)
+    groups: list[GroupSlotView]
+
+
+class GroundObjectOptionsView(BaseModel):
+    tgo_id: str
+    name: str
+    role: str  # "air_defense" | "ground_force" | "naval" | "defenses"
+    refund: int  # tgo.value, refunded when rebuilding
+    budget: int
+    options: list[LayoutOption]
+
+
 # --- builders ---
 
 
@@ -879,3 +908,138 @@ def build_prev_turns(game: Game, n: int = 3) -> list[TurnForcesView]:
             )
         )
     return out
+
+
+# --- ground-object rebuild (parity with the player's Buy-ground-object dialog) ---
+
+
+def _ground_object_role_and_tasks(tgo):
+    """(GroupRole, [GroupTask]) usable to rebuild a ground object, mirroring
+    QGroundObjectBuyMenu (SAM/EWR/armor/ship/missile/coastal). Raises ValueError for a
+    TGO type the dialog can't rebuild (e.g. a building)."""
+    from game.data.groups import GroupRole, GroupTask
+    from game.theater.theatergroundobject import (
+        CoastalSiteGroundObject,
+        EwrGroundObject,
+        MissileSiteGroundObject,
+        SamGroundObject,
+        ShipGroundObject,
+        VehicleGroupGroundObject,
+    )
+
+    tasks: list[GroupTask] = []
+    # EWR before SAM: EwrGroundObject is a subclass of IadsGroundObject like SAM, but
+    # SamGroundObject is not in its MRO — order is defensive, not load-bearing.
+    if isinstance(tgo, EwrGroundObject):
+        role = GroupRole.AIR_DEFENSE
+        tasks.append(GroupTask.EARLY_WARNING_RADAR)
+    elif isinstance(tgo, SamGroundObject):
+        role = GroupRole.AIR_DEFENSE
+    elif isinstance(tgo, VehicleGroupGroundObject):
+        role = GroupRole.GROUND_FORCE
+    elif isinstance(tgo, ShipGroundObject):
+        role = GroupRole.NAVAL
+        tasks.append(GroupTask.NAVY)
+    elif isinstance(tgo, MissileSiteGroundObject):
+        role = GroupRole.DEFENSES
+        tasks.append(GroupTask.MISSILE)
+    elif isinstance(tgo, CoastalSiteGroundObject):
+        role = GroupRole.DEFENSES
+        tasks.append(GroupTask.COASTAL)
+    else:
+        raise ValueError(
+            f"{getattr(tgo, 'name', tgo)} is a {type(tgo).__name__}, which can't be "
+            f"rebuilt (only SAM/EWR/armor/ship/missile/coastal sites)"
+        )
+    if not tasks:
+        tasks = role.tasks
+    return role, tasks
+
+
+def ground_object_role_tasks(tgo):
+    """The GroupTasks whose ForceGroups can rebuild ``tgo`` (see the dialog mapping)."""
+    return _ground_object_role_and_tasks(tgo)[1]
+
+
+def _resolve_tgo(game: Game, tgo_id: str, side: str):
+    """Resolve a ground-object id to a TGO you own, or raise ValueError."""
+    from uuid import UUID
+
+    try:
+        tgo = game.db.tgos.get(UUID(str(tgo_id)))
+    except (KeyError, ValueError, AttributeError, TypeError):
+        raise ValueError(f"no ground object with id {tgo_id!r}")
+    if tgo.control_point.captured != player_for_side(side):
+        raise ValueError(f"{tgo.name} is not yours")
+    return tgo
+
+
+def _layout_option(force_group, layout) -> LayoutOption | None:
+    """Build a LayoutOption for one force-group + layout, or None if it has no usable
+    unit group. Mirrors the QTgoLayoutGroupRow LayoutException skip (a unit_group with no
+    unit types AND no statics is dropped)."""
+    slots: list[GroupSlotView] = []
+    price = 0
+    for tgo_group in layout.groups:
+        for unit_group in tgo_group.unit_groups:
+            unit_types = [
+                UnitTypeOption(name=ut.display_name, price=int(ut.price))
+                for ut in force_group.unit_types_for_group(unit_group)
+            ]
+            has_static = (
+                next(force_group.statics_for_group(unit_group), None) is not None
+            )
+            if not unit_types and not has_static:
+                continue  # unusable by this faction — skip (LayoutException parity)
+            default_count = unit_group.group_size
+            slots.append(
+                GroupSlotView(
+                    group_name=tgo_group.group_name,
+                    optional=unit_group.optional,
+                    default_count=default_count,
+                    max_count=unit_group.max_size,
+                    unit_types=unit_types,
+                )
+            )
+            # Default price: non-optional (or would-be-enabled) groups at the first unit
+            # type * default count. Statics-only groups price at 0 (no unit types).
+            if not unit_group.optional and unit_types:
+                price += default_count * unit_types[0].price
+    if not slots:
+        return None
+    return LayoutOption(
+        force_group=force_group.name,
+        layout=layout.name,
+        price=int(price),
+        groups=slots,
+    )
+
+
+def build_ground_object_options(
+    game: Game, side: str, tgo_id: str
+) -> GroundObjectOptionsView:
+    """What a ground object (SAM/EWR/armor/ship/missile/coastal site) can be rebuilt into
+    and at what cost — the read behind the player's Buy-ground-object dialog. Lists every
+    force-group + layout available to the faction for this TGO's role, each layout's
+    selectable unit types and counts, and the default net price context (the old site's
+    ``value`` is refunded on rebuild)."""
+    tgo = _resolve_tgo(game, tgo_id, side)
+    role, tasks = _ground_object_role_and_tasks(tgo)
+    coalition = coalition_for_side(game, side)
+    options: list[LayoutOption] = []
+    for force_group in coalition.armed_forces.groups_for_tasks(tasks):
+        for layout in force_group.layouts:
+            try:
+                option = _layout_option(force_group, layout)
+            except Exception:
+                continue  # one bad layout must not sink the whole response
+            if option is not None:
+                options.append(option)
+    return GroundObjectOptionsView(
+        tgo_id=str(tgo.id),
+        name=tgo.name,
+        role=role.name.lower(),
+        refund=int(tgo.value),
+        budget=round(coalition.budget),
+        options=options,
+    )

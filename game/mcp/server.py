@@ -218,6 +218,38 @@ def buy_ground(side: str, cp_id: str, unit_name: str, quantity: int = 1) -> dict
 
 
 @mcp.tool()
+def ground_object_options(tgo_id: str, side: str = "red") -> dict:
+    """What one of YOUR ground objects (a SAM/EWR/armor/ship/missile/coastal site — a tgo
+    id from turn_context.targets or your own sites) can be REBUILT into: the force-groups,
+    layouts, and per-group selectable unit types + counts, with the default price and the
+    `refund` (the old site's value, credited back). Read this before rebuild_ground_object.
+    Returns {tgo_id, name, role, refund, budget, options:[{force_group, layout, price,
+    groups:[{group_name, optional, default_count, max_count, unit_types:[{name, price}]}]}]}.
+    """
+    return _dump(service.ground_object_options(side, tgo_id))
+
+
+@mcp.tool()
+def rebuild_ground_object(
+    tgo_id: str,
+    force_group: str,
+    layout: str,
+    groups: list[dict] | None = None,
+    side: str = "red",
+) -> dict:
+    """Replace/UPGRADE one of your ground objects (SAM/EWR/armor/ship/missile/coastal) with a
+    chosen `force_group` + `layout` (names from ground_object_options) — e.g. swap an SA-3
+    for an SA-10, or add TELs by raising a group's count. Optional `groups` overrides each
+    group: a list of {group_name, unit_type?, count?, enabled?} (group_name/unit_type from
+    ground_object_options; enabled turns an optional group off). Refunds the old group's
+    value and charges the net; free on turn 0; respects the campaign repair-delay (rebuilt
+    units arrive over the repair turns). Returns {ok, detail/error}."""
+    return _dump(
+        service.rebuild_ground_object(side, tgo_id, force_group, layout, groups)
+    )
+
+
+@mcp.tool()
 def set_stance(side: str, friendly_cp_id: str, enemy_cp_id: str, stance: str) -> dict:
     """Set the ground stance at the front between two control points."""
     return _dump(service.set_stance(side, friendly_cp_id, enemy_cp_id, stance))

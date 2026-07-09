@@ -227,7 +227,15 @@ The DCS AI that actually flies these missions is limited. Plan robustly around i
    a warning — it won't block the turn if you're holding them back on purpose.)
 8. **Spend to fix gaps.** Losing the air war? Buy fighters. Need to hold or push a
    front? Buy ground units and/or transfer them where needed. Bought aircraft arrive
-   next turn, so invest ahead.
+   next turn, so invest ahead. You can also **UPGRADE or REPLACE an existing
+   SAM/EWR/armor/ship/missile/coastal site**: `ground/options/{tgo_id}` (the tgo id from
+   `turn_context.targets` — for your own sites — or a repair target) lists the
+   force-groups, layouts and selectable unit types/counts it can become and the net cost
+   (the old site's value is **refunded**), then `ground/rebuild` does it — e.g. swap an
+   SA-3 for an SA-10 to re-close a corridor, add TELs by raising a group's count, or give
+   a mobile group an AA-capable unit where the layout offers one. It respects the
+   repair-delay (rebuilt units arrive over the campaign's repair turns) and is **free on
+   turn 0**.
 9. **Record what you learned.** Use your scratchpad (stored_context) for multi-turn
    strategy and lessons about this player — it persists across turns and sessions.
 
@@ -493,6 +501,18 @@ Write bodies:
 - `POST /buy/aircraft` · `POST /sell/aircraft` `{side, squadron_id, quantity}`
 - `POST /buy/ground` `{side, cp_id, unit_name, quantity}` (only at a base with a
   factory/front — `cp.has_ground_unit_source`)
+- `GET /ground/options/{tgo_id}?side=red` → what one of YOUR ground objects (a
+  SAM/EWR/armor/ship/missile/coastal site) can be **rebuilt** into: `{tgo_id, name, role,
+  refund` (the old site's value, credited back on rebuild)`, budget, options:[{force_group,
+  layout, price` (default), `groups:[{group_name, optional, default_count, max_count,
+  unit_types:[{name, price}]}]}]}`. Read it before `/ground/rebuild`.
+- `POST /ground/rebuild` `{side, tgo_id, force_group, layout, groups?}` — replace/UPGRADE
+  that site with the chosen `force_group` + `layout` (names from `/ground/options`). Optional
+  `groups` overrides each group: `[{group_name, unit_type?` (a `name` from the options),
+  `count?, enabled?` (turn an optional group off)`]`. It **refunds** the old group's value and
+  charges the net (free on turn 0), and respects the repair-delay (rebuilt units arrive over
+  the campaign's repair turns). Use it to swap a weak SAM for a stronger one, add TELs, or
+  re-close a strike corridor.
 - `POST /stances` `{side, friendly_cp_id, enemy_cp_id, stance}`
 - `POST /squadron/relocate` `{side, squadron_id, dest_cp_id}` (move a squadron to
   another friendly base; arrives over time)

@@ -197,6 +197,28 @@ def buy_ground(body: schemas.BuyGroundRequest) -> schemas.OpResult:
     return service.buy_ground(body.side, body.cp_id, body.unit_name, body.quantity)
 
 
+@router.get("/ground/options/{tgo_id}", operation_id="ai_ground_options")
+def ground_options(tgo_id: str, side: str = "red") -> views.GroundObjectOptionsView:
+    """What a SAM/EWR/armor/ship/missile/coastal site can be rebuilt into: force-groups,
+    layouts, selectable unit types + counts, and the net cost (the old site is refunded).
+    """
+    return service.ground_object_options(side, tgo_id)
+
+
+@router.post(
+    "/ground/rebuild",
+    operation_id="ai_rebuild_ground",
+    response_model=schemas.OpResult,
+    response_model_exclude_none=True,
+)
+def rebuild_ground(body: schemas.RebuildGroundObjectRequest) -> schemas.OpResult:
+    """Replace/upgrade a ground object with a chosen force-group + layout (optional
+    per-group unit-type/count overrides). Refunds the old group; free on turn 0."""
+    return service.rebuild_ground_object(
+        body.side, body.tgo_id, body.force_group, body.layout, body.groups
+    )
+
+
 @router.post(
     "/stances",
     operation_id="ai_set_stance",

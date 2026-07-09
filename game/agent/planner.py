@@ -1164,3 +1164,152 @@ def transfer_ground(
         )
     except Exception as exc:
         return schemas.OpResult(ok=False, error=str(exc))
+
+
+def rebuild_ground_object(
+    game: Game,
+    side: str,
+    tgo_id: str,
+    force_group: str,
+    layout: str,
+    groups=None,
+) -> schemas.OpResult:
+    """Replace/upgrade a ground object (SAM/EWR/armor/ship/missile/coastal) with a chosen
+    force-group + layout, mirroring the player's Buy-ground-object dialog. Optional per-group
+    overrides set the unit type and count. Refunds the old group's value, charges the net,
+    respects repair-delay. Free on turn 0."""
+    coalition = views.coalition_for_side(game, side)
+    player = views.player_for_side(side)
+    try:
+        tgo = views._resolve_tgo(game, tgo_id, side)
+        tasks = views.ground_object_role_tasks(tgo)
+
+        available_groups = coalition.armed_forces.groups_for_tasks(tasks)
+        fg = next((g for g in available_groups if g.name == force_group), None)
+        if fg is None:
+            valid = ", ".join(g.name for g in available_groups) or "none"
+            raise ValueError(
+                f"no force group {force_group!r} for {tgo.name} (valid: {valid})"
+            )
+        tgo_layout = next((l for l in fg.layouts if l.name == layout), None)
+        if tgo_layout is None:
+            valid = ", ".join(l.name for l in fg.layouts) or "none"
+            raise ValueError(f"no layout {layout!r} in {force_group} (valid: {valid})")
+
+        overrides = {
+            spec.group_name: spec for spec in (_rebuild_specs(groups) if groups else [])
+        }
+
+        # Build the concrete selection (mirror QTgoLayoutGroupRow defaults + overrides).
+        selections: list[tuple] = []  # (unit_group, group_name, dcs_unit_type, count)
+        for tgo_group in tgo_layout.groups:
+            for unit_group in tgo_group.unit_groups:
+                unit_types = list(fg.unit_types_for_group(unit_group))
+                statics = list(fg.statics_for_group(unit_group))
+                if not unit_types and not statics:
+                    continue  # unusable by this faction (LayoutException parity)
+                override = overrides.get(tgo_group.group_name)
+                # Optional groups can be turned off; required ones are always on.
+                enabled = (
+                    (override.enabled if override is not None else True)
+                    if unit_group.optional
+                    else True
+                )
+                if not enabled:
+                    continue
+                # Unit type: an override's named type (validated against this group), else
+                # the first available unit type, else the first static (price 0).
+                if override is not None and override.unit_type:
+                    dcs_unit_type = None
+                    unit_price = 0
+                    for ut in unit_types:
+                        if ut.display_name == override.unit_type:
+                            dcs_unit_type = ut.dcs_unit_type
+                            unit_price = int(ut.price)
+                            break
+                    if dcs_unit_type is None:
+                        valid = (
+                            ", ".join(ut.display_name for ut in unit_types) or "none"
+                        )
+                        raise ValueError(
+                            f"{override.unit_type!r} is not available for group "
+                            f"{tgo_group.group_name!r} (valid: {valid})"
+                        )
+                elif unit_types:
+                    dcs_unit_type = unit_types[0].dcs_unit_type
+                    unit_price = int(unit_types[0].price)
+                else:
+                    dcs_unit_type = statics[0]
+                    unit_price = 0
+                requested = (
+                    override.count
+                    if override is not None and override.count is not None
+                    else unit_group.group_size
+                )
+                count = max(1, min(int(requested), unit_group.max_size))
+                selections.append(
+                    (unit_group, tgo_group.group_name, dcs_unit_type, count, unit_price)
+                )
+
+        if not selections:
+            raise ValueError(
+                f"no usable groups for {force_group}/{layout} at {tgo.name}"
+            )
+
+        price = sum(count * unit_price for *_, count, unit_price in selections)
+        refund = int(tgo.value)
+        cost = price - refund
+        if cost > coalition.budget and game.turn != 0:
+            raise ValueError(
+                f"need {int(cost)}M, have {round(coalition.budget)}M "
+                f"(price {int(price)}M - refund {refund}M)"
+            )
+
+        # Apply (mirror QGroundObjectTemplateLayout.buy_group).
+        tgo.heading = game.theater.heading_to_conflict_from(tgo.position) or tgo.heading
+        coalition.budget -= cost if game.turn else 0
+        tgo.groups = []
+        for unit_group, group_name, dcs_unit_type, count, _price in selections:
+            fg.create_theater_group_for_tgo(
+                tgo,
+                unit_group,
+                f"{tgo.name} ({group_name})",
+                game,
+                dcs_unit_type,
+                count,
+            )
+        repair_turns = game.settings.ground_object_repair_turns
+        if game.turn and repair_turns > 0:
+            # Player purchases respect repair delays like AI repairs.
+            for unit in tgo.units:
+                if not getattr(unit, "repairable", False):
+                    continue
+                unit.alive = False
+                unit.repair_turns_remaining = repair_turns
+
+        events = _new_map_events()
+        events.update_tgo(tgo)
+        _push_map_events(events)
+        sign = "-" if cost >= 0 else "+"
+        return schemas.OpResult(
+            ok=True,
+            detail=(
+                f"rebuilt {tgo.name} as {force_group}/{layout} "
+                f"(net {sign}{abs(int(cost))}M; budget {round(coalition.budget)}M)"
+            ),
+        )
+    except Exception as exc:
+        return schemas.OpResult(ok=False, error=str(exc))
+
+
+def _rebuild_specs(groups):
+    """Coerce the ``groups`` argument (RebuildGroupSpec objects OR dicts) to
+    RebuildGroupSpec, so both transports (REST models, MCP dicts) work."""
+    out = []
+    for g in groups:
+        out.append(
+            g
+            if isinstance(g, schemas.RebuildGroupSpec)
+            else schemas.RebuildGroupSpec(**g)
+        )
+    return out

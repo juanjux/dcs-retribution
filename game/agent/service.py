@@ -143,6 +143,7 @@ def capabilities() -> dict:
             "aircraft/pylons (weapons each pylon accepts, to build a custom payload)",
             "aircraft/loadouts (named ready-made loadouts for an airframe)",
             "waypoints/{flight_id} (a flight's waypoints, to adjust its route)",
+            "ground/options/{tgo_id} (what a SAM/EWR/armor/ship site can be rebuilt into + costs)",
             "validate",
             "prev_turns",
             "turn_status",
@@ -159,6 +160,7 @@ def capabilities() -> dict:
             "buy/aircraft",
             "sell/aircraft",
             "buy/ground",
+            "ground/rebuild (replace/upgrade a SAM/EWR/armor/ship site: pick force-group + layout, override unit type/count; refunds the old group)",
             "stances",
             "squadron/relocate",
             "ground/transfer",
@@ -298,6 +300,20 @@ def transfer_ground(
 
     return planner.transfer_ground(
         _require_game(), side, origin_cp_id, dest_cp_id, unit_name, quantity, by_air
+    )
+
+
+def ground_object_options(side, tgo_id):
+    from game.agent import views
+
+    return views.build_ground_object_options(_require_game(), side, tgo_id)
+
+
+def rebuild_ground_object(side, tgo_id, force_group, layout, groups=None):
+    from game.agent import planner
+
+    return planner.rebuild_ground_object(
+        _require_game(), side, tgo_id, force_group, layout, groups
     )
 
 
