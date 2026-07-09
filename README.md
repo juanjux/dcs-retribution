@@ -138,18 +138,24 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   ([#31](https://github.com/juanjux/dcs-retribution/pull/31),
   [#32](https://github.com/juanjux/dcs-retribution/pull/32),
   [#33](https://github.com/juanjux/dcs-retribution/pull/33))
-- **F/A-18C AGM-88G AARGM-ER (SYNTAX)** — optional-mod toggle in the New Game
+- **F/A-18C AGM-88G AARGM-ER (by SYNTAX)** — optional-mod toggle in the New Game
   wizard; when enabled, the F/A-18 family carries the AGM-88G AARGM-ER from the
   [SYNTAX mod](https://files.digitalcombatsimulator.com/en/files/3350041/) in
   place of the stock AGM-88C HARM in its SEAD loadouts. A second, mutually
   exclusive "Realistic mode" toggle scopes it to the Super Hornets (F/A-18E/F,
   EA-18G) only — without the legacy F/A-18C, which never carried the AARGM-ER.
   ([#65](https://github.com/juanjux/dcs-retribution/pull/65))
-- **F/A-18C AGM-158C LRASM (SYNTAX)** — optional-mod toggle; when enabled, the
+- **F/A-18C AGM-158C LRASM (by SYNTAX)** — optional-mod toggle; when enabled, the
   F/A-18C's anti-ship loadout is labelled as the AGM-158C LRASM from the
   [SYNTAX mod](https://files.digitalcombatsimulator.com/en/files/3349943/), which
   replaces the stock Harpoon in place with a 370 km LRASM.
   ([#66](https://github.com/juanjux/dcs-retribution/pull/66))
+- **F/A-18C AGM-158B JASSM-ER (by SYNTAX)** — optional-mod toggle; when enabled,
+  the JSOW-A (`{AGM-154A}`) is labelled as the AGM-158B JASSM-ER from the
+  [SYNTAX mod](https://files.digitalcombatsimulator.com/en/files/3349938/), which
+  replaces the stock JSOW-A in place with a 925 km stealthy cruise missile on
+  every carrier of that slot (F/A-18C, F-15E, F-16).
+  ([#67](https://github.com/juanjux/dcs-retribution/pull/67))
 
 ### Fixes
 - HIMARS units the current Currenthill USA pack (1.5.0) no longer ships are dropped
