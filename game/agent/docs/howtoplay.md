@@ -446,7 +446,7 @@ impact counts are not tracked — read the *result* here, plus the target's live
 
 Write bodies:
 - `POST /packages` `{side, packages:[{target_id, flights:[{task, count, escort?,
-  squadron_id?, loadout?}], rationale, ignore_range?, tot_minutes?}]}` — `ignore_range:true` plans even
+  squadron_id?, loadout?, remain?}], rationale, ignore_range?, tot_minutes?}]}` — `ignore_range:true` plans even
   when the target is past the auto-planner's range limit. Per-flight you may FORCE the
   airframe with `squadron_id` (from `turn_context.air_wing`) — even one the auto-planner
   wouldn't pick, exactly like the human tasking it by hand — and set the `loadout`: either
@@ -458,6 +458,10 @@ Write bodies:
   24 H-6J = six 4-ship flights), not one flight of 24 (which would silently field only 4).
   `count` is ALSO auto-trimmed to the aircraft actually free (ask 4 with 3 free -> a
   3-ship flight is planned, not a rejection), so you needn't pre-match it to `flyable`.
+  For a helicopter AIR_ASSAULT flight, `remain:true` makes it a one-way assault: the
+  helos land at the objective and do NOT return, so it uses their full ferry range (not
+  round-trip). At turn end the survivors redeploy there if you CAPTURE the base, else
+  they are lost. Helicopters only; ignored for other tasks/airframes.
   Set `tot_minutes` (minutes after mission start, 0 = start; same unit `evaluate` returns as
   `tot_minutes_into_mission`) to fix that package's Time-On-Target; omit it for ASAP. Use it to
   **stagger or synchronise** packages — e.g. give co-target flights slightly different TOTs so

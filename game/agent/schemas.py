@@ -26,6 +26,12 @@ class FlightSpec(BaseModel):
         # OR a custom {pylon_number: weapon_clsid} map (build it from /aircraft/pylons).
         # Omit to use the engine default for the task.
     )
+    remain: bool = (
+        False  # AIR_ASSAULT helicopters only: land at the objective and do NOT return
+        # home (one-way assault, uses full ferry range). At turn end the survivors
+        # redeploy there if you capture the base, else they're lost. Mirrors the player's
+        # "Remain at the assault destination" checkbox; ignored for other tasks/airframes.
+    )
 
 
 class PackageSpec(BaseModel):

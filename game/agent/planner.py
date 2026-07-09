@@ -183,6 +183,30 @@ def _apply_loadouts(package, flight_specs) -> None:
             break
 
 
+def _apply_remain(package, flight_specs) -> None:
+    """Flag matching helo AIR_ASSAULT flights to remain at the objective (land + stay,
+    no return leg) and rebuild the plan so the return leg is dropped -- the player's
+    "Remain at the assault destination" checkbox. Ignored for non-helo / non-air-assault
+    flights (only helos can be one-way assaulted)."""
+    used: set[int] = set()
+    for flight_spec in flight_specs:
+        if not getattr(flight_spec, "remain", False):
+            continue
+        if _flight_type(flight_spec.task) != FlightType.AIR_ASSAULT:
+            continue
+        for flight in package.flights:
+            if (
+                id(flight) in used
+                or flight.flight_type != FlightType.AIR_ASSAULT
+                or not flight.is_helo
+            ):
+                continue
+            flight.remain_at_destination = True
+            flight.recreate_flight_plan()
+            used.add(id(flight))
+            break
+
+
 def _apply_tot(package, spec, now: datetime) -> None:
     """Set the package's Time-On-Target from the spec: a manual TOT (``tot_minutes`` into
     the mission) when given, else ASAP. Mirrors the player's set_tot/set_asap — flight-plan
@@ -464,6 +488,7 @@ def create_packages(
                     continue
                 coalition.ato.add_package(package)
                 _apply_loadouts(package, keep)
+                _apply_remain(package, keep)
                 _apply_tot(package, spec, now)
                 if spec.rationale:
                     package.custom_name = spec.rationale
@@ -528,6 +553,7 @@ def evaluate_package(
         coalition.ato.add_package(package)
         try:
             _apply_loadouts(package, spec.flights)
+            _apply_remain(package, spec.flights)
             _apply_tot(package, spec, now)
             view = views.build_package(-1, package)
             tot = package.time_over_target
