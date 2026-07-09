@@ -1,6 +1,8 @@
 from types import SimpleNamespace
+from typing import cast
 
 from game.missiongenerator.triggergenerator import TriggerGenerator
+from game.theater import ControlPoint
 
 
 def _condition_names(trigger: object) -> list[str]:
@@ -18,7 +20,7 @@ def test_recapture_trigger_reverts_on_attacker_absence() -> None:
     # _create_capture_trigger only builds a TriggerCondition; it touches neither
     # self.mission nor self.game, so an uninitialised instance is enough.
     gen = object.__new__(TriggerGenerator)
-    cp = SimpleNamespace(id="cp-1", full_name="Test Base")
+    cp = cast(ControlPoint, SimpleNamespace(id="cp-1", full_name="Test Base"))
 
     capture = gen._create_capture_trigger(1, 600, "red", "blue", 1, cp)
     recapture = gen._create_capture_trigger(

@@ -33,6 +33,7 @@ COMMIT_STEPS = [
     "commit_ground_losses",
     "commit_damaged_runways",
     "commit_captures",
+    "commit_air_assault_remain",
     "commit_front_line_battle_impact",
     "record_carcasses",
 ]

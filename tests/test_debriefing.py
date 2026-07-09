@@ -57,6 +57,12 @@ def _sample_debriefing() -> Debriefing:
     debriefing.air_losses = air
     debriefing.ground_losses = ground
     debriefing.base_captures = captures
+    # The aircraft headline honours the "crashes don't count" doctrine, so
+    # loss_counts reads game.settings; stub it (off = count every air loss).
+    debriefing.game = cast(
+        Any,
+        SimpleNamespace(settings=SimpleNamespace(ignore_non_combat_air_losses=False)),
+    )
     return debriefing
 
 
