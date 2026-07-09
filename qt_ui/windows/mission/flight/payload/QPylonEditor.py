@@ -5,12 +5,11 @@ from typing import Optional
 from PySide6.QtWidgets import QComboBox, QWidget, QHBoxLayout, QPushButton
 from PySide6.QtGui import QIcon
 from PySide6.QtCore import Qt
-from dcs.planes import FA_18C_hornet
 
 from game import Game
 from game.ato.flight import Flight
 from game.ato.flightmember import FlightMember
-from game.ato.loadouts import Loadout
+from game.ato.loadouts import Loadout, aargm_er_active
 from game.data.weapons import Pylon, Weapon
 from .QWeaponSettingsDialog import QWeaponSettingsDialog
 
@@ -42,7 +41,7 @@ class QPylonEditor(QWidget):
             )
         else:
             weapons = pylon.allowed
-        allowed = sorted(weapons, key=operator.attrgetter("name"))
+        allowed = self._with_aargm_er(sorted(weapons, key=operator.attrgetter("name")))
         for i, weapon in enumerate(allowed):
             self.weapon_combo.addItem(self._weapon_label(weapon), weapon)
             if current == weapon:
@@ -63,27 +62,30 @@ class QPylonEditor(QWidget):
 
         self.update_settings_button_visibility()
 
+    def _with_aargm_er(self, allowed: list[Weapon]) -> list[Weapon]:
+        # The SYNTAX AARGM-ER mod only wires {PPC_AGM-88G} onto the F/A-18C's pylons; when
+        # it also applies to a Super Hornet, offer it on that airframe's HARM-capable
+        # pylons too so it shows in the dropdown (the default loadout already mounts it).
+        mods = getattr(self.flight.squadron.coalition.faction, "mod_settings", None)
+        if not aargm_er_active(mods, self.flight.unit_type.dcs_unit_type.id):
+            return allowed
+        aargm = Weapon.with_clsid("{PPC_AGM-88G}")
+        if aargm is None or aargm in allowed:
+            return allowed
+        if not any(w.weapon_group.name == "AGM-88C HARM" for w in allowed):
+            return allowed
+        return allowed + [aargm]
+
     def _weapon_label(self, weapon: Weapon) -> str:
-        # SYNTAX AGM-88G AARGM-ER mod: give the AARGM-ER a clear, mod-attributed
-        # name in the F/A-18C's pylon dropdown when the mod is enabled.
-        if (
-            weapon.clsid == "{PPC_AGM-88G}"
-            and self.flight.unit_type.dcs_unit_type.id == FA_18C_hornet.id
-            and getattr(
-                self.flight.squadron.coalition.faction.mod_settings,
-                "fa18c_aargm_er",
-                False,
-            )
-        ):
+        mods = getattr(self.flight.squadron.coalition.faction, "mod_settings", None)
+        aircraft_id = self.flight.unit_type.dcs_unit_type.id
+        # SYNTAX AGM-88G AARGM-ER mod: clear mod-attributed name on any F/A-18 the mod
+        # applies to (base toggle = all Hornets, realistic toggle = Super Hornets only).
+        if weapon.clsid == "{PPC_AGM-88G}" and aargm_er_active(mods, aircraft_id):
             return "AGM-88G AARGM-ER High Speed Anti-Radiation Missile (SYNTAX mod)"
-        # SYNTAX AGM-158C LRASM mod: it redefines the {AGM_84D} Harpoon in place, so
-        # any {AGM_84D} carrier (the Hornet family) now fires a LRASM -- label it as
-        # such when the mod is enabled.
-        if weapon.clsid == "{AGM_84D}" and getattr(
-            self.flight.squadron.coalition.faction.mod_settings,
-            "fa18c_lrasm",
-            False,
-        ):
+        # SYNTAX AGM-158C LRASM mod: it redefines the {AGM_84D} Harpoon in place, so any
+        # {AGM_84D} carrier (the Hornet family) now fires a LRASM -- label it as such.
+        if weapon.clsid == "{AGM_84D}" and getattr(mods, "fa18c_lrasm", False):
             return "AGM-158C LRASM Long Range Anti-Ship Missile (SYNTAX mod)"
         return weapon.name
 

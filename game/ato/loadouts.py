@@ -58,6 +58,28 @@ def set_default_loadout_override(
         json.dump(data, f, indent=2)
 
 
+#: DCS ids of the Super Hornet family the SYNTAX AARGM-ER "realistic" toggle covers.
+_AARGM_ER_SUPER_HORNET_IDS = ("FA-18E", "FA-18F", "EA-18G")
+
+
+def aargm_er_active(mod_settings: Any, aircraft_id: str) -> bool:
+    """Whether the SYNTAX AGM-88G AARGM-ER should replace the HARM on this airframe. The
+    base ``fa18c_aargm_er`` toggle covers the whole F/A-18 family (legacy C + the Super
+    Hornets); the ``fa18c_aargm_er_realistic`` toggle covers only the Super Hornets
+    (E/F/G, no C). The two are mutually exclusive in the New Game wizard."""
+    from dcs.planes import FA_18C_hornet
+
+    if mod_settings is None:
+        return False
+    all_hornets = getattr(mod_settings, "fa18c_aargm_er", False)
+    super_only = getattr(mod_settings, "fa18c_aargm_er_realistic", False)
+    if aircraft_id == FA_18C_hornet.id:
+        return all_hornets
+    if aircraft_id in _AARGM_ER_SUPER_HORNET_IDS:
+        return all_hornets or super_only
+    return False
+
+
 class Loadout:
     def __init__(
         self,
@@ -342,16 +364,13 @@ class Loadout:
 
     @staticmethod
     def _apply_fa18c_aargm_er(flight: Flight, loadout: Loadout) -> Loadout:
-        """SYNTAX AGM-88G AARGM-ER mod: with it enabled, the F/A-18C carries the
-        AARGM-ER in place of the stock AGM-88C HARM (the mod removes the HARM from its
-        pylons). Gated on the per-faction mod setting, so factions without the mod keep
-        the HARM. Returns a clone with the swap so the cached loadout is untouched."""
+        """SYNTAX AGM-88G AARGM-ER mod: with it enabled, the F/A-18 carries the AARGM-ER
+        in place of the stock AGM-88C HARM in its SEAD loadouts. The base toggle covers
+        the whole F/A-18 family (C + Super Hornets); the 'realistic' toggle only the
+        Super Hornets. Returns a clone with the swap so the cached loadout is untouched.
+        """
         mod_settings = getattr(flight.coalition.faction, "mod_settings", None)
-        if mod_settings is None or not getattr(mod_settings, "fa18c_aargm_er", False):
-            return loadout
-        from dcs.planes import FA_18C_hornet
-
-        if flight.unit_type.dcs_unit_type.id != FA_18C_hornet.id:
+        if not aargm_er_active(mod_settings, flight.unit_type.dcs_unit_type.id):
             return loadout
         aargm = Weapon.with_clsid("{PPC_AGM-88G}")
         if aargm is None:
