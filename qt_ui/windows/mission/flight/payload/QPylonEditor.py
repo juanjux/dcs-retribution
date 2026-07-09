@@ -92,6 +92,10 @@ class QPylonEditor(QWidget):
             False,
         ):
             return "AGM-158C LRASM Long Range Anti-Ship Missile (SYNTAX mod)"
+        # SYNTAX AGM-158B JASSM-ER mod: it redefines the {AGM-154A} JSOW-A in place, so any
+        # {AGM-154A} carrier (F/A-18C, F-15E, F-16) now fires a JASSM-ER -- label it so.
+        if weapon.clsid == "{AGM-154A}" and getattr(mods, "fa18c_jassm", False):
+            return "AGM-158B JASSM-ER Long Range Cruise Missile (SYNTAX mod)"
         return weapon.name
 
     def update_settings_button_visibility(self) -> None:
