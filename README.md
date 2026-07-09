@@ -143,6 +143,11 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   [SYNTAX mod](https://files.digitalcombatsimulator.com/en/files/3350041/) in
   place of the stock AGM-88C HARM in its SEAD loadouts.
   ([#65](https://github.com/juanjux/dcs-retribution/pull/65))
+- **F/A-18C AGM-158C LRASM (SYNTAX)** — optional-mod toggle; when enabled, the
+  F/A-18C's anti-ship loadout is labelled as the AGM-158C LRASM from the
+  [SYNTAX mod](https://files.digitalcombatsimulator.com/en/files/3349943/), which
+  replaces the stock Harpoon in place with a 370 km LRASM.
+  ([#66](https://github.com/juanjux/dcs-retribution/pull/66))
 
 ### Fixes
 - HIMARS units the current Currenthill USA pack (1.5.0) no longer ships are dropped
