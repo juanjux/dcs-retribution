@@ -818,6 +818,7 @@ class AirWingConfigurationDialog(QDialog):
         self, game: Game, aircraft_present: bool, parent, cheat: bool = False
     ) -> None:
         super().__init__(parent)
+        self.cheat = cheat
         self.setMinimumSize(1024, 768)
         self.setWindowTitle(f"Air Wing Configuration")
         # TODO: self.setWindowIcon()
@@ -971,7 +972,11 @@ class AirWingConfigurationDialog(QDialog):
     def accept(self) -> None:
         for tab in self.tabs:
             tab.apply()
-            if tab.coalition.game.turn != 0:
+            # Local truco: when the Air Wing cheat is used mid-campaign, DON'T re-init the
+            # turn — initialize_turn() clears the ATO and re-plans (blue) / empties (red)
+            # the packages. Keep the existing plan; the player re-plans by hand. The wing
+            # changes are still applied via tab.apply(). (Turn 0 already skips this.)
+            if tab.coalition.game.turn != 0 and not self.cheat:
                 tab.coalition.initialize_turn(False)
         super().accept()
 
