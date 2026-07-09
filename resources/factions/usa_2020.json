@@ -140,10 +140,7 @@
     "[CH] Ticonderoga CMP Cruiser"
   ],
   "missiles": [
-    "[CH] M270A1 MLRS (ATACMS)",
-    "[CH] M142 HIMARS (ATACMS)",
-    "[CH] M142 HIMARS (PrSM)",
-    "[CH] M142 HIMARS (PrSM AShM)"
+    "[CH] M270A1 MLRS (ATACMS)"
   ],
   "air_defense_units": [
     "EWR AN/FPS-117 Radar",
