@@ -83,6 +83,15 @@ class QPylonEditor(QWidget):
         # applies to (base toggle = all Hornets, realistic toggle = Super Hornets only).
         if weapon.clsid == "{PPC_AGM-88G}" and aargm_er_active(mods, aircraft_id):
             return "AGM-88G AARGM-ER High Speed Anti-Radiation Missile (SYNTAX mod)"
+        # SYNTAX AGM-158C LRASM mod: it redefines the {AGM_84D} Harpoon in place, so
+        # any {AGM_84D} carrier (the Hornet family) now fires a LRASM -- label it as
+        # such when the mod is enabled.
+        if weapon.clsid == "{AGM_84D}" and getattr(
+            self.flight.squadron.coalition.faction.mod_settings,
+            "fa18c_lrasm",
+            False,
+        ):
+            return "AGM-158C LRASM Long Range Anti-Ship Missile (SYNTAX mod)"
         return weapon.name
 
     def update_settings_button_visibility(self) -> None:

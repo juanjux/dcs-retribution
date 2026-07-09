@@ -134,6 +134,8 @@ class GeneratorOptions(QtWidgets.QWizardPage):
         self.fa18c_aargm_er_realistic.toggled.connect(
             lambda on: on and self.fa18c_aargm_er.setChecked(False)
         )
+        self.fa18c_lrasm = QtWidgets.QCheckBox()
+        self.registerField("fa18c_lrasm", self.fa18c_lrasm)
         self.f22_raptor = QtWidgets.QCheckBox()
         self.registerField("f22_raptor", self.f22_raptor)
         self.f84g_thunderjet = QtWidgets.QCheckBox()
@@ -264,6 +266,7 @@ class GeneratorOptions(QtWidgets.QWizardPage):
                 "without F/A-18C) by SYNTAX",
                 self.fa18c_aargm_er_realistic,
             ),
+            ("F/A-18C AGM-158C LRASM by SYNTAX", self.fa18c_lrasm),
             ("F-84G Thunderjet (v2.5.7.01)", self.f84g_thunderjet),
             ("F-111C Aardvark (Warpig Production v2.260208)", self.f111c),
             ("F9F Panther (v2.8.7.101)", self.f9f_panther),
@@ -350,6 +353,7 @@ class GeneratorOptions(QtWidgets.QWizardPage):
         self.fa18c_aargm_er_realistic.setChecked(
             s.get("fa18c_aargm_er_realistic", False)
         )
+        self.fa18c_lrasm.setChecked(s.get("fa18c_lrasm", False))
         self.f22_raptor.setChecked(s.get("f22_raptor", False))
         self.f84g_thunderjet.setChecked(s.get("f84g_thunderjet", False))
         self.f100_supersabre.setChecked(s.get("f100_supersabre", False))
