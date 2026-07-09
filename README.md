@@ -138,6 +138,10 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   ([#31](https://github.com/juanjux/dcs-retribution/pull/31),
   [#32](https://github.com/juanjux/dcs-retribution/pull/32),
   [#33](https://github.com/juanjux/dcs-retribution/pull/33))
+- **F/A-18C AGM-88G AARGM-ER (SYNTAX)** — optional-mod toggle in the New Game
+  wizard; when enabled, the F/A-18C carries the AGM-88G AARGM-ER in place of the
+  stock AGM-88C HARM in its SEAD loadouts.
+  ([#65](https://github.com/juanjux/dcs-retribution/pull/65))
 
 ### Fixes
 - HIMARS units the current Currenthill USA pack (1.5.0) no longer ships are dropped
