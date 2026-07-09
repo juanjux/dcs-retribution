@@ -123,13 +123,15 @@ class GroundUnitType(UnitType[Type[VehicleType]]):
             # native DCS equivalents (the CHAP-prefixed units). Migrate old saves to the
             # native CHAP unit where one exists; the HIMARS variants ED didn't add
             # (GLSDB / PrSM / PrSM-AShM) fall back to the closest native CHAP HIMARS.
-            "[CH] M142 HIMARS (GLSDB)": "MLRS M142 HIMARS GMLRS HE [CH]",
-            "[CH] M142 HIMARS (ATACMS)": "MLRS M142 HIMARS ATACMS HE [CH]",
-            "[CH] M142 HIMARS (GMLRS)": "MLRS M142 HIMARS GMLRS HE [CH]",
-            "[CH] M142 HIMARS (PrSM)": "MLRS M142 HIMARS ATACMS HE [CH]",
-            "[CH] M142 HIMARS (PrSM AShM)": "MLRS M142 HIMARS ATACMS HE [CH]",
-            "[CH] Oshkosh FMTV M1083": "Truck M1083 A1P2 MTV [CH]",
-            "[CH] Oshkosh M-ATV MRAP (M2)": "APC MRAP M-ATV [CH]",
+            # Values are the target's DISPLAY NAME (what named() resolves by); the DCS
+            # type id each maps to is noted after the line.
+            "[CH] M142 HIMARS (GLSDB)": "MLRS M142 HIMARS GMLRS HE [CH]",  # CHAP_M142_GMLRS_M31
+            "[CH] M142 HIMARS (ATACMS)": "MLRS M142 HIMARS ATACMS HE [CH]",  # CHAP_M142_ATACMS_M48
+            "[CH] M142 HIMARS (GMLRS)": "MLRS M142 HIMARS GMLRS HE [CH]",  # CHAP_M142_GMLRS_M31
+            "[CH] M142 HIMARS (PrSM)": "MLRS M142 HIMARS ATACMS HE [CH]",  # CHAP_M142_ATACMS_M48
+            "[CH] M142 HIMARS (PrSM AShM)": "MLRS M142 HIMARS ATACMS HE [CH]",  # CHAP_M142_ATACMS_M48
+            "[CH] Oshkosh FMTV M1083": "Truck M1083 A1P2 MTV [CH]",  # CHAP_M1083
+            "[CH] Oshkosh M-ATV MRAP (M2)": "APC MRAP M-ATV [CH]",  # CHAP_MATV
         }
 
     @classmethod
