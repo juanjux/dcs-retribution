@@ -87,6 +87,7 @@ class ModSettings:
     fa18c_aargm_er: bool = False
     fa18c_aargm_er_realistic: bool = False
     fa18c_lrasm: bool = False
+    fa18c_jassm: bool = False
     f22_raptor: bool = False
     f84g_thunderjet: bool = False
     f100_supersabre: bool = False
