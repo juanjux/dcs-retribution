@@ -124,6 +124,16 @@ class GeneratorOptions(QtWidgets.QWizardPage):
         self.registerField("fa18ef_tanker", self.fa18ef_tanker)
         self.fa18c_aargm_er = QtWidgets.QCheckBox()
         self.registerField("fa18c_aargm_er", self.fa18c_aargm_er)
+        self.fa18c_aargm_er_realistic = QtWidgets.QCheckBox()
+        self.registerField("fa18c_aargm_er_realistic", self.fa18c_aargm_er_realistic)
+        # Mutually exclusive: the AARGM-ER covers either the whole F/A-18 family or only
+        # the Super Hornets (realistic), not both.
+        self.fa18c_aargm_er.toggled.connect(
+            lambda on: on and self.fa18c_aargm_er_realistic.setChecked(False)
+        )
+        self.fa18c_aargm_er_realistic.toggled.connect(
+            lambda on: on and self.fa18c_aargm_er.setChecked(False)
+        )
         self.f22_raptor = QtWidgets.QCheckBox()
         self.registerField("f22_raptor", self.f22_raptor)
         self.f84g_thunderjet = QtWidgets.QCheckBox()
@@ -249,6 +259,11 @@ class GeneratorOptions(QtWidgets.QWizardPage):
             ("F-4B/C Phantom II (2.8.7.204)", self.f4bc_phantom),
             ("F-4E Expanded Weapons (v1.0.11)", self.f4e_expanded_weapons),
             ("F/A-18C AGM-88G AARGM-ER by SYNTAX", self.fa18c_aargm_er),
+            (
+                "F/A-18C AGM-88G AARGM-ER (Realistic mode: F/A-18E/F/G only, "
+                "without F/A-18C) by SYNTAX",
+                self.fa18c_aargm_er_realistic,
+            ),
             ("F-84G Thunderjet (v2.5.7.01)", self.f84g_thunderjet),
             ("F-111C Aardvark (Warpig Production v2.260208)", self.f111c),
             ("F9F Panther (v2.8.7.101)", self.f9f_panther),
@@ -332,6 +347,9 @@ class GeneratorOptions(QtWidgets.QWizardPage):
         self.f_16_idf.setChecked(s.get("f_16_idf", False))
         self.fa_18efg.setChecked(s.get("fa_18efg", False))
         self.fa18c_aargm_er.setChecked(s.get("fa18c_aargm_er", False))
+        self.fa18c_aargm_er_realistic.setChecked(
+            s.get("fa18c_aargm_er_realistic", False)
+        )
         self.f22_raptor.setChecked(s.get("f22_raptor", False))
         self.f84g_thunderjet.setChecked(s.get("f84g_thunderjet", False))
         self.f100_supersabre.setChecked(s.get("f100_supersabre", False))
