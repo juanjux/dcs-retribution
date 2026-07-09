@@ -5,6 +5,7 @@ from typing import Optional
 from PySide6.QtWidgets import QComboBox, QWidget, QHBoxLayout, QPushButton
 from PySide6.QtGui import QIcon
 from PySide6.QtCore import Qt
+from dcs.planes import FA_18C_hornet
 
 from game import Game
 from game.ato.flight import Flight
@@ -43,7 +44,7 @@ class QPylonEditor(QWidget):
             weapons = pylon.allowed
         allowed = sorted(weapons, key=operator.attrgetter("name"))
         for i, weapon in enumerate(allowed):
-            self.weapon_combo.addItem(weapon.name, weapon)
+            self.weapon_combo.addItem(self._weapon_label(weapon), weapon)
             if current == weapon:
                 self.weapon_combo.setCurrentIndex(i + 1)
 
@@ -61,6 +62,21 @@ class QPylonEditor(QWidget):
         layout.addWidget(self.settings_button)
 
         self.update_settings_button_visibility()
+
+    def _weapon_label(self, weapon: Weapon) -> str:
+        # SYNTAX AGM-88G AARGM-ER mod: give the AARGM-ER a clear, mod-attributed
+        # name in the F/A-18C's pylon dropdown when the mod is enabled.
+        if (
+            weapon.clsid == "{PPC_AGM-88G}"
+            and self.flight.unit_type.dcs_unit_type.id == FA_18C_hornet.id
+            and getattr(
+                self.flight.squadron.coalition.faction.mod_settings,
+                "fa18c_aargm_er",
+                False,
+            )
+        ):
+            return "AGM-88G AARGM-ER High Speed Anti-Radiation Missile (SYNTAX mod)"
+        return weapon.name
 
     def update_settings_button_visibility(self) -> None:
         """Show/hide settings button based on whether current weapon has settings."""
@@ -141,7 +157,7 @@ class QPylonEditor(QWidget):
         weapon = self.weapon_from_loadout(loadout)
         if weapon is None:
             return "None"
-        return weapon.name
+        return self._weapon_label(weapon)
 
     def set_flight_member(self, flight_member: FlightMember) -> None:
         self.flight_member = flight_member
