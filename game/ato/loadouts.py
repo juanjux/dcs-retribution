@@ -335,9 +335,34 @@ class Loadout:
 
     @classmethod
     def default_for(cls, flight: Flight) -> Loadout:
-        return cls.default_for_task_and_aircraft(
+        loadout = cls.default_for_task_and_aircraft(
             flight.flight_type, flight.unit_type.dcs_unit_type, flight.package.target
         )
+        return cls._apply_fa18c_aargm_er(flight, loadout)
+
+    @staticmethod
+    def _apply_fa18c_aargm_er(flight: Flight, loadout: Loadout) -> Loadout:
+        """SYNTAX AGM-88G AARGM-ER mod: with it enabled, the F/A-18C carries the
+        AARGM-ER in place of the stock AGM-88C HARM (the mod removes the HARM from its
+        pylons). Gated on the per-faction mod setting, so factions without the mod keep
+        the HARM. Returns a clone with the swap so the cached loadout is untouched."""
+        mod_settings = getattr(flight.coalition.faction, "mod_settings", None)
+        if mod_settings is None or not getattr(mod_settings, "fa18c_aargm_er", False):
+            return loadout
+        from dcs.planes import FA_18C_hornet
+
+        if flight.unit_type.dcs_unit_type.id != FA_18C_hornet.id:
+            return loadout
+        aargm = Weapon.with_clsid("{PPC_AGM-88G}")
+        if aargm is None:
+            return loadout  # AARGM-ER not in the weapon DB (mod files absent)
+        swapped: Optional[Loadout] = None
+        for pylon, weapon in loadout.pylons.items():
+            if weapon is not None and weapon.weapon_group.name == "AGM-88C HARM":
+                if swapped is None:
+                    swapped = loadout.clone()
+                swapped.pylons[pylon] = aargm
+        return swapped if swapped is not None else loadout
 
     @classmethod
     def default_for_task_and_aircraft(
