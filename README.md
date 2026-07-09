@@ -110,12 +110,6 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   or remove aircraft (shown only when opened from the Cheats tab), handy for
   testing mod aircraft without spending money.
   ([#41](https://github.com/juanjux/dcs-retribution/pull/41))
-- **Electronic Warfare / "Jamming"** flight task for dedicated EW aircraft
-  (EA-18G, EA-6B, Su-34, EC-130, …) that suppresses enemy radars. Offensive
-  jamming **degrades** air defenses (via the engine's ECM) rather than silencing
-  them, so jammed SAM sites and fleets keep defending (CIWS/AAA included).
-  ([#28](https://github.com/juanjux/dcs-retribution/pull/28),
-  [#44](https://github.com/juanjux/dcs-retribution/pull/44))
 - **Automated ground-object / building repair** — the HQ repairs damaged SAM
   sites, vehicle groups and buildings each turn, with tunable budgets and priorities.
   ([#29](https://github.com/juanjux/dcs-retribution/pull/29))
