@@ -156,6 +156,10 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   replaces the stock JSOW-A in place with a 925 km stealthy cruise missile on
   every carrier of that slot (F/A-18C, F-15E, F-16).
   ([#67](https://github.com/juanjux/dcs-retribution/pull/67))
+- **CurrentHill China pack synced to 1.1.6** — the New Game wizard label and unit
+  data track the latest CH China Military Asset Pack. 1.1.4→1.1.6 added/removed no
+  units (only upstream fixes), so this is a version-note sync, not a data migration.
+  (branch [`juanjux/ch_china_1.1.6`](https://github.com/juanjux/dcs-retribution/tree/juanjux/ch_china_1.1.6))
 
 ### Fixes
 - The **Support Info** kneeboard page now spans multiple pages when a package has
