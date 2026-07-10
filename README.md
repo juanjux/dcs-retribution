@@ -170,10 +170,6 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   anti-ship missile (e.g. the LRASM/JASSM mods) fired ~2 of 4 and RTB'd with the rest,
   leaving targets barely alive. Matches what the DEAD ingress task already does.
   ([#68](https://github.com/juanjux/dcs-retribution/pull/68))
-- HIMARS units the current Currenthill USA pack (1.5.0) no longer ships are dropped
-  from the `blufor_current` / `usa_2020` factions in favour of the M270A1 MLRS it
-  does ship, so they stop silently failing to spawn.
-  ([#62](https://github.com/juanjux/dcs-retribution/pull/62))
 - Enemy (and friendly) fleets now actively fight instead of sitting passive: every
   ship group — including submarines — is generated with weapon-free ROE and a
   search-and-engage task, so they use their SAMs on aircraft and their anti-ship
