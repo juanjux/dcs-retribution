@@ -158,6 +158,12 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   ([#67](https://github.com/juanjux/dcs-retribution/pull/67))
 
 ### Fixes
+- Anti-ship flights now empty their anti-ship load on the target (`expend=All`)
+  instead of DCS's default partial `Auto` salvo. Under Auto the AI fires only as many
+  missiles as it reckons will sink the target (from the warhead), so a hard-hitting
+  anti-ship missile (e.g. the LRASM/JASSM mods) fired ~2 of 4 and RTB'd with the rest,
+  leaving targets barely alive. Matches what the DEAD ingress task already does.
+  ([#68](https://github.com/juanjux/dcs-retribution/pull/68))
 - HIMARS units the current Currenthill USA pack (1.5.0) no longer ships are dropped
   from the `blufor_current` / `usa_2020` factions in favour of the M270A1 MLRS it
   does ship, so they stop silently failing to spawn.
