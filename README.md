@@ -158,6 +158,12 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   ([#67](https://github.com/juanjux/dcs-retribution/pull/67))
 
 ### Fixes
+- The **Support Info** kneeboard page now spans multiple pages when a package has
+  many flights, instead of pushing the AEW&C / tanker / JTAC tables off the bottom
+  of a single page (they were silently lost). Sections are packed by measured height
+  and a long table is split across pages; the title shows `(n/total)` only when there
+  is more than one page, and a package that fits still renders on a single page.
+  ([#69](https://github.com/juanjux/dcs-retribution/pull/69))
 - Anti-ship flights now empty their anti-ship load on the target (`expend=All`)
   instead of DCS's default partial `Auto` salvo. Under Auto the AI fires only as many
   missiles as it reckons will sink the target (from the warhead), so a hard-hitting
