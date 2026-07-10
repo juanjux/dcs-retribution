@@ -210,7 +210,7 @@ class GeneratorOptions(QtWidgets.QWizardPage):
             ("C-130J-30 Super Hercules (v6.8.2)", self.hercules),
             ("Cold War Assets mod (v1.2)", self.coldwarassets),
             (
-                "CurrentHill Chinese Military Assets pack (1.1.4)",
+                "CurrentHill Chinese Military Assets pack (1.1.6)",
                 self.chinesemilitaryassetspack,
             ),
             (
