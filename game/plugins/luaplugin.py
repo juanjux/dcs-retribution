@@ -58,19 +58,10 @@ class PluginSettings:
 
 class LuaPluginOption(PluginSettings):
     def __init__(
-        self,
-        identifier: str,
-        name: str,
-        min: Any,
-        max: Any,
-        value: Any,
-        choices: Optional[List[str]] = None,
+        self, identifier: str, name: str, min: Any, max: Any, value: Any
     ) -> None:
         super().__init__(identifier, value)
         self.name = name
-        # A "choice" option picks its value from a fixed list (rendered as a
-        # drop-down). Numeric options keep min/max (spin box); bools are checkboxes.
-        self.choices = choices
         if type(value) == int or type(value) == float:
             self.min, self.max = min, max
         else:
@@ -103,7 +94,6 @@ class LuaPluginDefinition:
                     min=option.get("minimumValue", 0),
                     max=option.get("maximumValue", 10000),
                     value=option.get("defaultValue"),
-                    choices=option.get("choices"),
                 )
             )
 
@@ -185,24 +175,12 @@ class LuaPlugin(PluginSettings):
         for work_order in self.definition.work_orders:
             work_order.work(lua_generator)
 
-    @staticmethod
-    def _lua_literal(value: Any) -> str:
-        # Render a plugin-option value as a Lua literal: bool -> true/false,
-        # numbers verbatim, strings quoted (so `choices` options inject safely
-        # instead of becoming an undefined Lua identifier).
-        if isinstance(value, bool):
-            return "true" if value else "false"
-        if isinstance(value, (int, float)):
-            return str(value)
-        escaped = str(value).replace("\\", "\\\\").replace('"', '\\"')
-        return f'"{escaped}"'
-
     def inject_configuration(self, lua_generator: LuaGenerator) -> None:
         # inject the plugin options
         if self.options:
             option_decls = []
             for option in self.options:
-                value = self._lua_literal(option.get_value)
+                value = str(option.get_value).lower()
                 name = option.identifier
                 option_decls.append(f"    dcsRetribution.plugins.{name} = {value}")
 
