@@ -156,6 +156,19 @@ class WaypointGenerator:
         TOT-locked waypoint follows them.
         """
         points = self.group.points
+        # A waypoint locked to a time (TOT) must not ALSO lock its speed: the time
+        # already fixes the segment speed, so DCS rejects the pair ("locked speed ...
+        # surrounded by ... locked time"). A carrier BARCAP/CAP hits this when an
+        # in-flight start under a TOT at/before mission start clamps every waypoint to
+        # ETA == 0, which PydcsWaypointBuilder then marks speed_locked while it is also
+        # time-locked. Keep the time; drop the redundant speed lock. (The pass below
+        # additionally handles a speed-locked but NOT time-locked leg -- e.g. a Split --
+        # trapped between two TOT-locked waypoints.)
+        for point in points:
+            if getattr(point, "speed_locked", False) and getattr(
+                point, "ETA_locked", False
+            ):
+                point.speed_locked = False
         n = len(points)
         eta_locked_before = [False] * n
         seen = False
