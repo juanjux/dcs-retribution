@@ -90,6 +90,17 @@ class ControlPointView(BaseModel):
     can_recruit_ground: bool | None = None  # has a factory/front — buy ground here
     links: list[str] | None = None  # adjacent control-point ids (land moves / fronts)
     ground: dict[str, int] | None = None  # armor on hand here (unit name -> count)
+    can_launch: bool | None = (
+        None  # False = this base CANNOT launch aircraft this turn (runway cratered/under
+        # repair, or carrier hull sunk); omitted when it can. IMPORTANT: a base being
+        # repaired does NOT appear in turn_context.repairs (already paid for) yet still
+        # can't sortie until runway_repair_turns_remaining hits 0 — do NOT plan flights
+        # from a base with can_launch:false.
+    )
+    runway_repair_turns_remaining: int | None = (
+        None  # turns until a repairing runway is operational again (omitted when the base
+        # can launch, or when the runway is damaged-but-unpaid — that shows in repairs)
+    )
 
 
 class SquadronView(BaseModel):
@@ -294,6 +305,10 @@ class SettingsView(BaseModel):
     squadron_pilot_limit: int | None = (
         None  # max active pilots per squadron (omitted = no limit)
     )
+    runway_repair_turns: int = (
+        4  # turns a cratered runway takes to repair; a base's
+        # runway_repair_turns_remaining (in control_points) counts down from this
+    )
 
 
 class UnitTypeOption(BaseModel):
@@ -372,6 +387,11 @@ def build_control_point(game: Game, cp: ControlPoint) -> ControlPointView:
         recruit = bool(cp.has_ground_unit_source(game)) or None
     except Exception:
         recruit = None
+    operational = cp.runway_is_operational()
+    try:
+        repair_turns = cp.runway_status.repair_turns_remaining
+    except Exception:
+        repair_turns = None  # carriers/LHAs/off-map have no repairable runway
     return ControlPointView(
         id=str(cp.id),
         name=cp.name,
@@ -384,6 +404,8 @@ def build_control_point(game: Game, cp: ControlPoint) -> ControlPointView:
         can_recruit_ground=recruit,
         links=links,
         ground=ground or None,
+        can_launch=(False if not operational else None),
+        runway_repair_turns_remaining=repair_turns,
     )
 
 
@@ -785,6 +807,8 @@ def build_turn_context(game: Game, side: str = "red") -> TurnContextView:
 
 
 def build_settings(game: Game) -> SettingsView:
+    from game.theater.controlpoint import RUNWAY_REPAIR_TURNS
+
     s = game.settings
     return SettingsView(
         opfor_aggressiveness_pct=s.opfor_autoplanner_aggressiveness,
@@ -807,6 +831,7 @@ def build_settings(game: Game) -> SettingsView:
             if getattr(s, "enable_squadron_pilot_limits", True)
             else None
         ),
+        runway_repair_turns=RUNWAY_REPAIR_TURNS,
     )
 
 

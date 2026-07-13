@@ -342,7 +342,13 @@ means none/empty** (stated once so the per-turn payloads stay small).
   `parking_free`?/`parking_total`? (room to buy/station aircraft),
   `can_recruit_ground`? (true = you can `buy/ground` here), `links`? (adjacent
   control-point ids — land moves and where fronts form), `ground`? (armor on hand,
-  `{unit: count}` — what you can `ground/transfer`)};
+  `{unit: count}` — what you can `ground/transfer`), `can_launch`? (**present only when
+  FALSE** = this base cannot launch aircraft this turn: runway cratered/under repair, or
+  carrier hull sunk — do NOT plan flights from it), `runway_repair_turns_remaining`?
+  (turns until a repairing runway is back). **BLIND-SPOT WARNING:** a base whose runway
+  is being repaired does NOT appear in `repairs` (you already paid for it) but STILL
+  can't sortie — trust `can_launch:false` / `runway_repair_turns_remaining`, not the
+  absence from `repairs`, to know a base is down};
 - `air_wing[]` — your squadrons — {`id`, `name`, `aircraft`, `base`, `owned`?,
   `untasked`?, `flyable`? (**the number to plan with**: aircraft you can actually
   LAUNCH this turn = `min(untasked, pilots)`, or 0 if grounded — `untasked` can exceed
@@ -403,7 +409,9 @@ pilot; those show as `*_air_crashed` in `prev_turns`, so subtract them to get re
 combat losses), `pilot_replenishment_per_squadron`? (new pilots each squadron regains
 per turn, up to the limit — paces how fast you can rebuild after losses),
 `squadron_pilot_limit`? (max active pilots per squadron; both omitted when pilot
-limits are off = unlimited)}.
+limits are off = unlimited), `runway_repair_turns` (turns a cratered runway takes to
+repair — a base's `control_points.runway_repair_turns_remaining` counts down from this,
+so a fresh OCA-runway crater keeps that base grounded this many turns)}.
 
 `GET /packages?side=red` → `[{index, target, task, tot (HH:MM), desc?,
 flights:[{id, task, aircraft, count, squadron, start?, dep?, clients?, uncrewed?}]}]`.
