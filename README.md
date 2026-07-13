@@ -160,6 +160,11 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   (branch [`juanjux/ch_china_1.1.6`](https://github.com/juanjux/dcs-retribution/tree/juanjux/ch_china_1.1.6))
 
 ### Fixes
+- **Carrier CAP mission won't save** — a carrier BARCAP/CAP flying an in-flight start
+  under a mission-start TOT could generate waypoints DCS rejects ("locked speed …
+  surrounded by … locked time"), blocking the whole mission from saving. A TOT-locked
+  waypoint no longer also locks its speed (the locked time already fixes it).
+  ([#70](https://github.com/juanjux/dcs-retribution/pull/70))
 - The **Support Info** kneeboard page now spans multiple pages when a package has
   many flights, instead of pushing the AEW&C / tanker / JTAC tables off the bottom
   of a single page (they were silently lost). Sections are packed by measured height
