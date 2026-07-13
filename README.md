@@ -166,12 +166,6 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   and a long table is split across pages; the title shows `(n/total)` only when there
   is more than one page, and a package that fits still renders on a single page.
   ([#69](https://github.com/juanjux/dcs-retribution/pull/69))
-- Anti-ship flights now empty their anti-ship load on the target (`expend=All`)
-  instead of DCS's default partial `Auto` salvo. Under Auto the AI fires only as many
-  missiles as it reckons will sink the target (from the warhead), so a hard-hitting
-  anti-ship missile (e.g. the LRASM/JASSM mods) fired ~2 of 4 and RTB'd with the rest,
-  leaving targets barely alive. Matches what the DEAD ingress task already does.
-  ([#68](https://github.com/juanjux/dcs-retribution/pull/68))
 - Enemy (and friendly) fleets now actively fight instead of sitting passive: every
   ship group — including submarines — is generated with weapon-free ROE and a
   search-and-engage task, so they use their SAMs on aircraft and their anti-ship
