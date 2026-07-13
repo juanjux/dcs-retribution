@@ -401,6 +401,14 @@ class Game:
 
         move_and_reparent_ships(self.theater.controlpoints)
 
+        # Movable ship TGOs snap to their destination and re-parent to the
+        # nearest friendly CP. Runs after captures are committed (process_results
+        # precedes pass_turn -> finish_turn), so re-parenting sees post-capture
+        # ownership.
+        from game.theater.shipmovement import move_and_reparent_ships
+
+        move_and_reparent_ships(self.theater.controlpoints)
+
         if not skipped:
             for cp in self.theater.player_points():
                 for front_line in cp.front_lines.values():
