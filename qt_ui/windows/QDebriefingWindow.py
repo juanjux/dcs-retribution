@@ -88,7 +88,7 @@ class LossGrid(QGridLayout):
             if nc:
                 self.addWidget(
                     QLabel(
-                        f"({nc} not counted because of crashed-do-not-count setting)"
+                        f"(other {nc} not counted because of crashed-do-not-count setting)"
                     ),
                     row,
                     2,
