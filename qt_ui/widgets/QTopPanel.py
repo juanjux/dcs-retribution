@@ -97,8 +97,9 @@ class QTopPanel(QFrame):
         self.buttonBoxLayout = QHBoxLayout()
         self.buttonBoxLayout.addWidget(self.air_wing)
         self.buttonBoxLayout.addWidget(self.transfers)
-        # OPFOR-AI commander indicator (only shown when the setting is on); lit while
-        # the LLM is planning red, and Take Off is blocked until it goes idle.
+        # OPFOR-AI commander indicator (only shown when the setting is on); lights up for
+        # a few seconds on each API call the LLM makes (no manual on/off), and Take Off
+        # is blocked while it's lit.
         self.ai_status_button = QPushButton("OPFOR AI: idle")
         self.ai_status_button.setProperty("style", "btn-primary")
         self.ai_status_button.setToolTip("LLM OPFOR commander — click for status")
