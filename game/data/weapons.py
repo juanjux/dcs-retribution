@@ -47,6 +47,10 @@ def clsid_migrator(clsid: str) -> str:
         "{SUPERHORNET_PYLON_09_IB_FT_1X_FPU-8A_HV}": "{SUPERHORNET_PYLON_09_IB_FT_1X_FPU-12A_HV}",
         "{SUPERHORNET_PYLON_03_MB_FT_1X_FPU-8A_HV}": "{SUPERHORNET_PYLON_03_MB_FT_1X_FPU-12A_HV}",
         "{SUPERHORNET_PYLON_09_MB_FT_1X_FPU-8A_HV}": "{SUPERHORNET_PYLON_09_MB_FT_1X_FPU-12A_HV}",
+        # Centerline (station 6) tank was omitted from the FPU-8A->FPU-12A rename above,
+        # so CAP/AntiShip loadouts silently lost their fuselage tank on CJS 2.4.5.
+        "{SUPERHORNET_PYLON_06_FT_1X_FPU-8A}": "{SUPERHORNET_PYLON_06_FT_1X_FPU-12A}",
+        "{SUPERHORNET_PYLON_06_FT_1X_FPU-8A_HV}": "{SUPERHORNET_PYLON_06_FT_1X_FPU-12A_HV}",
         # CJS 2.4.5 renamed the JSOW BRU->BRU55 clsids; we deliberately DON'T remap them.
         # The pydcs_data fallback passes the installed mod's own clsid straight to the .miz,
         # so a loadout works on whichever CJS version is installed. The old 02_MB remap sent
