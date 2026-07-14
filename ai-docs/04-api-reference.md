@@ -39,8 +39,9 @@ models (JSON). Reads never mutate; writes only succeed at a turn/planning bounda
 1. `GET /start` → this workflow + role/context (or `/howtoplay` for depth).
 2. `GET /howtoplay` once per session → game concepts + how to advise the human (§H).
 3. Wait for the player to say **"your turn"** in chat (v1 trigger — see §E; teach
-   them this on first contact), then `set_ai_active(true)` + a first `set_ai_status`
-   (the toolbar robot goes colour; the human keeps working in parallel).
+   them this on first contact), then just start reading — optionally a first
+   `set_ai_status` (the toolbar robot lights up on its own with every call; the human
+   keeps working in parallel).
 4. `GET /settings`, `GET /human_notes`, `GET /stored_context` → rules & memory.
 5. `GET /turn_context` (+ `GET /prev_turns?n=1`) → the situation. Image-capable
    models can also pull `GET /map/image`. (Update `set_ai_status` per phase.)
@@ -48,8 +49,9 @@ models (JSON). Reads never mutate; writes only succeed at a turn/planning bounda
 7. Plan, then apply: `POST /packages`, economy/stance writes, and any map moves
    (`move_ship`, `set_waypoint_position`).
 8. `PUT /stored_context` → persist notes/strategy for next turn.
-9. `opfor_planning_done` (= `set_ai_active(false)`) → robot goes idle; Take Off is
-   now allowed. (You never blocked the human; you only gated Take Off.)
+9. Just stop calling → the robot goes idle a few seconds after your last call and
+   Take Off is allowed. (You never blocked the human; you only gated Take Off, and
+   only while active.)
 
 ## A. Bootstrap & meta
 
@@ -252,14 +254,15 @@ blue, editing the map, etc., while the LLM plans red **in parallel**. There is *
 modal dialog**. Instead:
 
 - A **robot icon in the UI toolbar** shows AI activity: **grayscale = idle**,
-  **colour + a subtle animation = the LLM is actively making changes**. The LLM
-  toggles this when it starts/finishes a turn.
+  **colour + a subtle animation = the LLM made an API call in the last ~5 s**. It
+  lights up **automatically** on every REST/MCP call (no on/off to toggle) and falls
+  back to grayscale ~5 s after the last call.
 - **Clicking the robot icon** opens a small **info window** with:
   - the LLM's latest **status string** (the phase: "Evaluating last turn…", "Buying
     aircraft…", "Planning packages…");
   - **"Last update X seconds/minutes ago"** — derived from the server-side timestamp
-    of the last `set_ai_status`/`set_ai_active` call, so the player can tell if the
-    LLM has hung;
+    of the LLM's last API call (any call, via `session.touch()`), so the player can
+    tell if the LLM has hung;
   - a **"Cancel LLM planning"** button — aborts the LLM's turn (see below);
   - a **"Non-LLM plan this turn"** button — **enabled only after Cancel is pressed**
     — runs the scripted commander to plan red for this turn instead;
@@ -283,9 +286,8 @@ to fill red (the fallback, on demand).
 
 | Op | REST | MCP | Service → engine |
 |----|------|-----|------------------|
-| **set AI active / idle** | `POST /ai_status/active` `{active: bool}` | tool `set_ai_active(active)` | `QtContext`/`QtCallbacks` bridge (`game/server/dependencies.py:35`): toolbar robot icon colour+animation; sets the **Take-Off gate flag**; stamps last-update time |
-| **set status text** | `POST /ai_status/text` `{text}` | tool `set_ai_status(text)` | stores the latest status (+ last-update time); shown in the robot info window |
-| **signal done** | (same as `set_ai_active(false)`) | `opfor_planning_done()` | idle the icon + lift the Take-Off gate |
+| **AI activity (automatic)** | *(none — any REST call)* | *(none — any MCP tool)* | **derived, not called**: every transport call does `session.touch()`; the session's `active` flag reads true for a **5 s window** (`ACTIVE_WINDOW`) after the last call → toolbar robot colour+animation + **Take-Off gate**. Goes idle ~5 s after the last call. REST stamps activity via a router-level FastAPI dependency (after auth); MCP via a `_tool` decorator wrapping every tool |
+| **set status text** *(optional)* | `POST /ai_status/text` `{text}` | tool `set_ai_status(text)` | stores the latest status (+ last-update time); shown in the robot info window. Also touches activity like any call |
 | **turn status** | `GET /turn_status` | tool `turn_status()` | `game.turn`, whose-turn, **ai-active**, **cancelled** flags, last-update time, **session holder** (enh. #8) |
 | **AI action log** *(enh. #9)* | `GET /ai_log?turn=` | tool `get_ai_log(turn?)` | the audit trail of what red's AI did this turn (+ rationale); backs the "View red's plan" button; reuse `game.informations` + a dedicated list |
 
@@ -296,14 +298,15 @@ UI-only actions (no LLM call — the human clicks them in the robot window):
   (`Game.initialize_turn(events, for_red=True, for_blue=False)`), i.e. the fallback.
 - **View red's plan** → open the AI action log (enabled only once the AI is done).
 
-> Engine/UI side: the **ai-active flag** + **cancelled flag** + **last-update
-> timestamp** live on the GameModel / a UI controller; `set_ai_active`/`set_ai_status`
-> update them, the **Take-Off action checks ai-active**, and the robot window renders
-> them. No engine pause or auto-advance — the human drives the flow; Take Off and
-> the cancel buttons are the only controls.
+> Engine/UI side: the **last-activity timestamp** + **cancelled flag** live on the
+> session (GameModel / a UI controller); every API call refreshes the timestamp via
+> `session.touch()` and the **ai-active flag is derived** from it (true for
+> `ACTIVE_WINDOW` = 5 s). The **Take-Off action checks ai-active**, and the robot
+> window renders them. No engine pause or auto-advance — the human drives the flow;
+> Take Off and the cancel buttons are the only controls.
 
 > **Single-writer guard (enh. #8).** Only one agent should edit red at a time. When
-> a session starts planning (`set_ai_active(true)`), record a **planning-session
+> a session first touches activity (its first API call), record a **planning-session
 > token / holder**; reject red-mutating calls from any other session until it
 > finishes or is cancelled (first-writer-wins for the turn). Prevents two chat
 > sessions — or a stale/zombie agent — from clobbering each other. `turn_status`
@@ -421,9 +424,11 @@ abort the whole turn.
   (`mcp.server.fastmcp.Image`), since it's parameterised (`side`/`bbox`/`layers`).
 - Everything that mutates — creates, writes, **and deletes** (packages/flights,
   clear-ATO, buys, stances, transfers, **ship moves**, **waypoint moves**,
-  squadron create/delete, stored_context write/delete, `set_ai_active`/
-  `set_ai_status`, `opfor_planning_done`, plan_opfor) → **tools**. MCP has no
+  squadron create/delete, stored_context write/delete, `set_ai_status`,
+  plan_opfor) → **tools**. MCP has no
   HTTP verbs, so a REST `DELETE`/`PUT` maps to a `delete_*`/`clear_*`/`set_*` tool.
+  (AI-active is **not** in this list — it's derived automatically from call activity,
+  not a callable op; every MCP tool is wrapped by a `_tool` decorator that touches it.)
   All mutations obey the same turn/planning-boundary rule.
 - `wait_for_opfor_turn` is a **long-poll tool** (blocks until the OPFOR window);
   `turn_status` is a plain read. Clients that can hold a websocket may instead watch

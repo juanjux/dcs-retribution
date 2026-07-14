@@ -29,9 +29,10 @@ tool/resource of the same name.
 
 ## Workflow per turn
 
-1. `set_ai_active(true)` + `set_ai_status` "Evaluating last turn…" (toolbar robot
-   turns colour; update the status before each phase). You work in parallel — the
-   human is NOT blocked; only Take Off is gated until you finish.
+1. Optionally `set_ai_status` "Evaluating last turn…" (a one-line note shown on the
+   toolbar robot; update it before each phase). The robot lights up on its own with
+   every call — there is no on/off to toggle. You work in parallel — the human is NOT
+   blocked; only Take Off is gated while you're active (a few seconds after each call).
 2. Read: `GET /turn_context` (+ `GET /prev_turns?n=1`, `GET /stored_context`,
    `GET /settings`, `GET /human_notes`; optionally `GET /map/image`).
 3. Check existing plan: `GET /packages?side=red` (resume / avoid duplicates).
@@ -40,8 +41,9 @@ tool/resource of the same name.
    package **TOTs within `Desired mission duration`** (from `/settings`) — actions
    after that window are wasted (the player will have ended the mission). See howtoplay.
 5. `PUT /stored_context` — save your strategy/lessons for next turn.
-6. `opfor_planning_done` (= `set_ai_active(false)`) → robot idle, Take Off unblocked;
-   the human can review red's plan and flag any mistake in chat.
+6. When you're done, just stop calling — the robot goes idle a few seconds after your
+   last call and Take Off unblocks, so the human can review red's plan and flag any
+   mistake in chat.
 
 ## Endpoint catalog
 
@@ -90,8 +92,9 @@ tool/resource of the same name.
   here (no API for that). See howtoplay / 05.
 
 **Session**
-- `set_ai_active` (true/false — toolbar robot busy/idle; gates Take Off) ·
-  `set_ai_status` (text shown in the robot info window) · `opfor_planning_done`
+- The toolbar robot lights up automatically for a few seconds on **every** API call
+  (no on/off to toggle); Take Off is gated while it's lit. `set_ai_status` sets an
+  optional one-line note shown on the robot.
 - `GET /turn_status` (also reports cancelled flag + session holder) · `GET /ai_log`
   (audit of what red did this turn) — the player can cancel you; stop gracefully.
 - `POST /plan_opfor` — clear+regenerate red from scratch (e.g. to drop a half-done turn)

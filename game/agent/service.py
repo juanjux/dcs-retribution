@@ -166,7 +166,6 @@ def capabilities() -> dict:
             "ground/transfer",
             "naval/move (reposition one of your ship groups or carriers, <=80nm over water)",
             "repair (pay to repair a damaged SAM/EWR unit, building, or runway)",
-            "ai/active",
             "ai/status",
         ],
     }
@@ -320,12 +319,13 @@ def rebuild_ground_object(side, tgo_id, force_group, layout, groups=None):
 # --- session / Take-Off gate ---
 
 
-def set_ai_active(active: bool = True) -> dict:
-    """Mark the AI busy/idle. Take Off is blocked while active (toolbar robot lit)."""
+def note_ai_activity() -> None:
+    """Mark AI activity so the toolbar robot lights up. Called by every transport on
+    every API call (there is no manual on/off) — the robot reads active for a few
+    seconds after each call, and Take Off is gated while active."""
     from game.agent.session import AI_SESSION
 
-    AI_SESSION.set_active(active)
-    return AI_SESSION.snapshot()
+    AI_SESSION.touch()
 
 
 def set_ai_status(text: str) -> dict:

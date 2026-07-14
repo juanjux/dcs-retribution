@@ -62,12 +62,15 @@ So there is no `anthropic` dependency and no model/key to manage server-side.
   stances, `schedule_all`, **move ships / waypoints** (reuse tgos/waypoints routes),
   delete ops. Structured per-item results/errors; reads return stable ids + pilots.
 - REST `POST/PUT/DELETE` routes for them. Gate writes to the planning boundary.
-- **AI activity indicator + Take-Off gate** (§E of [`04`](04-api-reference.md)) via
-  the `QtCallbacks` bridge: `set_ai_active(bool)` toggles a **toolbar robot icon**
-  (grayscale↔colour+animation) and an **ai-active flag**; `set_ai_status(text)`
-  feeds the icon's click-to-open info window. Make the **Take Off** action check the
-  flag and show a blocking popup while active. No modal, no blocking the human —
-  they work in parallel; Take Off is the only gate.
+- **AI activity indicator + Take-Off gate** (§E of [`04`](04-api-reference.md)): the
+  **ai-active flag is derived** from a recent-activity timestamp — every REST/MCP call
+  does `session.touch()` and `active` reads true for a 5 s window (`ACTIVE_WINDOW`),
+  driving a **toolbar robot icon** (grayscale↔colour+animation). REST touches via a
+  router-level FastAPI dependency (after auth); MCP via a `_tool` decorator wrapping
+  every tool. `set_ai_status(text)` (optional) feeds the icon's click-to-open info
+  window. Make the **Take Off** action check the flag and show a blocking popup while
+  active. No modal, no blocking the human — they work in parallel; Take Off is the
+  only gate, and it lifts ~5 s after the LLM's last call.
 - **Deliverable:** from Claude Code, plan a full red turn over REST in parallel with
   the human; Take Off is blocked until the robot goes idle, then the mission plays.
 

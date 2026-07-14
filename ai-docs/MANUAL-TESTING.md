@@ -115,7 +115,7 @@ python) — just launch the new `dist_full_fork` exe (or run from source).
 
 ### Claude Code (localhost, no tunnel)
 - [ ] `claude mcp add --transport http "http://[::1]:<PORT>/mcp?token=<KEY>"`.
-- [ ] In Claude Code, ✅ the OPFOR tools appear (`turn_context`, `create_packages`, `evaluate_package`, `buy_aircraft`, `relocate_squadron`, `transfer_ground`, `set_ai_active`, `stored_context`, …).
+- [ ] In Claude Code, ✅ the OPFOR tools appear (`turn_context`, `create_packages`, `evaluate_package`, `buy_aircraft`, `relocate_squadron`, `transfer_ground`, `set_ai_status`, `stored_context`, …).
 - [ ] Ask it to read `turn_context` and create a package → ✅ same effect as the REST writes.
 
 ### claude.ai web (needs a tunnel)  🔴
@@ -127,8 +127,8 @@ python) — just launch the new `dist_full_fork` exe (or run from source).
 ## 10. Full "play a turn against the LLM" (the real goal)
 
 - [ ] Connector configured (REST or MCP). Tell your LLM **"your turn"**.
-- [ ] ✅ It: `set_ai_active(true)` → reads `turn_context`/`prev_turns`/`stored_context` → creates packages (open SAMs with DEAD, escort strikers, anti-ship the fleet…), maybe buys/sets stances → saves a note → `set_ai_active(false)`.
-- [ ] While it plans, ✅ you can keep planning blue (not blocked); **only Take Off is gated**.
+- [ ] ✅ It: reads `turn_context`/`prev_turns`/`stored_context` → creates packages (open SAMs with DEAD, escort strikers, anti-ship the fleet…), maybe buys/sets stances → saves a note → stops.
+- [ ] While it plans, ✅ you can keep planning blue (not blocked); **only Take Off is gated**. ✅ The robot lights up automatically on each call (no on/off) and Take Off unblocks ~5 s after its last call.
 - [ ] **View red's plan** (the button), sanity-check the rationales, then Take Off and fly. ✅ Red executes the LLM's plan.
 - [ ] Next turn: ✅ the LLM references its `stored_context` note and `prev_turns` (reacts to losses).
 

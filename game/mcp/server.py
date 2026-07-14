@@ -7,7 +7,8 @@ call — so the two transports never diverge. Mounted at ``/mcp`` by
 
 from __future__ import annotations
 
-from typing import Any
+import functools
+from typing import Any, Callable
 
 from mcp.server.fastmcp import FastMCP, Image
 from mcp.server.transport_security import TransportSecuritySettings
@@ -18,9 +19,9 @@ mcp = FastMCP(
     "DCS Retribution OPFOR AI",
     instructions=(
         "Plan the enemy (red/OPFOR) turn of a DCS Retribution campaign. Call "
-        "`start` then `howtoplay` once, then on each 'your turn': set_ai_active, "
-        "read turn_context/get_packages, create_packages / buy / stances, "
-        "set_ai_active(false)."
+        "`start` then `howtoplay` once, then on each 'your turn': read "
+        "turn_context/get_packages, create_packages / buy / stances. The toolbar "
+        "robot lights up on its own with every call — nothing to toggle on/off."
     ),
     stateless_http=True,
     json_response=True,
@@ -43,10 +44,27 @@ def _dump(obj: Any) -> Any:
     return obj
 
 
+def _tool(*args: Any, **kwargs: Any) -> Callable[[Callable], Any]:
+    """Like ``@_tool()`` but marks AI activity (lights the toolbar robot) on every
+    call. There is no manual on/off — any tool the LLM calls counts as activity, so the
+    robot lights up for a few seconds each call. ``functools.wraps`` keeps the wrapped
+    function's signature/annotations so FastMCP still builds the correct tool schema."""
+
+    def decorator(fn: Callable) -> Any:
+        @functools.wraps(fn)
+        def wrapper(*a: Any, **kw: Any) -> Any:
+            service.note_ai_activity()
+            return fn(*a, **kw)
+
+        return mcp.tool(*args, **kwargs)(wrapper)
+
+    return decorator
+
+
 # --- reads ---
 
 
-@mcp.tool()
+@_tool()
 def turn_context(side: str = "red") -> dict:
     """Operational picture: situation, economy, control points, air wing, targets,
     threats (blue's air-defense umbrellas ranked by reach — incl. SAM-armed ships),
@@ -55,13 +73,13 @@ def turn_context(side: str = "red") -> dict:
     return _dump(service.turn_context(side))
 
 
-@mcp.tool()
+@_tool()
 def settings() -> dict:
     """Campaign settings the planner reads (aggressiveness, fog, mission window)."""
     return _dump(service.settings())
 
 
-@mcp.tool()
+@_tool()
 def map_image(side: str = "red", bbox: str | None = None) -> Image:
     """Rendered PNG strategic map for `side` (control points, front lines, threat
     umbrellas, your naval) for visual analysis. Optional `bbox` = "s,w,n,e" (lat/lng
@@ -69,7 +87,7 @@ def map_image(side: str = "red", bbox: str | None = None) -> Image:
     return Image(data=service.map_image(side, bbox), format="png")
 
 
-@mcp.tool()
+@_tool()
 def aircraft_pylons(squadron_id: str, side: str = "red") -> dict:
     """Weapons each pylon of a squadron's airframe accepts (only weapons available this
     campaign), so you can build a valid custom payload. Returns
@@ -77,14 +95,14 @@ def aircraft_pylons(squadron_id: str, side: str = "red") -> dict:
     return service.aircraft_pylons(side, squadron_id)
 
 
-@mcp.tool()
+@_tool()
 def aircraft_loadouts(squadron_id: str, side: str = "red") -> dict:
     """Named ready-made loadouts for a squadron's airframe (pick one by name in a flight,
     or build a custom payload from aircraft_pylons)."""
     return service.aircraft_loadouts(side, squadron_id)
 
 
-@mcp.tool()
+@_tool()
 def validate_payload(
     squadron_id: str, payload: dict[int, str], side: str = "red"
 ) -> dict:
@@ -94,14 +112,14 @@ def validate_payload(
     return service.validate_payload(side, squadron_id, payload)
 
 
-@mcp.tool()
+@_tool()
 def get_waypoints(flight_id: str, side: str = "red") -> dict:
     """A flight's waypoints (idx, type, pos [lat,lng], alt_m) — read them before editing a
     route with edit_waypoint. Waypoint 0 is takeoff (immovable); none can be deleted."""
     return service.get_waypoints(side, flight_id)
 
 
-@mcp.tool()
+@_tool()
 def edit_waypoint(
     flight_id: str,
     waypoint_idx: int,
@@ -116,13 +134,13 @@ def edit_waypoint(
     return _dump(service.edit_waypoint(side, flight_id, waypoint_idx, lat, lng, alt_m))
 
 
-@mcp.tool()
+@_tool()
 def get_packages(side: str = "red") -> list:
     """Current ATO for a side — packages and flights with stable ids."""
     return _dump(service.get_packages(side))
 
 
-@mcp.tool()
+@_tool()
 def validate_plan(side: str = "red") -> dict:
     """Health-check the committed plan: each package's TOT vs the mission window and any
     uncrewed flights. ok=true means every package is crewed and on time (no changes made).
@@ -131,25 +149,25 @@ def validate_plan(side: str = "red") -> dict:
     return _dump(service.validate_plan(side))
 
 
-@mcp.tool()
+@_tool()
 def capabilities() -> dict:
     """A manifest of the reads/writes this OPFOR-AI API offers (see howtoplay for detail)."""
     return service.capabilities()
 
 
-@mcp.tool()
+@_tool()
 def start() -> str:
     """Start-here briefing: role, per-turn workflow, the tool catalog."""
     return service.start_doc("")
 
 
-@mcp.tool()
+@_tool()
 def howtoplay() -> str:
     """The OPFOR commander's full briefing (packages, fair play, doctrine)."""
     return service.howtoplay_doc()
 
 
-@mcp.tool()
+@_tool()
 def turn_status() -> dict:
     """AI-session snapshot (active/status/cancelled) plus the current turn number."""
     return service.turn_status()
@@ -158,7 +176,7 @@ def turn_status() -> dict:
 # --- writes ---
 
 
-@mcp.tool()
+@_tool()
 def create_packages(side: str, packages: list[dict]) -> list:
     """Plan packages: each spec is target_id + flights[{task,count,escort?}] + rationale.
     Optional per-package ignore_range:true sends a capable airframe even past the
@@ -171,7 +189,7 @@ def create_packages(side: str, packages: list[dict]) -> list:
     return _dump(service.create_packages(side, packages))
 
 
-@mcp.tool()
+@_tool()
 def evaluate_package(side: str, package: dict) -> dict:
     """Dry-run ONE package spec (target_id + flights[{task,count,escort?}]) to see its
     time-over-target and whether it fits the mission window — WITHOUT committing it.
@@ -179,13 +197,13 @@ def evaluate_package(side: str, package: dict) -> dict:
     return _dump(service.evaluate_package(side, package))
 
 
-@mcp.tool()
+@_tool()
 def delete_package(side: str, index: int) -> dict:
     """Remove a package by its index (frees its aircraft/pilots)."""
     return _dump(service.delete_package(side, index))
 
 
-@mcp.tool()
+@_tool()
 def set_package_tot(side: str, index: int, tot_minutes: int | None = None) -> dict:
     """Set/clear a committed package's Time-On-Target. tot_minutes = minutes into the
     mission (0 = mission start); None resets to ASAP. Stagger or synchronise packages to
@@ -193,31 +211,31 @@ def set_package_tot(side: str, index: int, tot_minutes: int | None = None) -> di
     return _dump(service.set_package_tot(side, index, tot_minutes))
 
 
-@mcp.tool()
+@_tool()
 def clear_packages(side: str) -> dict:
     """Remove all of a side's packages (start the turn over)."""
     return _dump(service.clear_packages(side))
 
 
-@mcp.tool()
+@_tool()
 def buy_aircraft(side: str, squadron_id: str, quantity: int = 1) -> dict:
     """Order aircraft into a squadron (arrive next turn; spends budget)."""
     return _dump(service.buy_aircraft(side, squadron_id, quantity))
 
 
-@mcp.tool()
+@_tool()
 def sell_aircraft(side: str, squadron_id: str, quantity: int = 1) -> dict:
     """Sell untasked aircraft from a squadron (refunds budget)."""
     return _dump(service.sell_aircraft(side, squadron_id, quantity))
 
 
-@mcp.tool()
+@_tool()
 def buy_ground(side: str, cp_id: str, unit_name: str, quantity: int = 1) -> dict:
     """Order ground units of a type (from turn_context.buyable_ground) at your base."""
     return _dump(service.buy_ground(side, cp_id, unit_name, quantity))
 
 
-@mcp.tool()
+@_tool()
 def ground_object_options(tgo_id: str, side: str = "red") -> dict:
     """What one of YOUR ground objects (a SAM/EWR/armor/ship/missile/coastal site — a tgo
     id from turn_context.targets or your own sites) can be REBUILT into: the force-groups,
@@ -229,7 +247,7 @@ def ground_object_options(tgo_id: str, side: str = "red") -> dict:
     return _dump(service.ground_object_options(side, tgo_id))
 
 
-@mcp.tool()
+@_tool()
 def rebuild_ground_object(
     tgo_id: str,
     force_group: str,
@@ -249,13 +267,13 @@ def rebuild_ground_object(
     )
 
 
-@mcp.tool()
+@_tool()
 def set_stance(side: str, friendly_cp_id: str, enemy_cp_id: str, stance: str) -> dict:
     """Set the ground stance at the front between two control points."""
     return _dump(service.set_stance(side, friendly_cp_id, enemy_cp_id, stance))
 
 
-@mcp.tool()
+@_tool()
 def move_ship(
     side: str, ship_id: str, lat: float | None = None, lng: float | None = None
 ) -> dict:
@@ -265,7 +283,7 @@ def move_ship(
     return _dump(service.move_ship(side, ship_id, lat, lng))
 
 
-@mcp.tool()
+@_tool()
 def repair(side: str, id: str) -> dict:
     """Pay to repair one of YOUR damaged assets (an id from turn_context.repairs) — a dead
     SAM/EWR/armor unit group, a building, or a cratered runway. Instant or over a few turns
@@ -274,13 +292,13 @@ def repair(side: str, id: str) -> dict:
     return _dump(service.repair(side, id))
 
 
-@mcp.tool()
+@_tool()
 def relocate_squadron(side: str, squadron_id: str, dest_cp_id: str) -> dict:
     """Relocate a squadron to another of your bases (arrives over time, not instant)."""
     return _dump(service.relocate_squadron(side, squadron_id, dest_cp_id))
 
 
-@mcp.tool()
+@_tool()
 def transfer_ground(
     side: str,
     origin_cp_id: str,
@@ -297,52 +315,47 @@ def transfer_ground(
     )
 
 
-@mcp.tool()
-def set_ai_active(active: bool = True) -> dict:
-    """Mark the AI busy/idle. Take Off is blocked while active (toolbar robot lit)."""
-    return service.set_ai_active(active)
-
-
-@mcp.tool()
+@_tool()
 def set_ai_status(text: str) -> dict:
-    """Set the one-line status shown in the robot info window."""
+    """Set the one-line status shown in the robot info window (optional flavor; the robot
+    lights up on its own with every call, so you don't need to toggle anything)."""
     return service.set_ai_status(text)
 
 
 # --- memory ---
 
 
-@mcp.tool()
+@_tool()
 def get_stored_context() -> dict:
     """Your saved per-campaign strategy notes (key -> value), persisted in the save."""
     return service.get_stored_context()
 
 
-@mcp.tool()
+@_tool()
 def put_stored_context(data: dict) -> dict:
     """Replace ALL your stored notes with `data` (a key->value object)."""
     return service.put_stored_context(data)
 
 
-@mcp.tool()
+@_tool()
 def post_stored_context(data: dict) -> dict:
     """Merge `data` into your stored notes (add/update keys; keeps the rest)."""
     return service.post_stored_context(data)
 
 
-@mcp.tool()
+@_tool()
 def delete_stored_context(key: str) -> dict:
     """Remove one note key from stored_context."""
     return service.delete_stored_context(key)
 
 
-@mcp.tool()
+@_tool()
 def human_notes() -> dict:
     """The player's campaign notes — guidance for you to read (read-only)."""
     return service.human_notes()
 
 
-@mcp.tool()
+@_tool()
 def prev_turns(n: int = 3) -> list:
     """Force totals over the last n turns — the attrition trend to react to."""
     return _dump(service.prev_turns(n))

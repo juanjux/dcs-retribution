@@ -12,9 +12,15 @@ from fastapi.responses import PlainTextResponse
 from game.agent import schemas, service, views
 from game.server.security import ApiKeyManager
 
+
+def _note_activity() -> None:
+    """Light the toolbar robot on every API call (runs after auth passes)."""
+    service.note_ai_activity()
+
+
 router: APIRouter = APIRouter(
     prefix="/retribution-ai",
-    dependencies=[Depends(ApiKeyManager.verify)],
+    dependencies=[Depends(ApiKeyManager.verify), Depends(_note_activity)],
 )
 
 
@@ -279,11 +285,6 @@ def repair(body: schemas.RepairRequest) -> schemas.OpResult:
 
 
 # --- session / Take-Off gate ---
-
-
-@router.post("/ai/active", operation_id="ai_set_active")
-def set_ai_active(active: bool = True) -> dict:
-    return service.set_ai_active(active)
 
 
 @router.post("/ai/status", operation_id="ai_set_status")

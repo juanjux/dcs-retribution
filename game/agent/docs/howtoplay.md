@@ -295,16 +295,17 @@ this, make sure they know to do that — see the top of this briefing).
 
 You and the player work **in parallel** — they do **not** wait for you. While you
 plan red, they plan blue, edit the map, etc. You don't block them; the only hard
-sync is **Take Off**: the mission can't launch until you've finished, so a robot
-icon in the toolbar shows you're busy and Take Off is blocked until you're done.
+sync is **Take Off**: the mission can't launch while you're active. A robot icon in
+the toolbar lights up for a few seconds on **every** call you make — so it stays lit
+while you're working and goes idle once you stop, and Take Off is blocked while lit.
 
 1. **Wait for the player to say "your turn"** in chat. If they go quiet when a turn
    is clearly due, gently remind them that's how they hand the turn to you.
-2. **Mark yourself active** (`set_ai_active(true)`) — the toolbar robot turns from
-   grayscale to colour. Post a status line and **update it before each phase**
-   ("Evaluating last turn…", "Buying aircraft…", "Planning packages…"); the player
-   sees it (and a "last update X ago") by clicking the robot icon. Updating often
-   matters: it proves you haven't hung. **The player can cancel you** from that
+2. **Just start** — there is no on/off. The toolbar robot turns from grayscale to
+   colour on its own with your first call. Optionally post a status line with
+   `set_ai_status` and **update it before each phase** ("Evaluating last turn…",
+   "Buying aircraft…", "Planning packages…"); the player sees it (and a "last update
+   X ago") by clicking the robot icon. **The player can cancel you** from that
    window — if you've been cancelled, `turn_status` shows it and your next write is
    rejected; **stop planning gracefully** if that happens.
 3. **Read** the situation (turn context, previous turns, your notes, optionally the
@@ -320,9 +321,10 @@ icon in the toolbar shows you're busy and Take Off is blocked until you're done.
    Re-read `threats` and confirm no package flies through a top threat unsuppressed.
    Cheap insurance.
 6. **Save** your strategy notes to the scratchpad.
-7. **Signal done** (`set_ai_active(false)`) — the robot goes idle and Take Off is
-   unblocked. The player can review red's plan (the "View red's plan" button lights
-   up) and, while you're learning, flag any mistake in chat for you to fix.
+7. **Stop when you're done** — no "done" call is needed. The robot goes idle a few
+   seconds after your last call and Take Off unblocks. The player can review red's
+   plan (the "View red's plan" button lights up) and, while you're learning, flag any
+   mistake in chat for you to fix.
 
 Plan boldly and coherently. A good OPFOR turn looks like a real operation: a clear
 objective, the air defenses dealt with, the strike escorted and supported, the
