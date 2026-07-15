@@ -383,8 +383,11 @@ class SquadronConfigurationBox(QGroupBox):
 
     def cheat_add_aircraft(self) -> None:
         # Free aircraft: bump owned and the taskable pool directly, no budget change.
+        # Recruit a pilot with it — with squadron pilot limits on, a cheated airframe
+        # would otherwise sit uncrewable (claim_new_pilot_if_allowed refuses).
         self.squadron.owned_aircraft += 1
         self.squadron.untasked_aircraft += 1
+        self.squadron._recruit_pilots(1)
         self.update_aircraft_count_label()
 
     def cheat_remove_aircraft(self) -> None:
