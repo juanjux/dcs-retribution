@@ -153,8 +153,13 @@ The DCS AI that actually flies these missions is limited. Plan robustly around i
   roughly the weapon's launch range (e.g. ~140 nm for a ~160 nm missile) with `/waypoints/edit`
   — push it straight **away from the target**, on the bearing it already sits. Move it, don't
   delete it; the engine respects a moved ingress. **Rule of thumb: whenever a flight's weapon
-  out-ranges the ~45 nm auto-ingress, move the ingress out to that range.** (Plus: soften the
-  defense with DEAD/ANTISHIP and add **ESCORT** to pull blue's CAP off the strikers.)
+  out-ranges the ~45 nm auto-ingress, move the ingress out to that range.** Two limits to
+  know: the AI still RELEASES at its own doctrine distance regardless of the ingress
+  (observed: H-6J/YJ-12 ~140 nm, Tu-22M3/Kh-22 ~130 nm even though the Kh-22 reaches 270+),
+  so the moved ingress stops the fly-past abort but does not buy the brochure range; and if
+  the ingress can't sit OUTSIDE the defender's umbrella, the jet gets engaged on the way in
+  and (dumb AI) aborts anyway. (Plus: soften the defense with DEAD/ANTISHIP and add
+  **ESCORT** to pull blue's CAP off the strikers.)
 - **SEAD and ESCORT waypoints sit too close too — move them out as well.** The same close-in
   placement bites more than the strike ingress:
   - **SEAD / SEAD_ESCORT / SEAD_SWEEP:** the **SEAD SEARCH** and **INGRESS** waypoints are put
@@ -168,6 +173,47 @@ The DCS AI that actually flies these missions is limited. Plan robustly around i
     same move used for a jamming/EWAR escort.
   Read `GET /waypoints/{flight_id}` and reposition these with `/waypoints/edit` (move, never
   delete), exactly like the strike ingress above.
+- **Don't mix short-legged flights into a stand-off bomber package.** The package
+  synchronises on its shortest-ranged member: a short-range SEAD/strike flight in the same
+  package drags the bombers to ITS attack distance — into the SAM ring, abort included.
+  Give bombers only escorts (`escort:'air'` / `escort:'sead'`); a short-range SEAD strike
+  belongs in its OWN package. And an ESCORT needs the LEGS to reach the target area — a
+  fighter from a distant base comes back "out of range" and sinks the package; use a closer
+  squadron or add a REFUELING flight.
+- **Many flights through one funnel collide.** AI groups stacked on a shared route can
+  mid-air each other (7 bombers lost in one wave). Separate the flights by ALTITUDE
+  (`/waypoints/edit` `alt_m`) on the shared leg rather than fanning them sideways (lateral
+  spread desynchronises a saturation). For a true simultaneous multi-axis arrival give
+  several small packages the SAME `tot_minutes`; stagger the TOTs when you want waves.
+
+### Naval warfare
+
+- **Keep your naval groups MOVING.** Coordinate-guided weapons (JSOW/JDAM-class) can only
+  be assigned against a STATIONARY naval group — parked ships are free kills at known
+  coordinates; sailing ones can't even be targeted that way. Each turn, `naval/move` every
+  group toward a FAR destination (50–80 nm) so it is still under way when the mission ends
+  — the destination's job is the heading, not the spot (at ~20 kt a group covers ~25 nm per
+  mission). The move validates an all-water straight line (an islet blocks it) — pick a
+  bearing around land.
+- **Never launch strike packages from a carrier parked inside an enemy naval-SAM
+  umbrella.** The aircraft are killed on climb-out, over their own deck, wave after wave.
+  Keep the deck outside the enemy's `threat_nm` plus margin if you mean to fly from it.
+- **A ship's `threat_nm` ring is its missile envelope, not a fence for your fighters.**
+  Interceptors CHASE: fleet CAP that commits after a raid follows it out and dies to
+  long-range naval SAMs well beyond the painted ring. Anchor fleet CAP off the enemy
+  fleet's axis; a far-away AWACS you keep alive beats fighters fed one by one to an Aegis.
+- **AWACS is the fleet's first defensive multiplier.** Without one the fleet reacts on its
+  own (possibly damaged) radars at a fraction of the range — fewer intercept cycles per
+  raid. Keep one up even in retreat.
+- **Ship magazines are finite — and burning hulls are magnets.** Slow single anti-ship
+  shots force the defender to spend interceptors at ruinous exchange until the rails run
+  dry; then a real salvo walks in. And active seekers pile onto a SINKING hull while it
+  still floats — a crippled ship inside the formation soaks the wave for the healthy ones,
+  and "six hits" on one dying hull usually means the rest of your salvo was wasted. Spread
+  aimpoints across the group and judge results by `composition`, not by hit counts.
+- **Helicopters give enemy ships a WIDE berth.** Edit assault/transport helo routes to stay
+  well clear (>25 nm) of any enemy naval group — naval SAMs kill helos even at wave-top
+  height, and a helo that pops up to designate is most vulnerable right then.
 
 ## 5. How to plan a strong turn
 
@@ -195,7 +241,11 @@ The DCS AI that actually flies these missions is limited. Plan robustly around i
    threatened base, break through on one front, dismantle a section of blue's IADS to
    open a strike corridor, or set up a base capture. **Do not** plan a little bit of
    everything everywhere — concentration of force is how you actually win and how you
-   stop being predictable.
+   stop being predictable. **And weigh each target's VALUE against its DEFENSE:** the most
+   valuable target is often uneconomic (an Aegis group = stand-off bombers or nothing),
+   while an expensive FIXED asset under a bounded ring — a forward Patriot battery, an
+   EWR, an oil site — is a kill you can actually take and the enemy must pay to replace.
+   Scan `targets` for those before defaulting to the fleet.
 4. **Defend what matters.** BARCAP over vulnerable bases/fleets; sensible front-line
    stances; keep your own IADS alive.
 5. **Build the packages** to achieve your objectives, properly composed (see §4).
@@ -227,7 +277,12 @@ The DCS AI that actually flies these missions is limited. Plan robustly around i
    a warning — it won't block the turn if you're holding them back on purpose.)
 8. **Spend to fix gaps.** Losing the air war? Buy fighters. Need to hold or push a
    front? Buy ground units and/or transfer them where needed. Bought aircraft arrive
-   next turn, so invest ahead.
+   next turn, so invest ahead. **Attrition is a victory path of its own:** hitting what
+   the enemy is FORCED to keep repairing (their priciest SAM, their oil/factories) bleeds
+   their budget until the cascade starts — no runway repairs, no AWACS, gaps everywhere.
+   Don't be the victim either: stop re-buying an expensive SAM the enemy farms in a known
+   kill box (leave it down, or lean on mobile/naval cover instead), protect your income
+   buildings, and keep a budget cushion so you can always afford a runway repair.
 9. **Record what you learned.** Use your scratchpad (stored_context) for multi-turn
    strategy and lessons about this player — it persists across turns and sessions.
 
@@ -405,7 +460,8 @@ per turn, up to the limit — paces how fast you can rebuild after losses),
 `squadron_pilot_limit`? (max active pilots per squadron; both omitted when pilot
 limits are off = unlimited), `runway_repair_turns` (turns a cratered runway takes to
 repair — a base's `control_points.runway_repair_turns_remaining` counts down from this,
-so a fresh OCA-runway crater keeps that base grounded this many turns)}.
+so a fresh OCA-runway crater keeps that base grounded this many turns)}. Settings the
+human changes mid-campaign apply from the NEXT turn, not the one being planned.
 
 `GET /packages?side=red` → `[{index, target, task, tot (HH:MM), desc?,
 flights:[{id, task, aircraft, count, squadron, start?, dep?, clients?, uncrewed?}]}]`.
@@ -482,6 +538,14 @@ Write bodies:
   (leaving the strikers a death-ride) or be under-strength; decide whether to buy aircraft,
   re-task another squadron, move the ingress, or accept the smaller package. Only if NOTHING
   can be filled does the call return `ok:false` with the per-flight reasons in `error`.
+  **When a reason says "no capable aircraft were free AND within range", suspect
+  AVAILABILITY first, not range** — the usual cause is that the jets are already tasked
+  (typically all sitting in CAPs). Diagnose with `evaluate` on a single flight from that
+  squadron: if it evaluates fine, the airframe reaches — free jets (delete their packages)
+  and retry instead of assuming the target is out of reach.
+  A CAP/BARCAP/TARCAP flight anchors on the package's `target_id` — which may be one of
+  **your OWN control points**: that's how you fly a defensive CAP over a base or fleet
+  (anchor it on bases outside blue's SAM umbrellas).
 - `POST /payload/validate` `{side, squadron_id, payload:{pylon: clsid}}` → `{ok, aircraft,
   errors?:{pylon: reason}}` — check a custom payload is valid for the airframe before you
   use it (unknown weapon, wrong pylon, etc.).
@@ -493,6 +557,8 @@ Write bodies:
   plans the package and returns its `package` (with `tot`), `tot_minutes_into_mission`,
   `mission_window_min` and `within_window` — WITHOUT committing it. Use it to check a
   strike's feasibility and timing (does it make the window?) before `POST /packages`.
+  NOTE: `evaluate` does NOT check aircraft availability — it plans the flight even when
+  the squadron can't field it; only the real `POST /packages` reports `dropped`.
 - `POST /packages/{index}/tot` `{side, tot_minutes}` — set/clear the TOT of an ALREADY-created
   package (`tot_minutes` = minutes into the mission; `null` resets it to ASAP). Same as setting
   `tot_minutes` at creation, but for a package already in your ATO — adjust timing after the fact.
@@ -501,7 +567,8 @@ Write bodies:
   factory/front — `cp.has_ground_unit_source`)
 - `POST /stances` `{side, friendly_cp_id, enemy_cp_id, stance}`
 - `POST /squadron/relocate` `{side, squadron_id, dest_cp_id}` (move a squadron to
-  another friendly base; arrives over time)
+  another friendly base; arrives over time — also the rescue for a squadron stranded on
+  a sunk/dead carrier or LPD: relocate it out and only the ferry flight is created)
 - `POST /ground/transfer` `{side, origin_cp_id, dest_cp_id, unit_name, quantity, by_air}`
   (move existing ground units between your bases; route pre-validated)
 - `POST /repair` `{side, id}` — pay to repair one of your damaged assets (an `id` from
@@ -515,9 +582,12 @@ Write bodies:
   your SAM/air cover, push an area-defense ship's umbrella over a contested coastal base,
   or screen toward a threatened sector — but keep ships **outside the player's anti-ship
   reach** unless you mean to fight.
-- `DELETE /packages/{index}` (cancel one package) · `DELETE /packages` (clear all)
+- `DELETE /packages/{index}` (cancel one package) · `DELETE /packages` (clear all).
+  Packages are addressed by INDEX and the indices renumber after every delete — when
+  cancelling several, delete from the HIGHEST index down.
 - `PUT`/`POST /stored_context` `{key: value}` · `DELETE /stored_context/{key}`
-- `POST /ai/active?active=true|false` · `POST /ai/status?text=…`
+- `POST /ai/status?text=…` (optional status note on the robot — it lights up on its own
+  with every call; there is no on/off to toggle)
 
 Tasks: BARCAP TARCAP CAP SWEEP ESCORT SEAD DEAD STRIKE OCA_RUNWAY OCA_AIRCRAFT CAS
 BAI ANTISHIP AEWC REFUELING. Escort hints: air / sead / refuel.
