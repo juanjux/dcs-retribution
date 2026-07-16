@@ -640,6 +640,17 @@ def _naval_view(game: Game, obj, kind: str) -> NavalView:
     )
 
 
+def _fleet_has_living_hull(cp) -> bool:
+    """Whether a fleet control point still has any hull afloat. A dead FLAGSHIP only
+    stops aviation (that's what ``runway_is_operational`` measures); surviving escorts
+    keep sailing, and the map UI still lets the player drag such a fleet — so the AI
+    must keep seeing and moving it too (else the survivors become invisible ghosts)."""
+    for tgo in getattr(cp, "ground_objects", []):
+        if getattr(tgo, "is_control_point", False):
+            return any(u.alive for u in tgo.units)
+    return False
+
+
 def build_my_naval(game: Game, side: str) -> list[NavalView]:
     """The side's OWN repositionable naval groups — combatant ship groups
     (ShipGroundObject) AND carriers/LHAs (movable naval control points). These are what
@@ -653,12 +664,14 @@ def build_my_naval(game: Game, side: str) -> list[NavalView]:
         if cp.captured != player:
             continue
         # the carrier/LHA itself is a movable control point (a different id namespace
-        # than its escort ship groups below) — skip a sunk carrier (nothing to move),
-        # mirroring the is_dead skip for ship groups below
+        # than its escort ship groups below) — skip it only when EVERY hull is sunk
+        # (nothing left to move), mirroring the is_dead skip for ship groups below.
+        # NOT runway_is_operational: that is the carrier-AVIATION check, and a fleet
+        # that lost its flagship still sails (composition reports the survivors).
         if (
             getattr(cp, "moveable", False)
             and getattr(cp, "is_fleet", False)
-            and cp.runway_is_operational()
+            and _fleet_has_living_hull(cp)
         ):
             out.append(_naval_view(game, cp, "carrier"))
         for tgo in cp.ground_objects:

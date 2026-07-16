@@ -857,17 +857,14 @@ def _resolve_naval(game: Game, naval_id: str):
 
 
 def _naval_is_dead(mover) -> bool:
-    """True if a naval mover has nothing left alive to reposition — a ship group whose units
-    are all destroyed, or a carrier/LHA whose hull is sunk (``runway_is_operational`` is the
-    game's own carrier-alive check)."""
+    """True if a naval mover has nothing left alive to reposition — a ship group whose
+    units are all destroyed, or a fleet control point with EVERY hull sunk. A dead
+    flagship alone doesn't beach the survivors: ``runway_is_operational`` only gates
+    aviation, and the map UI still lets the player drag such a fleet (parity)."""
     if getattr(mover, "is_dead", False):  # ShipGroundObject
         return True
-    op = getattr(mover, "runway_is_operational", None)  # carrier/LHA control point
-    if callable(op):
-        try:
-            return not op()
-        except Exception:
-            pass
+    if hasattr(mover, "ground_objects"):  # fleet control point
+        return not views._fleet_has_living_hull(mover)
     return False
 
 
