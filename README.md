@@ -160,6 +160,10 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   (branch [`juanjux/ch_china_1.1.6`](https://github.com/juanjux/dcs-retribution/tree/juanjux/ch_china_1.1.6))
 
 ### Fixes
+- **Right-click on a front line under a flight-plan route** now opens the new-package
+  dialog: the blue route's invisible hover overlay swallowed the click and the browser
+  context menu appeared instead (front lines render in their own map pane now).
+  ([#71](https://github.com/juanjux/dcs-retribution/pull/71))
 - **Carrier CAP mission won't save** — a carrier BARCAP/CAP flying an in-flight start
   under a mission-start TOT could generate waypoints DCS rejects ("locked speed …
   surrounded by … locked time"), blocking the whole mission from saving. A TOT-locked
