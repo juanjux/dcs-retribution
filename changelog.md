@@ -1,6 +1,7 @@
 # Retribution-juanjux v1.6.0
 
 ## Features/Improvements
+* **[Performance]** Faster mission generation: the land/sea point tests behind front-line and ground-unit placement now use shapely's `contains_xy` (no per-check `Point` allocation or predicate-wrapper overhead), ~5x faster on the check that dominated a Take-Off profile.
 * **[Map]** A ground object that is fully destroyed but being repaired now shows an orange health bar instead of yellow, so it reads distinctly from a partially-damaged group (some units dead, some alive) which stays yellow.
 * **[Map]** Combatant (non-carrier) ship groups can be repositioned on the campaign map: drag the group to a destination (up to 80 nm/turn, open water only), it sails there in-mission and snaps to the destination at end of turn, re-parenting to the nearest friendly base. Player-driven for now. (Adopts upstream geofffranks' implementation, dcs-retribution#802.)
 * **[Options]** "Custom cloud preset pack" setting (replaces "Use Bandit's clouds") makes a community cloud-preset weather mod's presets available to the mission generator — choose Bandit's Cloud Presets, Weather 2.0, or ATMOS-X to match the pack you have installed.
