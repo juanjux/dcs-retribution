@@ -1,6 +1,7 @@
 # Retribution v1.6.0
 
 ## Features/Improvements
+* **[Performance]** Faster mission generation: the land/sea point tests behind front-line and ground-unit placement now use shapely's `contains_xy` (no per-check `Point` allocation or predicate-wrapper overhead), ~5x faster on the check that dominated a Take-Off profile.
 * **[Mod]** Add support for the F-15EX Eagle II mod (by Spino).
 * **[Mod]** Add support for the F-15C EG Golden Eagle mod (by Spino).
 * **[Mod]** Add support for the Eurofighter Typhoon mod (by Lechuzas Negras).
