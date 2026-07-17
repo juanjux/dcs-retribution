@@ -38,6 +38,15 @@ _ESCORTS = {
 }
 
 
+_TASK_ALIASES = {
+    # Names the LLM naturally reaches for that aren't FlightType members. A bare "CAP"
+    # means area/base/fleet combat air patrol -> BARCAP (TARCAP is tied to a strike
+    # package). Keep these in sync with the task list in docs/howtoplay.md.
+    "CAP": FlightType.BARCAP,
+    "COMBAT_AIR_PATROL": FlightType.BARCAP,
+}
+
+
 def _flight_type(name: str) -> FlightType:
     raw = name.strip()
     key = raw.upper().replace(" ", "_").replace("-", "_")
@@ -45,6 +54,8 @@ def _flight_type(name: str) -> FlightType:
         return FlightType[key]
     except KeyError:
         pass
+    if key in _TASK_ALIASES:
+        return _TASK_ALIASES[key]
     for ft in FlightType:
         if str(getattr(ft, "value", "")).upper() == raw.upper():
             return ft
@@ -134,8 +145,14 @@ def _forced_task_assign(game: Game, side: str, specs):
             squadron_id = getattr(flight, "squadron_id", None)
             if not squadron_id:
                 continue
-            squadron = _resolve_squadron(game, side, squadron_id)
-            task = _flight_type(flight.task)
+            try:
+                squadron = _resolve_squadron(game, side, squadron_id)
+                task = _flight_type(flight.task)
+            except Exception:
+                # Bad squadron_id / unknown task: skip forcing it (the real plan or the
+                # pre-check will report the real problem). Skipping keeps this context
+                # non-raising so a later valid flight's forced task is still restored.
+                continue
             if task not in squadron.auto_assignable_mission_types:
                 squadron.auto_assignable_mission_types.add(task)
                 added.append((squadron, task))
@@ -389,7 +406,8 @@ def _diagnose_flights(
                 hint = (
                     ""
                     if spec.ignore_range
-                    else " — set ignore_range:true to send it past the range limit"
+                    else " — pass squadron_id to force a specific capable squadron (as a "
+                    "human assigns by hand), or ignore_range:true to send it past the range limit"
                 )
                 out.append(
                     (
@@ -406,11 +424,12 @@ def _diagnose_flights(
 
 def _unfulfilled_reason(game: Game, side: str, spec: schemas.PackageSpec) -> str:
     """Human string of why a package (or the flights of one) couldn't be planned."""
-    probs = [
-        f"{label}: {p}"
-        for _, label, p in _diagnose_flights(game, side, spec, list(spec.flights))
-        if p
-    ]
+    # Same forced-assign wrapper as the pre-check/plan, so the reason matches what would
+    # actually happen (a squadron_id'd flight isn't reported "out of range" for a task
+    # outside its auto-assign defaults).
+    with _forced_task_assign(game, side, [spec]):
+        diag = _diagnose_flights(game, side, spec, list(spec.flights))
+    probs = [f"{label}: {p}" for _, label, p in diag if p]
     return "; ".join(probs) if probs else "no capable aircraft were free and in range"
 
 
@@ -434,7 +453,11 @@ def create_packages(
                 # Partial by default: pre-check each flight and keep only the fillable ones,
                 # so one unfillable flight (no free aircraft / out of range / escort w/o
                 # parent) doesn't discard the whole package — it's dropped + reported instead.
-                diag = _diagnose_flights(game, side, spec, list(spec.flights))
+                # Diagnose under the SAME forced-assign the real plan uses (below), so a flight
+                # that names a squadron_id isn't scrubbed as "out of range" for a task that
+                # merely isn't in that squadron's auto-assign defaults (e.g. FC-1 flying BARCAP).
+                with _forced_task_assign(game, side, [spec]):
+                    diag = _diagnose_flights(game, side, spec, list(spec.flights))
                 keep = [
                     f for f, (_i, _l, prob) in zip(spec.flights, diag) if prob is None
                 ]
