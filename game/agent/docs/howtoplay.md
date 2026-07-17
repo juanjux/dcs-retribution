@@ -557,7 +557,12 @@ Write bodies:
   and retry instead of assuming the target is out of reach.
   A CAP/BARCAP/TARCAP flight anchors on the package's `target_id` — which may be one of
   **your OWN control points**: that's how you fly a defensive CAP over a base or fleet
-  (anchor it on bases outside blue's SAM umbrellas).
+  (anchor it on bases outside blue's SAM umbrellas). `CAP` is accepted as an alias for
+  `BARCAP`. **To use a squadron the auto-planner wouldn't pick for that role** (e.g. a
+  multirole JF-17/FC-1 flying BARCAP over its home base) **pass that flight's `squadron_id`
+  to force it** — exactly like a human assigning the flight by hand. Without a `squadron_id`
+  only squadrons whose default role set already includes the task are considered, so a
+  capable jet can otherwise be skipped and misreported as "out of range".
 - `POST /payload/validate` `{side, squadron_id, payload:{pylon: clsid}}` → `{ok, aircraft,
   errors?:{pylon: reason}}` — check a custom payload is valid for the airframe before you
   use it (unknown weapon, wrong pylon, etc.).
