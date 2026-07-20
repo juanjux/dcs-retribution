@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import random
 from dataclasses import dataclass, replace
-from typing import TYPE_CHECKING
+from typing import Optional, TYPE_CHECKING
 
 from dcs import Point
 
@@ -11,7 +11,7 @@ from game.flightplan import JoinZoneGeometry
 from game.flightplan.ipsolver import IpSolver
 from game.flightplan.refuelzonegeometry import RefuelZoneGeometry
 from game.persistency import waypoint_debug_directory
-from game.utils import dcs_to_shapely_point
+from game.utils import Distance, dcs_to_shapely_point
 from game.utils import nautical_miles
 
 if TYPE_CHECKING:
@@ -26,6 +26,10 @@ class PackageWaypoints:
     initial: Point
     split: Point
     refuel: Point
+
+    #: The package's longest stand-off launch range at the time these waypoints were
+    #: built. Used to detect when a payload change invalidates the ingress point.
+    standoff_range: Optional[Distance] = None
 
     @staticmethod
     def create(
@@ -93,6 +97,7 @@ class PackageWaypoints:
             initial_point,
             WaypointBuilder.perturb(join_point),
             refuel_point,
+            standoff_range,
         )
 
     @staticmethod

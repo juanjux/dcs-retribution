@@ -70,6 +70,18 @@ class Package(RadioFrequencyContainer):
                 best = launch_range
         return best
 
+    def waypoints_need_regeneration(self) -> bool:
+        """Whether the package waypoints must be rebuilt.
+
+        True if they have never been built, or if the package's stand-off launch range
+        has changed since they were (e.g. a flight's payload was swapped after the
+        ingress point was first computed), which would leave the ingress point at a
+        stale distance from the target.
+        """
+        if self.waypoints is None:
+            return True
+        return self.waypoints.standoff_range != self.max_standoff_range()
+
     def formation_speed(self, is_helo: bool) -> Optional[Speed]:
         """The speed of the package when in formation.
 
