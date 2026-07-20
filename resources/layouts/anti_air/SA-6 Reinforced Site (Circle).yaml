@@ -5,7 +5,7 @@ groups:
   - SAM:
     - name: Search Radar
       unit_count:
-        - 1
+        - 2  # guidance-radar redundancy: one ARM hit must not blind the whole site
       unit_types:
         - Kub 1S91 str
     - name: Command Post

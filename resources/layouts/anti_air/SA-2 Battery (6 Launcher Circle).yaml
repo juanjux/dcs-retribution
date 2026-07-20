@@ -10,7 +10,7 @@ groups:
         - p-19 s-125 sr
     - name: Track Radar
       unit_count:
-        - 1
+        - 2  # guidance-radar redundancy: one ARM hit must not blind the whole site
       unit_types:
         - SNR_75V
     - name: Launcher
