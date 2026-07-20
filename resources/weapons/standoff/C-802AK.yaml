@@ -1,5 +1,5 @@
 name: C-802AK
-range: 65  # nm - stand-off launch range
+range: 97  # nm - stand-off launch range (DCS ref guide v34: 97nm / 180km)
 year: 1998
 clsids:
   - "{C_802AK}"   # C-802AK
