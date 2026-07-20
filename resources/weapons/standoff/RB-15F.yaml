@@ -1,4 +1,5 @@
 name: RB-15F
+range: 40  # nm - stand-off launch range
 year: 1989
 fallback: RB-04E
 clsids:

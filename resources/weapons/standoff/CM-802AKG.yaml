@@ -1,4 +1,5 @@
 name: CM-802AKG
+range: 120  # nm - stand-off launch range
 year: 2012
 clsids:
   - "{CM_802AKG}"   # CM-802AKG

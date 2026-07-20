@@ -4,6 +4,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
 
+import math
 import pytest
 from dcs.terrain import Caucasus
 from shapely import Point, MultiPolygon, Polygon, unary_union
@@ -99,3 +100,31 @@ def test_fuzz_ipsolver(fuzzed_solver: IpSolver, run_number: int) -> None:
 
 def test_can_construct_solver_with_empty_threat() -> None:
     IpSolver(Point(0, 0), Point(0, 0), ALL_DOCTRINES[0], MultiPolygon([]))
+
+
+def test_raising_max_ingress_distance_pushes_ip_out_to_standoff_range() -> None:
+    # Regression for issue #34: stand-off-armed flights should ingress from their
+    # weapon's launch range. PackageWaypoints raises the doctrine's max ingress
+    # distance to the stand-off range, which must move the IP out to that distance.
+    from dataclasses import replace
+
+    def distance_from_target(ip: Point) -> Distance:
+        return meters(math.hypot(ip.x - target.x, ip.y - target.y))
+
+    doctrine = ALL_DOCTRINES[0]
+    departure = Point(0, 0)
+    target = point_at_heading(departure, Heading.from_degrees(0), nautical_miles(300))
+
+    default_solver = IpSolver(departure, target, doctrine, MultiPolygon([]))
+    default_distance = distance_from_target(default_solver.solve())
+    assert default_distance.nautical_miles == pytest.approx(
+        doctrine.max_ingress_distance.nautical_miles, abs=1
+    )
+
+    standoff = nautical_miles(160)
+    standoff_doctrine = replace(doctrine, max_ingress_distance=standoff)
+    standoff_solver = IpSolver(departure, target, standoff_doctrine, MultiPolygon([]))
+    standoff_distance = distance_from_target(standoff_solver.solve())
+    assert standoff_distance.nautical_miles == pytest.approx(
+        standoff.nautical_miles, abs=1
+    )

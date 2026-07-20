@@ -1,6 +1,7 @@
 # Retribution v1.6.0
 
 ## Features/Improvements
+* **[Mission Generator]** Stand-off/cruise-missile-armed flights now ingress from a realistic launch distance. Weapons can declare a `range` (nautical miles) in their `resources/weapons` YAML, and when a package carries such a weapon whose range exceeds the doctrine ingress distance, the ingress point is pushed out to that range (e.g. Tu-16s with Kh-22s begin their run ~160nm from the target instead of being dragged in to the doctrine ingress point). Weapons without a `range` are unaffected. Initial ranges are provided for the major stand-off, cruise, and anti-ship missiles and can be extended per-weapon.
 * **[Kneeboard]** Use a light-grey daytime kneeboard background instead of near-white, to avoid glare under HDR / Auto-HDR while staying readable in daylight.
 * **[UX]** Hovering a friendly flight's route line on the map highlights it in yellow, and clicking it selects that flight's package (and the flight) in the ATO sidebar.
 * **[UX]** Press Delete with a package selected in the Packages list to cancel it, making it quick to clear several packages in a row.

@@ -43,6 +43,7 @@ if TYPE_CHECKING:
     from .flightwaypoint import FlightWaypoint
     from .package import Package
     from .starttype import StartType
+    from game.utils import Distance
 
 F18_TGP_PYLON: int = 4
 
@@ -288,6 +289,17 @@ class Flight(
         return any(
             m.loadout.has_weapon_of_type(weapon_type) for m in self.iter_members()
         )
+
+    def max_standoff_range(self) -> Optional[Distance]:
+        """The longest stand-off launch range across the flight's members, if any."""
+        best: Optional[Distance] = None
+        for member in self.iter_members():
+            launch_range = member.loadout.max_standoff_range()
+            if launch_range is None:
+                continue
+            if best is None or launch_range > best:
+                best = launch_range
+        return best
 
     def __repr__(self) -> str:
         return self.__str__()

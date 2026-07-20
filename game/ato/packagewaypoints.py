@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import random
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING
 
 from dcs import Point
@@ -33,11 +33,23 @@ class PackageWaypoints:
     ) -> PackageWaypoints:
         origin = package.departure_closest_to_target()
 
+        # Push the ingress point out to the package's stand-off launch range when it
+        # exceeds the doctrine's ingress distance, so cruise/stand-off-armed flights
+        # (e.g. Tu-16s with Kh-22s) begin their attack run from a realistic distance
+        # instead of being dragged all the way in to the doctrine ingress point.
+        doctrine = coalition.doctrine
+        standoff_range = package.max_standoff_range()
+        if (
+            standoff_range is not None
+            and standoff_range > doctrine.max_ingress_distance
+        ):
+            doctrine = replace(doctrine, max_ingress_distance=standoff_range)
+
         # Start by picking the best IP for the attack.
         ip_solver = IpSolver(
             dcs_to_shapely_point(origin.position),
             dcs_to_shapely_point(package.target.position),
-            coalition.doctrine,
+            doctrine,
             coalition.opponent.threat_zone.air_defenses,
         )
         ip_solver.set_debug_properties(

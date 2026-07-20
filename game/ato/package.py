@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Dict, Optional, TYPE_CHECKING
 
 from game.db import Database
-from game.utils import Speed
+from game.utils import Distance, Speed
 from .closestairfields import ObjectiveDistanceCache
 from .flight import Flight
 from .flightplans.formation import FormationFlightPlan
@@ -53,6 +53,22 @@ class Package(RadioFrequencyContainer):
     @property
     def has_players(self) -> bool:
         return any(flight.client_count for flight in self.flights)
+
+    def max_standoff_range(self) -> Optional[Distance]:
+        """The longest stand-off launch range among the package's flights, if any.
+
+        Used by the mission planner to place the ingress point at a realistic launch
+        distance for stand-off/cruise-missile-armed flights. Flights without any
+        ranged stand-off weapon (e.g. escorts) contribute nothing.
+        """
+        best: Optional[Distance] = None
+        for flight in self.flights:
+            launch_range = flight.max_standoff_range()
+            if launch_range is None:
+                continue
+            if best is None or launch_range > best:
+                best = launch_range
+        return best
 
     def formation_speed(self, is_helo: bool) -> Optional[Speed]:
         """The speed of the package when in formation.
