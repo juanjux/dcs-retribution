@@ -21,7 +21,7 @@ groups:
       unit_count:
         - 2
       unit_types:
-        - CH_SkySabreLN
+        - CH_SkySabre
       unit_classes:
         - Launcher
     - name: Logistics
