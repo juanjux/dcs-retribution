@@ -90,6 +90,13 @@ class ControlPointView(BaseModel):
     can_recruit_ground: bool | None = None  # has a factory/front — buy ground here
     links: list[str] | None = None  # adjacent control-point ids (land moves / fronts)
     ground: dict[str, int] | None = None  # armor on hand here (unit name -> count)
+    motorpool: int | None = (
+        None  # vehicles of this base's UNDEPLOYED reserve that spawn in a strikeable
+        # motorpool depot — what an enemy BAI strike here can destroy (and what you
+        # lose the purchase price of). Omitted when the base has no motorpool or
+        # nothing in reserve. Yours: deploy it or defend it. Enemy: a fat number is a
+        # cheap attrition target (see also targets[] kind:motorpool)
+    )
     can_launch: bool | None = (
         None  # False = this base CANNOT launch aircraft this turn (runway cratered/under
         # repair, or carrier hull sunk); omitted when it can. IMPORTANT: a base being
@@ -375,6 +382,28 @@ def _parking(cp) -> tuple[int, int] | None:
         return None
 
 
+def _motorpool_exposed(game: Game, cp: ControlPoint) -> int | None:
+    """Vehicles of this base's undeployed reserve that render in a strikeable
+    motorpool, i.e. what an enemy BAI strike here could actually destroy.
+
+    None (omitted) unless the base has an authored motorpool and something in
+    reserve. The spawn cap is per control point — its motorpools share one reserve
+    pool (MotorpoolPopulator._populate_cp) — so the exposure is capped once here.
+    """
+    try:
+        from game.ground_forces.ai_ground_planner import reserve_armor_for
+        from game.theater.theatergroundobject import MotorpoolGroundObject
+
+        cap = game.settings.motorpool_spawn_cap
+        if not game.settings.motorpool_enabled or cap <= 0:
+            return None
+        if not any(isinstance(tgo, MotorpoolGroundObject) for tgo in cp.ground_objects):
+            return None
+        return min(sum(reserve_armor_for(cp).values()), cap) or None
+    except Exception:
+        return None
+
+
 def build_control_point(game: Game, cp: ControlPoint) -> ControlPointView:
     # Mirror game/server/leaflet.py: build a terrain-aware Point before converting.
     ll = DcsPoint(cp.position.x, cp.position.y, game.theater.terrain).latlng()
@@ -393,6 +422,7 @@ def build_control_point(game: Game, cp: ControlPoint) -> ControlPointView:
     except Exception:
         repair_turns = None  # carriers/LHAs/off-map have no repairable runway
     return ControlPointView(
+        motorpool=_motorpool_exposed(game, cp),
         id=str(cp.id),
         name=cp.name,
         type=cp.cptype.name,

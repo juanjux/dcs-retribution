@@ -437,7 +437,11 @@ means none/empty** (stated once so the per-turn payloads stay small).
   `parking_free`?/`parking_total`? (room to buy/station aircraft),
   `can_recruit_ground`? (true = you can `buy/ground` here), `links`? (adjacent
   control-point ids — land moves and where fronts form), `ground`? (armor on hand,
-  `{unit: count}` — what you can `ground/transfer`), `can_launch`? (**present only when
+  `{unit: count}` — what you can `ground/transfer`), `motorpool`? (how many of that armor
+  sit **undeployed in a bombable depot**: on YOUR base that is what a blue BAI strike can
+  destroy and force you to repurchase — deploy it or defend it; on an enemy base it sizes
+  the prize behind a `kind:motorpool` target. Omitted when the base has no motorpool or
+  nothing in reserve), `can_launch`? (**present only when
   FALSE** = this base cannot launch aircraft this turn: runway cratered/under repair, or
   carrier hull sunk — do NOT plan flights from it), `runway_repair_turns_remaining`?
   (turns until a repairing runway is back). **BLIND-SPOT WARNING:** a base whose runway
