@@ -216,8 +216,6 @@ TIC script (MIT).
   player slots, real TOT, departure bases).
 - **Flight-creation context** — live explanatory text when picking task /
   aircraft / squadron, with informative squadron tooltips.
-- **Bulk flight altitude** — an "apply to all" en-route altitude control; the
-  per-waypoint altitude steps by 1000 ft instead of 1 ft.
 - **Building-card cleanup** — drops the "Missing Recon Picture" placeholder for
   tidier ground-object cards.
 - **Self-documenting plugin options** — per-plugin description text and cleaned
