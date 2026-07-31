@@ -47,15 +47,36 @@ def get_default_loadout_override(aircraft_id: str, task: FlightType) -> Optional
     return load_default_loadout_overrides().get(aircraft_id, {}).get(task.name)
 
 
+def _write_default_loadout_overrides(data: Dict[str, Dict[str, str]]) -> None:
+    # Written via a temporary file and replaced in one step: a half-written JSON here
+    # would silently drop every default the user has set.
+    path = _default_loadout_overrides_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    with tmp.open("w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2)
+    tmp.replace(path)
+
+
 def set_default_loadout_override(
     aircraft_id: str, task: FlightType, payload_name: str
 ) -> None:
     data = load_default_loadout_overrides()
     data.setdefault(aircraft_id, {})[task.name] = payload_name
-    path = _default_loadout_overrides_path()
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2)
+    _write_default_loadout_overrides(data)
+
+
+def clear_default_loadout_override(aircraft_id: str, task: FlightType) -> bool:
+    """Drop the default for this aircraft + task. True if there was one to drop."""
+    data = load_default_loadout_overrides()
+    per_aircraft = data.get(aircraft_id)
+    if not per_aircraft or task.name not in per_aircraft:
+        return False
+    del per_aircraft[task.name]
+    if not per_aircraft:
+        del data[aircraft_id]
+    _write_default_loadout_overrides(data)
+    return True
 
 
 #: DCS ids of the Super Hornet family the SYNTAX AARGM-ER "realistic" toggle covers.
