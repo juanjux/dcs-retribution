@@ -49,10 +49,13 @@ class QBuildingInfo(QGroupBox):
         layout.addWidget(name_label)
 
         if self.ground_object.category in REWARDS:
-            income_text = "Value: " + str(REWARDS[self.ground_object.category]) + "M"
+            income_label_text = (
+                "Value: " + str(REWARDS[self.ground_object.category]) + "M"
+            )
             if not self.building.alive:
-                income_text = "<s>" + income_text + "</s>"
-            layout.addWidget(QLabel(income_text))
+                income_label_text = "<s>" + income_label_text + "</s>"
+            self.reward = QLabel(income_label_text)
+            layout.addWidget(self.reward)
 
         if not self.building.alive:
             if self.building.repair_turns_remaining is not None:

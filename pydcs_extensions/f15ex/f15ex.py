@@ -218,21 +218,21 @@ class F_15EX(PlaneType):
         )
         MiG_29MU2_ADM_160B = (2, WeaponsF15EX.MiG_29MU2_ADM_160B)
         MIG29MU2_JDAM_ER = (2, WeaponsF15EX.MIG29MU2_JDAM_ER)
-        BRU_42_with_3_x_Mk_82___500lb_GP_Bombs_LD = (
+        BRU_42___3_x_Mk_82___500lb_GP_Bomb_LD = (
             2,
-            Weapons.BRU_42_with_3_x_Mk_82___500lb_GP_Bombs_LD,
+            Weapons.BRU_42___3_x_Mk_82___500lb_GP_Bomb_LD,
         )
         BRU_33_with_2_x_Mk_20_Rockeye___490lbs_CBU__247_x_HEAT_Bomblets = (
             2,
             Weapons.BRU_33_with_2_x_Mk_20_Rockeye___490lbs_CBU__247_x_HEAT_Bomblets,
         )
-        BRU_42_with_3_x_Mk_82_AIR_Ballute___500lb_GP_Bombs_HD = (
+        BRU_42___3_x_Mk_82_AIR_Ballute___500lb_GP_Bomb_HD = (
             2,
-            Weapons.BRU_42_with_3_x_Mk_82_AIR_Ballute___500lb_GP_Bombs_HD,
+            Weapons.BRU_42___3_x_Mk_82_AIR_Ballute___500lb_GP_Bomb_HD,
         )
-        BRU_42_with_3_x_Mk_20_Rockeye___490lbs_CBUs__247_x_HEAT_Bomblets = (
+        BRU_42___3_x_Mk_20_Rockeye___490lbs_CBU__247_x_HEAT_Bomblets = (
             2,
-            Weapons.BRU_42_with_3_x_Mk_20_Rockeye___490lbs_CBUs__247_x_HEAT_Bomblets,
+            Weapons.BRU_42___3_x_Mk_20_Rockeye___490lbs_CBU__247_x_HEAT_Bomblets,
         )
         Mk_84___2000lb_GP_Bomb_LD = (2, Weapons.Mk_84___2000lb_GP_Bomb_LD)
         Mk_82___500lb_GP_Bomb_LD = (2, Weapons.Mk_82___500lb_GP_Bomb_LD)
@@ -579,21 +579,21 @@ class F_15EX(PlaneType):
         )
         MiG_29MU2_ADM_160B = (10, WeaponsF15EX.MiG_29MU2_ADM_160B)
         MIG29MU2_JDAM_ER = (10, WeaponsF15EX.MIG29MU2_JDAM_ER)
-        BRU_42_with_3_x_Mk_82___500lb_GP_Bombs_LD = (
+        BRU_42___3_x_Mk_82___500lb_GP_Bomb_LD = (
             10,
-            Weapons.BRU_42_with_3_x_Mk_82___500lb_GP_Bombs_LD,
+            Weapons.BRU_42___3_x_Mk_82___500lb_GP_Bomb_LD,
         )
         BRU_33_with_2_x_Mk_20_Rockeye___490lbs_CBU__247_x_HEAT_Bomblets = (
             10,
             Weapons.BRU_33_with_2_x_Mk_20_Rockeye___490lbs_CBU__247_x_HEAT_Bomblets,
         )
-        BRU_42_with_3_x_Mk_82_AIR_Ballute___500lb_GP_Bombs_HD = (
+        BRU_42___3_x_Mk_82_AIR_Ballute___500lb_GP_Bomb_HD = (
             10,
-            Weapons.BRU_42_with_3_x_Mk_82_AIR_Ballute___500lb_GP_Bombs_HD,
+            Weapons.BRU_42___3_x_Mk_82_AIR_Ballute___500lb_GP_Bomb_HD,
         )
-        BRU_42_with_3_x_Mk_20_Rockeye___490lbs_CBUs__247_x_HEAT_Bomblets = (
+        BRU_42___3_x_Mk_20_Rockeye___490lbs_CBU__247_x_HEAT_Bomblets = (
             10,
-            Weapons.BRU_42_with_3_x_Mk_20_Rockeye___490lbs_CBUs__247_x_HEAT_Bomblets,
+            Weapons.BRU_42___3_x_Mk_20_Rockeye___490lbs_CBU__247_x_HEAT_Bomblets,
         )
         Mk_84___2000lb_GP_Bomb_LD = (10, Weapons.Mk_84___2000lb_GP_Bomb_LD)
         Mk_82___500lb_GP_Bomb_LD = (10, Weapons.Mk_82___500lb_GP_Bomb_LD)
