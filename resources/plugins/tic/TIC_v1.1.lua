@@ -512,7 +512,13 @@ function GLSCO_COMBATANT:GetCoordinate()
       return self.carrier:GetCoordinate() 
    end
    
-   if not self.group then return nil end 
+   if not self.group then return nil end
+
+   -- A combatant killed between an IsAlive() check and now has a gone DCS object; MOOSE
+   -- GROUP:GetCoordinate() then logs a GetVec3 error and returns nil (the log flood plus
+   -- the caught SCHEDULER crash when a unit dies mid-move -- see :isNear). Test existence
+   -- with the non-logging IsAlive() first and return nil quietly.
+   if not self.group:IsAlive() then return nil end
 
    return self.group:GetCoordinate()
 
@@ -2190,7 +2196,16 @@ function GLSCO_COMBATANT:isNear(coord, radius)
       return true
    end
 
-   return coord:IsInRadius(self:GetCoordinate(), radius)
+   local here = self:GetCoordinate()
+   if not coord or not here then
+      -- The combatant despawned between the alive-check above and now (GetCoordinate
+      -- returns nil for a dead group), or no destination was passed. Treat as "arrived"
+      -- rather than indexing a nil Coordinate inside MOOSE (the caught SCHEDULER crash
+      -- and GetVec3 log flood seen when a combatant is killed mid-move).
+      return true
+   end
+
+   return coord:IsInRadius(here, radius)
 
 end
 
