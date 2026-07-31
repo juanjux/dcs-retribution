@@ -188,6 +188,17 @@ The DCS AI that actually flies these missions is limited. Plan robustly around i
 
 ### Naval warfare
 
+- **Every fleet — yours and the enemy's — starts HOT and shoots on its own.** Ship groups
+  are generated on a RED alarm state with weapon-free ROE, so a ship fires autonomously at
+  anything that enters its weapon range: naval SAMs at aircraft, anti-ship missiles/guns/
+  torpedoes at enemy ships. There is no passive/warm-up window and no first-pass freebie —
+  the enemy fleet is dangerous from minute one, and the performance "red alert state"
+  setting does NOT disarm it (that toggle only lets *ground* SAMs start dark for the IADS).
+  Consequences: an ANTISHIP package must arrive with stand-off weapons, saturation and
+  staggered TOTs (a trickle of single shots just feeds the interceptors); never route
+  transports, helos or tankers within a ship's `threat_nm`; and two opposing groups that
+  drift into missile range of each other WILL trade fire without being tasked — so when you
+  `naval/move`, check what your bearing sails you into.
 - **Keep your naval groups MOVING.** Coordinate-guided weapons (JSOW/JDAM-class) can only
   be assigned against a STATIONARY naval group — parked ships are free kills at known
   coordinates; sailing ones can't even be targeted that way. Each turn, `naval/move` every

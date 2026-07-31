@@ -120,10 +120,6 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   this turn (all object types, not just runways), and your side's in-progress
   repairs with turns remaining.
   ([#43](https://github.com/juanjux/dcs-retribution/pull/43))
-- **Naval groups always defend** — ships are generated on a hot (RED) alarm state
-  so fleets actually fight back (radars/SAM/CIWS/AAA) instead of sitting passive
-  with radars off when the performance "red alert state" toggle is off.
-  ([#47](https://github.com/juanjux/dcs-retribution/pull/47))
 - **Smart Threat Reaction** — a plugin that keeps AI aircraft at Passive Defense
   by default and switches only the flight a missile is actually guiding on to
   Evade Fire (read from the engine via `weapon:getTarget`), so one SAM launch no
