@@ -102,14 +102,14 @@ class Eurofighter(PlaneType):
             2,
             Weapons.BRU_33_with_2_x_Mk_83___1000lb_GP_Bomb_LD,
         )
-        BRU_42_with_3_x_Mk_82___500lb_GP_Bombs_LD = (
+        BRU_42___3_x_Mk_82___500lb_GP_Bomb_LD = (
             2,
-            Weapons.BRU_42_with_3_x_Mk_82___500lb_GP_Bombs_LD,
+            Weapons.BRU_42___3_x_Mk_82___500lb_GP_Bomb_LD,
         )
         MK_82_SNAKEAYE_X3 = (2, WeaponsEurofighter.MK_82_SNAKEAYE_X3)
-        BRU_42_with_3_x_Mk_82_AIR_Ballute___500lb_GP_Bombs_HD = (
+        BRU_42___3_x_Mk_82_AIR_Ballute___500lb_GP_Bomb_HD = (
             2,
-            Weapons.BRU_42_with_3_x_Mk_82_AIR_Ballute___500lb_GP_Bombs_HD,
+            Weapons.BRU_42___3_x_Mk_82_AIR_Ballute___500lb_GP_Bomb_HD,
         )
         GBU_31_V_1_B___JDAM__2000lb_GPS_Guided_Bomb = (
             2,
@@ -182,14 +182,14 @@ class Eurofighter(PlaneType):
             3,
             Weapons.BRU_33_with_2_x_Mk_83___1000lb_GP_Bomb_LD,
         )
-        BRU_42_with_3_x_Mk_82___500lb_GP_Bombs_LD = (
+        BRU_42___3_x_Mk_82___500lb_GP_Bomb_LD = (
             3,
-            Weapons.BRU_42_with_3_x_Mk_82___500lb_GP_Bombs_LD,
+            Weapons.BRU_42___3_x_Mk_82___500lb_GP_Bomb_LD,
         )
         MK_82_SNAKEAYE_X3 = (3, WeaponsEurofighter.MK_82_SNAKEAYE_X3)
-        BRU_42_with_3_x_Mk_82_AIR_Ballute___500lb_GP_Bombs_HD = (
+        BRU_42___3_x_Mk_82_AIR_Ballute___500lb_GP_Bomb_HD = (
             3,
-            Weapons.BRU_42_with_3_x_Mk_82_AIR_Ballute___500lb_GP_Bombs_HD,
+            Weapons.BRU_42___3_x_Mk_82_AIR_Ballute___500lb_GP_Bomb_HD,
         )
         GBU_31_V_1_B___JDAM__2000lb_GPS_Guided_Bomb = (
             3,
@@ -265,14 +265,14 @@ class Eurofighter(PlaneType):
             4,
             Weapons.BRU_33_with_2_x_Mk_83___1000lb_GP_Bomb_LD,
         )
-        BRU_42_with_3_x_Mk_82___500lb_GP_Bombs_LD = (
+        BRU_42___3_x_Mk_82___500lb_GP_Bomb_LD = (
             4,
-            Weapons.BRU_42_with_3_x_Mk_82___500lb_GP_Bombs_LD,
+            Weapons.BRU_42___3_x_Mk_82___500lb_GP_Bomb_LD,
         )
         MK_82_SNAKEAYE_X3 = (4, WeaponsEurofighter.MK_82_SNAKEAYE_X3)
-        BRU_42_with_3_x_Mk_82_AIR_Ballute___500lb_GP_Bombs_HD = (
+        BRU_42___3_x_Mk_82_AIR_Ballute___500lb_GP_Bomb_HD = (
             4,
-            Weapons.BRU_42_with_3_x_Mk_82_AIR_Ballute___500lb_GP_Bombs_HD,
+            Weapons.BRU_42___3_x_Mk_82_AIR_Ballute___500lb_GP_Bomb_HD,
         )
         GBU_31_V_1_B___JDAM__2000lb_GPS_Guided_Bomb = (
             4,
@@ -342,14 +342,14 @@ class Eurofighter(PlaneType):
             Weapons.GBU_31_V_1_B___JDAM__2000lb_GPS_Guided_Bomb,
         )
         MK_83 = (7, WeaponsEurofighter.MK_83)
-        BRU_42_with_3_x_Mk_82___500lb_GP_Bombs_LD = (
+        BRU_42___3_x_Mk_82___500lb_GP_Bomb_LD = (
             7,
-            Weapons.BRU_42_with_3_x_Mk_82___500lb_GP_Bombs_LD,
+            Weapons.BRU_42___3_x_Mk_82___500lb_GP_Bomb_LD,
         )
         MK_82_SNAKEAYE_X3 = (7, WeaponsEurofighter.MK_82_SNAKEAYE_X3)
-        BRU_42_with_3_x_Mk_82_AIR_Ballute___500lb_GP_Bombs_HD = (
+        BRU_42___3_x_Mk_82_AIR_Ballute___500lb_GP_Bomb_HD = (
             7,
-            Weapons.BRU_42_with_3_x_Mk_82_AIR_Ballute___500lb_GP_Bombs_HD,
+            Weapons.BRU_42___3_x_Mk_82_AIR_Ballute___500lb_GP_Bomb_HD,
         )
         CBU_97___10_x_SFW_Cluster_Bomb = (7, Weapons.CBU_97___10_x_SFW_Cluster_Bomb)
         CBU_87___202_x_CEM_Cluster_Bomb = (7, Weapons.CBU_87___202_x_CEM_Cluster_Bomb)
@@ -418,14 +418,14 @@ class Eurofighter(PlaneType):
             10,
             Weapons.BRU_33_with_2_x_Mk_83___1000lb_GP_Bomb_LD,
         )
-        BRU_42_with_3_x_Mk_82___500lb_GP_Bombs_LD = (
+        BRU_42___3_x_Mk_82___500lb_GP_Bomb_LD = (
             10,
-            Weapons.BRU_42_with_3_x_Mk_82___500lb_GP_Bombs_LD,
+            Weapons.BRU_42___3_x_Mk_82___500lb_GP_Bomb_LD,
         )
         MK_82_SNAKEAYE_X3 = (10, WeaponsEurofighter.MK_82_SNAKEAYE_X3)
-        BRU_42_with_3_x_Mk_82_AIR_Ballute___500lb_GP_Bombs_HD = (
+        BRU_42___3_x_Mk_82_AIR_Ballute___500lb_GP_Bomb_HD = (
             10,
-            Weapons.BRU_42_with_3_x_Mk_82_AIR_Ballute___500lb_GP_Bombs_HD,
+            Weapons.BRU_42___3_x_Mk_82_AIR_Ballute___500lb_GP_Bomb_HD,
         )
         GBU_31_V_1_B___JDAM__2000lb_GPS_Guided_Bomb = (
             10,
@@ -497,14 +497,14 @@ class Eurofighter(PlaneType):
             11,
             Weapons.BRU_33_with_2_x_Mk_83___1000lb_GP_Bomb_LD,
         )
-        BRU_42_with_3_x_Mk_82___500lb_GP_Bombs_LD = (
+        BRU_42___3_x_Mk_82___500lb_GP_Bomb_LD = (
             11,
-            Weapons.BRU_42_with_3_x_Mk_82___500lb_GP_Bombs_LD,
+            Weapons.BRU_42___3_x_Mk_82___500lb_GP_Bomb_LD,
         )
         MK_82_SNAKEAYE_X3 = (11, WeaponsEurofighter.MK_82_SNAKEAYE_X3)
-        BRU_42_with_3_x_Mk_82_AIR_Ballute___500lb_GP_Bombs_HD = (
+        BRU_42___3_x_Mk_82_AIR_Ballute___500lb_GP_Bomb_HD = (
             11,
-            Weapons.BRU_42_with_3_x_Mk_82_AIR_Ballute___500lb_GP_Bombs_HD,
+            Weapons.BRU_42___3_x_Mk_82_AIR_Ballute___500lb_GP_Bomb_HD,
         )
         GBU_31_V_1_B___JDAM__2000lb_GPS_Guided_Bomb = (
             11,
@@ -583,14 +583,14 @@ class Eurofighter(PlaneType):
             12,
             Weapons.BRU_33_with_2_x_Mk_83___1000lb_GP_Bomb_LD,
         )
-        BRU_42_with_3_x_Mk_82___500lb_GP_Bombs_LD = (
+        BRU_42___3_x_Mk_82___500lb_GP_Bomb_LD = (
             12,
-            Weapons.BRU_42_with_3_x_Mk_82___500lb_GP_Bombs_LD,
+            Weapons.BRU_42___3_x_Mk_82___500lb_GP_Bomb_LD,
         )
         MK_82_SNAKEAYE_X3 = (12, WeaponsEurofighter.MK_82_SNAKEAYE_X3)
-        BRU_42_with_3_x_Mk_82_AIR_Ballute___500lb_GP_Bombs_HD = (
+        BRU_42___3_x_Mk_82_AIR_Ballute___500lb_GP_Bomb_HD = (
             12,
-            Weapons.BRU_42_with_3_x_Mk_82_AIR_Ballute___500lb_GP_Bombs_HD,
+            Weapons.BRU_42___3_x_Mk_82_AIR_Ballute___500lb_GP_Bomb_HD,
         )
         GBU_31_V_1_B___JDAM__2000lb_GPS_Guided_Bomb = (
             12,
