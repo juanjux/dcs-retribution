@@ -89,7 +89,8 @@ Common roles and what they're for:
 - **STRIKE** — hit buildings/infrastructure (factories, depots, fuel, runways via OCA).
 - **OCA** — offensive counter-air: crater enemy runways or destroy parked aircraft.
 - **BAI / CAS** — hit enemy ground forces (interdiction behind the line / close
-  support at the front).
+  support at the front). BAI is also what kills a **`kind:motorpool`** target — see
+  "Motorpools: bomb the reserve before it reaches the front" below.
 - **ANTISHIP** — strike enemy naval groups. Against a ship with a long-range SAM (e.g.
   SM-6, ~175 nm), only a platform whose anti-ship missile out-ranges the SAM can attack from
   **safe standoff** — usually a long-range ASM bomber. A shorter-ranged striker (a carrier
@@ -185,6 +186,32 @@ The DCS AI that actually flies these missions is limited. Plan robustly around i
   (`/waypoints/edit` `alt_m`) on the shared leg rather than fanning them sideways (lateral
   spread desynchronises a saturation). For a true simultaneous multi-axis arrival give
   several small packages the SAME `tot_minutes`; stagger the TOTs when you want waves.
+
+### Motorpools: bomb the reserve before it reaches the front
+
+A base's armor that has been **bought but not yet sent to a front** is no longer safely
+abstract — it is rendered in the mission as a **motorpool**: a parked, unmanned vehicle
+park you can bomb (`kind:motorpool` in `targets[]`, task **BAI**).
+
+- **Every vehicle you kill there is deleted from that base's inventory permanently** — the
+  owner has to *repurchase* it. So a motorpool strike is an **economic and tempo** attack:
+  it drains the enemy's money and delays the reinforcements heading for the front, instead
+  of fighting those same tanks later at the front line where they shoot back.
+- **Only a slice renders each turn** (default cap 10 vehicles per control point, spread
+  proportionally across types). You cannot erase a stockpile in one raid — it is repeatable
+  attrition, worth re-striking on later turns while the reserve lasts.
+- **The fattest motorpools sit at REAR bases.** Armor only counts as "deployed" toward a
+  front that has a connected enemy control point, so a base with no enemy neighbour keeps
+  its *entire* armor pool in reserve. A quiet rear airfield stacking armor is a better BAI
+  target than it looks.
+- **They do not shoot back and never advance** (parked, unmanned) — but the base around
+  them does: check that base's air defenses before routing the strike.
+- **Do not read damage off the map symbol.** A motorpool always renders as a present depot;
+  its vehicles are repopulated from the *current* reserve at each mission generation. Judge
+  it by whether the owner still has undeployed armor, not by the icon.
+- **Your own reserve is exposed the same way.** Armor you buy and leave sitting at a base
+  within blue's reach is a standing target — commit it to a front, or expect to pay for it
+  twice.
 
 ### Naval warfare
 
@@ -430,7 +457,7 @@ means none/empty** (stated once so the per-turn payloads stay small).
   crews. **Drive it toward 0** — every one is a jet you could commit (see step 7). `0`
   is shown as confirmation you've mustered everything;
 - `targets[]` — enemy objects you can attack — {`id`, `name`, `kind`
-  (sam/ship/building/front), `suggested_task` (DEAD/ANTISHIP/STRIKE/CAS), `pos`,
+  (sam/ship/building/motorpool/front), `suggested_task` (DEAD/ANTISHIP/STRIKE/BAI/CAS), `pos`,
   `threat_nm`? (**air-defense umbrella radius in nm** — danger to ANY flight transiting
   within it, not only the one attacking it; **ships carry it too** — naval SAMs such as
   the SM-6 reach 80–175 nm, so a `kind:ship` is a floating SAM site, not just an ANTISHIP
