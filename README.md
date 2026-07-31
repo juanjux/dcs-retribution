@@ -235,6 +235,13 @@ TIC script (MIT).
 - **TIC: a combatant killed mid-move no longer crashes the scheduler** — a dead
   group's missing coordinate was indexed inside MOOSE, producing a caught crash and a
   `dcs.log` flood.
+- **A patrol's orbit is charged to its fuel** — the on-station leg is scheduled by
+  time but its fuel was billed as the straight line between the racetrack ends, so a
+  45-minute CAP was undercharged about fivefold and every fuel figure (kneeboard
+  ladder, RTB margin, sim) was optimistic.
+- **Coastal batteries can engage ships** — land-based anti-ship sites fire on their
+  own at hulls in range, the way fleets do, instead of watching them sail past.
+  Off by default (a mod battery firing anti-ship missiles has crashed DCS).
 - **Unified map-layers panel** — the scattered map layer toggles consolidated into
   one dark, grouped, collapsible panel with presets.
   ([#38](https://github.com/juanjux/dcs-retribution/pull/38), porting 414Ret #96/#98)
