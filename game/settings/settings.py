@@ -1499,6 +1499,18 @@ class Settings:
         section=PERFORMANCE_SECTION,
         default=True,
     )
+    coastal_batteries_engage_ships: bool = boolean_option(
+        "Coastal batteries engage ships",
+        page=MISSION_GENERATOR_PAGE,
+        section=PERFORMANCE_SECTION,
+        default=False,
+        detail=(
+            "Let coastal anti-ship batteries fire on their own at enemy hulls that "
+            "enter range, the way fleets do. Off by default: a battery from a unit "
+            "mod firing anti-ship missiles has been seen to crash DCS, so try it on "
+            "a throwaway mission before using it in a campaign."
+        ),
+    )
     perf_artillery: bool = boolean_option(
         "Artillery strikes",
         page=MISSION_GENERATOR_PAGE,
