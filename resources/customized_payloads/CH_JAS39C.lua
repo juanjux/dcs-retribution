@@ -70,6 +70,75 @@ local unitPayloads = {
 				[1] = 11,
 			},
 		},
+		[10] = {
+			["displayName"] = "Retribution OCA/Runway",
+			["name"] = "Retribution Strike",
+			["pylons"] = {
+				[1] = {
+					["CLSID"] = "{CH_IRIS-T}",
+					["num"] = 8,
+				},
+				[2] = {
+					["CLSID"] = "{CH_IRIS-T}",
+					["num"] = 1,
+				},
+				[3] = {
+					["CLSID"] = "{CH_GBU49}",
+					["num"] = 2,
+					["settings"] = {
+						["NFP_PRESID"] = "MDRN_B_A_PGM_TAILONLY",
+						["NFP_PRESVER"] = 1,
+						["NFP_fuze_type_tail"] = "FMU139CB_LD",
+						["arm_delay_ctrl_FMU139CB_LD"] = 4,
+						["function_delay_ctrl_FMU139CB_LD"] = 0,
+					},
+				},
+				[4] = {
+					["CLSID"] = "{CH_GBU49}",
+					["num"] = 7,
+					["settings"] = {
+						["NFP_PRESID"] = "MDRN_B_A_PGM_TAILONLY",
+						["NFP_PRESVER"] = 1,
+						["NFP_fuze_type_tail"] = "FMU139CB_LD",
+						["arm_delay_ctrl_FMU139CB_LD"] = 4,
+						["function_delay_ctrl_FMU139CB_LD"] = 0,
+					},
+				},
+				[5] = {
+					["CLSID"] = "{CH_GBU49}",
+					["num"] = 6,
+					["settings"] = {
+						["NFP_PRESID"] = "MDRN_B_A_PGM_TAILONLY",
+						["NFP_PRESVER"] = 1,
+						["NFP_fuze_type_tail"] = "FMU139CB_LD",
+						["arm_delay_ctrl_FMU139CB_LD"] = 4,
+						["function_delay_ctrl_FMU139CB_LD"] = 0,
+					},
+				},
+				[6] = {
+					["CLSID"] = "{CH_GBU49}",
+					["num"] = 3,
+					["settings"] = {
+						["NFP_PRESID"] = "MDRN_B_A_PGM_TAILONLY",
+						["NFP_PRESVER"] = 1,
+						["NFP_fuze_type_tail"] = "FMU139CB_LD",
+						["arm_delay_ctrl_FMU139CB_LD"] = 4,
+						["function_delay_ctrl_FMU139CB_LD"] = 0,
+					},
+				},
+				[7] = {
+					["CLSID"] = "{CH_JAS39C_Tank1100}",
+					["num"] = 4,
+				},
+				[8] = {
+					["CLSID"] = "<CLEAN>",
+					["num"] = 5,
+				},
+			},
+			["tasks"] = {
+				[1] = 11,
+			},
+		},
 		[2] = {
 			["displayName"] = "Retribution BARCAP",
 			["name"] = "Retribution BARCAP",
