@@ -288,8 +288,13 @@ class GroundObjectGenerator:
         return self.game.iads_considerate_culling(self.ground_object)
 
     def generate(self) -> None:
-        if self.culled:
-            return
+        # Culling skips what costs performance: spawned statics, vehicles and ships.
+        # It must NOT skip the scenery-objective apparatus below -- the map buildings
+        # backing a scenery objective exist whether or not the campaign spawns
+        # anything, so a culled trigger zone leaves a bombable, visibly collapsing
+        # target whose death is never recorded and the strike vanishes from the
+        # debrief. The zone, its kill-tracking rule and the IADS stand-in cost nothing.
+        culled = self.culled
         for group in self.ground_object.groups:
             vehicle_units = []
             ship_units = []
@@ -297,7 +302,7 @@ class GroundObjectGenerator:
             for unit in group.units:
                 if unit.is_static:
                     if isinstance(unit, SceneryUnit):
-                        # Special handling for scenery objects
+                        # Special handling for scenery objects: never culled.
                         self.add_trigger_zone_for_scenery(unit)
                         if (
                             self.game.settings.plugin_option("skynetiads")
@@ -306,7 +311,7 @@ class GroundObjectGenerator:
                         ):
                             # Generate a unit which can be controlled by skynet
                             self.generate_iads_command_unit(unit)
-                    else:
+                    elif not culled:
                         # Create a static group for each static unit
                         self.create_static_group(unit)
                 elif unit.is_vehicle and unit.alive:
@@ -315,6 +320,8 @@ class GroundObjectGenerator:
                 elif unit.is_ship and unit.alive:
                     # All alive Ships
                     ship_units.append(unit)
+            if culled:
+                continue
             if vehicle_units:
                 self.create_vehicle_group(group.group_name, vehicle_units)
             if ship_units:
