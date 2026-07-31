@@ -150,8 +150,8 @@ class PackageView(BaseModel):
 class TargetView(BaseModel):
     id: str
     name: str
-    kind: str  # sam / ship / building / front
-    suggested_task: str  # DEAD / ANTISHIP / STRIKE / CAS
+    kind: str  # sam / ship / building / motorpool / front
+    suggested_task: str  # DEAD / ANTISHIP / STRIKE / BAI / CAS
     pos: list[float]  # [lat, lng]
     threat_nm: int | None = (
         None  # air-defense umbrella radius (nm) — danger to ANY flight transiting it,
@@ -544,6 +544,11 @@ def build_targets(game: Game, side: str) -> list[TargetView]:
         targets.append(_build_target(game, ship, "ship", "ANTISHIP"))
     for building in finder.strike_targets():
         targets.append(_build_target(game, building, "building", "STRIKE"))
+    # Motorpools are their own finder: strike_targets() only yields buildings, so
+    # without this the LLM could not see (or hit) the enemy's undeployed armor
+    # reserve that the human player and the built-in AI commander both target.
+    for motorpool in finder.motorpool_targets():
+        targets.append(_build_target(game, motorpool, "motorpool", "BAI"))
     for front in game.theater.conflicts():
         friendly_cp = front.red_cp if player.is_red else front.blue_cp
         enemy_cp = front.blue_cp if player.is_red else front.red_cp
