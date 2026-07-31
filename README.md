@@ -171,12 +171,6 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   and a long table is split across pages; the title shows `(n/total)` only when there
   is more than one page, and a package that fits still renders on a single page.
   ([#69](https://github.com/juanjux/dcs-retribution/pull/69))
-- Enemy (and friendly) fleets now actively fight instead of sitting passive: every
-  ship group — including submarines — is generated with weapon-free ROE and a
-  search-and-engage task, so they use their SAMs on aircraft and their anti-ship
-  missiles / guns / torpedoes on the enemy once detected (they still hold position —
-  aggressive defense, not a hunt).
-  ([#55](https://github.com/juanjux/dcs-retribution/pull/55))
 - Relaunching the executable while it is already running no longer spawns orphaned,
   windowless duplicate processes; a second instance detects the first via an OS file
   lock and exits immediately.
