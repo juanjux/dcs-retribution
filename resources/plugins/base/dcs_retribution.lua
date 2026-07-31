@@ -13,6 +13,7 @@ base_capture_events = {}
 destroyed_objects_positions = {} -- will be added via S_EVENT_DEAD event
 took_off = {}   -- unit name -> true (S_EVENT_TAKEOFF); a ground-start unit absent here was destroyed parked
 death_time = {} -- unit name -> first death-event mission time (s), for indirect-kill timing
+cruise_missiles_state = {} -- cruisemissiles plugin appends/updates {group=, fired=} per ship group that launched; Python debits the campaign magazine at the turn boundary
 mission_ended = false
 dirty_state = false -- Track if state has changed and needs writing
 
@@ -143,6 +144,7 @@ function write_state()
         ["model_time"] = timer.getTime(),
         ["took_off"] = took_off,
         ["death_time"] = death_time,
+        ["cruise_missiles_state"] = cruise_missiles_state or {},
     }
     local t0 = os.clock()
     local ok, write_error = pcall(function()

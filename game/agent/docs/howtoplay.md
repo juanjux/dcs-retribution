@@ -253,6 +253,36 @@ park you can bomb (`kind:motorpool` in `targets[]`, task **BAI**).
   well clear (>25 nm) of any enemy naval group — naval SAMs kill helos even at wave-top
   height, and a helo that pops up to designate is most vulnerable right then.
 
+#### Cruise missiles: a one-off war chest, not a weapon system
+
+Some campaigns switch on ship-launched land-attack cruise missiles (check
+`/settings` → `cruise_missile_strikes`). When they are on, a naval group carrying them
+reports `cruise_missiles_remaining` in `naval[]`.
+
+- **That number is the whole war's supply.** It never regenerates, no turn refills it, no
+  budget buys more, and nothing you can do replenishes it. Treat it like a fixed pile of
+  chips: the campaign ends with whatever you didn't spend, and unspent chips score
+  nothing. There is no "save them for later" strategy that pays off — only a "spend them
+  on the right thing" one.
+- **They are the answer to targets that cost you aircraft.** A missile flies itself: no
+  pilot, no route through the enemy IADS, no losses if it is shot down. So the right
+  aimpoint is whatever a strike package would bleed for — a command center or comms node
+  ringed by SAMs, a factory deep behind the front — not something a couple of bombers
+  could flatten in safety. Never spend them on a target you were going to kill anyway.
+- **You cannot task a raid through the API.** With `cruise_missile_auto_raids` on, each
+  turn one raid per side is committed automatically at the best reachable enemy ground
+  object, and it spends from your magazine whether or not you planned around it. So read
+  `cruise_missiles_remaining` each turn as a *budget line falling on its own*, and plan
+  your air tasking on the assumption that the highest-value enemy fixed target within
+  ~250 nm of your ships may already be getting hit — don't also frag a strike package at
+  it. If the setting is off, the number only moves when a human fires a salvo in the
+  mission.
+- **Sinking a launcher destroys its missiles too**, on both sides. A blue destroyer with a
+  full magazine is worth much more than its hull: killing it denies every future salvo,
+  which is a far better ANTISHIP argument than the ship's own SAM umbrella. And the mirror
+  holds — keep your own loaded launchers out of reach of blue's anti-ship aircraft, because
+  losing one costs you stock you can never rebuy.
+
 ## 5. How to plan a strong turn
 
 0. **Reflect on last turn first.** Read `prev_turns`/the debrief and compare it to
@@ -487,7 +517,10 @@ means none/empty** (stated once so the per-turn payloads stay small).
   move target `[lat,lng]`, if any), `threat_nm`? (this group's own SAM umbrella —
   reposition it to cover a contested coast/base), `damage`? (aggregate state),
   `composition`? (alive-hull count per class, e.g. `{"Type 052C": 1, "Type 054A": 2}` —
-  see which hulls survived, not just the damage %)}; **reposition by the `id`**
+  see which hulls survived, not just the damage %),
+  `cruise_missiles_remaining`? (**land-attack cruise missiles this group has left for the
+  entire war** — see "Cruise missiles" below; omitted when the group carries none or the
+  campaign has the feature off)}; **reposition by the `id`**
   with `POST /naval/move`. (A carrier's `id` is its control-point id; its escort ship
   groups appear as separate `kind:ship` entries you can move independently.)
 - `repairs[]` — **YOUR damaged assets you can pay to repair** — {`id`, `name`, `kind`
@@ -510,7 +543,11 @@ per turn, up to the limit — paces how fast you can rebuild after losses),
 `squadron_pilot_limit`? (max active pilots per squadron; both omitted when pilot
 limits are off = unlimited), `runway_repair_turns` (turns a cratered runway takes to
 repair — a base's `control_points.runway_repair_turns_remaining` counts down from this,
-so a fresh OCA-runway crater keeps that base grounded this many turns)}. Settings the
+so a fresh OCA-runway crater keeps that base grounded this many turns),
+`cruise_missile_strikes` (bool — ship-launched land-attack cruise missiles are in play;
+when false, `cruise_missiles_remaining` never appears and no raid ever flies),
+`cruise_missile_auto_raids` (bool — each turn both sides automatically commit one cruise
+missile raid, spending your magazine without asking you)}. Settings the
 human changes mid-campaign apply from the NEXT turn, not the one being planned.
 
 `GET /packages?side=red` → `[{index, target, task, tot (HH:MM), desc?,

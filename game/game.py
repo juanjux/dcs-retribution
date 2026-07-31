@@ -134,6 +134,11 @@ class Game:
         # OPFOR-AI API token, persisted so a campaign keeps the same connect URL across
         # restarts of this save (an LLM reconnects without a new token each session).
         self.opfor_ai_token: str = secrets.token_urlsafe()
+        # Missiles left per cruise-missile ship group, keyed by TheaterGroup.group_name.
+        # Only groups that have fired appear here; game.cruise_raids reads the stock of
+        # the rest from their living hulls. Written solely at the turn boundary, so
+        # regenerating a mission can never charge for the same salvo twice.
+        self.cruise_missile_magazines: dict[str, int] = {}
         self.ground_planners: dict[UUID, GroundPlanner] = {}
         self.informations: list[Information] = []
         self.message("Game Start", "-" * 40)
@@ -202,6 +207,8 @@ class Game:
             self.debrief_history = []
         if not hasattr(self, "client_map_layers"):
             self.client_map_layers = None
+        if not hasattr(self, "cruise_missile_magazines"):
+            self.cruise_missile_magazines = {}
         if not getattr(self, "opfor_ai_token", None):
             # Pre-feature save: mint a token now; it sticks once this save is written.
             self.opfor_ai_token = secrets.token_urlsafe()
@@ -704,6 +711,21 @@ class Game:
                 # FlightType.AEWC & FlightType.REFUELING mission targets.
                 continue
             zones.append(package.target.position)
+
+        # A cruise missile raid hits whatever the planner picked, which is usually a
+        # rear-area object no package is fragged against, so nothing else keeps it out
+        # of the cull. Culled, the target TGO is never generated and the missiles
+        # visibly demolish the map's bare scenery at those coordinates while the
+        # campaign records nothing at all. Un-cull every planned raid target, and every
+        # launching ship group so a standalone shooter is there for the F10
+        # call-for-fire (carrier groups are already covered above).
+        if self.settings.cruise_missile_strikes:
+            from game.cruise_raids import lacm_ships, plan_cruise_raids
+
+            for raid in plan_cruise_raids(self):
+                zones.append(Point(raid.target_x, raid.target_y, self.theater.terrain))
+            for lacm_ship in lacm_ships(self):
+                zones.append(lacm_ship.position)
 
         self.__culling_zones = zones
         events.update_unculled_zones(zones)

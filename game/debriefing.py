@@ -11,6 +11,7 @@ from typing import (
     Iterator,
     List,
     Optional,
+    Tuple,
     TYPE_CHECKING,
     Union,
 )
@@ -146,6 +147,13 @@ class StateData:
     #: Unit name -> first death-event mission time (s), for indirect-kill timing.
     death_times: Dict[str, float] = field(default_factory=dict)
 
+    #: ``(ship_group_name, fired)`` per ship group that launched cruise missiles this
+    #: mission, mirrored by the cruisemissiles plugin. reconcile_cruise_missiles debits
+    #: the persisted campaign magazine by ``fired`` at the turn boundary -- the only
+    #: debit site, so regenerating a mission never double-charges. Empty when the
+    #: feature is off or the state file predates it.
+    cruise_missiles_state: List[Tuple[str, int]] = field(default_factory=list)
+
     @classmethod
     def from_json(cls, data: Dict[str, Any], unit_map: UnitMap) -> StateData:
         def clean_unit_list(unit_list: List[Any]) -> List[str]:
@@ -188,6 +196,23 @@ class StateData:
         raw_death_times = data.get("death_time", {})
         death_times = raw_death_times if isinstance(raw_death_times, dict) else {}
 
+        def parse_cruise_missiles_state(raw: Any) -> List[Tuple[str, int]]:
+            # The cruisemissiles plugin writes {group=, fired=} per launching group;
+            # the Lua JSON encoder yields [] when there were none, and a state file
+            # written before the feature omits the key entirely. Pull the pair
+            # defensively: a malformed or unnamed entry must not break the debrief.
+            if not isinstance(raw, list):
+                return []
+            out: List[Tuple[str, int]] = []
+            for entry in raw:
+                if not isinstance(entry, dict):
+                    continue
+                group = entry.get("group")
+                fired = entry.get("fired")
+                if isinstance(group, str) and group and isinstance(fired, (int, float)):
+                    out.append((group, int(fired)))
+            return out
+
         return cls(
             mission_ended=data.get("mission_ended", False),
             killed_aircraft=killed_aircraft,
@@ -198,6 +223,9 @@ class StateData:
             model_time=data.get("model_time"),
             took_off=took_off,
             death_times=death_times,
+            cruise_missiles_state=parse_cruise_missiles_state(
+                data.get("cruise_missiles_state", [])
+            ),
         )
 
 
