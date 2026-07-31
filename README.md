@@ -83,11 +83,6 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   [#20](https://github.com/juanjux/dcs-retribution/pull/20))
 
 ### Missions, AI & tasking
-- **Faster mission generation** — the land/sea point tests behind front-line and
-  ground-unit placement use shapely's `contains_xy` instead of building a `Point`
-  per check, cutting the cost of the routine that dominated a Take-Off profile
-  (~5x faster on that check, identical results).
-  ([#72](https://github.com/juanjux/dcs-retribution/pull/72))
 - **Campaign Doctrine: "non-combat (crash) air losses don't count"** — AI
   crashes/collisions DCS not credited to a weapon or SAM (which happen a lot because DCS AI is stupid) no longer deplete a
   squadron or kill the pilot; backed by per-loss kill attribution and shown in
