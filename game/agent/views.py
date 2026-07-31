@@ -208,6 +208,12 @@ class NavalView(BaseModel):
         None  # alive hull count per class, e.g. {"Type 052C": 1, "Type 054A": 2}; lets
         # you see which hulls are still up (not just the aggregate damage %)
     )
+    cruise_missiles_remaining: int | None = (
+        None  # land-attack cruise missiles this group has left FOR THE WHOLE CAMPAIGN.
+        # Never regenerates, cannot be bought or resupplied, and sinks with the hull —
+        # spend it on targets aircraft would pay dearly to reach. Omitted when the group
+        # carries none or the campaign has cruise missile strikes switched off.
+    )
 
 
 class RepairView(BaseModel):
@@ -315,6 +321,14 @@ class SettingsView(BaseModel):
     runway_repair_turns: int = (
         4  # turns a cratered runway takes to repair; a base's
         # runway_repair_turns_remaining (in control_points) counts down from this
+    )
+    cruise_missile_strikes: bool = (
+        False  # ships with land-attack cruise missiles can hit shore targets. When
+        # False, `cruise_missiles_remaining` never appears in naval[] and no raid flies
+    )
+    cruise_missile_auto_raids: bool = (
+        False  # each turn, both sides automatically commit one cruise missile raid at
+        # their best reachable enemy ground object. Spends YOUR magazine without asking
     )
 
 
@@ -654,6 +668,7 @@ def _naval_view(game: Game, obj, kind: str) -> NavalView:
         except Exception:
             threat = None
     comp = _unit_composition(obj)
+    hull_owner = obj
     if comp is None:
         # A carrier/LHA is a control point whose hulls live in its is_control_point
         # ship ground object rather than on the CP itself; dig them out so carriers
@@ -661,6 +676,7 @@ def _naval_view(game: Game, obj, kind: str) -> NavalView:
         for sub in getattr(obj, "ground_objects", []):
             if getattr(sub, "is_control_point", False):
                 comp = _unit_composition(sub)
+                hull_owner = sub
                 break
     return NavalView(
         id=str(obj.id),
@@ -672,7 +688,19 @@ def _naval_view(game: Game, obj, kind: str) -> NavalView:
         threat_nm=threat or None,
         damage=_damage_word(obj),
         composition=comp,
+        cruise_missiles_remaining=_cruise_missiles_remaining(game, hull_owner),
     )
+
+
+def _cruise_missiles_remaining(game: Game, tgo) -> int | None:
+    """The group's campaign stock of land-attack cruise missiles, or None when it has
+    none — an ordinary frigate should not carry a noisy `0` through the transport. A
+    naval group can hold several TheaterGroups, so sum them: the LLM tasks the group,
+    not the individual hull rows."""
+    from game.cruise_raids import tgo_magazines
+
+    total = sum(remaining for _, remaining in tgo_magazines(game, tgo))
+    return total or None
 
 
 def _fleet_has_living_hull(cp) -> bool:
@@ -880,6 +908,8 @@ def build_settings(game: Game) -> SettingsView:
             else None
         ),
         runway_repair_turns=RUNWAY_REPAIR_TURNS,
+        cruise_missile_strikes=s.cruise_missile_strikes,
+        cruise_missile_auto_raids=s.cruise_missile_auto_raids,
     )
 
 

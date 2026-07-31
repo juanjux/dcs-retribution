@@ -1477,6 +1477,38 @@ class Settings:
         GAMEPLAY_SECTION,
         default=True,
     )
+    cruise_missile_strikes: bool = boolean_option(
+        "Ship-launched cruise missile strikes",
+        page=MISSION_GENERATOR_PAGE,
+        section=GAMEPLAY_SECTION,
+        default=False,
+        detail=(
+            "Warships that carry land-attack cruise missiles (the Burke's Tomahawks, "
+            "the CurrentHill Kalibr hulls) can fire them at shore targets: an F10 "
+            "'Cruise Missile Strike' menu calls a salvo onto your last map marker from "
+            "the nearest ship that still has missiles. Each ship group carries a finite "
+            "campaign magazine and there is no rearm, so every salvo spends stock you "
+            "never get back. The missiles are real weapons from a real, tracked ship: "
+            "kills count at debrief, enemy point defense can intercept them, and "
+            "sinking the shooter ends the raids. Both coalitions play by these rules. "
+            "Runs through the 'Cruise missile strikes' LUA plugin -- keep that plugin "
+            "enabled or this setting does nothing."
+        ),
+    )
+    cruise_missile_auto_raids: bool = boolean_option(
+        "Auto-plan cruise missile raids",
+        page=MISSION_GENERATOR_PAGE,
+        section=GAMEPLAY_SECTION,
+        default=False,
+        detail=(
+            "Needs 'Ship-launched cruise missile strikes'. Each turn, a side with a "
+            "cruise-missile ship in range commits one raid: a salvo fired early in the "
+            "mission at its highest-value reachable enemy ground object -- command "
+            "centers and comms first, then war industry, then anything strikeable. "
+            "Watch for the LAUNCH WARNING: an enemy raid is your point-defense SAMs' "
+            "problem, or yours."
+        ),
+    )
 
     # Performance
     perf_smoke_gen: bool = boolean_option(

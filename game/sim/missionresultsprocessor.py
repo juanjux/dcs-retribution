@@ -47,6 +47,8 @@ class MissionResultsProcessor:
                 self.commit_ground_losses(debriefing, events)
             with logged_duration("commit_damaged_runways"):
                 self.commit_damaged_runways(debriefing)
+            with logged_duration("commit_cruise_missiles"):
+                self.commit_cruise_missiles(debriefing)
             # Score the front line before capturing bases: casualty_count
             # attributes a dead front-line unit to its origin CP regardless of
             # side, so a base's defenders (origin == that base) would be
@@ -293,6 +295,14 @@ class MissionResultsProcessor:
     def commit_damaged_runways(debriefing: Debriefing) -> None:
         for damaged_runway in debriefing.damaged_runways:
             damaged_runway.damage_runway()
+
+    def commit_cruise_missiles(self, debriefing: Debriefing) -> None:
+        # Debit each launching ship group's campaign magazine by what the cruisemissiles
+        # plugin reported fired. The only debit site in the feature, which is what makes
+        # regenerating a mission free of charge. No-op when nothing was reported.
+        from game.cruise_raids import reconcile_cruise_missiles
+
+        reconcile_cruise_missiles(self.game, debriefing)
 
     def commit_captures(self, debriefing: Debriefing, events: GameUpdateEvents) -> None:
         for captured in debriefing.base_captures:
