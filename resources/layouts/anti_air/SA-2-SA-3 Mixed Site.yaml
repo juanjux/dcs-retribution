@@ -10,12 +10,12 @@ groups:
         - p-19 s-125 sr
     - name: S-300 Site CP
       unit_count:
-        - 1
+        - 2  # guidance-radar redundancy: one ARM hit must not blind the whole site
       unit_types:
         - SNR_75V
     - name: S-300 Site TR
       unit_count:
-        - 1
+        - 2  # guidance-radar redundancy: one ARM hit must not blind the whole site
       unit_types:
         - snr s-125 tr
     - name: S-300 Site LN1

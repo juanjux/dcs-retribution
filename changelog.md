@@ -14,6 +14,7 @@
 * **[Loadouts]** Weapons coverage refresh: many modern PGMs and air-to-air missiles are now available across factions, without the era date-gating (coverage adapted from the 414Ret fork; our existing introduction years are kept).
 * **[Mission Generation]** Player despawns (leaving an aircraft) no longer count as combat losses in the debriefing (adapted from the 414Ret fork).
 * **[Mission Generation]** More variety in generated air defenses: new SAM site layout variants (SA-2 four/six-launcher rings, an SA-2/SA-3 mixed site, SA-3, legacy SA-5 and reinforced SA-6 sites) wired into the period factions' preset pools, and generated EWR sites now draw true early-warning radars only instead of falling back to any search radar. (#892)
+* **[Mission Generation]** SAM sites field two engagement radars (the shared site templates gain a second, dispersed radar position), so a single anti-radiation missile no longer functionally kills the whole site. Buy-menu counts and site prices follow. A deliberate survivability/balance call — rationale and trade-offs in the PR body. (#893)
 * **[Kneeboard]** Use a light-grey daytime kneeboard background instead of near-white, to avoid glare under HDR / Auto-HDR while staying readable in daylight.
 * **[UX]** Hovering a friendly flight's route line on the map highlights it in yellow, and clicking it selects that flight's package (and the flight) in the ATO sidebar.
 * **[UX]** Press Delete with a package selected in the Packages list to cancel it, making it quick to clear several packages in a row.

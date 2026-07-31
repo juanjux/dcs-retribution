@@ -35,7 +35,7 @@ groups:
         - S-300VM 9S457ME cp # SA-23
     - name: S-300 Site TR
       unit_count:
-        - 1
+        - 2  # guidance-radar redundancy: one ARM hit must not blind the whole site
       unit_types:
         - S-300PS 40B6M tr # SA-10 Flap Lid-A TR
         - S-300PS 30N6 TRAILER tr # SA-10B
