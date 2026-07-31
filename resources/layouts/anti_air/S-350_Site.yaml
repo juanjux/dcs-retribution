@@ -10,7 +10,7 @@ groups:
         - CH_S350_96L6
     - name: Track Radar
       unit_count:
-        - 1
+        - 2  # guidance-radar redundancy: one ARM hit must not blind the whole site
       unit_types:
         - CH_S350_50N6
     - name: Command Post
