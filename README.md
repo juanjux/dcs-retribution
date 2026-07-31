@@ -224,6 +224,17 @@ TIC script (MIT).
   `[CH] Iran 2020` faction (upstream ships the UK CurrentHill pack, not Iran).
 - Selected crash fixes (flight-exit, AWACS/tanker orbit deconfliction, malformed
   mod payloads).
+- **Escorts can defend themselves before the JOIN point** — an escort was generated
+  at an ROE that only permits engaging *designated* targets, and the task that
+  designates them attaches at JOIN, so through the whole hold and transit it could
+  not shoot even while being shot at. Escorts now spawn able to return fire and
+  escalate at JOIN.
+- **Kills on scenery objectives inside culled regions are recorded** — the buildings
+  behind such an objective exist whether or not the region is culled, so bombing one
+  collapsed it but the strike never reached the debrief.
+- **TIC: a combatant killed mid-move no longer crashes the scheduler** — a dead
+  group's missing coordinate was indexed inside MOOSE, producing a caught crash and a
+  `dcs.log` flood.
 - **Unified map-layers panel** — the scattered map layer toggles consolidated into
   one dark, grouped, collapsible panel with presets.
   ([#38](https://github.com/juanjux/dcs-retribution/pull/38), porting 414Ret #96/#98)
