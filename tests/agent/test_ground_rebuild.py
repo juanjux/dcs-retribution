@@ -10,7 +10,7 @@ force-group and layout are duck-typed where a real one would need a full campaig
 from __future__ import annotations
 
 from types import SimpleNamespace
-from typing import Any
+from typing import Any, Iterator
 from uuid import uuid4
 
 import pytest
@@ -68,22 +68,29 @@ class _FakeForceGroup:
     """Duck-typed ForceGroup: only the methods the rebuild path calls."""
 
     def __init__(
-        self, name: str, layouts: list, unit_types: list[_FakeUnitType]
+        self, name: str, layouts: list[Any], unit_types: list[_FakeUnitType]
     ) -> None:
         self.name = name
         self.layouts = layouts
         self._unit_types = unit_types
-        self.created: list[tuple] = []  # (group_name, dcs_unit_type, count)
+        # (group_name, dcs_unit_type, count)
+        self.created: list[tuple[Any, Any, Any]] = []
 
-    def unit_types_for_group(self, unit_group):  # noqa: ANN001
+    def unit_types_for_group(self, unit_group: Any) -> Iterator[_FakeUnitType]:
         return iter(self._unit_types)
 
-    def statics_for_group(self, unit_group):  # noqa: ANN001
+    def statics_for_group(self, unit_group: Any) -> Iterator[Any]:
         return iter(())
 
     def create_theater_group_for_tgo(
-        self, tgo, unit_group, group_name, game, dcs_unit_type, unit_count=None
-    ):  # noqa: ANN001
+        self,
+        tgo: Any,
+        unit_group: Any,
+        group_name: Any,
+        game: Any,
+        dcs_unit_type: Any,
+        unit_count: Any = None,
+    ) -> None:
         self.created.append((group_name, dcs_unit_type, unit_count))
 
 
@@ -99,7 +106,7 @@ def _unit_group(
     return ug
 
 
-def _layout(name: str, unit_group: TgoLayoutUnitGroup):
+def _layout(name: str, unit_group: TgoLayoutUnitGroup) -> Any:
     grp = TgoLayoutGroup(group_name="Battery", group_index=0, unit_groups=[unit_group])
     return SimpleNamespace(name=name, groups=[grp])
 
@@ -191,7 +198,7 @@ def test_options_bogus_tgo_id_raises_valueerror() -> None:
 
     game = SimpleNamespace(db=SimpleNamespace(tgos=SimpleNamespace(get=_raise)))
     with pytest.raises(ValueError, match="no ground object"):
-        views.build_ground_object_options(game, "red", str(uuid4()))
+        views.build_ground_object_options(game, "red", str(uuid4()))  # type: ignore[arg-type]
 
 
 def test_options_not_owned_raises_valueerror() -> None:
@@ -240,7 +247,9 @@ def test_rebuild_bogus_tgo_returns_opresult_error() -> None:
         db=SimpleNamespace(tgos=SimpleNamespace(get=_raise)),
         coalition_for=lambda player: SimpleNamespace(budget=0),
     )
-    res = planner.rebuild_ground_object(game, "red", str(uuid4()), "SA-10", "Default")
+    res = planner.rebuild_ground_object(
+        game, "red", str(uuid4()), "SA-10", "Default"  # type: ignore[arg-type]
+    )
     assert res.ok is False
     assert res.error and "no ground object" in res.error
 
