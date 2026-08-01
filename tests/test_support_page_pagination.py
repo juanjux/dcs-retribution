@@ -54,7 +54,7 @@ class FakeFlight:
     units: List[object] = field(default_factory=lambda: [object(), object()])
     package: FakePackage = field(default_factory=FakePackage)
 
-    def channels_for(self, frequency: object) -> list:
+    def channels_for(self, frequency: object) -> List[object]:
         # No named channels -> format_frequency falls back to str(frequency).
         return []
 
