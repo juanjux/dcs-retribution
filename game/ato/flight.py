@@ -11,6 +11,7 @@ from dcs.planes import C_101CC, C_101EB, Su_33, FA_18C_hornet, C_130J_30
 
 from game.dcs.aircrafttype import AircraftType
 from game.theater import ControlPoint, MissionTarget
+from game.utils import max_optional_distance
 from pydcs_extensions.hercules.hercules import Hercules
 from .flightmembers import FlightMembers
 from .flightroster import FlightRoster
@@ -292,14 +293,9 @@ class Flight(
 
     def max_standoff_range(self) -> Optional[Distance]:
         """The longest stand-off launch range across the flight's members, if any."""
-        best: Optional[Distance] = None
-        for member in self.iter_members():
-            launch_range = member.loadout.max_standoff_range()
-            if launch_range is None:
-                continue
-            if best is None or launch_range > best:
-                best = launch_range
-        return best
+        return max_optional_distance(
+            m.loadout.max_standoff_range() for m in self.iter_members()
+        )
 
     def __repr__(self) -> str:
         return self.__str__()

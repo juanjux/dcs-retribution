@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Dict, Optional, TYPE_CHECKING
 
 from game.db import Database
-from game.utils import Distance, Speed
+from game.utils import Distance, Speed, max_optional_distance
 from .closestairfields import ObjectiveDistanceCache
 from .flight import Flight
 from .flightplans.formation import FormationFlightPlan
@@ -61,14 +61,7 @@ class Package(RadioFrequencyContainer):
         distance for stand-off/cruise-missile-armed flights. Flights without any
         ranged stand-off weapon (e.g. escorts) contribute nothing.
         """
-        best: Optional[Distance] = None
-        for flight in self.flights:
-            launch_range = flight.max_standoff_range()
-            if launch_range is None:
-                continue
-            if best is None or launch_range > best:
-                best = launch_range
-        return best
+        return max_optional_distance(f.max_standoff_range() for f in self.flights)
 
     def waypoints_need_regeneration(self) -> bool:
         """Whether the package waypoints must be rebuilt.
