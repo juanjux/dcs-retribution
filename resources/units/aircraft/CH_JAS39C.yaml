@@ -11,6 +11,7 @@ role: Fighter
 variants:
   "[CH] JAS 39C Gripen": {}
 tasks:
+  Anti-ship: 750
   BAI: 750
   DEAD: 750
   CAS: 750

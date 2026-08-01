@@ -7,6 +7,7 @@ from dcs.task import (
     EscortTaskAction,
     OptECMUsing,
     OptFormation,
+    OptROE,
     Targets,
     SetUnlimitedFuelCommand,
 )
@@ -35,6 +36,15 @@ class JoinPointBuilder(PydcsWaypointBuilder):
             waypoint.tasks.append(OptFormation.finger_four_open())
 
         doctrine = self.flight.coalition.doctrine
+
+        if self.flight.flight_type in (FlightType.ESCORT, FlightType.SEAD_ESCORT):
+            # Escorts spawn at ReturnFire (see configure_escort): under OpenFire --
+            # "engage ONLY designated targets" -- a pre-join escort has an empty
+            # legal-target set and cannot even shoot back. The Escort ControlledTask
+            # below is the first target designation, so escalate here, where escort
+            # duty actually begins. The in-flight spawn path re-applies JOIN tasks to
+            # a mid-mission spawn's first point, so late spawns pick this up too.
+            waypoint.tasks.append(OptROE(OptROE.Values.OpenFire))
 
         if self.flight.flight_type == FlightType.ESCORT:
             targets = [

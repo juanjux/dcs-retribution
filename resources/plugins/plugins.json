@@ -11,9 +11,11 @@
     "lotatc",
     "skynetiads",
     "splashdamage3",
+    "tic",
     "airboss",
     "MooseSoundhandler",    
     "MooseAutolase",
     "MooseMarkerOps",
-    "ai_reaction"
+    "ai_reaction",
+    "cruisemissiles"
 ]

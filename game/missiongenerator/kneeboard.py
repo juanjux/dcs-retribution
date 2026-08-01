@@ -29,7 +29,7 @@ import textwrap
 from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Iterator, List, Optional, TYPE_CHECKING, Tuple
+from typing import Callable, Dict, Iterator, List, Optional, TYPE_CHECKING, Tuple
 
 from PIL import Image, ImageDraw, ImageFont
 from dcs.mission import Mission
@@ -105,6 +105,10 @@ class KneeboardPageWriter:
         self.page_margin = page_margin
         self.x = page_margin
         self.y = page_margin
+        # Lowest y a drawn block may reach before it runs off the page. Used by
+        # pages that paginate themselves (e.g. SupportPage) to decide when a
+        # section no longer fits and must spill onto the next page.
+        self.max_content_y = self.image_size[1] - self.page_margin
         self.line_spacing = line_spacing
         self.text_buffer: List[str] = []
 
@@ -166,6 +170,20 @@ class KneeboardPageWriter:
     def write(self, path: Path) -> None:
         self.image.save(path)
         path.with_suffix(".txt").write_text(self.get_text_string(), "utf8")
+
+    @staticmethod
+    def measure(render_fn: "Callable[[KneeboardPageWriter], None]") -> int:
+        """Returns the pixel height a block consumes, without committing it.
+
+        Builds a throwaway writer, runs ``render_fn`` against it, and reports how
+        far down the page the cursor moved (``y`` advance from the top margin).
+        A fresh 960x1080 image per call is wasteful in the abstract but kneeboard
+        generation is not perf-critical, and this keeps the measurement using the
+        exact same drawing/wrapping code paths the real render will use.
+        """
+        writer = KneeboardPageWriter()
+        render_fn(writer)
+        return writer.y - writer.page_margin
 
     @staticmethod
     def wrap_line(inputstr: str, max_length: int) -> str:
@@ -600,13 +618,57 @@ class BriefingPage(KneeboardPage):
         return f"{names}\n{frequency}"
 
 
+def _no_title(writer: "KneeboardPageWriter") -> None:
+    """A ``title_render`` that draws nothing.
+
+    Used for the continuation chunks of a section whose rows are split across
+    pages: the leading heading/FREQ/TOT is drawn only on the first of those pages.
+    """
+
+
+@dataclass
+class _SupportSection:
+    """One titled block of the Support page: a non-splittable leading part
+    (heading, and for the package also FREQ/TOT lines) plus a splittable table.
+
+    ``title_render`` draws the leading part; it is emitted once, on the first
+    page the section appears on. ``rows`` may be split across pages, with
+    ``headers`` re-drawn on each page the section's rows continue onto.
+    """
+
+    title_render: Callable[["KneeboardPageWriter"], None]
+    headers: List[str]
+    rows: List[List[str]]
+
+
 class SupportPage(KneeboardPage):
-    """A kneeboard page containing information about support units."""
+    """A kneeboard page containing information about support units.
+
+    Rendered across as many pages as needed: the flights comm-ladder can be long
+    enough on its own to push the AEW&C / Tankers / JTAC tables off the bottom of
+    a single fixed-height page, so the content is measured and paginated instead
+    of being cut off. Build instances via :meth:`paginate`, not the constructor.
+    """
 
     JTAC_REGION_MAX_LEN = 25
 
     def __init__(
         self,
+        flight: FlightData,
+        sections: List[_SupportSection],
+        dark_kneeboard: bool,
+        page_no: int = 1,
+        total_pages: int = 1,
+    ) -> None:
+        self.flight = flight
+        self.sections = sections
+        self.dark_kneeboard = dark_kneeboard
+        self.page_no = page_no
+        self.total_pages = total_pages
+
+    @classmethod
+    def paginate(
+        cls,
         flight: FlightData,
         package_flights: List[FlightData],
         comms: List[CommInfo],
@@ -615,46 +677,149 @@ class SupportPage(KneeboardPage):
         jtacs: List[JtacInfo],
         start_time: datetime.datetime,
         dark_kneeboard: bool,
-    ) -> None:
-        self.flight = flight
-        self.package_flights = package_flights
-        self.comms = list(comms)
-        self.awacs = awacs
-        self.tankers = tankers
-        self.jtacs = jtacs
-        self.start_time = start_time
-        self.dark_kneeboard = dark_kneeboard
-        flight_name = self.flight.custom_name if self.flight.custom_name else "Flight"
-        self.comms.append(CommInfo(flight_name, self.flight.intra_flight_channel))
+    ) -> List["SupportPage"]:
+        """Builds the Support section(s) and packs them onto measured pages.
 
-    def write(self, path: Path) -> None:
-        writer = KneeboardPageWriter(dark_theme=self.dark_kneeboard)
-        if self.flight.custom_name:
-            custom_name_title = ' ("{}")'.format(self.flight.custom_name)
-        else:
-            custom_name_title = ""
-        writer.title(f"{self.flight.callsign} Support Info{custom_name_title}")
+        When everything fits, returns a single page that renders identically to
+        the pre-pagination layout (no ``(1/1)`` suffix). Otherwise splits the
+        sections greedily by pixel height, and if a single section's table is
+        taller than an empty page, splits that section's rows across pages
+        (re-emitting the table header, but the section's leading part only on the
+        first of its pages).
+        """
+        sections = cls._build_sections(
+            flight, package_flights, comms, awacs, tankers, jtacs, start_time
+        )
+
+        # Height budget for section content on a page = usable content height
+        # minus the title (drawn once at the top of every page).
+        def render_title(w: "KneeboardPageWriter") -> None:
+            w.title(f"{flight.callsign} Support Info")
+
+        writer = KneeboardPageWriter(dark_theme=dark_kneeboard)
+        budget = writer.max_content_y - writer.page_margin
+        budget -= KneeboardPageWriter.measure(render_title)
+
+        pages_sections: List[List[_SupportSection]] = [[]]
+        used = 0
+
+        def start_new_page() -> None:
+            nonlocal used
+            pages_sections.append([])
+            used = 0
+
+        def measure_section(section: _SupportSection) -> int:
+            def render(w: KneeboardPageWriter) -> None:
+                cls._render_section(w, section, with_title=True)
+
+            return KneeboardPageWriter.measure(render)
+
+        for section in sections:
+            section_height = measure_section(section)
+            if section_height <= budget - used:
+                # Fits whole on the current page.
+                pages_sections[-1].append(section)
+                used += section_height
+                continue
+
+            if section_height <= budget:
+                # Fits whole, but not in what's left: move to a fresh page (if the
+                # current one already has content).
+                if pages_sections[-1]:
+                    start_new_page()
+                pages_sections[-1].append(section)
+                used += section_height
+                continue
+
+            # Taller than a whole empty page: split its rows across pages.
+            if pages_sections[-1]:
+                start_new_page()
+            remaining = section.rows
+            first_chunk = True
+            while remaining:
+                available = budget - used
+                take = cls._rows_that_fit(
+                    section, remaining, with_title=first_chunk, available=available
+                )
+                if take == 0 and not pages_sections[-1]:
+                    # Nothing fits even on an empty page: force at least one row so
+                    # we make progress rather than loop forever. (Extreme edge case;
+                    # a single row taller than a page can't be avoided.)
+                    take = 1
+                if take == 0:
+                    start_new_page()
+                    continue
+                chunk = _SupportSection(
+                    title_render=(section.title_render if first_chunk else _no_title),
+                    headers=section.headers,
+                    rows=remaining[:take],
+                )
+                pages_sections[-1].append(chunk)
+                used += measure_section(chunk)
+                remaining = remaining[take:]
+                first_chunk = False
+                if remaining:
+                    start_new_page()
+
+        total = len(pages_sections)
+        return [
+            cls(
+                flight,
+                page_sections,
+                dark_kneeboard,
+                page_no=index + 1,
+                total_pages=total,
+            )
+            for index, page_sections in enumerate(pages_sections)
+        ]
+
+    @classmethod
+    def _build_sections(
+        cls,
+        flight: FlightData,
+        package_flights: List[FlightData],
+        comms: List[CommInfo],
+        awacs: List[AwacsInfo],
+        tankers: List[TankerInfo],
+        jtacs: List[JtacInfo],
+        start_time: datetime.datetime,
+    ) -> List[_SupportSection]:
+        """Builds the four Support sections (Package, AEW&C, Tankers, JTAC).
+
+        Row contents are exactly what the single-page layout produced; only the
+        splitting across pages is new.
+        """
+        comms = list(comms)
+        flight_name = flight.custom_name if flight.custom_name else "Flight"
+        comms.append(CommInfo(flight_name, flight.intra_flight_channel))
+
+        sections: List[_SupportSection] = []
 
         # Package Section
-        package = self.flight.package
+        package = flight.package
         custom = f' "{package.custom_name}"' if package.custom_name else ""
-        writer.heading(f"{package.package_description} Package{custom}")
-        freq = self.format_frequency(package.frequency).replace("\n", " - ")
-        writer.text(f"  FREQ: {freq}", font=writer.table_font)
-        tot = self._format_time(package.time_over_target)
-        writer.text(f"  TOT: {tot}", font=writer.table_font)
+        package_freq = cls._format_frequency(flight, package.frequency).replace(
+            "\n", " - "
+        )
+        package_tot = cls._format_time(package.time_over_target)
+
+        def package_title(w: "KneeboardPageWriter") -> None:
+            w.heading(f"{package.package_description} Package{custom}")
+            w.text(f"  FREQ: {package_freq}", font=w.table_font)
+            w.text(f"  TOT: {package_tot}", font=w.table_font)
+
         comm_ladder = []
-        for comm in self.comms:
+        for comm in comms:
             comm_ladder.append(
                 [
                     comm.name,
-                    str(self.flight.flight_type),
-                    KneeboardPageWriter.wrap_line(str(self.flight.aircraft_type), 23),
-                    str(len(self.flight.units)),
-                    self.format_frequency(comm.freq, stack=True),
+                    str(flight.flight_type),
+                    KneeboardPageWriter.wrap_line(str(flight.aircraft_type), 23),
+                    str(len(flight.units)),
+                    cls._format_frequency(flight, comm.freq, stack=True),
                 ]
             )
-        for f in self.package_flights:
+        for f in package_flights:
             callsign = f.callsign
             if f.custom_name:
                 callsign = f"{callsign}\n({f.custom_name})"
@@ -664,91 +829,168 @@ class SupportPage(KneeboardPage):
                     str(f.flight_type),
                     KneeboardPageWriter.wrap_line(str(f.aircraft_type), 23),
                     str(len(f.units)),
-                    self.format_frequency(f.intra_flight_channel, stack=True),
+                    cls._format_frequency(flight, f.intra_flight_channel, stack=True),
                 ]
             )
-
-        # "#" not "#A/C": the count is a single digit, so the wider header padded the
-        # column and pushed the FREQ column off the right edge of the page.
-        writer.table(comm_ladder, headers=["Callsign", "Task", "Type", "#", "FREQ"])
+        # "#" not "#A/C": the count is a single digit, so the wider header padded
+        # the column and pushed the FREQ column off the right edge of the page.
+        sections.append(
+            _SupportSection(
+                package_title,
+                ["Callsign", "Task", "Type", "#", "FREQ"],
+                comm_ladder,
+            )
+        )
 
         # AEW&C
-        writer.heading("AEW&C")
         aewc_ladder = []
-
-        for single_aewc in self.awacs:
+        for single_aewc in awacs:
             if single_aewc.depature_location is None:
                 tot = "-"
                 tos = "-"
             else:
-                tot = self._format_time(single_aewc.start_time)
-                tos = self._format_duration(
+                tot = cls._format_time(single_aewc.start_time)
+                tos = cls._format_duration(
                     single_aewc.end_time - single_aewc.start_time
                 )
 
             aewc_ladder.append(
                 [
                     str(single_aewc.callsign),
-                    self.format_frequency(single_aewc.freq, stack=True),
+                    cls._format_frequency(flight, single_aewc.freq, stack=True),
                     str(single_aewc.depature_location),
                     "TOT: " + tot + "\n" + "TOS: " + tos,
                 ]
             )
-
-        writer.table(
-            aewc_ladder,
-            headers=["Callsign", "FREQ", "Departure", "TOT / TOS"],
+        sections.append(
+            _SupportSection(
+                lambda w: w.heading("AEW&C"),
+                ["Callsign", "FREQ", "Departure", "TOT / TOS"],
+                aewc_ladder,
+            )
         )
 
-        comm_ladder = []
-        writer.heading("Tankers")
-        for tanker in self.tankers:
-            tot = self._format_time(tanker.start_time)
-            tos = self._format_duration(tanker.end_time - tanker.start_time)
-            comm_ladder.append(
+        # Tankers
+        tanker_ladder = []
+        for tanker in tankers:
+            tot = cls._format_time(tanker.start_time)
+            tos = cls._format_duration(tanker.end_time - tanker.start_time)
+            tanker_ladder.append(
                 [
                     tanker.callsign,
                     KneeboardPageWriter.wrap_line(tanker.variant, 21),
                     str(tanker.tacan) if tanker.tacan else "N/A",
-                    self.format_frequency(tanker.freq, stack=True),
+                    cls._format_frequency(flight, tanker.freq, stack=True),
                     "TOT: " + tot + "\n" + "TOS: " + tos,
                 ]
             )
-
-        writer.table(
-            comm_ladder,
-            # Drop the "Task" column (always "Tanker" in this table) and shorten
-            # TACAN to TCN (3-char code), so the wider FREQ column (now COMM1 +
-            # COMM2) and TOT/TOS no longer run off the page edge.
-            headers=["Callsign", "Type", "TCN", "FREQ", "TOT / TOS"],
+        sections.append(
+            _SupportSection(
+                lambda w: w.heading("Tankers"),
+                # Drop the "Task" column (always "Tanker" in this table) and
+                # shorten TACAN to TCN (3-char code), so the wider FREQ column
+                # (now COMM1 + COMM2) and TOT/TOS no longer run off the page edge.
+                ["Callsign", "Type", "TCN", "FREQ", "TOT / TOS"],
+                tanker_ladder,
+            )
         )
 
-        writer.heading("JTAC")
-        jtacs = []
-        for jtac in self.jtacs:
-            jtacs.append(
+        # JTAC
+        jtac_rows = []
+        for jtac in jtacs:
+            jtac_rows.append(
                 [
                     jtac.callsign,
                     KneeboardPageWriter.wrap_line(
                         jtac.region,
-                        self.JTAC_REGION_MAX_LEN,
+                        cls.JTAC_REGION_MAX_LEN,
                     ),
                     jtac.code,
-                    self.format_frequency(jtac.freq),
+                    cls._format_frequency(flight, jtac.freq),
                 ]
             )
         # "Laser" instead of "Laser Code": the code is 4 digits, so the longer
         # header padded the column and pushed the FREQ column off the page.
-        writer.table(jtacs, headers=["Callsign", "Region", "Laser", "FREQ"])
+        sections.append(
+            _SupportSection(
+                lambda w: w.heading("JTAC"),
+                ["Callsign", "Region", "Laser", "FREQ"],
+                jtac_rows,
+            )
+        )
 
+        return sections
+
+    @staticmethod
+    def _render_section(
+        writer: "KneeboardPageWriter",
+        section: _SupportSection,
+        with_title: bool,
+    ) -> None:
+        """Draws a section (optionally its leading part) then its table."""
+        if with_title:
+            section.title_render(writer)
+        writer.table(section.rows, headers=section.headers)
+
+    @classmethod
+    def _rows_that_fit(
+        cls,
+        section: _SupportSection,
+        rows: List[List[str]],
+        with_title: bool,
+        available: int,
+    ) -> int:
+        """How many leading rows of a section fit in ``available`` pixels.
+
+        Renders the section's leading part (if any) plus the table header, then
+        grows the row count until the measured height would exceed ``available``.
+        Measuring the real table each time keeps column widths / wrapping exact,
+        which a per-row estimate could not, and the table is small.
+        """
+        fits = 0
+        for count in range(1, len(rows) + 1):
+            trial = _SupportSection(
+                title_render=(section.title_render if with_title else _no_title),
+                headers=section.headers,
+                rows=rows[:count],
+            )
+
+            def render(w: KneeboardPageWriter, t: _SupportSection = trial) -> None:
+                cls._render_section(w, t, with_title=True)
+
+            height = KneeboardPageWriter.measure(render)
+            if height > available:
+                break
+            fits = count
+        return fits
+
+    def write(self, path: Path) -> None:
+        writer = KneeboardPageWriter(dark_theme=self.dark_kneeboard)
+        if self.flight.custom_name:
+            custom_name_title = ' ("{}")'.format(self.flight.custom_name)
+        else:
+            custom_name_title = ""
+        suffix = f" ({self.page_no}/{self.total_pages})" if self.total_pages > 1 else ""
+        writer.title(f"{self.flight.callsign} Support Info{custom_name_title}{suffix}")
+        for section in self.sections:
+            section.title_render(writer)
+            writer.table(section.rows, headers=section.headers)
         writer.write(path)
 
     def format_frequency(
         self, frequency: Optional[RadioFrequency], stack: bool = False
     ) -> str:
+        return self._format_frequency(self.flight, frequency, stack)
+
+    @staticmethod
+    def _format_frequency(
+        flight: FlightData,
+        frequency: Optional[RadioFrequency],
+        stack: bool = False,
+    ) -> str:
         if frequency is None:
             return ""
-        channels = self.flight.channels_for(frequency)
+        channels = flight.channels_for(frequency)
         if not channels:
             return str(frequency)
 
@@ -758,8 +1000,7 @@ class SupportPage(KneeboardPage):
         # right edge of the page. The full-width package-header line still uses inline.
         sep = "\n" if stack else " / "
         names = sep.join(
-            self.flight.aircraft_type.channel_name(c.radio_id, c.channel)
-            for c in channels
+            flight.aircraft_type.channel_name(c.radio_id, c.channel) for c in channels
         )
         return f"{names}\n{frequency}"
 
@@ -1249,7 +1490,9 @@ class KneeboardGenerator(MissionInfoGenerator):
                 self.dark_kneeboard,
                 theater=self.game.theater,
             ),
-            SupportPage(
+        ]
+        pages.extend(
+            SupportPage.paginate(
                 flight,
                 package_flights,
                 self.comms,
@@ -1258,8 +1501,8 @@ class KneeboardGenerator(MissionInfoGenerator):
                 self.jtacs,
                 zoned_time,
                 self.dark_kneeboard,
-            ),
-        ]
+            )
+        )
 
         # Only create the notes page if there are notes to show.
         if notes := self.game.notes:

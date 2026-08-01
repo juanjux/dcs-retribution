@@ -83,6 +83,7 @@ from game.theater import (
 )
 from game.theater.theatergroundobject import (
     CarrierGroundObject,
+    CoastalSiteGroundObject,
     EwrGroundObject,
     GenericCarrierGroundObject,
     LhaGroundObject,
@@ -288,8 +289,13 @@ class GroundObjectGenerator:
         return self.game.iads_considerate_culling(self.ground_object)
 
     def generate(self) -> None:
-        if self.culled:
-            return
+        # Culling skips what costs performance: spawned statics, vehicles and ships.
+        # It must NOT skip the scenery-objective apparatus below -- the map buildings
+        # backing a scenery objective exist whether or not the campaign spawns
+        # anything, so a culled trigger zone leaves a bombable, visibly collapsing
+        # target whose death is never recorded and the strike vanishes from the
+        # debrief. The zone, its kill-tracking rule and the IADS stand-in cost nothing.
+        culled = self.culled
         for group in self.ground_object.groups:
             vehicle_units = []
             ship_units = []
@@ -297,7 +303,7 @@ class GroundObjectGenerator:
             for unit in group.units:
                 if unit.is_static:
                     if isinstance(unit, SceneryUnit):
-                        # Special handling for scenery objects
+                        # Special handling for scenery objects: never culled.
                         self.add_trigger_zone_for_scenery(unit)
                         if (
                             self.game.settings.plugin_option("skynetiads")
@@ -306,7 +312,7 @@ class GroundObjectGenerator:
                         ):
                             # Generate a unit which can be controlled by skynet
                             self.generate_iads_command_unit(unit)
-                    else:
+                    elif not culled:
                         # Create a static group for each static unit
                         self.create_static_group(unit)
                 elif unit.is_vehicle and unit.alive:
@@ -315,6 +321,8 @@ class GroundObjectGenerator:
                 elif unit.is_ship and unit.alive:
                     # All alive Ships
                     ship_units.append(unit)
+            if culled:
+                continue
             if vehicle_units:
                 self.create_vehicle_group(group.group_name, vehicle_units)
             if ship_units:
@@ -347,6 +355,7 @@ class GroundObjectGenerator:
                 self.enable_ewr(vehicle_group)
                 vehicle_group.units[0].name = unit.unit_name
                 self.set_alarm_state(vehicle_group)
+                self.set_coastal_engagement(vehicle_group)
                 GroundForcePainter(faction, vehicle_group.units[0]).apply_livery()
             else:
                 vehicle_unit = self.m.vehicle(unit.unit_name, unit.type)
@@ -450,6 +459,20 @@ class GroundObjectGenerator:
             group.points[0].tasks.append(OptAlarmState(2))
         else:
             group.points[0].tasks.append(OptAlarmState(1))
+
+    def set_coastal_engagement(self, group: MovingGroup[Any]) -> None:
+        # A coastal anti-ship battery engages the same way a fleet does (see
+        # set_ship_engagement): by OPTION, not by task. A forced RED alarm plus
+        # weapon-free ROE make it fire on its own at any enemy hull entering range;
+        # left on the DCS default it simply watches ships sail past. Off by default
+        # because a mod battery firing anti-ship missiles has crashed DCS before, so
+        # with the setting off this is byte-identical to not being here.
+        if not self.game.settings.coastal_batteries_engage_ships:
+            return
+        if not isinstance(self.ground_object, CoastalSiteGroundObject):
+            return
+        group.points[0].tasks.append(OptAlarmState(2))
+        group.points[0].tasks.append(OptROE(OptROE.Values.WeaponFree))
 
     def set_ship_engagement(self, group: ShipGroup) -> None:
         # Make fleets fight rather than sit passive. Ship weapons engagement in DCS is

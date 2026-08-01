@@ -308,6 +308,10 @@ class GroundUnitAllocations:
         return sum(self.transferring.values())
 
 
+# A cratered runway takes this many turns to repair (RunwayStatus.begin_repair).
+RUNWAY_REPAIR_TURNS = 4
+
+
 @dataclass
 class RunwayStatus:
     damaged: bool = False
@@ -326,7 +330,7 @@ class RunwayStatus:
     def begin_repair(self) -> None:
         if self.repair_turns_remaining is not None:
             logging.error("Runway already under repair. Restarting.")
-        self.repair_turns_remaining = 4
+        self.repair_turns_remaining = RUNWAY_REPAIR_TURNS
 
     def process_turn(self) -> None:
         if self.repair_turns_remaining is not None:

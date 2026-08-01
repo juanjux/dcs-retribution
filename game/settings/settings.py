@@ -81,6 +81,7 @@ ADVANCED_CAMPAIGN_MANAGEMENT_PAGE = "Campaign Management+"
 GENERAL_SECTION = "General"
 PILOTS_AND_SQUADRONS_SECTION = "Pilots and Squadrons"
 HQ_AUTOMATION_SECTION = "HQ Automation"
+OPFOR_AI_SECTION = "OPFOR AI commander"
 FLIGHT_PLANNER_AUTOMATION = "Flight Planner Automation"
 GROUND_OBJECT_REPAIR_TUNING_SECTION = "Ground Object Repairs"
 BUILDING_REPAIR_TUNING_SECTION = "Building Repairs"
@@ -191,6 +192,18 @@ class Settings:
             "Map only": Views.OnlyMap,
         },
         default=Views.All,
+    )
+    opfor_ai_enabled: bool = boolean_option(
+        "Allow OPFOR AI control (external LLM plays red)",
+        page=CAMPAIGN_MANAGEMENT_PAGE,
+        section=OPFOR_AI_SECTION,
+        default=False,
+        detail=(
+            "Expose the live game over a local API so an external LLM (e.g. ChatGPT, "
+            "Claude, et cetera) plans the enemy turns instead of the scripted "
+            "commander. Check the toolbar OPFOR AI button for more info when enabling "
+            "this."
+        ),
     )
     external_views_allowed: bool = boolean_option(
         "Allow external views",
@@ -1464,6 +1477,38 @@ class Settings:
         GAMEPLAY_SECTION,
         default=True,
     )
+    cruise_missile_strikes: bool = boolean_option(
+        "Ship-launched cruise missile strikes",
+        page=MISSION_GENERATOR_PAGE,
+        section=GAMEPLAY_SECTION,
+        default=False,
+        detail=(
+            "Warships that carry land-attack cruise missiles (the Burke's Tomahawks, "
+            "the CurrentHill Kalibr hulls) can fire them at shore targets: an F10 "
+            "'Cruise Missile Strike' menu calls a salvo onto your last map marker from "
+            "the nearest ship that still has missiles. Each ship group carries a finite "
+            "campaign magazine and there is no rearm, so every salvo spends stock you "
+            "never get back. The missiles are real weapons from a real, tracked ship: "
+            "kills count at debrief, enemy point defense can intercept them, and "
+            "sinking the shooter ends the raids. Both coalitions play by these rules. "
+            "Runs through the 'Cruise missile strikes' LUA plugin -- keep that plugin "
+            "enabled or this setting does nothing."
+        ),
+    )
+    cruise_missile_auto_raids: bool = boolean_option(
+        "Auto-plan cruise missile raids",
+        page=MISSION_GENERATOR_PAGE,
+        section=GAMEPLAY_SECTION,
+        default=False,
+        detail=(
+            "Needs 'Ship-launched cruise missile strikes'. Each turn, a side with a "
+            "cruise-missile ship in range commits one raid: a salvo fired early in the "
+            "mission at its highest-value reachable enemy ground object -- command "
+            "centers and comms first, then war industry, then anything strikeable. "
+            "Watch for the LAUNCH WARNING: an enemy raid is your point-defense SAMs' "
+            "problem, or yours."
+        ),
+    )
 
     # Performance
     perf_smoke_gen: bool = boolean_option(
@@ -1485,6 +1530,18 @@ class Settings:
         page=MISSION_GENERATOR_PAGE,
         section=PERFORMANCE_SECTION,
         default=True,
+    )
+    coastal_batteries_engage_ships: bool = boolean_option(
+        "Coastal batteries engage ships",
+        page=MISSION_GENERATOR_PAGE,
+        section=PERFORMANCE_SECTION,
+        default=False,
+        detail=(
+            "Let coastal anti-ship batteries fire on their own at enemy hulls that "
+            "enter range, the way fleets do. Off by default: a battery from a unit "
+            "mod firing anti-ship missiles has been seen to crash DCS, so try it on "
+            "a throwaway mission before using it in a campaign."
+        ),
     )
     perf_artillery: bool = boolean_option(
         "Artillery strikes",

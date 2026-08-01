@@ -79,7 +79,7 @@ inject_weapons(WeaponsSW)
 ## ARTILLERY
 @vehiclemod
 class Grkpbv90(unittype.VehicleType):
-    id = "Grkpbv90"
+    id = "CH_Grkpbv90"
     name = "[CH] Grkpbv 90 SPM"
     detection_range = 0
     threat_range = 7500
@@ -89,7 +89,7 @@ class Grkpbv90(unittype.VehicleType):
 
 @vehiclemod
 class Artillerisystem08_SGR77B(unittype.VehicleType):
-    id = "Artillerisystem08_SGR77B"
+    id = "CH_Artillerisystem08_SGR77B"
     name = "[CH] Archer SPG SGR77B"
     detection_range = 10000
     threat_range = 40000
@@ -99,7 +99,7 @@ class Artillerisystem08_SGR77B(unittype.VehicleType):
 
 @vehiclemod
 class Artillerisystem08_M982(unittype.VehicleType):
-    id = "Artillerisystem08_M982"
+    id = "CH_Artillerisystem08_M982"
     name = "[CH] Archer SPG M982 Excalibur"
     detection_range = 0
     threat_range = 50000
@@ -110,7 +110,7 @@ class Artillerisystem08_M982(unittype.VehicleType):
 # Air Defense
 @vehiclemod
 class LvKv9040(unittype.VehicleType):
-    id = "LvKv9040"
+    id = "CH_LvKv9040"
     name = "[CH] Lvkv 9040B SPAAG"
     detection_range = 15000
     threat_range = 4000
@@ -120,7 +120,7 @@ class LvKv9040(unittype.VehicleType):
 
 @vehiclemod
 class LvS_103_Lavett103_Rb103A(unittype.VehicleType):
-    id = "LvS-103_Lavett103_Rb103A"
+    id = "CH_LvS-103_Lavett103_Rb103A"
     name = "[CH] LvS-103 Lavett 103 Rb103A LN"
     detection_range = 0
     threat_range = 160000
@@ -130,7 +130,7 @@ class LvS_103_Lavett103_Rb103A(unittype.VehicleType):
 
 @vehiclemod
 class LvS_103_Lavett103_Rb103B(unittype.VehicleType):
-    id = "LvS-103_Lavett103_Rb103B"
+    id = "CH_LvS-103_Lavett103_Rb103B"
     name = "[CH] LvS-103 Lavett 103 Rb103B LN"
     detection_range = 0
     threat_range = 120000
@@ -140,7 +140,7 @@ class LvS_103_Lavett103_Rb103B(unittype.VehicleType):
 
 @vehiclemod
 class LvS_103_Lavett103_HX_Rb103A(unittype.VehicleType):
-    id = "LvS-103_Lavett103_HX_Rb103A"
+    id = "CH_LvS-103_Lavett103_HX_Rb103A"
     name = "[CH] LvS-103 Lavett 103 Rb103A LN (HX)"
     detection_range = 0
     threat_range = 160000
@@ -150,7 +150,7 @@ class LvS_103_Lavett103_HX_Rb103A(unittype.VehicleType):
 
 @vehiclemod
 class LvS_103_Lavett103_HX_Rb103B(unittype.VehicleType):
-    id = "LvS-103_Lavett103_HX_Rb103B"
+    id = "CH_LvS-103_Lavett103_HX_Rb103B"
     name = "[CH] LvS-103 Lavett 103 Rb103B LN (HX)"
     detection_range = 0
     threat_range = 120000
@@ -160,7 +160,7 @@ class LvS_103_Lavett103_HX_Rb103B(unittype.VehicleType):
 
 @vehiclemod
 class LvS_103_StriE103(unittype.VehicleType):
-    id = "LvS-103_StriE103"
+    id = "CH_LvS-103_StriE103"
     name = "[CH] LvS-103 StriE 103 ECS (HX)"
     detection_range = 0
     threat_range = 0
@@ -170,7 +170,7 @@ class LvS_103_StriE103(unittype.VehicleType):
 
 @vehiclemod
 class LvS_103_PM103(unittype.VehicleType):
-    id = "LvS-103_PM103"
+    id = "CH_LvS-103_PM103"
     name = "[CH] LvS-103 PM 103 STR"
     detection_range = 200000
     threat_range = 0
@@ -180,7 +180,7 @@ class LvS_103_PM103(unittype.VehicleType):
 
 @vehiclemod
 class LvS_103_PM103_HX(unittype.VehicleType):
-    id = "LvS-103_PM103_HX"
+    id = "CH_LvS-103_PM103_HX"
     name = "[CH] LvS-103 PM 103 STR (HX)"
     detection_range = 200000
     threat_range = 0
@@ -190,7 +190,7 @@ class LvS_103_PM103_HX(unittype.VehicleType):
 
 @vehiclemod
 class LvS_103_Elverk103(unittype.VehicleType):
-    id = "LvS-103_Elverk103"
+    id = "CH_LvS-103_Elverk103"
     name = "[CH] LvS-103 Elverk 103 EPP (HX)"
     detection_range = 0
     threat_range = 0
@@ -200,7 +200,7 @@ class LvS_103_Elverk103(unittype.VehicleType):
 
 @vehiclemod
 class RBS_70(unittype.VehicleType):
-    id = "RBS-70"
+    id = "CH_RBS-70"
     name = "[CH] RBS 70 VSHORAD LN"
     detection_range = 0
     threat_range = 8000
@@ -210,7 +210,7 @@ class RBS_70(unittype.VehicleType):
 
 @vehiclemod
 class RBS_90(unittype.VehicleType):
-    id = "RBS-90"
+    id = "CH_RBS-90"
     name = "[CH] RBS 90 VSHORAD LN"
     detection_range = 20000
     threat_range = 8000
@@ -220,7 +220,7 @@ class RBS_90(unittype.VehicleType):
 
 @vehiclemod
 class RBS_98(unittype.VehicleType):
-    id = "RBS-98"
+    id = "CH_RBS-98"
     name = "[CH] RBS 98 SAM LN (BvS 10)"
     detection_range = 0
     threat_range = 20000
@@ -230,7 +230,7 @@ class RBS_98(unittype.VehicleType):
 
 @vehiclemod
 class UndE23(unittype.VehicleType):
-    id = "UndE23"
+    id = "CH_UndE23"
     name = "[CH] UndE 23 (RBS 70/90/98) STR"
     detection_range = 300000
     threat_range = 0
@@ -241,7 +241,7 @@ class UndE23(unittype.VehicleType):
 ## INFANTRY
 @vehiclemod
 class SwedishinfantryAK4(unittype.VehicleType):
-    id = "SwedishinfantryAK4"
+    id = "CH_SwedishinfantryAK4"
     name = "[CH] Ak 4 Soldier"
     detection_range = 0
     threat_range = 600
@@ -251,7 +251,7 @@ class SwedishinfantryAK4(unittype.VehicleType):
 
 @vehiclemod
 class SwedishinfantryAK5(unittype.VehicleType):
-    id = "SwedishinfantryAK5"
+    id = "CH_SwedishinfantryAK5"
     name = "[CH] Ak 5 Soldier"
     detection_range = 0
     threat_range = 500
@@ -261,7 +261,7 @@ class SwedishinfantryAK5(unittype.VehicleType):
 
 @vehiclemod
 class SwedishinfantryAK5GT(unittype.VehicleType):
-    id = "SwedishinfantryAK5GT"
+    id = "CH_SwedishinfantryAK5GT"
     name = "[CH] Ak 5 Granattillsats Soldier"
     detection_range = 0
     threat_range = 500
@@ -271,7 +271,7 @@ class SwedishinfantryAK5GT(unittype.VehicleType):
 
 @vehiclemod
 class SwedishinfantryKSP90(unittype.VehicleType):
-    id = "SwedishinfantryKSP90"
+    id = "CH_SwedishinfantryKSP90"
     name = "[CH] Ksp 90 Soldier"
     detection_range = 0
     threat_range = 700
@@ -281,7 +281,7 @@ class SwedishinfantryKSP90(unittype.VehicleType):
 
 @vehiclemod
 class SwedishinfantryKSP58(unittype.VehicleType):
-    id = "SwedishinfantryKSP58"
+    id = "CH_SwedishinfantryKSP58"
     name = "[CH] Ksp 58 Soldier"
     detection_range = 0
     threat_range = 1200
@@ -291,7 +291,7 @@ class SwedishinfantryKSP58(unittype.VehicleType):
 
 @vehiclemod
 class SwedishinfantryPskott86(unittype.VehicleType):
-    id = "SwedishinfantryPskott86"
+    id = "CH_SwedishinfantryPskott86"
     name = "[CH] Pskott 86 Soldier"
     detection_range = 0
     threat_range = 400
@@ -301,7 +301,7 @@ class SwedishinfantryPskott86(unittype.VehicleType):
 
 @vehiclemod
 class RBS_57(unittype.VehicleType):
-    id = "RBS-57"
+    id = "CH_RBS-57"
     name = "[CH] RBS 57 ATGM Soldier"
     detection_range = 0
     threat_range = 1000
@@ -311,7 +311,7 @@ class RBS_57(unittype.VehicleType):
 
 @vehiclemod
 class RBS_58(unittype.VehicleType):
-    id = "RBS-58"
+    id = "CH_RBS-58"
     name = "[CH] RBS 58 ATGM"
     detection_range = 5000
     threat_range = 5000
@@ -321,7 +321,7 @@ class RBS_58(unittype.VehicleType):
 
 @vehiclemod
 class AG_90(unittype.VehicleType):
-    id = "AG-90"
+    id = "CH_AG-90"
     name = "[CH] Ag 90 Sniper AMR"
     detection_range = 5000
     threat_range = 1800
@@ -332,7 +332,7 @@ class AG_90(unittype.VehicleType):
 ##Armor
 @vehiclemod
 class CV9040(unittype.VehicleType):
-    id = "CV9040"
+    id = "CH_CV9040"
     name = "[CH] Strf 9040B IFV"
     detection_range = 0
     threat_range = 4000
@@ -352,7 +352,7 @@ class CH_Strf9040C(unittype.VehicleType):
 
 @vehiclemod
 class Strv103(unittype.VehicleType):
-    id = "Strv103"
+    id = "CH_Strv103"
     name = "[CH] Strv 103 MBT"
     detection_range = 6000
     threat_range = 6000
@@ -362,7 +362,7 @@ class Strv103(unittype.VehicleType):
 
 @vehiclemod
 class Strv2000(unittype.VehicleType):
-    id = "Strv2000"
+    id = "CH_Strv2000"
     name = "[CH] Strv 2000 T140/40 MBT"
     detection_range = 8000
     threat_range = 8000
@@ -372,7 +372,7 @@ class Strv2000(unittype.VehicleType):
 
 @vehiclemod
 class Volvo740(unittype.VehicleType):
-    id = "Volvo740"
+    id = "CH_Volvo740"
     name = "[CH] Volvo 740 Improvised fighting vehicle"
     detection_range = 0
     threat_range = 1200
@@ -443,7 +443,7 @@ class CH_SisuGTP(unittype.VehicleType):
 ## Missiles
 @vehiclemod
 class RBS_15KA(unittype.VehicleType):
-    id = "RBS-15KA"
+    id = "CH_RBS-15KA"
     name = "[CH] RBS 15KA LBASM"
     detection_range = 300000
     threat_range = 300000

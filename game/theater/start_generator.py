@@ -86,6 +86,10 @@ class ModSettings:
     f_16_idf: bool = False
     fa_18efg: bool = False
     fa18ef_tanker: bool = False
+    fa18c_aargm_er: bool = False
+    fa18c_aargm_er_realistic: bool = False
+    fa18c_lrasm: bool = False
+    fa18c_jassm: bool = False
     f22_raptor: bool = False
     f84g_thunderjet: bool = False
     f100_supersabre: bool = False
@@ -120,6 +124,7 @@ class ModSettings:
     SWPack: bool = False
     vietnamwarvessels: bool = False
     chinesemilitaryassetspack: bool = False
+    iranmilitaryassetspack: bool = False
     russianmilitaryassetspack: bool = False
     usamilitaryassetspack: bool = False
     ukmilitaryassetspack: bool = False

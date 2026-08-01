@@ -447,10 +447,18 @@ class AircraftBehavior:
             f"({carrier_position.x}, {carrier_position.y})"
         )
 
+    # Escorts spawn at ReturnFire and escalate to OpenFire at the JOIN waypoint
+    # (JoinPointBuilder). OpenFire means "engage ONLY targets specified in its
+    # taskings", and an escort's one target-designating task (the Escort
+    # ControlledTask) only attaches at JOIN -- so the whole hold/transit window had
+    # an EMPTY legal-target set and the jet could not fire even while under attack
+    # (EvadeFire permits maneuver and countermeasures only). ReturnFire lets a
+    # pre-join escort shoot back at whatever shoots first without freelancing off
+    # its timeline. Adapted from the 414Ret fork.
     def configure_escort(self, group: FlyingGroup[Any], flight: Flight) -> None:
         self.configure_task(flight, group, Escort)
         self.configure_behavior(
-            flight, group, roe=OptROE.Values.OpenFire, restrict_jettison=True
+            flight, group, roe=OptROE.Values.ReturnFire, restrict_jettison=True
         )
 
     def configure_sead_escort(self, group: FlyingGroup[Any], flight: Flight) -> None:
@@ -458,7 +466,8 @@ class AircraftBehavior:
         self.configure_behavior(
             flight,
             group,
-            roe=OptROE.Values.OpenFire,
+            # ReturnFire until JOIN escalates to OpenFire -- see configure_escort.
+            roe=OptROE.Values.ReturnFire,
             # Guided includes ARMs and TALDs (among other things, but those are the useful
             # weapons for SEAD).
             rtb_winchester=OptRTBOnOutOfAmmo.Values.Guided,

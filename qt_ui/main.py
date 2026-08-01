@@ -1,6 +1,7 @@
 import argparse
 import logging
 import ntpath
+import os
 import sys
 import tempfile
 from datetime import datetime
@@ -68,6 +69,16 @@ def on_game_load(game: Optional[Game]) -> None:
 
 
 def run_ui(game: Optional[Game], ui_flags: UiFlags) -> None:
+    # Use ANGLE (Direct3D) instead of desktop OpenGL for Qt. The desktop-GL path
+    # (opengl32/nvoglv64 + wglSwapLayerBuffers) can deadlock the main thread on a
+    # synchronous Win32 message when a modal dialog is shown over the live
+    # QtWebEngine map -- e.g. interacting with / clicking outside the "Waiting for
+    # mission completion" window froze the whole app ("Not Responding"). ANGLE
+    # keeps hardware acceleration (via Direct3D) but removes that wgl* synchronous
+    # path. Must be set before Qt initialises its GL integration, i.e. before the
+    # QApplication below; setdefault lets an explicit QT_OPENGL still override it.
+    os.environ.setdefault("QT_OPENGL", "angle")
+
     QApplication.setHighDpiScaleFactorRoundingPolicy(
         Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
     )
@@ -355,6 +366,9 @@ def create_game(
             su15_flagon=False,
             su30_flanker_h=False,
             su35s_flanker_m=False,
+            f15ex=False,
+            f15cge=False,
+            eurofighter=False,
             su57_felon=False,
             coldwarassets=False,
             frenchpack=False,

@@ -7,9 +7,13 @@ logger:info("Check that json.lua is loaded : json = "..tostring(json))
 crash_events = {} -- killed aircraft will be added via S_EVENT_CRASH event
 dead_events = {} -- killed units will be added via S_EVENT_DEAD event
 unit_lost_events = {} -- killed units will be added via S_EVENT_UNIT_LOST
-kill_events = {} -- killed units will be added via S_EVENT_KILL 
+kill_events = {} -- killed units will be added via S_EVENT_KILL
+kill_details = {} -- structured S_EVENT_KILL records {target, initiator, weapon} for the UI feed
 base_capture_events = {}
 destroyed_objects_positions = {} -- will be added via S_EVENT_DEAD event
+took_off = {}   -- unit name -> true (S_EVENT_TAKEOFF); a ground-start unit absent here was destroyed parked
+death_time = {} -- unit name -> first death-event mission time (s), for indirect-kill timing
+cruise_missiles_state = {} -- cruisemissiles plugin appends/updates {group=, fired=} per ship group that launched; Python debits the campaign magazine at the turn boundary
 mission_ended = false
 dirty_state = false -- Track if state has changed and needs writing
 
@@ -58,8 +62,13 @@ function write_state()
         ["base_capture_events"] = base_capture_events,
 		["unit_lost_events"] = unit_lost_events,
 		["kill_events"] = kill_events,
+		["kill_details"] = kill_details,
         ["mission_ended"] = mission_ended,
         ["destroyed_objects_positions"] = destroyed_objects_positions,
+        ["model_time"] = timer.getTime(),
+        ["took_off"] = took_off,
+        ["death_time"] = death_time,
+        ["cruise_missiles_state"] = cruise_missiles_state or {},
     }
     local ok, write_error = pcall(function()
         fp:write(json:encode(game_state))
@@ -196,6 +205,34 @@ local function is_player_despawn(name)
 end
 
 local function onEvent(event)
+    -- Indirect-kill attribution data (consumed by the debriefing): which units
+    -- took off, and the first death-event time of each unit. pcall-guarded so a
+    -- missing accessor never breaks the mission.
+    if event.id == world.event.S_EVENT_TAKEOFF and event.initiator then
+        pcall(function()
+            local n = event.initiator:getName()
+            if n and not took_off[n] then took_off[n] = true; dirty_state = true end
+        end)
+    end
+    if event.id == world.event.S_EVENT_KILL and event.target then
+        pcall(function()
+            local n = event.target:getName()
+            if n and death_time[n] == nil then death_time[n] = timer.getTime(); dirty_state = true end
+        end)
+    end
+    if event.initiator and (event.id == world.event.S_EVENT_CRASH
+        or event.id == world.event.S_EVENT_DEAD
+        or event.id == world.event.S_EVENT_UNIT_LOST) then
+        pcall(function()
+            local n = event.initiator:getName()
+            -- Skip player-despawns (same guard as the loss lists) so death_time
+            -- only holds genuine deaths.
+            if n and death_time[n] == nil and not is_player_despawn(n) then
+                death_time[n] = timer.getTime(); dirty_state = true
+            end
+        end)
+    end
+
     -- Track player seat-leaves and ejections first so the loss handlers below can
     -- tell a despawn (player left, survived) from a real shootdown.
     if event.id == world.event.S_EVENT_EJECTION and event.initiator
@@ -225,7 +262,23 @@ local function onEvent(event)
     end
 	
 	if event.id == world.event.S_EVENT_KILL and event.target then
-        kill_events[#kill_events + 1] = event.target.getName(event.target)
+        local target_name = event.target.getName(event.target)
+        kill_events[#kill_events + 1] = target_name
+        -- Also record who killed it and with what, for the UI event feed. All
+        -- accessors are pcall-guarded so a missing field never breaks the mission.
+        local detail = { ["target"] = target_name }
+        if event.initiator then
+            pcall(function() detail["initiator"] = event.initiator:getName() end)
+            pcall(function() detail["initiator_type"] = event.initiator:getTypeName() end)
+            pcall(function()
+                local pn = event.initiator:getPlayerName()
+                if pn and pn ~= "" then detail["initiator_player"] = pn end
+            end)
+        end
+        if event.weapon then
+            pcall(function() detail["weapon"] = event.weapon:getTypeName() end)
+        end
+        kill_details[#kill_details + 1] = detail
         dirty_state = true
     end
 
