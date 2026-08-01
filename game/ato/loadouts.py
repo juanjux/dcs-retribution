@@ -15,6 +15,7 @@ from game.data.weapons import Pylon, Weapon, WeaponType
 from game.dcs.aircrafttype import AircraftType
 from game.factions.faction import Faction
 from game.persistency import payloads_dir, prefer_liberation_payloads
+from game.utils import Distance, max_optional_distance
 
 if TYPE_CHECKING:
     from .flight import Flight
@@ -151,6 +152,12 @@ class Loadout:
             if weapon is not None and weapon.weapon_group.type is weapon_type:
                 return True
         return False
+
+    def max_standoff_range(self) -> Optional[Distance]:
+        """The longest stand-off launch range among the equipped weapons, if any."""
+        return max_optional_distance(
+            weapon.launch_range for weapon in self.pylons.values() if weapon
+        )
 
     @staticmethod
     def _fallback_for(
