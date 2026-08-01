@@ -1,6 +1,7 @@
 # Retribution v1.6.0
 
 ## Features/Improvements
+* **[Map]** Right-clicking a front line under a blue flight-plan route now opens the new-package dialog instead of the browser context menu (the route's invisible hover overlay swallowed the click).
 * **[Kneeboard]** Use a light-grey daytime kneeboard background instead of near-white, to avoid glare under HDR / Auto-HDR while staying readable in daylight.
 * **[UX]** Hovering a friendly flight's route line on the map highlights it in yellow, and clicking it selects that flight's package (and the flight) in the ATO sidebar.
 * **[UX]** Press Delete with a package selected in the Packages list to cancel it, making it quick to clear several packages in a row.
