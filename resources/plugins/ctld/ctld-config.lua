@@ -19,98 +19,6 @@ function preload_troops(preload_data)
     ctld.preLoadTransport(preload_data["unit"], preload_data["amount"], true)
 end
 
---- Fixed-wing air assault (the Anubis C-130) never unloaded its troops.
----
---- CTLD's AI auto-unload (ctld.checkAIStatus -> ctld.inDropoffZone) only fires for a
---- transport that is inside a DROPOFF_ZONE *and* on the ground, and ctld.deployTroops
---- additionally gates on landed-or-fast-rope (below 60 ft, under 8 km/h). An air
---- assault by a plane satisfies none of that: the flight plan gives fixed wing no
---- drop-off zone at all (AirAssaultLayout.drop_off is helo-only, so LogisticsInfo
---- carries just the CTLD TARGET_ZONE) and the aircraft overflies the objective at
---- altitude. Its preloaded troops therefore stayed aboard and the flight simply flew
---- through the target and went home.
----
---- Historically the visible drop was the mod's Herc_Soldier_Squad "bomb" released by
---- the CarpetBombing task on the ingress waypoint, with Hercules_Cargo.lua spawning the
---- infantry on S_EVENT_SHOT. That weapon is stripped now -- it triggers the DCS
---- "No input port in scheme: suppress_ballute" crash -- so do the drop here instead:
---- when an AI fixed-wing transport carrying troops reaches its own target zone, spawn
---- the group on the ground beneath it. No parachutes, but the assault lands and
---- captures again, and it works whether or not the Anubis mod is installed.
-retribution_airdrops = {}
-
-function retribution_airdrop(unit)
-    local onboard = ctld.inTransitTroops[unit:getName()]
-    local point = unit:getPoint()
-    local ground = { x = point.x, y = land.getHeight({ x = point.x, y = point.z }), z = point.z }
-    local dropped = ctld.spawnDroppedGroup(ground, onboard.troops, false)
-
-    -- Mirror ctld.deployTroops' bookkeeping so the dropped group behaves like any
-    -- other CTLD insertion (extraction, JTAC lasing, cargo weight, callbacks).
-    if onboard.troops.jtac or dropped:getName():lower():find("jtac") then
-        local code = table.remove(ctld.jtacGeneratedLaserCodes, 1)
-        table.insert(ctld.jtacGeneratedLaserCodes, code)
-        ctld.JTACAutoLase(dropped:getName(), code)
-    end
-    if unit:getCoalition() == 1 then
-        table.insert(ctld.droppedTroopsRED, dropped:getName())
-    else
-        table.insert(ctld.droppedTroopsBLUE, dropped:getName())
-    end
-    ctld.inTransitTroops[unit:getName()].troops = nil
-    ctld.adaptWeightToCargo(unit:getName())
-    ctld.processCallback({ unit = unit, unloaded = dropped, action = "dropped_troops" })
-
-    trigger.action.outTextForCoalition(unit:getCoalition(),
-        string.format("%s airdropped troops over the objective", unit:getTypeName()), 10)
-    env.info(string.format("DCSRetribution|CTLD plugin - airdropped troops from %s", unit:getName()))
-end
-
-function retribution_airdrop_check()
-    timer.scheduleFunction(retribution_airdrop_check, nil, timer.getTime() + 2)
-
-    for _, drop in pairs(retribution_airdrops) do
-        local status, error = pcall(function()
-            if drop.done then
-                return
-            end
-            local unit = ctld.getTransportUnit(drop.unit)
-            if unit == nil then
-                return
-            end
-            -- Players drop on their own terms via the radio menu.
-            if unit:getPlayerName() ~= nil or unit:hasAttribute("Helicopters") then
-                return
-            end
-            if not ctld.troopsOnboard(unit, true) then
-                return
-            end
-            local zone = trigger.misc.getZone(drop.zone)
-            if zone == nil then
-                return
-            end
-            local distance = ctld.getDistance(unit:getPoint(), zone.point)
-            if distance > zone.radius then
-                return
-            end
-            -- The target zone has a 2.5 km radius, so dropping the moment we cross
-            -- into it would leave the infantry a very long walk from the objective.
-            -- Wait for the closest approach instead: drop once we are practically
-            -- overhead, or as soon as the aircraft starts pulling away again.
-            if distance > 500 and (drop.closest == nil or distance < drop.closest) then
-                drop.closest = distance
-                return
-            end
-            retribution_airdrop(unit)
-            drop.done = true
-        end)
-
-        if not status then
-            env.error(string.format("DCSRetribution|CTLD plugin - airdrop error: %s", error), false)
-        end
-    end
-end
-
 function toboolean(str) return str == "true" end
 
 -- CTLD plugin - configuration
@@ -235,14 +143,6 @@ if dcsRetribution then
                 if item.target_zone then
                     table.insert(ctld.wpZones, { item.target_zone, "none", "yes", tonumber(item.side) })
                 end
-                --- An air assault with a target zone but no drop-off zone is a fixed-wing
-                --- one, which CTLD cannot unload on its own. See retribution_airdrop.
-                if item.target_zone and item.target_zone ~= ""
-                        and (item.drop_off_zone == nil or item.drop_off_zone == "") then
-                    for _, pilot in pairs(item.pilot_names) do
-                        table.insert(retribution_airdrops, { unit = pilot, zone = item.target_zone })
-                    end
-                end
                 if dcsRetribution.plugins.ctld.logisticunit and item.logistic_unit then
                     table.insert(ctld.logisticUnits, item.logistic_unit)
                 end
@@ -271,11 +171,6 @@ if dcsRetribution then
             end
             if dcsRetribution.plugins.ctld.airliftcrates then
                 timer.scheduleFunction(spawn_crates, nil, timer.getTime() + 3)
-            end
-            if #retribution_airdrops > 0 then
-                -- After the +5s preload, otherwise a transport already sitting in its
-                -- target zone would be checked with an empty cabin and never drop.
-                timer.scheduleFunction(retribution_airdrop_check, nil, timer.getTime() + 10)
             end
         end
     end
