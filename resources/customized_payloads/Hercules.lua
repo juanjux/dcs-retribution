@@ -127,6 +127,10 @@ local unitPayloads = {
 			["name"] = "Retribution Air Assault",
 			["pylons"] = {
 				[1] = {
+					["CLSID"] = "Herc_Soldier_Squad",
+					["num"] = 12,
+				},
+				[2] = {
 					["CLSID"] = "Herc_JATO",
 					["num"] = 1,
 				},
