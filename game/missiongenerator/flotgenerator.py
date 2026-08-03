@@ -468,7 +468,11 @@ class FlotGenerator:
         )
         rp = dcs_group.add_waypoint(reform_point)
         hold = ControlledTask(Hold())
-        hold.stop_after_duration(hold_duration.seconds)
+        # total_seconds(), not seconds: timedelta normalises a negative delta to a
+        # negative day plus a positive remainder, so a CAS package whose TOT lands
+        # before the mission start turned a -60s hold into .seconds == 86340 -- very
+        # nearly 24 hours, i.e. a group that never moves for the whole mission.
+        hold.stop_after_duration(max(0, int(hold_duration.total_seconds())))
         rp.add_task(hold)
 
     def _plan_artillery_action(
@@ -554,7 +558,11 @@ class FlotGenerator:
         Returns True if tasking was added, returns False if the stance was not a combat stance.
         """
         duration = timedelta()
-        if stance in [CombatStance.DEFENSIVE, CombatStance.AGGRESSIVE]:
+        if stance == CombatStance.AGGRESSIVE:
+            # Hold at the reform point until the enemy's first CAS package is due, so
+            # an assault steps off with air support overhead. Only an attacker waits:
+            # a DEFENSIVE group holding here spent that window unable to shoot back,
+            # because Hold is a running task the AI will not abandon for a pushed one.
             duration = self._earliest_tot_on_flot(to_cp.coalition.player.opponent)
         self._set_reform_waypoint(dcs_group, forward_heading, duration)
         if stance == CombatStance.AGGRESSIVE:
@@ -644,7 +652,11 @@ class FlotGenerator:
         Returns True if tasking was added, returns False if the stance was not a combat stance.
         """
         duration = timedelta()
-        if stance in [CombatStance.DEFENSIVE, CombatStance.AGGRESSIVE]:
+        if stance == CombatStance.AGGRESSIVE:
+            # Hold at the reform point until the enemy's first CAS package is due, so
+            # an assault steps off with air support overhead. Only an attacker waits:
+            # a DEFENSIVE group holding here spent that window unable to shoot back,
+            # because Hold is a running task the AI will not abandon for a pushed one.
             duration = self._earliest_tot_on_flot(to_cp.coalition.player.opponent)
         self._set_reform_waypoint(dcs_group, forward_heading, duration)
         if stance in [
@@ -1175,10 +1187,12 @@ class FlotGenerator:
             # single-unit copies at mission start.
             group.late_activation = True
             self.mission_data.tic_groups.append(str(group.name))
-        if self.game.settings.perf_red_alert_state:
-            group.points[0].tasks.append(OptAlarmState(2))
-        else:
-            group.points[0].tasks.append(OptAlarmState(1))
+        # Front-line units always come up RED, regardless of the perf toggle. A GREEN
+        # ground unit does not search for targets and keeps its weapons stowed, so the
+        # toggle -- offered as a performance option, and about SAM sites -- silently
+        # disarmed the entire ground war: the FLOT would sit and watch the enemy drive
+        # past. Same reasoning as the EWR exemption in tgogenerator.set_alarm_state.
+        group.points[0].tasks.append(OptAlarmState(2))
 
         self.unit_map.add_front_line_units(group, cp, unit_type)
 
