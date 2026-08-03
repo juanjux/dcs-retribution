@@ -154,7 +154,15 @@ class F_15EX(PlaneType):
     chaff_charge_size = 1
     flare_charge_size = 1
     eplrs = True
-    category = "Multirole fighter"
+    # "Interceptor" (mapped to the "Air" callsign category by pydcs), not
+    # "Multirole fighter": Mission._assign_callsign only issues NATO-style
+    # name callsigns when the category is a key of the country's callsign
+    # table, and an unknown category falls back to a NUMERIC callsign --
+    # which the DCS Mission Editor cannot load for these units
+    # ("attempt to index field 'callsign' (a number value)", the mission
+    # hangs at ~97% of Terrain Graphics Init). Every stock and working mod
+    # fighter declares "Interceptor".
+    category = "Interceptor"
     radio_frequency = 124
 
     livery_name = "F15EX"
