@@ -156,6 +156,19 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   (branch [`juanjux/ch_china_1.1.6`](https://github.com/juanjux/dcs-retribution/tree/juanjux/ch_china_1.1.6))
 
 ### Fixes
+- **The recurring in-mission freeze** (~100 s stalls repeating until mission end,
+  runaway RAM, and the long-standing 0-byte `state.json`) — scenery objects report a
+  numeric name, and one scenery death (a taxiing aircraft clipping a runway light is
+  enough) made the state encoder build a multi-million-hole array on the sim thread.
+  Scenery deaths are now ignored by the state export.
+  ([#80](https://github.com/juanjux/dcs-retribution/pull/80))
+- **C-130 paratroopers restored** — the June crash-avoidance strip removed the
+  airdrop weapon entirely and CTLD cannot unload a fixed-wing air assault, so the
+  C-130 overflew the objective and went home with its troops. The weapon is back on
+  the air-assault payload; the underlying `suppress_ballute` CTD is fixed mod-side
+  (scheme + descriptor fields in the Anubis mod's `Hercules_Loadout.lua`, re-apply
+  after mod updates).
+  ([#81](https://github.com/juanjux/dcs-retribution/pull/81))
 - **Right-click on a front line under a flight-plan route** now opens the new-package
   dialog: the blue route's invisible hover overlay swallowed the click and the browser
   context menu appeared instead (front lines render in their own map pane now).
@@ -192,8 +205,10 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
 - Escorts of an AWACS/tanker hold on the protected flight's racetrack instead of a
   far-away point, so they actually protect it.
   ([#42](https://github.com/juanjux/dcs-retribution/pull/42))
-- **Anubis C-130 Hercules** — `suppress_ballute` crash fix and an air-assault
-  zig-zag ingress (C-130 and helos).
+- **Anubis C-130 Hercules** — air-assault zig-zag ingress fix (C-130 and helos).
+  Its `suppress_ballute` weapon strip turned out to break the paradrop and was
+  superseded by [#81](https://github.com/juanjux/dcs-retribution/pull/81) plus the
+  mod-side patch.
   ([#9](https://github.com/juanjux/dcs-retribution/pull/9))
 
 ## From the 414Ret fork
