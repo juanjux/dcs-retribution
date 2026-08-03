@@ -291,16 +291,25 @@ local function onEvent(event)
     -- Indirect-kill attribution data (consumed by the debriefing): which units
     -- took off, and the first death-event time of each unit. pcall-guarded so a
     -- missing accessor never breaks the mission.
+    --
+    -- The type(n) == "string" guards are load-bearing, not defensive fluff. For
+    -- scenery/map objects getName() returns a NUMBER (an object id in the tens of
+    -- millions), and a Hercules clipping an airfield fence fires S_EVENT_DEAD with
+    -- exactly such an initiator. One numeric key like death_time[71610370] makes
+    -- JSON.lua encode the table as an array with 71M null holes: ~100 s of CPU on
+    -- the sim thread per write_state and a "table overflow" abort, retried every
+    -- 15 s because the failed write never clears dirty_state -- the recurring
+    -- in-mission freeze. Scenery deaths carry no debriefing value; drop them.
     if event.id == world.event.S_EVENT_TAKEOFF and event.initiator then
         pcall(function()
             local n = event.initiator:getName()
-            if n and not took_off[n] then took_off[n] = true; dirty_state = true end
+            if type(n) == "string" and not took_off[n] then took_off[n] = true; dirty_state = true end
         end)
     end
     if event.id == world.event.S_EVENT_KILL and event.target then
         pcall(function()
             local n = event.target:getName()
-            if n and death_time[n] == nil then death_time[n] = timer.getTime(); dirty_state = true end
+            if type(n) == "string" and death_time[n] == nil then death_time[n] = timer.getTime(); dirty_state = true end
         end)
     end
     if event.initiator and (event.id == world.event.S_EVENT_CRASH
@@ -310,7 +319,7 @@ local function onEvent(event)
             local n = event.initiator:getName()
             -- Skip player-despawns (same guard as the loss lists) so death_time
             -- only holds genuine deaths.
-            if n and death_time[n] == nil and not is_player_despawn(n) then
+            if type(n) == "string" and death_time[n] == nil and not is_player_despawn(n) then
                 death_time[n] = timer.getTime(); dirty_state = true
             end
         end)
