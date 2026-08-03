@@ -1526,10 +1526,16 @@ class Settings:
         max=24000,
     )
     perf_red_alert_state: bool = boolean_option(
-        "SAM starts in red alert mode",
+        "Air defenses start in red alert mode",
         page=MISSION_GENERATOR_PAGE,
         section=PERFORMANCE_SECTION,
         default=True,
+        tooltip=(
+            "Applies to SAM, AAA and other air-defense sites. Turning it off makes "
+            "them spawn on green alert, which costs less CPU but leaves them passive "
+            "until they are shot at. Front-line ground units and EWRs are not "
+            "affected: they always come up on red alert."
+        ),
     )
     coastal_batteries_engage_ships: bool = boolean_option(
         "Coastal batteries engage ships",
