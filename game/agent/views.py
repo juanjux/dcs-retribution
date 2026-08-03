@@ -123,6 +123,11 @@ class SquadronView(BaseModel):
     )
     pending: int | None = None  # arriving next turn (omitted when 0)
     pilots: int
+    max_ac: int | None = (
+        None  # squadron airframe cap: buy/aircraft refuses once owned+pending reaches
+        # it (a cap of 1 marks an irreplaceable airframe, e.g. a lone AWACS); omitted
+        # when the campaign disables per-squadron aircraft limits
+    )
     grounded: bool | None = (
         None  # can't sortie this turn: base enemy-held OR runway cratered / hull sunk
         # (else omitted). flyable is 0 while grounded.
@@ -499,6 +504,7 @@ def build_squadron(sq: Squadron, player: Player | None = None) -> SquadronView:
         flyable=_squadron_flyable(sq, grounded) or None,
         pending=sq.pending_deliveries or None,
         pilots=sq.number_of_available_pilots,
+        max_ac=(sq.max_size if sq.settings.enable_squadron_aircraft_limits else None),
         grounded=grounded or None,
     )
 

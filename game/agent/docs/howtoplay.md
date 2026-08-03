@@ -48,6 +48,13 @@ you lose if they capture yours. Think in terms of a campaign, not a single turn.
 - **Front lines**: where red and blue ground forces meet. They move based on the
   ground battle. You set a **stance** per front (defend / hold / push for a
   breakthrough / eliminate the enemy in contact / retreat) and support it from the air.
+  **Capturing a base through the front, in practice:** (1) mass armor at YOUR base on
+  that front (`buy/ground`, `ground/transfer`); (2) set an offensive stance —
+  aggressive / breakthrough / eliminate; a defensive stance never advances; (3) support
+  it every turn with CAS and artillery so the exchange rate favors you and their armor
+  pool drains; (4) win that exchange turn after turn and the line advances — when it
+  reaches the enemy base, the base is captured. AIR_ASSAULT is the shortcut that skips
+  the grind by dropping troops on the base directly.
 - **Ground objects**: SAM sites, EWRs (early-warning radars), ships, and buildings
   (factories, ammo depots, fuel, etc.). SAMs/EWRs form the enemy's **IADS** (air
   defense network) and create **threat zones** your aircraft must avoid or suppress.
@@ -91,6 +98,9 @@ Common roles and what they're for:
 - **BAI / CAS** — hit enemy ground forces (interdiction behind the line / close
   support at the front). BAI is also what kills a **`kind:motorpool`** target — see
   "Motorpools: bomb the reserve before it reaches the front" below.
+- **ARMED_RECON** — patrol an area and hunt ground targets of opportunity on its own.
+  The task when you know a zone is hostile but not exactly what is in it — e.g. a
+  front line whose composition you can't see through the fog of war.
 - **ANTISHIP** — strike enemy naval groups. Against a ship with a long-range SAM (e.g.
   SM-6, ~175 nm), only a platform whose anti-ship missile out-ranges the SAM can attack from
   **safe standoff** — usually a long-range ASM bomber. A shorter-ranged striker (a carrier
@@ -104,6 +114,21 @@ Common roles and what they're for:
   it — nothing stops you.**
 - **AEW&C (AWACS)** and **REFUELING (tanker)** — support assets that extend your
   radar picture and range. Big offensives often need them.
+
+**Which attack task works against which target** — a wrong pairing is refused with
+`"<name> is not valid for <TASK> missions"`, so save yourself the round-trips:
+
+| target | attack tasks that work |
+| --- | --- |
+| front line (`kind:front`) | CAS, ARMED_RECON — **not BAI** |
+| enemy airbase / FOB (a control point) | OCA_RUNWAY, OCA_AIRCRAFT — **not CAS/STRIKE** |
+| SAM / EWR site | DEAD (destroy), SEAD (suppress) |
+| armor garrison, motorpool, missile / coastal site | BAI |
+| building (factory, depot, fuel…) | STRIKE |
+| ship group / carrier | ANTISHIP |
+
+Air-to-air/support tasks (SWEEP, TARCAP, ESCORT, AEWC, REFUELING) attach over any
+enemy target; BARCAP protects any friendly one.
 
 ### Composing a good package
 
@@ -236,6 +261,17 @@ park you can bomb (`kind:motorpool` in `targets[]`, task **BAI**).
 - **Never launch strike packages from a carrier parked inside an enemy naval-SAM
   umbrella.** The aircraft are killed on climb-out, over their own deck, wave after wave.
   Keep the deck outside the enemy's `threat_nm` plus margin if you mean to fly from it.
+- **Cities are passive anti-ship defenses.** A sea-skimming missile whose attack axis
+  crosses urban terrain flies into the buildings (a whole wave can die against the
+  blocks short of a ship anchored in a port or canal). When attacking ships near
+  ports, canals or an urban coast, pick the approach axis over OPEN WATER — route
+  around the city exactly like you route around a SAM. This hazard does not appear in
+  `turn_context.threats`; read it off the map.
+- **Give each anti-ship wave a JOB, not just a stagger.** Beyond dispersing in space
+  and time, assign roles: wave 1 absorbs the toll of the ROUTE (en-route defenses,
+  terrain); wave 2 empties the target's GATEKEEPERS (CIWS, point-defense SAMs); wave 3
+  EXECUTES with the heavy weapon, arriving when the defenses' magazines are dry.
+  Stagger the TOTs ~5–7 minutes apart (e.g. T+25 / T+32 / T+38).
 - **A ship's `threat_nm` ring is its missile envelope, not a fence for your fighters.**
   Interceptors CHASE: fleet CAP that commits after a raid follows it out and dies to
   long-range naval SAMs well beyond the painted ring. Anchor fleet CAP off the enemy
@@ -481,11 +517,14 @@ means none/empty** (stated once so the per-turn payloads stay small).
 - `air_wing[]` — your squadrons — {`id`, `name`, `aircraft`, `base`, `owned`?,
   `untasked`?, `flyable`? (**the number to plan with**: aircraft you can actually
   LAUNCH this turn = `min(untasked, pilots)`, or 0 if grounded — `untasked` can exceed
-  your pilots, `flyable` can't; omitted when 0), `pending`?, `pilots`, `grounded`?
-  (true = the squadron cannot sortie this turn: its base is enemy-held OR its runway is
-  cratered / carrier hull sunk — `flyable` is 0 while grounded, so don't plan from it
-  until the base is retaken or the runway repaired)}; **buy/sell aircraft by the
-  squadron `id`**;
+  your pilots, `flyable` can't; omitted when 0), `pending`?, `pilots`, `max_ac`?
+  (squadron airframe cap: `buy/aircraft` refuses once `owned + pending` reaches it —
+  a 1-aircraft cap means that airframe is IRREPLACEABLE, protect it; omitted when the
+  campaign has no per-squadron limits), `grounded`? (true = the squadron cannot sortie
+  this turn: its base is enemy-held OR its runway is cratered / carrier hull sunk —
+  `flyable` is 0 while grounded, so don't plan from it until the base is retaken, the
+  runway repaired, or you `squadron/relocate` it to a carrier/LHA: **a flight deck
+  cannot be cratered**)}; **buy/sell aircraft by the squadron `id`**;
 - `idle_flyable` — **headline: total flyable aircraft still untasked across the whole
   wing** (sum of every squadron's `flyable`). This is force sitting on the ramp with
   crews. **Drive it toward 0** — every one is a jet you could commit (see step 7). `0`
@@ -658,9 +697,15 @@ Write bodies:
 - `POST /packages/{index}/tot` `{side, tot_minutes}` — set/clear the TOT of an ALREADY-created
   package (`tot_minutes` = minutes into the mission; `null` resets it to ASAP). Same as setting
   `tot_minutes` at creation, but for a package already in your ATO — adjust timing after the fact.
-- `POST /buy/aircraft` · `POST /sell/aircraft` `{side, squadron_id, quantity}`
+- `POST /buy/aircraft` · `POST /sell/aircraft` `{side, squadron_id, quantity}` — a buy
+  is refused when the squadron is at its `max_ac` cap, its base has no free parking, or
+  you lack budget. An aircraft bought at a base whose runway is cratered is born
+  grounded — **when every runway you own is cratered, buy on a CARRIER-based squadron**:
+  the deck always launches.
 - `POST /buy/ground` `{side, cp_id, unit_name, quantity}` (only at a base with a
-  factory/front — `cp.has_ground_unit_source`)
+  factory/front — `cp.has_ground_unit_source`). If the destination base is captured
+  before the units arrive, the pending order is **refunded**, not delivered to the
+  enemy.
 - `GET /ground/options/{tgo_id}?side=red` → what one of YOUR ground objects (a
   SAM/EWR/armor/ship/missile/coastal site) can be **rebuilt** into: `{tgo_id, name, role,
   refund` (the old site's value, credited back on rebuild)`, budget, options:[{force_group,
@@ -676,7 +721,16 @@ Write bodies:
 - `POST /stances` `{side, friendly_cp_id, enemy_cp_id, stance}`
 - `POST /squadron/relocate` `{side, squadron_id, dest_cp_id}` (move a squadron to
   another friendly base; arrives over time — also the rescue for a squadron stranded on
-  a sunk/dead carrier or LPD: relocate it out and only the ferry flight is created)
+  a sunk/dead carrier or LPD: relocate it out and only the ferry flight is created).
+  **The rescue works in the OTHER direction too**: when your runways are cratered, a
+  grounded squadron relocated TO a carrier/LHA flies again — the deck cannot be
+  cratered, and the ship sails wherever you need it. Helicopter squadrons especially:
+  embarked, they regain AIR_ASSAULT reach against any coast. Also: **the ferry flight
+  flies ARMED with the squadron's current loadout** — it ignores ground targets en
+  route but defends itself air-to-air. So (1) never send a ferry naked, give it
+  air-to-air; (2) treat ENEMY ferries crossing your airspace as hostile fighters, not
+  freight; (3) route the relocation like any other sortie — not through enemy SAM
+  bubbles.
 - `POST /ground/transfer` `{side, origin_cp_id, dest_cp_id, unit_name, quantity, by_air}`
   (move existing ground units between your bases; route pre-validated)
 - `POST /repair` `{side, id}` — pay to repair one of your damaged assets (an `id` from
@@ -698,5 +752,6 @@ Write bodies:
   with every call; there is no on/off to toggle)
 
 Tasks: BARCAP TARCAP CAP SWEEP ESCORT SEAD DEAD STRIKE OCA_RUNWAY OCA_AIRCRAFT CAS
-BAI ANTISHIP AEWC REFUELING. Escort hints: air / sead / refuel.
+ARMED_RECON BAI ANTISHIP AEWC REFUELING. Escort hints: air / sead / refuel. (See the
+task↔target table in §4 for what is valid against what.)
 Stances: defend hold aggressive push breakthrough eliminate retreat ambush.
