@@ -16,7 +16,7 @@ const REPAIRING_ORANGE = "rgb(255,140,0)";
 // "3" == Present/Damaged (the yellow bar). Only a damaged bar gets recoloured:
 // a fully-dead unrepaired group carries "4" (red) and stays red.
 export function isRepairing(tgo: TgoModel): boolean {
-  return tgo.repairing && tgo.sidc.charAt(6) === "3";
+  return tgo.repairing === true && tgo.sidc.charAt(6) === "3";
 }
 
 export function iconForTgo(tgo: TgoModel) {
