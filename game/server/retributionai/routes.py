@@ -69,6 +69,20 @@ def map_image(side: str = "red", bbox: str | None = None) -> Response:
     return Response(content=service.map_image(side, bbox), media_type="image/png")
 
 
+@router.get(
+    "/iads",
+    operation_id="ai_iads",
+    response_model_exclude_none=True,
+)
+def iads(side: str = "red") -> views.IadsView:
+    """Enemy IADS graph: each participating site, its role, and the sites feeding it.
+
+    Striking a PowerSource or ConnectionNode takes down every node that depends on it
+    without touching the launchers.
+    """
+    return service.iads(side)
+
+
 @router.get("/aircraft/pylons", operation_id="ai_aircraft_pylons")
 def aircraft_pylons(squadron_id: str, side: str = "red") -> dict:
     """Weapons each pylon of a squadron's airframe accepts (campaign-available)."""

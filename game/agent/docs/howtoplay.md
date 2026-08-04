@@ -536,6 +536,11 @@ means none/empty** (stated once so the per-turn payloads stay small).
   the SM-6 reach 80–175 nm, so a `kind:ship` is a floating SAM site, not just an ANTISHIP
   target), `friendly_cp_id`?/`enemy_cp_id`? (fronts only),
   `group_id`? (ships: their naval-group id — concentrate ANTISHIP on one group),
+  `iads_role`? (this site's part in the enemy air-defense network: `PowerSource` /
+  `ConnectionNode` / `CommandCenter` / `Ewr` / `Sam` / `SamAsEwr`; omitted when it plays
+  none. **This is what tells a code-named building apart from a warehouse** — a
+  `PowerSource` feeds radars, and killing it blinds them without a DEAD package. Call
+  `GET /iads` for which node depends on which),
   `composition`? (alive-unit count per class — **ships:** hulls per class, e.g.
   `{"Constellation": 2}`, so you can spot **Aegis escorts** (Constellation/Ticonderoga)
   and count hulls before committing an ANTISHIP strike; **SAM sites:** alive
@@ -591,6 +596,17 @@ human changes mid-campaign apply from the NEXT turn, not the one being planned.
 
 `GET /packages?side=red` → `[{index, target, task, tot (HH:MM), desc?,
 flights:[{id, task, aircraft, count, squadron, start?, dep?, clients?, uncrewed?}]}]`.
+
+`GET /iads?side=red` → `{advanced, nodes:[{id, name, role, alive, depends_on?}]}` — the
+ENEMY air-defense network as a graph. `role` is `Sam` / `SamAsEwr` / `Ewr` /
+`CommandCenter` / `PowerSource` / `ConnectionNode`; `depends_on` lists the ids of the
+sites feeding that node. **This is how you fight the IADS instead of the launchers**: a
+code-named building that reads `PowerSource` is a radar's mains supply, and killing it
+blinds every node listing it in `depends_on` — far cheaper than a DEAD package against
+each SAM. `alive:false` means it is already down, so its dependants are already degraded;
+do not spend a second strike on them. The same `role` appears on the matching entry in
+`targets[]`, so you can spot the network sites without calling this at all. When
+`advanced:false` the campaign wires no power/comms and only the sites themselves matter.
 
 `GET /map/image?side=red[&bbox=s,w,n,e]` → a rendered **PNG** strategic map (binary, not
 JSON) for visual analysis: control points coloured by owner, front lines, your naval, and
