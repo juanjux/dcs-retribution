@@ -48,6 +48,11 @@ def map_image(side: str = "red", bbox: str | None = None) -> bytes:
     )
 
 
+def iads(side: str = "red") -> views.IadsView:
+    """The enemy IADS as a graph: participating sites and what feeds each one."""
+    return views.build_iads(_require_game(), side)
+
+
 def aircraft_pylons(side: str = "red", squadron_id: str = "") -> dict:
     """Every weapon each pylon of a squadron's airframe accepts, so the LLM can build a
     valid custom payload. Lists ALL loadable weapons (matches what /payload/validate
@@ -140,6 +145,7 @@ def capabilities() -> dict:
             "settings",
             "packages",
             "map/image (rendered PNG strategic map — both sides' SAM/naval umbrellas)",
+            "iads (enemy IADS graph: each site's role and what feeds it)",
             "aircraft/pylons (weapons each pylon accepts, to build a custom payload)",
             "aircraft/loadouts (named ready-made loadouts for an airframe)",
             "waypoints/{flight_id} (a flight's waypoints, to adjust its route)",
