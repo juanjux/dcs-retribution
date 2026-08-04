@@ -479,7 +479,7 @@ export type Tgo = {
   detection_ranges: number[];
   dead: boolean;
   purchasable: boolean;
-  repairing: boolean;
+  repairing?: boolean;
   sidc: string;
   task?: string[];
   mobile: boolean;
