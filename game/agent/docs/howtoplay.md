@@ -238,6 +238,34 @@ park you can bomb (`kind:motorpool` in `targets[]`, task **BAI**).
   within blue's reach is a standing target — commit it to a front, or expect to pay for it
   twice.
 
+### Fighting the IADS, not just the launchers
+
+When the campaign runs an advanced IADS (`GET /iads` → `advanced:true`), the enemy air
+defenses are a NETWORK, not a set of independent sites. `targets[]` marks each site's
+part with `iads_role`, and `/iads` gives the links (`depends_on`). Use it — otherwise a
+`PowerSource` looks exactly like a warehouse and you will bomb the wrong code name.
+
+- **What the roles mean.** `Sam` / `SamAsEwr` / `Ewr` are the shooters and the eyes.
+  `PowerSource` (power station) and `ConnectionNode` (comms tower) feed them.
+  `CommandCenter` runs the network. The last three are **buildings** — cheap to kill,
+  no missiles, and each one usually feeds several sites at once.
+- **A site needs BOTH power and comms to stay in the network.** Cut either one and it
+  drops out. One strike on a power station can drop every node listing it in
+  `depends_on` — check that list before spending a DEAD package on each launcher.
+- **But cutting the network does NOT switch the SAM off.** A site that loses power or
+  comms goes AUTONOMOUS, and in this campaign autonomous means it reverts to plain DCS
+  AI: it turns its own radar ON and keeps shooting at whatever it sees by itself. What
+  you have taken away is the network, not the missiles.
+- **So what do you actually gain?** Three things: it can no longer be CUED by a distant
+  EWR, so it only sees what its own radar sees; it no longer engages in concert with the
+  other sites; and because it goes live instead of lying dark waiting for a cue, it is
+  emitting — easier to find and a much better anti-radiation target. Un-networking a
+  belt first and then rolling it up with DEAD is cheaper than DEAD alone.
+- **Do not re-strike a dead node.** `alive:false` means it is already down and everything
+  depending on it is already degraded. Spend the sortie elsewhere.
+- **Your own network works the same way**, so keep your power stations and comms towers
+  defended: they are the cheapest way for blue to blind you too.
+
 ### Naval warfare
 
 - **Every fleet — yours and the enemy's — starts HOT and shoots on its own.** Ship groups
@@ -600,13 +628,13 @@ flights:[{id, task, aircraft, count, squadron, start?, dep?, clients?, uncrewed?
 `GET /iads?side=red` → `{advanced, nodes:[{id, name, role, alive, depends_on?}]}` — the
 ENEMY air-defense network as a graph. `role` is `Sam` / `SamAsEwr` / `Ewr` /
 `CommandCenter` / `PowerSource` / `ConnectionNode`; `depends_on` lists the ids of the
-sites feeding that node. **This is how you fight the IADS instead of the launchers**: a
-code-named building that reads `PowerSource` is a radar's mains supply, and killing it
-blinds every node listing it in `depends_on` — far cheaper than a DEAD package against
-each SAM. `alive:false` means it is already down, so its dependants are already degraded;
-do not spend a second strike on them. The same `role` appears on the matching entry in
-`targets[]`, so you can spot the network sites without calling this at all. When
-`advanced:false` the campaign wires no power/comms and only the sites themselves matter.
+sites feeding that node. A code-named building that reads `PowerSource` is a radar's
+mains supply, not a warehouse. `alive:false` means it is already down, so its dependants
+are already degraded — do not strike them again for that reason. The same `role` appears
+on the matching entry in `targets[]`, so you can spot the network sites without calling
+this at all. When `advanced:false` the campaign wires no power/comms and only the sites
+themselves matter. **See "Fighting the IADS, not just the launchers" in §4 for what
+cutting a link does and does not buy you** — it is not what most people assume.
 
 `GET /map/image?side=red[&bbox=s,w,n,e]` → a rendered **PNG** strategic map (binary, not
 JSON) for visual analysis: control points coloured by owner, front lines, your naval, and
