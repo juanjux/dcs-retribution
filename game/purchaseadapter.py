@@ -28,7 +28,9 @@ class PurchaseAdapter(Generic[ItemType]):
             elif self.can_buy(item):
                 self.do_purchase(item)
             else:
-                raise TransactionError(f"Cannot buy more {item}")
+                raise TransactionError(
+                    f"Cannot buy more {item}: {self.why_cannot_buy(item)}"
+                )
             self.coalition.adjust_budget(-self.price_of(item))
 
     def sell(self, item: ItemType, quantity: int) -> None:
@@ -58,6 +60,18 @@ class PurchaseAdapter(Generic[ItemType]):
 
     def can_buy(self, item: ItemType) -> bool:
         return self.coalition.budget >= self.price_of(item)
+
+    def why_cannot_buy(self, item: ItemType) -> str:
+        """Why can_buy() said no, for the error the user (or the LLM planner) reads.
+
+        "Cannot buy more X" on its own leaves no way to tell being broke apart from a
+        full apron or a squadron at its cap, which are three different decisions:
+        wait a turn, pick another base, or pick another squadron.
+        """
+        price = self.price_of(item)
+        if self.coalition.budget < price:
+            return f"costs {price}M, budget is {self.coalition.budget:.1f}M"
+        return "not available"
 
     def can_sell_or_cancel(self, item: ItemType) -> bool:
         return self.can_sell(item) or self.has_pending_orders(item)
@@ -106,6 +120,20 @@ class AircraftPurchaseAdapter(PurchaseAdapter[Squadron]):
             and unclaimed_parking > 0
             and item.has_aircraft_capacity_for(1)
         )
+
+    def why_cannot_buy(self, item: Squadron) -> str:
+        price = self.price_of(item)
+        if self.coalition.budget < price:
+            return f"costs {price}M, budget is {self.coalition.budget:.1f}M"
+        parking_type = ParkingType().from_squadron(item)
+        if self.control_point.unclaimed_parking(parking_type) <= 0:
+            return f"no free parking at {self.control_point}"
+        if not item.has_aircraft_capacity_for(1):
+            return (
+                f"squadron is at its cap of {item.max_size} "
+                f"({item.owned_aircraft} owned, {item.pending_deliveries} pending)"
+            )
+        return "not available"
 
     def can_sell(self, item: Squadron) -> bool:
         return item.untasked_aircraft > 0

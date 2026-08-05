@@ -157,6 +157,20 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   (branch [`juanjux/ch_china_1.1.6`](https://github.com/juanjux/dcs-retribution/tree/juanjux/ch_china_1.1.6))
 
 ### Fixes
+- **A refused purchase now says why.** "Cannot buy more X" was the same message
+  whether you were short of money, out of parking, or at the squadron's aircraft
+  cap — three problems with three different answers. It now names the one that
+  applied ("costs 20M, budget is 16.2M", "no free parking at Beirut-Rafic Hariri",
+  "squadron is at its cap of 24"). The LLM planner reads the same string over the
+  API, where an opaque refusal is worse still.
+  ([#87](https://github.com/juanjux/dcs-retribution/pull/87))
+- **Air-assault troops stood still instead of taking the base.** Capturing needs
+  every enemy ground unit out of a 3 km radius, but CTLD walked unloaded troops to
+  their waypoint and left them there, so one surviving vehicle a kilometre away
+  blocked the capture indefinitely. Dropped troops and vehicles now sweep for the
+  nearest enemy ground unit inside that same radius and advance on it, and are left
+  to fight once within 250 m. New CTLD option, on by default.
+  ([#85](https://github.com/juanjux/dcs-retribution/pull/85))
 - **Front-line ground units never fought** — three stacked causes: defenders held
   position waiting for the enemy's first CAS package (a running Hold the AI never
   drops, up to half an hour); a negative hold duration wrapped to ~24 h; and the
