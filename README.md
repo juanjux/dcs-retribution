@@ -163,7 +163,7 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   applied ("costs 20M, budget is 16.2M", "no free parking at Beirut-Rafic Hariri",
   "squadron is at its cap of 24"). The LLM planner reads the same string over the
   API, where an opaque refusal is worse still.
-  ([#86](https://github.com/juanjux/dcs-retribution/pull/86))
+  ([#87](https://github.com/juanjux/dcs-retribution/pull/87))
 - **Air-assault troops stood still instead of taking the base.** Capturing needs
   every enemy ground unit out of a 3 km radius, but CTLD walked unloaded troops to
   their waypoint and left them there, so one surviving vehicle a kilometre away
