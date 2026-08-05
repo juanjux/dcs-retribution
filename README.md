@@ -66,11 +66,12 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   base map and open groups in the campaign save, so they survive turns and
   reopening the app instead of resetting to defaults.
   ([#54](https://github.com/juanjux/dcs-retribution/pull/54))
-- **Orange health bar for repairing wrecks** — a ground object that is fully
-  destroyed but being repaired shows an orange health bar instead of yellow, so
-  it reads distinctly from a partially-damaged group (some units dead, some
-  alive), which stays yellow.
-  ([#56](https://github.com/juanjux/dcs-retribution/pull/56))
+- **Ground-object health bars with a full contract** — green intact, yellow
+  damaged, **orange whenever repairs are pending** (partial or fully-dead), red
+  dead-unrepaired. Also fixes damaged SAMs that showed no bar at all while they
+  still projected a threat ring, hiding real attrition.
+  ([#56](https://github.com/juanjux/dcs-retribution/pull/56),
+  [#86](https://github.com/juanjux/dcs-retribution/pull/86))
 
 ### Kneeboards
 - **Friendly-packages list** plus a **package-targets map** page.
@@ -156,6 +157,40 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   (branch [`juanjux/ch_china_1.1.6`](https://github.com/juanjux/dcs-retribution/tree/juanjux/ch_china_1.1.6))
 
 ### Fixes
+- **The LLM planner could not see what aircraft cost.** `buyable_ground[]` carried
+  a `price`, but the squadron view did not, so the planner guessed — it assumed an
+  Apache was 5M, tried to buy several, and read the refusal as a broken squadron
+  relocation. `air_wing[]` now carries `price` (cost of ONE aircraft), documented
+  alongside it, and the refusal says "costs 20M **each**".
+  ([#88](https://github.com/juanjux/dcs-retribution/pull/88))
+- **A refused purchase now says why.** "Cannot buy more X" was the same message
+  whether you were short of money, out of parking, or at the squadron's aircraft
+  cap — three problems with three different answers. It now names the one that
+  applied ("costs 20M, budget is 16.2M", "no free parking at Beirut-Rafic Hariri",
+  "squadron is at its cap of 24"). The LLM planner reads the same string over the
+  API, where an opaque refusal is worse still.
+  ([#87](https://github.com/juanjux/dcs-retribution/pull/87))
+- **Air-assault troops stood still instead of taking the base.** Capturing needs
+  every enemy ground unit out of a 3 km radius, but CTLD walked unloaded troops to
+  their waypoint and left them there, so one surviving vehicle a kilometre away
+  blocked the capture indefinitely. Dropped troops and vehicles now sweep for the
+  nearest enemy ground unit inside that same radius and advance on it, and are left
+  to fight once within 250 m. New CTLD option, on by default.
+  ([#85](https://github.com/juanjux/dcs-retribution/pull/85))
+- **Front-line ground units never fought** — three stacked causes: defenders held
+  position waiting for the enemy's first CAS package (a running Hold the AI never
+  drops, up to half an hour); a negative hold duration wrapped to ~24 h; and the
+  FLOT took its alarm state from a mislabelled SAM performance toggle, leaving
+  every vehicle green/passive. Defenders now engage from minute one; the toggle is
+  relabelled "Air defenses start in red alert mode" and no longer touches the FLOT.
+  ([#79](https://github.com/juanjux/dcs-retribution/pull/79))
+- **F-15EX / Eurofighter froze the mission load at ~97%** — both mod planes
+  declared a callsign category pydcs doesn't know, got numeric (eastern-style)
+  callsigns, and the DCS Mission Editor cannot load a NATO unit with a numeric
+  callsign. First AI campaign flight of either type hung DCS at Terrain Graphics
+  Init.
+  ([#83](https://github.com/juanjux/dcs-retribution/pull/83),
+  [#84](https://github.com/juanjux/dcs-retribution/pull/84))
 - **The recurring in-mission freeze** (~100 s stalls repeating until mission end,
   runaway RAM, and the long-standing 0-byte `state.json`) — scenery objects report a
   numeric name, and one scenery death (a taxiing aircraft clipping a runway light is
