@@ -123,6 +123,11 @@ class SquadronView(BaseModel):
     )
     pending: int | None = None  # arriving next turn (omitted when 0)
     pilots: int
+    max_ac: int | None = (
+        None  # squadron airframe cap: buy/aircraft refuses once owned+pending reaches
+        # it (a cap of 1 marks an irreplaceable airframe, e.g. a lone AWACS); omitted
+        # when the campaign disables per-squadron aircraft limits
+    )
     grounded: bool | None = (
         None  # can't sortie this turn: base enemy-held OR runway cratered / hull sunk
         # (else omitted). flyable is 0 while grounded.
@@ -169,6 +174,13 @@ class TargetView(BaseModel):
     group_id: str | None = (
         None  # ships: their naval-group control-point id (concentrate)
     )
+    iads_role: str | None = (
+        None  # what this site is to the enemy IADS, when it is part of one: PowerSource /
+        # ConnectionNode / CommandCenter / Ewr / Sam / SamAsEwr. Tells a code-named
+        # building apart from a generic one — a "PowerSource" is a radar's mains supply,
+        # not a warehouse. Omitted for anything outside the IADS. See GET /iads for the
+        # links (which node each one feeds).
+    )
     composition: dict[str, int] | None = (
         None  # ships: alive-hull count per class, e.g. {"Constellation": 2} — so you can
         # spot Aegis escorts (Constellation/Ticonderoga) and count hulls before an ANTISHIP
@@ -187,6 +199,27 @@ class ThreatView(BaseModel):
     kind: str  # sam / ship (ships project naval-SAM umbrellas — SM-6 etc.)
     threat_nm: int  # umbrella radius (nm): your flights are engaged within it
     pos: list[float]  # [lat, lng]
+
+
+class IadsNodeView(BaseModel):
+    """One site in an IADS, with what it depends on."""
+
+    id: str  # same id as in targets[] — plan DEAD or STRIKE against it directly
+    name: str
+    role: str  # Sam / SamAsEwr / Ewr / CommandCenter / PowerSource / ConnectionNode
+    alive: bool  # false = already destroyed; its dependants are already degraded
+    depends_on: list[str] | None = (
+        None  # ids of the sites feeding this one (power, comms, command). Kill one of
+        # these and this node goes down without touching the node itself — that is the
+        # whole point of striking the network instead of the launchers.
+    )
+
+
+class IadsView(BaseModel):
+    """The enemy IADS as a graph. Empty when the campaign runs no advanced IADS."""
+
+    advanced: bool  # false = Skynet is not wiring power/comms, so only the sites matter
+    nodes: list[IadsNodeView]
 
 
 class NavalView(BaseModel):
@@ -499,6 +532,7 @@ def build_squadron(sq: Squadron, player: Player | None = None) -> SquadronView:
         flyable=_squadron_flyable(sq, grounded) or None,
         pending=sq.pending_deliveries or None,
         pilots=sq.number_of_available_pilots,
+        max_ac=(sq.max_size if sq.settings.enable_squadron_aircraft_limits else None),
         grounded=grounded or None,
     )
 
@@ -573,7 +607,23 @@ def _build_target(game: Game, tgo, kind: str, task: str) -> TargetView:
         group_id=group_id,
         composition=composition,
         damage=_damage_word(tgo),
+        iads_role=_iads_role(tgo),
     )
+
+
+def _iads_role(tgo) -> str | None:
+    """This site's role in the IADS, or None if it plays no part in one.
+
+    A ground object carries the role on its groups, so a power station reads as
+    "PowerSource" instead of an anonymous code-named building. Point defenses and
+    plain objects report nothing, matching what Skynet actually wires up.
+    """
+    from game.theater.theatergroup import IadsGroundGroup
+
+    for group in getattr(tgo, "groups", []):
+        if isinstance(group, IadsGroundGroup) and group.iads_role.participate:
+            return str(group.iads_role.value)
+    return None
 
 
 def build_targets(game: Game, side: str) -> list[TargetView]:
@@ -1146,3 +1196,37 @@ def build_ground_object_options(
         budget=round(coalition.budget),
         options=options,
     )
+
+
+def build_iads(game: Game, side: str) -> IadsView:
+    """The ENEMY IADS as a graph: every participating site and what feeds it.
+
+    The player sees these links on the campaign map, so the planner gets them too.
+    Only the opponent's half is returned — this is a targeting aid, not a view of
+    one's own network. Dead nodes are kept: knowing a power station is already down
+    is what tells you the radars behind it are blind.
+    """
+    player = player_for_side(side)
+    network = game.theater.iads_network
+    nodes: list[IadsNodeView] = []
+    for node in network.nodes:
+        tgo = node.group.ground_object
+        if tgo.is_friendly(player):
+            continue  # ours, not a target
+        if not node.group.iads_role.participate:
+            continue
+        depends = [
+            str(conn.ground_object.id)
+            for conn in node.connections.values()
+            if conn.ground_object.id != tgo.id
+        ]
+        nodes.append(
+            IadsNodeView(
+                id=str(tgo.id),
+                name=tgo.name,
+                role=str(node.group.iads_role.value),
+                alive=node.group.alive_units > 0,
+                depends_on=sorted(set(depends)) or None,
+            )
+        )
+    return IadsView(advanced=network.advanced_iads, nodes=nodes)

@@ -95,6 +95,12 @@ class TheaterGroundObject(MissionTarget, SidcDescribable, ABC):
 
     @property
     def sidc_status(self) -> Status:
+        # Health-bar contract (the map bar is milsymbol's condition bar, driven by
+        # this digit): intact -> FULLY_CAPABLE (green), any dead unit -> DAMAGED
+        # (yellow), all dead unrepaired -> DESTROYED (red). "Repairing" is shown
+        # ORANGE by the client, which recolours the yellow bar when the TGO's
+        # `repairing` flag is set (see client tgos/shared.tsx) -- the digit itself
+        # stays DAMAGED for both.
         if self.control_point.captured.is_neutral:
             return Status.PRESENT
         if self.is_dead:
@@ -104,7 +110,7 @@ class TheaterGroundObject(MissionTarget, SidcDescribable, ABC):
         elif self.dead_units:
             return Status.PRESENT_DAMAGED
         else:
-            return Status.PRESENT
+            return Status.PRESENT_FULLY_CAPABLE
 
     @property
     def has_pending_repairs(self) -> bool:
@@ -621,23 +627,10 @@ class SamGroundObject(IadsGroundObject):
             task=task,
         )
 
-    @property
-    def sidc_status(self) -> Status:
-        if self.control_point.captured.is_neutral:
-            return Status.PRESENT
-        if self.is_dead:
-            if self.has_pending_repairs:
-                return Status.PRESENT_DAMAGED
-            return Status.PRESENT_DESTROYED
-        elif self.dead_units:
-            if self.has_pending_repairs:
-                return Status.PRESENT_DAMAGED
-            if self.max_threat_range() > meters(0):
-                return Status.PRESENT
-            else:
-                return Status.PRESENT_DAMAGED
-        else:
-            return Status.PRESENT_FULLY_CAPABLE
+    # sidc_status: no override. A SAM used to report PRESENT (no bar) when damaged
+    # but still projecting a threat ring, hiding real damage from the map; the base
+    # green/yellow/red contract applies now, and the ring already tells whether the
+    # site still threatens.
 
     @property
     def symbol_set_and_entity(self) -> tuple[SymbolSet, Entity]:

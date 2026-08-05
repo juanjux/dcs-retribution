@@ -29,6 +29,11 @@
             "defaultValue": false
         },
         {
+            "nameInUI": "Dropped troops clear enemy ground units around them",
+            "mnemonic": "troopsassault",
+            "defaultValue": true
+        },
+        {
             "nameInUI": "JTAC autolase targets",
             "mnemonic": "autolase",
             "defaultValue": true
