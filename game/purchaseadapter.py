@@ -70,7 +70,7 @@ class PurchaseAdapter(Generic[ItemType]):
         """
         price = self.price_of(item)
         if self.coalition.budget < price:
-            return f"costs {price}M, budget is {self.coalition.budget:.1f}M"
+            return f"costs {price}M each, budget is {self.coalition.budget:.1f}M"
         return "not available"
 
     def can_sell_or_cancel(self, item: ItemType) -> bool:
@@ -124,7 +124,7 @@ class AircraftPurchaseAdapter(PurchaseAdapter[Squadron]):
     def why_cannot_buy(self, item: Squadron) -> str:
         price = self.price_of(item)
         if self.coalition.budget < price:
-            return f"costs {price}M, budget is {self.coalition.budget:.1f}M"
+            return f"costs {price}M each, budget is {self.coalition.budget:.1f}M"
         parking_type = ParkingType().from_squadron(item)
         if self.control_point.unclaimed_parking(parking_type) <= 0:
             return f"no free parking at {self.control_point}"

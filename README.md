@@ -157,6 +157,12 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   (branch [`juanjux/ch_china_1.1.6`](https://github.com/juanjux/dcs-retribution/tree/juanjux/ch_china_1.1.6))
 
 ### Fixes
+- **The LLM planner could not see what aircraft cost.** `buyable_ground[]` carried
+  a `price`, but the squadron view did not, so the planner guessed — it assumed an
+  Apache was 5M, tried to buy several, and read the refusal as a broken squadron
+  relocation. `air_wing[]` now carries `price` (cost of ONE aircraft), documented
+  alongside it, and the refusal says "costs 20M **each**".
+  ([#88](https://github.com/juanjux/dcs-retribution/pull/88))
 - **A refused purchase now says why.** "Cannot buy more X" was the same message
   whether you were short of money, out of parking, or at the squadron's aircraft
   cap — three problems with three different answers. It now names the one that
