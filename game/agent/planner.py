@@ -290,6 +290,17 @@ def resolve_target(game: Game, target_id: str) -> MissionTarget:
     for front in game.theater.conflicts():
         if str(front.id) == str(target_id):
             return front
+    # Convoys and cargo ships carry no id of their own, so they are addressed by the
+    # generated name turn_context reports -- the same handle the player's "Departing
+    # Convoys" Attack button acts on.
+    for coalition in (game.blue, game.red):
+        for transports in (
+            coalition.transfers.convoys,
+            coalition.transfers.cargo_ships,
+        ):
+            for transport in transports:
+                if transport.name == str(target_id):
+                    return transport
     raise ValueError(f"no target with id {target_id!r}")
 
 
