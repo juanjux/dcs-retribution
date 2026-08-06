@@ -182,13 +182,6 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   every vehicle green/passive. Defenders now engage from minute one; the toggle is
   relabelled "Air defenses start in red alert mode" and no longer touches the FLOT.
   ([#79](https://github.com/juanjux/dcs-retribution/pull/79))
-- **F-15EX / Eurofighter froze the mission load at ~97%** — both mod planes
-  declared a callsign category pydcs doesn't know, got numeric (eastern-style)
-  callsigns, and the DCS Mission Editor cannot load a NATO unit with a numeric
-  callsign. First AI campaign flight of either type hung DCS at Terrain Graphics
-  Init.
-  ([#83](https://github.com/juanjux/dcs-retribution/pull/83),
-  [#84](https://github.com/juanjux/dcs-retribution/pull/84))
 - **The recurring in-mission freeze** (~100 s stalls repeating until mission end,
   runaway RAM, and the long-standing 0-byte `state.json`) — scenery objects report a
   numeric name, and one scenery death (a taxiing aircraft clipping a runway light is
