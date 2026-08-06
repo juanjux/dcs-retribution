@@ -128,6 +128,17 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   preset keys for different clouds).
   ([#53](https://github.com/juanjux/dcs-retribution/pull/53))
 
+### LLM-controlled OPFOR (REST API + MCP)
+- **An external LLM can play the enemy commander.** A REST API and an MCP server
+  expose a token-frugal turn context (forces, targets, threats, economy, naval,
+  motorpools, runway states, plus an optional rendered map image) and full player
+  parity to act on it: create packages and flights, buy/sell aircraft and ground
+  units, set front-line stances, relocate squadrons, move fleets, repair and
+  rebuild sites. The LLM gets its own briefing served at `/start` and `/howtoplay`,
+  refined across real campaigns played against it. Lives on the
+  [`experiment-mcp`](https://github.com/juanjux/dcs-retribution/tree/experiment-mcp)
+  branch (and master); not intended for upstream.
+
 ### Modding & data
 - **F-15EX Eagle II, F-15C EG (Golden Eagle) and Eurofighter Typhoon** mod aircraft.
   ([#31](https://github.com/juanjux/dcs-retribution/pull/31),
@@ -157,37 +168,11 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   (branch [`juanjux/ch_china_1.1.6`](https://github.com/juanjux/dcs-retribution/tree/juanjux/ch_china_1.1.6))
 
 ### Fixes
-- **A FOB with no helipads was reported to the LLM planner as a cratered runway.**
-  `Fob.runway_is_operational()` really means "has somewhere to launch from", so a FOB
-  without helipads or ground spawns surfaced as `can_launch:false` documented as
-  "runway cratered/under repair" — inviting an OCA/Runway package against a base that
-  has no runway to crater and a wait for a repair that never comes. The API now says
-  which of the three it is: `runway_damaged`, `hull_sunk` or `no_launch_facilities`.
-  ([#92](https://github.com/juanjux/dcs-retribution/pull/92))
-- **The LLM planner saw a squadron count where the human sees a base's contents.**
-  Opening an enemy field shows the human "CAP: F-16CM x7, F-5E x2 / CAS: AH-64D x6";
-  the planner got `sqns: 4` and no way to tell a fighter wing worth an OCA package
-  from a couple of transports. `control_points[]` now carries `air`, the same
-  by-role breakdown the Intel tab renders, from the same source.
-  ([#91](https://github.com/juanjux/dcs-retribution/pull/91))
-- **The `/start` doc sent the LLM planner to twelve endpoints that do not exist.**
-  It documented `POST /transfers`, `POST /buy/auto`, `GET /ai_log`, `POST /squadrons`
-  and others the server never served, while omitting nine it does — so the planner
-  404'd on the documented name and never found the real one. Corrected against the
-  router, and a test now fails the build if the two drift apart again.
-  ([#90](https://github.com/juanjux/dcs-retribution/pull/90))
-- **The LLM planner could not see what aircraft cost.** `buyable_ground[]` carried
-  a `price`, but the squadron view did not, so the planner guessed — it assumed an
-  Apache was 5M, tried to buy several, and read the refusal as a broken squadron
-  relocation. `air_wing[]` now carries `price` (cost of ONE aircraft), documented
-  alongside it, and the refusal says "costs 20M **each**".
-  ([#88](https://github.com/juanjux/dcs-retribution/pull/88))
 - **A refused purchase now says why.** "Cannot buy more X" was the same message
   whether you were short of money, out of parking, or at the squadron's aircraft
   cap — three problems with three different answers. It now names the one that
   applied ("costs 20M, budget is 16.2M", "no free parking at Beirut-Rafic Hariri",
-  "squadron is at its cap of 24"). The LLM planner reads the same string over the
-  API, where an opaque refusal is worse still.
+  "squadron is at its cap of 24").
   ([#87](https://github.com/juanjux/dcs-retribution/pull/87))
 - **Air-assault troops stood still instead of taking the base.** Capturing needs
   every enemy ground unit out of a 3 km radius, but CTLD walked unloaded troops to
