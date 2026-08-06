@@ -168,12 +168,6 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   (branch [`juanjux/ch_china_1.1.6`](https://github.com/juanjux/dcs-retribution/tree/juanjux/ch_china_1.1.6))
 
 ### Fixes
-- **A refused purchase now says why.** "Cannot buy more X" was the same message
-  whether you were short of money, out of parking, or at the squadron's aircraft
-  cap — three problems with three different answers. It now names the one that
-  applied ("costs 20M, budget is 16.2M", "no free parking at Beirut-Rafic Hariri",
-  "squadron is at its cap of 24").
-  ([#87](https://github.com/juanjux/dcs-retribution/pull/87))
 - **Air-assault troops stood still instead of taking the base.** Capturing needs
   every enemy ground unit out of a 3 km radius, but CTLD walked unloaded troops to
   their waypoint and left them there, so one surviving vehicle a kilometre away
