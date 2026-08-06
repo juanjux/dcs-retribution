@@ -1306,6 +1306,6 @@ def _no_launch_reason(cp) -> str | None:
         # Fob.runway_is_operational() is really "has somewhere to launch from"
         # (helipads or ground spawns), not a runway state -- Fobs are not destroyable.
         return "no_launch_facilities"
-    if not cp.runway_is_destroyable():
+    if not cp.runway_is_destroyable:  # a property, not a method
         return "hull_sunk"  # carrier/LHA: the ship itself is dead
     return "runway_damaged"
