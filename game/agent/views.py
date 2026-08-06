@@ -179,7 +179,7 @@ class PackageView(BaseModel):
 class TargetView(BaseModel):
     id: str
     name: str
-    kind: str  # sam / ship / building / motorpool / front
+    kind: str  # sam / ship / building / motorpool / front / convoy / cargo_ship
     suggested_task: str  # DEAD / ANTISHIP / STRIKE / BAI / CAS
     pos: list[float]  # [lat, lng]
     threat_nm: int | None = (
@@ -202,6 +202,16 @@ class TargetView(BaseModel):
         None  # ships: alive-hull count per class, e.g. {"Constellation": 2} — so you can
         # spot Aegis escorts (Constellation/Ticonderoga) and count hulls before an ANTISHIP
         # strike, instead of seeing only the group's aggregate threat
+    )
+    origin: str | None = (
+        None  # convoys/cargo ships: the base it left. Killing one denies the
+        # DESTINATION its reinforcements, so a convoy is worth more the closer the
+        # front it feeds is to falling.
+    )
+    destination: str | None = None  # convoys/cargo ships: the base it is reinforcing
+    route: list[list[float]] | None = (
+        None  # convoys/cargo ships: [[lat,lng] start, [lat,lng] end] of the leg it is
+        # driving/sailing. It is MOVING: plan the intercept along this line, not at pos.
     )
     damage: str | None = None  # 'lightly/heavily damaged' (omitted at full strength)
 
@@ -646,6 +656,60 @@ def _iads_role(tgo) -> str | None:
     return None
 
 
+def _build_transport_targets(game: Game, player: Player) -> list[TargetView]:
+    """Enemy convoys and cargo ships, as the player's Departing Convoys tab lists them.
+
+    They carry no id of their own (the UI has a standing TODO about that), so the
+    generated name is the handle -- it is unique and stable for the turn, which is as
+    long as a convoy lives.
+    """
+    enemy = game.coalition_for(player).opponent
+    out: list[TargetView] = []
+    for transports, kind, task in (
+        (enemy.transfers.convoys, "convoy", "BAI"),
+        (enemy.transfers.cargo_ships, "cargo_ship", "ANTISHIP"),
+    ):
+        for transport in transports:
+            units = {
+                str(unit): count for unit, count in transport.units.items() if count
+            }
+            if not units:
+                continue  # an empty convoy is a bookkeeping husk, not a target
+            pos = DcsPoint(
+                transport.position.x, transport.position.y, game.theater.terrain
+            ).latlng()
+
+            def ll(point) -> list[float]:
+                latlng = DcsPoint(point.x, point.y, game.theater.terrain).latlng()
+                return [_r(latlng.lat), _r(latlng.lng)]
+
+            # A Convoy exposes route_start/route_end (a road leg); a CargoShip exposes
+            # `route`, the shipping lane's full point list. Report both as endpoints.
+            leg = getattr(transport, "route", None)
+            if leg:
+                ends = [ll(leg[0]), ll(leg[-1])]
+            else:
+                ends = [
+                    ll(transport.route_start),  # type: ignore[union-attr]
+                    ll(transport.route_end),  # type: ignore[union-attr]
+                ]
+
+            out.append(
+                TargetView(
+                    id=transport.name,
+                    name=transport.name,
+                    kind=kind,
+                    suggested_task=task,
+                    pos=[_r(pos.lat), _r(pos.lng)],
+                    origin=transport.origin.name,
+                    destination=transport.destination.name,
+                    route=ends,
+                    composition=units,
+                )
+            )
+    return out
+
+
 def build_targets(game: Game, side: str) -> list[TargetView]:
     from game.commander.objectivefinder import ObjectiveFinder
 
@@ -663,6 +727,11 @@ def build_targets(game: Game, side: str) -> list[TargetView]:
     # reserve that the human player and the built-in AI commander both target.
     for motorpool in finder.motorpool_targets():
         targets.append(_build_target(game, motorpool, "motorpool", "BAI"))
+    # Convoys and cargo ships: the human player attacks these from a base's "Departing
+    # Convoys" tab, one Attack button each. They are reinforcements in transit -- killing
+    # one denies the destination the units before they ever deploy, which is cheaper than
+    # fighting them at the front.
+    targets.extend(_build_transport_targets(game, player))
     for front in game.theater.conflicts():
         friendly_cp = front.red_cp if player.is_red else front.blue_cp
         enemy_cp = front.blue_cp if player.is_red else front.red_cp

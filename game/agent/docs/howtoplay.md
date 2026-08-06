@@ -121,6 +121,8 @@ Common roles and what they're for:
 | target | attack tasks that work |
 | --- | --- |
 | front line (`kind:front`) | CAS, ARMED_RECON — **not BAI** |
+| convoy (`kind:convoy`) | BAI |
+| cargo ship (`kind:cargo_ship`) | ANTISHIP |
 | enemy airbase / FOB (a control point) | OCA_RUNWAY, OCA_AIRCRAFT — **not CAS/STRIKE** |
 | SAM / EWR site | DEAD (destroy), SEAD (suppress) |
 | armor garrison, motorpool, missile / coastal site | BAI |
@@ -586,6 +588,11 @@ means none/empty** (stated once so the per-turn payloads stay small).
   the SM-6 reach 80–175 nm, so a `kind:ship` is a floating SAM site, not just an ANTISHIP
   target), `friendly_cp_id`?/`enemy_cp_id`? (fronts only),
   `group_id`? (ships: their naval-group id — concentrate ANTISHIP on one group),
+  `origin`?/`destination`?/`route`? (convoys and cargo ships only: the base it left,
+  the base it is REINFORCING, and `[[lat,lng] start, [lat,lng] end]` of the leg it is
+  driving or sailing. It is **moving** — plan the intercept along the route, not at
+  `pos`, and remember a convoy dies once for units that would otherwise have to be
+  killed one by one at the front),
   `iads_role`? (this site's part in the enemy air-defense network: `PowerSource` /
   `ConnectionNode` / `CommandCenter` / `Ewr` / `Sam` / `SamAsEwr`; omitted when it plays
   none. **This is what tells a code-named building apart from a warehouse** — a
