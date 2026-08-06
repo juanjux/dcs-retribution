@@ -70,23 +70,41 @@ function troops_assault_sweep()
         [coalition.side.BLUE] = living_ground_positions(coalition.side.RED),
         [coalition.side.RED] = living_ground_positions(coalition.side.BLUE),
     }
+    -- Counters so the log says WHY nothing happened: no registered groups at all, none
+    -- alive, or an enemy simply out of range are three different problems.
+    local listed, alive, ordered, out_of_range, engaged = 0, 0, 0, 0, 0
     for _, list in pairs({ ctld.droppedTroopsRED, ctld.droppedTroopsBLUE,
                            ctld.droppedVehiclesRED, ctld.droppedVehiclesBLUE }) do
         for _, name in pairs(list or {}) do
+            listed = listed + 1
             local group = ctld.getAliveGroup(name)
             local leader = group ~= nil and group:getUnit(1) or nil
             if leader ~= nil then
+                alive = alive + 1
                 local target, range = nearest_position(
                     leader:getPoint(),
                     enemies_of[group:getCoalition()] or {},
                     TROOPS_ASSAULT_RADIUS_M
                 )
-                if target ~= nil and range > TROOPS_ASSAULT_ENGAGED_M then
+                if target == nil then
+                    out_of_range = out_of_range + 1
+                elseif range <= TROOPS_ASSAULT_ENGAGED_M then
+                    engaged = engaged + 1
+                else
                     ctld.orderGroupToMoveToPoint(leader, target)
+                    ordered = ordered + 1
+                    env.info(string.format(
+                        "DCSRetribution|troops assault: ordering %s onto an enemy %dm away",
+                        name, math.floor(range)))
                 end
             end
         end
     end
+    env.info(string.format(
+        "DCSRetribution|troops assault sweep: listed=%d alive=%d ordered=%d "
+            .. "out_of_range=%d already_engaged=%d red_ground=%d blue_ground=%d",
+        listed, alive, ordered, out_of_range, engaged,
+        #(enemies_of[coalition.side.BLUE] or {}), #(enemies_of[coalition.side.RED] or {})))
     timer.scheduleFunction(troops_assault_sweep, nil, timer.getTime() + TROOPS_ASSAULT_INTERVAL_S)
 end
 
