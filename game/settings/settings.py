@@ -59,6 +59,7 @@ class DefaultPlayerLaserCode(Enum):
 
 DIFFICULTY_PAGE = "Difficulty"
 
+OPFOR_AI_SECTION = "OPFOR AI commander"
 AI_DIFFICULTY_SECTION = "AI Difficulty"
 MISSION_DIFFICULTY_SECTION = "Mission Difficulty"
 MISSION_RESTRICTIONS_SECTION = "Mission Restrictions"
@@ -126,6 +127,18 @@ class Settings:
         max=5,
         divisor=10,
         default=1.0,
+    )
+    opfor_ai_enabled: bool = boolean_option(
+        "Allow OPFOR AI control (external LLM plays red)",
+        page=CAMPAIGN_MANAGEMENT_PAGE,
+        section=OPFOR_AI_SECTION,
+        default=False,
+        detail=(
+            "Expose the live game over a local API so an external LLM (e.g. ChatGPT, "
+            "Claude, et cetera) plans the enemy turns instead of the scripted "
+            "commander. Check the toolbar OPFOR AI button for more info when enabling "
+            "this."
+        ),
     )
     invulnerable_player_pilots: bool = boolean_option(
         "Player pilots cannot be killed",
