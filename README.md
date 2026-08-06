@@ -203,10 +203,6 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   and a long table is split across pages; the title shows `(n/total)` only when there
   is more than one page, and a package that fits still renders on a single page.
   ([#69](https://github.com/juanjux/dcs-retribution/pull/69))
-- Relaunching the executable while it is already running no longer spawns orphaned,
-  windowless duplicate processes; a second instance detects the first via an OS file
-  lock and exits immediately.
-  ([#50](https://github.com/juanjux/dcs-retribution/pull/50))
 - Bumped PySide6/Qt to 6.8.3 which switches acceleration to D3D11 and thus fixes
   some OpenGL hangs that probably happened in combination with other software.
   ([#52](https://github.com/juanjux/dcs-retribution/pull/52))
