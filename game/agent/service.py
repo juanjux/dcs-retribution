@@ -8,14 +8,51 @@ module stays importable without a running server (and without Qt).
 
 from __future__ import annotations
 
+import functools
+import inspect
 import re
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import Any, Callable, TYPE_CHECKING
 
 from game.agent import views
 
 if TYPE_CHECKING:
     from game import Game
+
+
+#: The coalition this API commands. The planner is OPFOR: it plans RED's turn and
+#: reads RED's picture, including whatever RED has detected of BLUE. It must never be
+#: served BLUE's own view — that is the human's private side of the board, and unlike
+#: every other asymmetry the player has no way to tell it is being read.
+OPFOR_SIDE = "red"
+
+
+class SideNotAllowedError(PermissionError):
+    """Raised when the planner asks for a side it does not command."""
+
+
+def opfor_only(fn: Callable[..., Any]) -> Callable[..., Any]:
+    """Refuse any call for a side other than OPFOR.
+
+    Applied to every service function that takes ``side``. The guard lives here, not in
+    the routers, so the REST and MCP transports cannot diverge on it: a rule enforced in
+    one transport and forgotten in the other is not a rule.
+    """
+    signature = inspect.signature(fn)
+
+    @functools.wraps(fn)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        bound = signature.bind(*args, **kwargs)
+        bound.apply_defaults()
+        side = str(bound.arguments.get("side", OPFOR_SIDE)).lower()
+        if side != OPFOR_SIDE:
+            raise SideNotAllowedError(
+                f"this API commands {OPFOR_SIDE} only; {side!r} is the human "
+                f"player's own view and is not readable through it"
+            )
+        return fn(*args, **kwargs)
+
+    return wrapper
 
 
 def _require_game() -> Game:
@@ -25,6 +62,7 @@ def _require_game() -> Game:
     return GameContext.require()
 
 
+@opfor_only
 def turn_context(side: str = "red") -> views.TurnContextView:
     """Operational picture for ``side`` (red/blue) from the live game."""
     return views.build_turn_context(_require_game(), side)
@@ -35,6 +73,7 @@ def settings() -> views.SettingsView:
     return views.build_settings(_require_game())
 
 
+@opfor_only
 def map_image(side: str = "red", bbox: str | None = None) -> bytes:
     """PNG strategic map for ``side``, drawn from the same intel as turn_context
     (plus this side's own SAM umbrellas, which the text context omits)."""
@@ -48,11 +87,13 @@ def map_image(side: str = "red", bbox: str | None = None) -> bytes:
     )
 
 
+@opfor_only
 def iads(side: str = "red") -> views.IadsView:
     """The enemy IADS as a graph: participating sites and what feeds each one."""
     return views.build_iads(_require_game(), side)
 
 
+@opfor_only
 def aircraft_pylons(side: str = "red", squadron_id: str = "") -> dict:
     """Every weapon each pylon of a squadron's airframe accepts, so the LLM can build a
     valid custom payload. Lists ALL loadable weapons (matches what /payload/validate
@@ -77,6 +118,7 @@ def aircraft_pylons(side: str = "red", squadron_id: str = "") -> dict:
     return {"aircraft": aircraft.display_name, "pylons": pylons, "weapons": weapons}
 
 
+@opfor_only
 def aircraft_loadouts(side: str = "red", squadron_id: str = "") -> dict:
     """Named ready-made loadouts for a squadron's airframe — pick one by name in a
     FlightSpec, or build a custom payload from ``aircraft_pylons``."""
@@ -90,6 +132,7 @@ def aircraft_loadouts(side: str = "red", squadron_id: str = "") -> dict:
     return {"aircraft": aircraft.display_name, "loadouts": names}
 
 
+@opfor_only
 def validate_payload(
     side: str = "red", squadron_id: str = "", payload: dict | None = None
 ) -> dict:
@@ -120,11 +163,13 @@ def validate_payload(
     }
 
 
+@opfor_only
 def get_packages(side: str = "red") -> list[views.PackageView]:
     """Current ATO for ``side`` — packages and their flights (with stable ids)."""
     return views.build_packages(_require_game(), side)
 
 
+@opfor_only
 def validate_plan(side: str = "red"):
     """Health-check the committed plan: per-package TOT vs the mission window + any
     uncrewed flights (no changes made)."""
@@ -177,6 +222,7 @@ def capabilities() -> dict:
     }
 
 
+@opfor_only
 def create_packages(side, specs):
     """Plan packages from the LLM's specs (reusing the engine). Lazy-imports the
     write path so the read service stays light."""
@@ -185,6 +231,7 @@ def create_packages(side, specs):
     return planner.create_packages(_require_game(), side, specs)
 
 
+@opfor_only
 def evaluate_package(side, spec):
     """Dry-run a single package (plan + TOT + window fit) without committing it."""
     from game.agent import planner
@@ -192,6 +239,7 @@ def evaluate_package(side, spec):
     return planner.evaluate_package(_require_game(), side, spec)
 
 
+@opfor_only
 def edit_waypoint(side, flight_id, waypoint_idx, lat=None, lng=None, alt_m=None):
     """Move/adjust a flight waypoint (position and/or altitude). Never deletes."""
     from game.agent import planner
@@ -201,16 +249,21 @@ def edit_waypoint(side, flight_id, waypoint_idx, lat=None, lng=None, alt_m=None)
     )
 
 
+@opfor_only
 def get_waypoints(side: str = "red", flight_id: str = "") -> dict:
     """A flight's waypoints so the LLM can adjust its route with /waypoints/edit. Returns
     ``{flight_id, waypoints:[{idx, type, pos:[lat,lng], name?, alt_m?}]}``. Waypoint 0 is
     takeoff (immovable); waypoints can never be deleted."""
-    from uuid import UUID
-
     from dcs.mapping import Point as DcsPoint
 
+    from game.agent import planner
+
     game = _require_game()
-    flight = game.db.flights.get(UUID(str(flight_id)))
+    # Scoped to the commanded side: db.flights is global, so an id alone would reach
+    # the human player's flights and expose the route they are about to fly.
+    flight = planner.flight_for_side(game, side, flight_id)
+    if flight is None:
+        raise ValueError(f"no flight with id {flight_id!r}")
     terrain = game.theater.terrain
 
     def to_ll(pos) -> list[float]:
@@ -235,12 +288,14 @@ def get_waypoints(side: str = "red", flight_id: str = "") -> dict:
     return {"flight_id": str(flight_id), "waypoints": waypoints}
 
 
+@opfor_only
 def delete_package(side, index):
     from game.agent import planner
 
     return planner.delete_package(_require_game(), side, index)
 
 
+@opfor_only
 def set_package_tot(side, index, tot_minutes):
     """Set/clear a committed package's Time-On-Target (minutes into the mission; None = ASAP)."""
     from game.agent import planner
@@ -248,30 +303,35 @@ def set_package_tot(side, index, tot_minutes):
     return planner.set_package_tot(_require_game(), side, index, tot_minutes)
 
 
+@opfor_only
 def clear_packages(side):
     from game.agent import planner
 
     return planner.clear_packages(_require_game(), side)
 
 
+@opfor_only
 def buy_aircraft(side, squadron_id, quantity=1):
     from game.agent import planner
 
     return planner.buy_aircraft(_require_game(), side, squadron_id, quantity)
 
 
+@opfor_only
 def sell_aircraft(side, squadron_id, quantity=1):
     from game.agent import planner
 
     return planner.sell_aircraft(_require_game(), side, squadron_id, quantity)
 
 
+@opfor_only
 def buy_ground(side, cp_id, unit_name, quantity=1):
     from game.agent import planner
 
     return planner.buy_ground(_require_game(), side, cp_id, unit_name, quantity)
 
 
+@opfor_only
 def set_stance(side, friendly_cp_id, enemy_cp_id, stance):
     from game.agent import planner
 
@@ -280,24 +340,28 @@ def set_stance(side, friendly_cp_id, enemy_cp_id, stance):
     )
 
 
+@opfor_only
 def move_ship(side, ship_id, lat=None, lng=None):
     from game.agent import planner
 
     return planner.move_ship(_require_game(), side, ship_id, lat, lng)
 
 
+@opfor_only
 def repair(side, asset_id):
     from game.agent import planner
 
     return planner.repair(_require_game(), side, asset_id)
 
 
+@opfor_only
 def relocate_squadron(side, squadron_id, dest_cp_id):
     from game.agent import planner
 
     return planner.relocate_squadron(_require_game(), side, squadron_id, dest_cp_id)
 
 
+@opfor_only
 def transfer_ground(
     side, origin_cp_id, dest_cp_id, unit_name, quantity=1, by_air=False
 ):
@@ -308,12 +372,14 @@ def transfer_ground(
     )
 
 
+@opfor_only
 def ground_object_options(side, tgo_id):
     from game.agent import views
 
     return views.build_ground_object_options(_require_game(), side, tgo_id)
 
 
+@opfor_only
 def rebuild_ground_object(side, tgo_id, force_group, layout, groups=None):
     from game.agent import planner
 

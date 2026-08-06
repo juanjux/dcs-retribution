@@ -596,6 +596,30 @@ def evaluate_package(
         return schemas.EvaluateResult(ok=False, target=target_name, error=str(exc))
 
 
+def flight_for_side(game, side: str, flight_id):
+    """The flight with this id, but only if it belongs to ``side``.
+
+    game.db.flights is a GLOBAL registry keyed by uuid, so looking a flight up by id
+    alone reaches the human player's flights too. Reading their route would be a fog
+    breach; editing their waypoints would be sabotage of the plan they are flying.
+    Returns None when the id is unknown OR belongs to the other coalition -- the two
+    are deliberately indistinguishable, so this cannot be used to probe for ids.
+    """
+    from uuid import UUID
+
+    from game.agent.views import player_for_side
+
+    try:
+        flight = game.db.flights.get(UUID(str(flight_id)))
+    except Exception:
+        return None
+    if flight is None:
+        return None
+    if flight.coalition.player is not player_for_side(side):
+        return None
+    return flight
+
+
 def edit_waypoint(
     game: Game,
     side: str,
@@ -616,9 +640,8 @@ def edit_waypoint(
     )
     from game.utils import meters
 
-    try:
-        flight = game.db.flights.get(UUID(str(flight_id)))
-    except Exception:
+    flight = flight_for_side(game, side, flight_id)
+    if flight is None:
         return schemas.OpResult(ok=False, error=f"no flight with id {flight_id!r}")
     try:
         if waypoint_idx <= 0:

@@ -1,7 +1,8 @@
 import contextlib
 from collections.abc import AsyncIterator
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from . import (
@@ -22,6 +23,7 @@ from . import (
 )
 from .security import TokenAuthMiddleware
 from .settings import ServerSettings
+from game.agent.service import SideNotAllowedError
 
 # The MCP transport is optional: if `mcp` isn't installed the REST API still runs.
 try:
@@ -54,6 +56,16 @@ app.include_router(tgos.router)
 app.include_router(waypoints.router)
 app.include_router(iadsnetwork.router)
 app.include_router(retributionai.router)
+
+
+@app.exception_handler(SideNotAllowedError)
+async def _side_not_allowed(
+    _request: Request, exc: SideNotAllowedError
+) -> JSONResponse:
+    # 403, not 500: the request is well-formed, the planner just asked for the human's
+    # own side. Say so plainly so it stops instead of retrying.
+    return JSONResponse(status_code=403, content={"detail": str(exc)})
+
 
 if _mcp is not None:
     # Gate /mcp on the same per-process token as the REST routes.
