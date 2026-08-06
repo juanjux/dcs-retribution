@@ -170,6 +170,15 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   "squadron is at its cap of 24"). The LLM planner reads the same string over the
   API, where an opaque refusal is worse still.
   ([#87](https://github.com/juanjux/dcs-retribution/pull/87))
+- **A base could not be captured while a single air-defence emplacement survived.**
+  Capture needs every defending ground unit outside a radius of the base, and that
+  radius was 3 km — wide enough to sweep in the SAM and AAA sites ringing an
+  airfield. Tested in-game: DCS ground AI engages tanks, IFVs and even unarmed
+  trucks, but **not** a fortified air-defence emplacement, so the troops you land
+  can never clear one and the base stays enemy-held forever. The radius is now a
+  setting ("Base capture zone radius", default 1000 m) covering the airfield
+  itself; the zone drawn on the in-mission map follows it.
+  ([#89](https://github.com/juanjux/dcs-retribution/pull/89))
 - **Air-assault troops stood still instead of taking the base.** Capturing needs
   every enemy ground unit out of a 3 km radius, but CTLD walked unloaded troops to
   their waypoint and left them there, so one surviving vehicle a kilometre away
