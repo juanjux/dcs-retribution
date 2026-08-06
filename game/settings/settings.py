@@ -1537,24 +1537,6 @@ class Settings:
             "affected: they always come up on red alert."
         ),
     )
-    capture_zone_radius_m: int = bounded_int_option(
-        "Base capture zone radius (m)",
-        page=MISSION_GENERATOR_PAGE,
-        section=PERFORMANCE_SECTION,
-        default=1000,
-        min=500,
-        max=3000,
-        detail=(
-            "How close an enemy ground unit must be to a base for it to still be "
-            "contested. Capturing needs EVERY defending ground unit outside this "
-            "radius and one of yours inside it. The default 1000 m covers the "
-            "airfield itself; the old 3000 m also swept in the SAM and AAA sites "
-            "ringing it, and a fortified air-defence emplacement cannot be killed "
-            "by the troops you land -- DCS ground AI does not engage them -- so a "
-            "single survivor blocked the capture forever. The zone is drawn on the "
-            "in-mission map."
-        ),
-    )
     coastal_batteries_engage_ships: bool = boolean_option(
         "Coastal batteries engage ships",
         page=MISSION_GENERATOR_PAGE,
