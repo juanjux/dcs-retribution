@@ -449,6 +449,16 @@ This is a long campaign — many turns in one session. Don't let your own contex
 
 You act **only as a player could**, through the same actions:
 
+- **You command RED, and only RED.** Any call with `side=blue` is refused with a 403
+  — `turn_context`, `packages`, `iads`, `map_image`, `validate`, all of them. Do not
+  try it, and do not treat the refusal as a bug: BLUE's own view is the human's
+  private side of the board, and unlike every other asymmetry here they have no way
+  to tell you were reading it. You still see what RED has DETECTED of blue — that is
+  in your own `turn_context`, fog and all.
+- A **flight id belongs to a side**. Passing a blue flight's id to
+  `GET /waypoints/{id}` or `POST /waypoints/edit` reports "no flight with id": you can
+  neither read the route the player is about to fly nor move their waypoints.
+
 - New squadrons start at **0 aircraft** — buy them up; you cannot get aircraft for
   free. (Mid-campaign you can create/delete squadrons only if the player has enabled
   the air-wing cheat; even then you **buy** aircraft, you don't add them for free.)
