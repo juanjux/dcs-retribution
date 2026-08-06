@@ -168,12 +168,6 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   (branch [`juanjux/ch_china_1.1.6`](https://github.com/juanjux/dcs-retribution/tree/juanjux/ch_china_1.1.6))
 
 ### Fixes
-- **A refused purchase now says why.** "Cannot buy more X" was the same message
-  whether you were short of money, out of parking, or at the squadron's aircraft
-  cap — three problems with three different answers. It now names the one that
-  applied ("costs 20M, budget is 16.2M", "no free parking at Beirut-Rafic Hariri",
-  "squadron is at its cap of 24").
-  ([#87](https://github.com/juanjux/dcs-retribution/pull/87))
 - **Air-assault troops stood still instead of taking the base.** Capturing needs
   every enemy ground unit out of a 3 km radius, but CTLD walked unloaded troops to
   their waypoint and left them there, so one surviving vehicle a kilometre away
@@ -188,26 +182,12 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   every vehicle green/passive. Defenders now engage from minute one; the toggle is
   relabelled "Air defenses start in red alert mode" and no longer touches the FLOT.
   ([#79](https://github.com/juanjux/dcs-retribution/pull/79))
-- **F-15EX / Eurofighter froze the mission load at ~97%** — both mod planes
-  declared a callsign category pydcs doesn't know, got numeric (eastern-style)
-  callsigns, and the DCS Mission Editor cannot load a NATO unit with a numeric
-  callsign. First AI campaign flight of either type hung DCS at Terrain Graphics
-  Init.
-  ([#83](https://github.com/juanjux/dcs-retribution/pull/83),
-  [#84](https://github.com/juanjux/dcs-retribution/pull/84))
 - **The recurring in-mission freeze** (~100 s stalls repeating until mission end,
   runaway RAM, and the long-standing 0-byte `state.json`) — scenery objects report a
   numeric name, and one scenery death (a taxiing aircraft clipping a runway light is
   enough) made the state encoder build a multi-million-hole array on the sim thread.
   Scenery deaths are now ignored by the state export.
   ([#80](https://github.com/juanjux/dcs-retribution/pull/80))
-- **C-130 paratroopers restored** — the June crash-avoidance strip removed the
-  airdrop weapon entirely and CTLD cannot unload a fixed-wing air assault, so the
-  C-130 overflew the objective and went home with its troops. The weapon is back on
-  the air-assault payload; the underlying `suppress_ballute` CTD is fixed mod-side
-  (scheme + descriptor fields in the Anubis mod's `Hercules_Loadout.lua`, re-apply
-  after mod updates).
-  ([#81](https://github.com/juanjux/dcs-retribution/pull/81))
 - **Right-click on a front line under a flight-plan route** now opens the new-package
   dialog: the blue route's invisible hover overlay swallowed the click and the browser
   context menu appeared instead (front lines render in their own map pane now).
@@ -223,10 +203,6 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   and a long table is split across pages; the title shows `(n/total)` only when there
   is more than one page, and a package that fits still renders on a single page.
   ([#69](https://github.com/juanjux/dcs-retribution/pull/69))
-- Relaunching the executable while it is already running no longer spawns orphaned,
-  windowless duplicate processes; a second instance detects the first via an OS file
-  lock and exits immediately.
-  ([#50](https://github.com/juanjux/dcs-retribution/pull/50))
 - Bumped PySide6/Qt to 6.8.3 which switches acceleration to D3D11 and thus fixes
   some OpenGL hangs that probably happened in combination with other software.
   ([#52](https://github.com/juanjux/dcs-retribution/pull/52))
