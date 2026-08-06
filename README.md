@@ -188,13 +188,6 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   enough) made the state encoder build a multi-million-hole array on the sim thread.
   Scenery deaths are now ignored by the state export.
   ([#80](https://github.com/juanjux/dcs-retribution/pull/80))
-- **C-130 paratroopers restored** — the June crash-avoidance strip removed the
-  airdrop weapon entirely and CTLD cannot unload a fixed-wing air assault, so the
-  C-130 overflew the objective and went home with its troops. The weapon is back on
-  the air-assault payload; the underlying `suppress_ballute` CTD is fixed mod-side
-  (scheme + descriptor fields in the Anubis mod's `Hercules_Loadout.lua`, re-apply
-  after mod updates).
-  ([#81](https://github.com/juanjux/dcs-retribution/pull/81))
 - **Right-click on a front line under a flight-plan route** now opens the new-package
   dialog: the blue route's invisible hover overlay swallowed the click and the browser
   context menu appeared instead (front lines render in their own map pane now).
