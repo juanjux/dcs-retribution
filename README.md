@@ -40,7 +40,7 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   see the site name and its emitters; **left-click** a ring to open the site,
   **right-click** to start a package against it (so you can reach a site whose
   icon is buried under another marker). Package route lines show flight/package
-  info on hover, and clicking one selects that package.
+  info on hover. (Route-line click-to-select made it upstream as #761.)
   ([#8](https://github.com/juanjux/dcs-retribution/pull/8))
 - **IADS network link colouring** by kind and state (comms / power), with an
   easier tooltip hover margin.
@@ -52,8 +52,9 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   ([#16](https://github.com/juanjux/dcs-retribution/pull/16))
 - **Carrier/LHA ship groups on the map** like other naval groups.
   ([#23](https://github.com/juanjux/dcs-retribution/pull/23))
-- **Air Wing dialog improvements** — clickable squadron names, living-pilot /
-  aircraft / idle counts, parking info, buy/sell controls and transfer indicators.
+- **Air Wing dialog improvements** — clickable squadron names and parking info
+  (the rest of the series — pilots, inventory/purchasing, transfers, idle counts —
+  made it upstream as #737–#741 and #855).
   ([#25](https://github.com/juanjux/dcs-retribution/pull/25),
   [#26](https://github.com/juanjux/dcs-retribution/pull/26))
 - **Set loadout as default** — in the Edit Flight payload tab, a "Set as default
@@ -192,11 +193,6 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   dialog: the blue route's invisible hover overlay swallowed the click and the browser
   context menu appeared instead (front lines render in their own map pane now).
   ([#71](https://github.com/juanjux/dcs-retribution/pull/71))
-- **Carrier CAP mission won't save** — a carrier BARCAP/CAP flying an in-flight start
-  under a mission-start TOT could generate waypoints DCS rejects ("locked speed …
-  surrounded by … locked time"), blocking the whole mission from saving. A TOT-locked
-  waypoint no longer also locks its speed (the locked time already fixes it).
-  ([#70](https://github.com/juanjux/dcs-retribution/pull/70))
 - The **Support Info** kneeboard page now spans multiple pages when a package has
   many flights, instead of pushing the AEW&C / tanker / JTAC tables off the bottom
   of a single page (they were silently lost). Sections are packed by measured height
