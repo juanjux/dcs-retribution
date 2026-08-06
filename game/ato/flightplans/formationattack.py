@@ -10,7 +10,8 @@ from typing import TYPE_CHECKING, TypeVar
 from dcs import Point
 
 from game.flightplan import HoldZoneGeometry
-from game.theater import MissionTarget
+from game.theater import MissionTarget, TheaterGroundObject
+from game.theater.theatergroup import SceneryUnit
 from game.utils import nautical_miles, Speed, feet
 from .flightplan import FlightPlan
 from .formation import FormationFlightPlan, FormationLayout
@@ -177,18 +178,7 @@ class FormationAttackBuilder(IBuilder[FlightPlanT, LayoutT], ABC):
         assert self.package.waypoints is not None
         builder = WaypointBuilder(self.flight, targets)
 
-        target_waypoints: list[FlightWaypoint] = []
-        if targets is not None:
-            for target in targets:
-                target_waypoints.append(
-                    self.target_waypoint(self.flight, builder, target)
-                )
-        else:
-            target_waypoints.append(
-                self.target_area_waypoint(
-                    self.flight, self.flight.package.target, builder
-                )
-            )
+        target_waypoints = self._target_waypoints(builder, targets)
 
         hold = None
         if not self.flight.is_helo:
@@ -207,7 +197,11 @@ class FormationAttackBuilder(IBuilder[FlightPlanT, LayoutT], ABC):
 
         initial = None
         if ingress_type == FlightWaypointType.INGRESS_SEAD:
-            initial = builder.sead_search(self.package.target)
+            # The SEAD Search anchor is a stand-off loiter for HARM shooters; a decoy
+            # stand-off run (release_at_ingress) releases at the ingress, so the anchor
+            # only drags the flight past its release point -- drop it for those.
+            if not self.flight.release_at_ingress:
+                initial = builder.sead_search(self.package.target)
         elif ingress_type == FlightWaypointType.INGRESS_SEAD_SWEEP:
             initial = builder.sead_sweep(self.package.target)
 
@@ -249,6 +243,22 @@ class FormationAttackBuilder(IBuilder[FlightPlanT, LayoutT], ABC):
             custom_waypoints=list(),
         )
 
+    def _target_waypoints(
+        self, builder: WaypointBuilder, targets: list[StrikeTarget] | None
+    ) -> list[FlightWaypoint]:
+        # `targets` can be an *empty* list (not just None) -- e.g. a Strike/DEAD/
+        # SEAD against an objective whose units are all already destroyed, since
+        # strike_targets_for() only lists live units. Fall back to a single
+        # target-area waypoint in that case so the layout always has at least one
+        # target (tot_waypoint and the timing math index targets[0]).
+        if targets:
+            return [
+                self.target_waypoint(self.flight, builder, target) for target in targets
+            ]
+        return [
+            self.target_area_waypoint(self.flight, self.flight.package.target, builder)
+        ]
+
     def _build_refuel(self, builder: WaypointBuilder) -> Optional[FlightWaypoint]:
         refuel: Optional[FlightWaypoint] = None
         can_plan = self.flight.coalition.air_wing.can_auto_plan(FlightType.REFUELING)
@@ -267,6 +277,22 @@ class FormationAttackBuilder(IBuilder[FlightPlanT, LayoutT], ABC):
             assert self.package.primary_flight is not None
             fp = self.package.primary_flight.flight_plan
             return fp.is_airassault
+
+    @staticmethod
+    def strike_targets_for(location: TheaterGroundObject) -> list[StrikeTarget]:
+        """One StrikeTarget per individual unit of a ground objective.
+
+        This is the same per-unit list the kneeboard target page renders (with
+        coordinates). Mission types whose kneeboard lists targets with
+        coordinates (Strike, DEAD, SEAD) pass this to ``_build`` so each listed
+        target also gets its own TARGET_POINT waypoint in the aircraft, making it
+        trivial to designate with TOO.
+        """
+        targets: list[StrikeTarget] = []
+        for idx, unit in enumerate(location.strike_targets):
+            name = unit.name if isinstance(unit, SceneryUnit) else unit.type.id
+            targets.append(StrikeTarget(f"{name} #{idx}", unit))
+        return targets
 
     @staticmethod
     def target_waypoint(

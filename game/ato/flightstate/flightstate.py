@@ -25,12 +25,25 @@ class FlightState(ABC):
         from game.ato.flightstate import WaitingForStart
 
         start_time = self.flight.flight_plan.startup_time()
-        if start_time <= now:
-            self._set_active_flight_state(start_time)
-        else:
+        if start_time > now:
             self.flight.set_state(
                 WaitingForStart(self.flight, self.settings, start_time)
             )
+        elif self.flight.client_count > 0 and self.flight.start_type in (
+            StartType.COLD,
+            StartType.WARM,
+            StartType.RUNWAY,
+        ):
+            # A player flight with a ground start whose computed startup time
+            # lands before mission start (e.g. a long player startup estimate
+            # pushes startup_time earlier than the mission's start time) must
+            # not be pre-activated. Pre-activation skips the StartUp/Taxi/Takeoff
+            # state at tick 0, so the player-startup fast-forward stop condition
+            # never catches the flight and the player ends up spawning in the
+            # air. Keep it grounded and start it at mission start instead.
+            self.flight.set_state(WaitingForStart(self.flight, self.settings, now))
+        else:
+            self._set_active_flight_state(start_time)
 
     def _set_active_flight_state(self, now: datetime) -> None:
         from game.ato.flightstate import StartUp

@@ -19,9 +19,11 @@ from game.theater import (
     NavalControlPoint,
     EssexCarrier,
 )
+from game.theater.controlpoint import warn_if_motorpool_inside_capture_zone
 from game.theater.theatergroundobject import (
     BuildingGroundObject,
     IadsBuildingGroundObject,
+    MotorpoolGroundObject,
 )
 from game.utils import Heading, escape_string_for_lua
 from game.version import VERSION
@@ -84,6 +86,10 @@ class ModSettings:
     f_16_idf: bool = False
     fa_18efg: bool = False
     fa18ef_tanker: bool = False
+    fa18c_aargm_er: bool = False
+    fa18c_aargm_er_realistic: bool = False
+    fa18c_lrasm: bool = False
+    fa18c_jassm: bool = False
     f22_raptor: bool = False
     f84g_thunderjet: bool = False
     f100_supersabre: bool = False
@@ -104,6 +110,9 @@ class ModSettings:
     su15_flagon: bool = False
     su30_flanker_h: bool = False
     su35s_flanker_m: bool = False
+    f15ex: bool = False
+    f15cge: bool = False
+    eurofighter: bool = False
     su57_felon: bool = False
     tornado_adv: bool = False
     frenchpack: bool = False
@@ -115,6 +124,7 @@ class ModSettings:
     SWPack: bool = False
     vietnamwarvessels: bool = False
     chinesemilitaryassetspack: bool = False
+    iranmilitaryassetspack: bool = False
     russianmilitaryassetspack: bool = False
     usamilitaryassetspack: bool = False
     ukmilitaryassetspack: bool = False
@@ -432,6 +442,7 @@ class AirbaseGroundObjectGenerator(ControlPointGroundObjectGenerator):
         self.generate_offshore_strike_targets()
         self.generate_factories()
         self.generate_ammunition_depots()
+        self.generate_motorpools()
         self.generate_missile_sites()
         self.generate_coastal_sites()
 
@@ -516,6 +527,19 @@ class AirbaseGroundObjectGenerator(ControlPointGroundObjectGenerator):
     def generate_ammunition_depots(self) -> None:
         for position in self.control_point.preset_locations.ammunition_depots:
             self.generate_building_at(GroupTask.AMMO, position)
+
+    def generate_motorpools(self) -> None:
+        if not self.game.settings.motorpool_enabled:
+            return
+        for location in self.control_point.preset_locations.motorpools:
+            # Codename like every other TGO (JAGUAR, ...); the "motorpool" category
+            # label already identifies what it is.
+            name = namegen.random_objective_name()
+            warn_if_motorpool_inside_capture_zone(name, location, self.control_point)
+            tgo = MotorpoolGroundObject(
+                name, location, self.control_point, GroupTask.MOTORPOOL
+            )
+            self.control_point.connected_objectives.append(tgo)
 
     def generate_factories(self) -> None:
         for position in self.control_point.preset_locations.factories:

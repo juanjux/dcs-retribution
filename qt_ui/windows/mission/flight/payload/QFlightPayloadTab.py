@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
     QSlider,
     QCheckBox,
     QScrollArea,
+    QPushButton,
 )
 
 from game import Game
@@ -192,7 +193,7 @@ class QFlightPayloadTab(QFrame):
         )
 
         self.property_editor = PropertyEditor(
-            self.flight, self.member_selector.selected_member
+            self.flight, self.member_selector.selected_member, game
         )
         scrolling_layout.addLayout(self.property_editor)
 
@@ -211,6 +212,20 @@ class QFlightPayloadTab(QFrame):
         )
         self.loadout_selector.currentIndexChanged.connect(self.on_new_loadout)
         layout.addWidget(self.loadout_selector)
+        self.set_default_btn = QPushButton("Set as default for plane and mission")
+        self.set_default_btn.setToolTip(
+            "Save the selected loadout as the default for this aircraft and mission "
+            "type, so future flights of this type use it."
+        )
+        self.set_default_btn.clicked.connect(self.on_set_default)
+        layout.addWidget(self.set_default_btn)
+        self.clear_default_btn = QPushButton("Clear default for plane and mission")
+        self.clear_default_btn.setToolTip(
+            "Stop using a saved default for this aircraft and mission type, so new "
+            "flights go back to the built-in choice. No payload is deleted."
+        )
+        self.clear_default_btn.clicked.connect(self.on_clear_default)
+        layout.addWidget(self.clear_default_btn)
         layout.addWidget(self.payload_editor, stretch=3)
         layout.addWidget(docsText)
 
@@ -268,6 +283,15 @@ class QFlightPayloadTab(QFrame):
         if self.flight.use_same_loadout_for_all_members:
             self.flight.roster.use_same_loadout_for_all_members()
         self.payload_editor.reset_pylons()
+
+    def on_clear_default(self) -> None:
+        self.payload_editor.clear_task_default()
+
+    def on_set_default(self) -> None:
+        # The selected member's loadout already mirrors the dropdown selection (or
+        # the custom loadout when "Use custom loadout" is on); persist it as the
+        # default for this aircraft + mission type.
+        self.payload_editor.save_as_task_default()
 
     def on_custom_toggled(self, use_custom: bool) -> None:
         self.loadout_selector.setDisabled(use_custom)

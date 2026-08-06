@@ -2,6 +2,9 @@ price: 10
 variants:
   MQ-9 Reaper: null
 tasks:
+  DEAD: 10
   BAI: 10
   CAS: 10
   OCA/Aircraft: 10
+secondary_tasks:
+  - DEAD

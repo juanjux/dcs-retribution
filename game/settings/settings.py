@@ -27,6 +27,18 @@ class AutoAtoBehavior(Enum):
 
 
 @unique
+class CloudPresetPack(Enum):
+    """A community cloud-preset weather mod whose presets the mission generator may
+    use. Only one can be active at a time: the packs share the same preset keys
+    (Preset35+) but map them to different clouds, so they must not be mixed."""
+
+    NONE = "None (stock DCS presets)"
+    BANDIT = "Bandit's Cloud Presets"
+    WEATHER2 = "Weather 2.0 (Bandit)"
+    ATMOSX = "ATMOS-X"
+
+
+@unique
 class NightMissions(Enum):
     DayAndNight = "nightmissions_nightandday"
     OnlyDay = "nightmissions_onlyday"
@@ -64,11 +76,15 @@ MISSION_DIFFICULTY_SECTION = "Mission Difficulty"
 MISSION_RESTRICTIONS_SECTION = "Mission Restrictions"
 
 CAMPAIGN_MANAGEMENT_PAGE = "Campaign Management"
+ADVANCED_CAMPAIGN_MANAGEMENT_PAGE = "Campaign Management+"
 
 GENERAL_SECTION = "General"
 PILOTS_AND_SQUADRONS_SECTION = "Pilots and Squadrons"
 HQ_AUTOMATION_SECTION = "HQ Automation"
+OPFOR_AI_SECTION = "OPFOR AI commander"
 FLIGHT_PLANNER_AUTOMATION = "Flight Planner Automation"
+GROUND_OBJECT_REPAIR_TUNING_SECTION = "Ground Object Repairs"
+BUILDING_REPAIR_TUNING_SECTION = "Building Repairs"
 
 CAMPAIGN_DOCTRINE_PAGE = "Campaign Doctrine"
 DOCTRINE_DISTANCES_SECTION = "Doctrine distances"
@@ -78,6 +94,7 @@ PRETENSE_PAGE = "Pretense"
 MISSION_GENERATOR_PAGE = "Mission Generator"
 
 GAMEPLAY_SECTION = "Gameplay"
+KNEEBOARD_SECTION = "Kneeboard"
 
 # TODO: Make sections a type and add headers.
 # This section had the header: "Disabling settings below may improve performance, but
@@ -176,6 +193,18 @@ class Settings:
         },
         default=Views.All,
     )
+    opfor_ai_enabled: bool = boolean_option(
+        "Allow OPFOR AI control (external LLM plays red)",
+        page=CAMPAIGN_MANAGEMENT_PAGE,
+        section=OPFOR_AI_SECTION,
+        default=False,
+        detail=(
+            "Expose the live game over a local API so an external LLM (e.g. ChatGPT, "
+            "Claude, et cetera) plans the enemy turns instead of the scripted "
+            "commander. Check the toolbar OPFOR AI button for more info when enabling "
+            "this."
+        ),
+    )
     external_views_allowed: bool = boolean_option(
         "Allow external views",
         DIFFICULTY_PAGE,
@@ -200,6 +229,19 @@ class Settings:
     )
 
     # CAMPAIGN DOCTRINE
+    ignore_non_combat_air_losses: bool = boolean_option(
+        "Non-combat (crash) aircraft losses don't count",
+        page=CAMPAIGN_DOCTRINE_PAGE,
+        section=GENERAL_SECTION,
+        default=False,
+        detail=(
+            "The AI has too high a tendency to crash into terrain or buildings. "
+            "This setting makes those losses not count as real ones: the aircraft "
+            "is not removed from the squadron and its pilot survives. Only losses "
+            "DCS attributes to a weapon or a SAM count as real in the campaign. "
+            "Applies to both coalitions."
+        ),
+    )
     desired_barcap_mission_duration: timedelta = minutes_option(
         "Desired BARCAP on-station time",
         page=CAMPAIGN_DOCTRINE_PAGE,
@@ -532,6 +574,43 @@ class Settings:
             "extremely incomplete so does not affect all weapons."
         ),
     )
+    restrict_props_by_date: bool = boolean_option(
+        "Restrict aircraft options by date (WIP)",
+        page=CAMPAIGN_MANAGEMENT_PAGE,
+        section=GENERAL_SECTION,
+        default=False,
+        detail=(
+            "Restricts era-defining aircraft mission options (e.g. the JHMCS helmet "
+            "cueing selection) based on the campaign date: gated options are hidden "
+            "from the payload editor and clamped to a period-correct value at "
+            "mission generation. Independent of the weapons restriction so either "
+            "can be enforced alone. Data is curated per airframe and incomplete."
+        ),
+    )
+    motorpool_enabled: bool = boolean_option(
+        "Spawn strikeable motorpool reserves",
+        page=CAMPAIGN_MANAGEMENT_PAGE,
+        section=GENERAL_SECTION,
+        default=True,
+        detail=(
+            "Render each control point's not-yet-deployed reserve armor as a "
+            "strikeable motorpool (only where the campaign authored one). "
+            "Destroying reserves forces the owner to repurchase."
+        ),
+    )
+    motorpool_spawn_cap: int = bounded_int_option(
+        "Maximum motorpool vehicles per turn",
+        page=CAMPAIGN_MANAGEMENT_PAGE,
+        section=GENERAL_SECTION,
+        default=10,
+        min=0,
+        max=25,
+        detail=(
+            "Caps how many reserve vehicles a control point renders across its "
+            "motorpool(s) per turn. Lower this if motorpools hurt mission "
+            "performance."
+        ),
+    )
     apply_target_overrides_to_loadouts: bool = boolean_option(
         "Apply target-based weapon settings to player loadouts",
         page=CAMPAIGN_MANAGEMENT_PAGE,
@@ -555,12 +634,18 @@ class Settings:
             "assigned to their primary task."
         ),
     )
-    use_bandit_clouds: bool = boolean_option(
-        "Use Bandit's clouds",
+    cloud_preset_pack: CloudPresetPack = choices_option(
+        "Custom cloud preset pack",
         page=CAMPAIGN_MANAGEMENT_PAGE,
         section=GENERAL_SECTION,
-        default=False,
-        detail=("If checked, Bandit's cloud presets will become available."),
+        default=CloudPresetPack.NONE,
+        choices={v.value: v for v in CloudPresetPack},
+        detail=(
+            "Make a community cloud-preset weather mod's presets available to the "
+            "mission generator. Pick the pack you have installed in DCS. Only one can "
+            "be active at a time, since the packs reuse the same preset keys for "
+            "different clouds. 'None' uses the stock DCS presets."
+        ),
     )
 
     # Pilots and Squadrons
@@ -643,6 +728,61 @@ class Settings:
         CAMPAIGN_MANAGEMENT_PAGE,
         HQ_AUTOMATION_SECTION,
         default=False,
+    )
+    automate_ground_object_repairs: bool = boolean_option(
+        "Automate ground object repairs",
+        CAMPAIGN_MANAGEMENT_PAGE,
+        HQ_AUTOMATION_SECTION,
+        default=False,
+        detail=(
+            "If enabled, AI can spend budget to repair destroyed ground object units "
+            "such as SAMs and EWRs."
+        ),
+    )
+    ground_object_repair_turns: int = bounded_int_option(
+        "Ground object repair turns",
+        CAMPAIGN_MANAGEMENT_PAGE,
+        HQ_AUTOMATION_SECTION,
+        min=0,
+        max=10,
+        default=2,
+        detail=(
+            "Turns required for repaired ground object units to return to service. "
+            "Set to 0 for instant repairs."
+        ),
+    )
+    automate_building_repairs: bool = boolean_option(
+        "Automate building repairs",
+        CAMPAIGN_MANAGEMENT_PAGE,
+        HQ_AUTOMATION_SECTION,
+        default=False,
+        detail=(
+            "If enabled, AI can spend budget to repair destroyed income buildings "
+            "such as depots and factories."
+        ),
+    )
+    building_repair_turns: int = bounded_int_option(
+        "Building repair turns",
+        CAMPAIGN_MANAGEMENT_PAGE,
+        HQ_AUTOMATION_SECTION,
+        min=0,
+        max=10,
+        default=4,
+        detail=(
+            "Turns required for repaired buildings to return to service. "
+            "Set to 0 for instant repairs."
+        ),
+    )
+    building_repair_budget_percent: int = bounded_int_option(
+        "Building repair budget (%)",
+        CAMPAIGN_MANAGEMENT_PAGE,
+        HQ_AUTOMATION_SECTION,
+        min=0,
+        max=100,
+        default=15,
+        detail=(
+            "Percent of the procurement budget that may be spent repairing buildings."
+        ),
     )
     automate_aircraft_reinforcements: bool = boolean_option(
         "Automate aircraft purchases",
@@ -803,6 +943,146 @@ class Settings:
         " A smaller number will ignore squadrons with a matching primary task that are too far out.",
     )
 
+    # Campaign Management+
+    sam_repair_budget_fraction: float = bounded_float_option(
+        "SAM repair budget fraction",
+        page=ADVANCED_CAMPAIGN_MANAGEMENT_PAGE,
+        section=GROUND_OBJECT_REPAIR_TUNING_SECTION,
+        min=0.0,
+        max=1.0,
+        divisor=100,
+        default=0.4,
+        detail=("Fraction of ground unit budget reserved for SAM repairs."),
+    )
+    sam_repair_priority_threshold: float = bounded_float_option(
+        "SAM repair priority threshold",
+        page=ADVANCED_CAMPAIGN_MANAGEMENT_PAGE,
+        section=GROUND_OBJECT_REPAIR_TUNING_SECTION,
+        min=0.0,
+        max=5.0,
+        divisor=10,
+        default=1.5,
+        detail=("Minimum priority score required to queue SAM repairs."),
+    )
+    sam_repair_weight_threat: float = bounded_float_option(
+        "SAM repair weight: threat range",
+        page=ADVANCED_CAMPAIGN_MANAGEMENT_PAGE,
+        section=GROUND_OBJECT_REPAIR_TUNING_SECTION,
+        min=0.0,
+        max=5.0,
+        divisor=10,
+        default=0.5,
+        detail="Weight applied to SAM threat range coverage.",
+    )
+    sam_repair_weight_frontline: float = bounded_float_option(
+        "SAM repair weight: frontline",
+        page=ADVANCED_CAMPAIGN_MANAGEMENT_PAGE,
+        section=GROUND_OBJECT_REPAIR_TUNING_SECTION,
+        min=0.0,
+        max=5.0,
+        divisor=10,
+        default=1.5,
+        detail="Weight applied to proximity to the front line.",
+    )
+    sam_repair_weight_cp_coverage: float = bounded_float_option(
+        "SAM repair weight: CP coverage",
+        page=ADVANCED_CAMPAIGN_MANAGEMENT_PAGE,
+        section=GROUND_OBJECT_REPAIR_TUNING_SECTION,
+        min=0.0,
+        max=5.0,
+        divisor=10,
+        default=0.6,
+        detail="Weight applied to covered control points.",
+    )
+    sam_repair_weight_tgo_coverage: float = bounded_float_option(
+        "SAM repair weight: TGO coverage",
+        page=ADVANCED_CAMPAIGN_MANAGEMENT_PAGE,
+        section=GROUND_OBJECT_REPAIR_TUNING_SECTION,
+        min=0.0,
+        max=5.0,
+        divisor=10,
+        default=0.4,
+        detail="Weight applied to covered ground objects.",
+    )
+    sam_repair_weight_tgo_income: float = bounded_float_option(
+        "SAM repair weight: TGO income",
+        page=ADVANCED_CAMPAIGN_MANAGEMENT_PAGE,
+        section=GROUND_OBJECT_REPAIR_TUNING_SECTION,
+        min=0.0,
+        max=5.0,
+        divisor=10,
+        default=0.4,
+        detail="Weight applied to covered ground object income.",
+    )
+    building_repair_income_multiplier: float = bounded_float_option(
+        "Building repair income multiplier",
+        page=ADVANCED_CAMPAIGN_MANAGEMENT_PAGE,
+        section=BUILDING_REPAIR_TUNING_SECTION,
+        min=0,
+        max=20,
+        divisor=10,
+        default=4.0,
+        detail=("Multiplier applied to building income to compute repair cost."),
+    )
+    building_repair_ammo_bonus: float = bounded_float_option(
+        "Building repair ammo bonus",
+        page=ADVANCED_CAMPAIGN_MANAGEMENT_PAGE,
+        section=BUILDING_REPAIR_TUNING_SECTION,
+        min=0,
+        max=50,
+        divisor=5,
+        default=10.0,
+        detail=("Added cost for ammo depots to reflect frontline value."),
+    )
+    building_repair_factory_bonus: float = bounded_float_option(
+        "Building repair factory bonus",
+        page=ADVANCED_CAMPAIGN_MANAGEMENT_PAGE,
+        section=BUILDING_REPAIR_TUNING_SECTION,
+        min=0,
+        max=50,
+        divisor=10,
+        default=12.0,
+        detail=("Added cost for factories to reflect production value."),
+    )
+    building_repair_weight_remote: float = bounded_float_option(
+        "Building repair weight: remote",
+        page=ADVANCED_CAMPAIGN_MANAGEMENT_PAGE,
+        section=BUILDING_REPAIR_TUNING_SECTION,
+        min=0,
+        max=5,
+        divisor=10,
+        default=1.2,
+        detail=(
+            "Weight for remoteness from enemy control points in repair priority. "
+            + "Buildings farther from enemy control points will be prioritized for repair."
+        ),
+    )
+    building_repair_weight_income: float = bounded_float_option(
+        "Building repair weight: income",
+        page=ADVANCED_CAMPAIGN_MANAGEMENT_PAGE,
+        section=BUILDING_REPAIR_TUNING_SECTION,
+        min=0,
+        max=5,
+        divisor=10,
+        default=1.0,
+        detail=(
+            "Weight for building income in repair priority. "
+            + "Buildings that generate more income will be prioritized for repair."
+        ),
+    )
+    building_repair_weight_ammo_frontline: float = bounded_float_option(
+        "Building repair weight: ammo frontline",
+        page=ADVANCED_CAMPAIGN_MANAGEMENT_PAGE,
+        section=BUILDING_REPAIR_TUNING_SECTION,
+        min=0,
+        max=5,
+        divisor=10,
+        default=1.1,
+        detail=(
+            "Weight for frontline proximity when prioritizing ammo depots. "
+            + "Ammo depots closer to the frontline will be prioritized for repair."
+        ),
+    )
     # Mission Generator
     # Gameplay
     fast_forward_stop_condition: FastForwardStopCondition = choices_option(
@@ -889,6 +1169,39 @@ class Settings:
         detail=(
             "Dark kneeboard for night missions. This will likely make the kneeboard on "
             "the pilot leg unreadable."
+        ),
+    )
+    generate_target_recon_kneeboard: bool = boolean_option(
+        "Generate target recon kneeboard pages",
+        MISSION_GENERATOR_PAGE,
+        KNEEBOARD_SECTION,
+        default=True,
+        detail=(
+            "Generate a target reconnaissance page for player flights with air-to-ground "
+            "tasks, showing aimpoints, threat rings, and target area context."
+        ),
+    )
+    generate_all_packages_kneeboard: bool = boolean_option(
+        "Generate friendly packages kneeboard page",
+        MISSION_GENERATOR_PAGE,
+        KNEEBOARD_SECTION,
+        default=True,
+        detail=(
+            "Append page(s) listing every friendly package with its TOT (strike "
+            "tasks) or patrol window (CAP, tanker, AWACS), for cross-package "
+            "coordination."
+        ),
+    )
+    target_recon_extra_threat_search_nmi: int = bounded_int_option(
+        "Extra threat search radius (nmi)",
+        MISSION_GENERATOR_PAGE,
+        KNEEBOARD_SECTION,
+        default=0,
+        min=0,
+        max=50,
+        detail=(
+            "Additional nautical miles beyond the default search radius to include "
+            "threats on the target recon kneeboard. 0 uses the default radius only."
         ),
     )
     never_delay_player_flights: bool = boolean_option(
@@ -1164,6 +1477,38 @@ class Settings:
         GAMEPLAY_SECTION,
         default=True,
     )
+    cruise_missile_strikes: bool = boolean_option(
+        "Ship-launched cruise missile strikes",
+        page=MISSION_GENERATOR_PAGE,
+        section=GAMEPLAY_SECTION,
+        default=False,
+        detail=(
+            "Warships that carry land-attack cruise missiles (the Burke's Tomahawks, "
+            "the CurrentHill Kalibr hulls) can fire them at shore targets: an F10 "
+            "'Cruise Missile Strike' menu calls a salvo onto your last map marker from "
+            "the nearest ship that still has missiles. Each ship group carries a finite "
+            "campaign magazine and there is no rearm, so every salvo spends stock you "
+            "never get back. The missiles are real weapons from a real, tracked ship: "
+            "kills count at debrief, enemy point defense can intercept them, and "
+            "sinking the shooter ends the raids. Both coalitions play by these rules. "
+            "Runs through the 'Cruise missile strikes' LUA plugin -- keep that plugin "
+            "enabled or this setting does nothing."
+        ),
+    )
+    cruise_missile_auto_raids: bool = boolean_option(
+        "Auto-plan cruise missile raids",
+        page=MISSION_GENERATOR_PAGE,
+        section=GAMEPLAY_SECTION,
+        default=False,
+        detail=(
+            "Needs 'Ship-launched cruise missile strikes'. Each turn, a side with a "
+            "cruise-missile ship in range commits one raid: a salvo fired early in the "
+            "mission at its highest-value reachable enemy ground object -- command "
+            "centers and comms first, then war industry, then anything strikeable. "
+            "Watch for the LAUNCH WARNING: an enemy raid is your point-defense SAMs' "
+            "problem, or yours."
+        ),
+    )
 
     # Performance
     perf_smoke_gen: bool = boolean_option(
@@ -1181,10 +1526,28 @@ class Settings:
         max=24000,
     )
     perf_red_alert_state: bool = boolean_option(
-        "SAM starts in red alert mode",
+        "Air defenses start in red alert mode",
         page=MISSION_GENERATOR_PAGE,
         section=PERFORMANCE_SECTION,
         default=True,
+        tooltip=(
+            "Applies to SAM, AAA and other air-defense sites. Turning it off makes "
+            "them spawn on green alert, which costs less CPU but leaves them passive "
+            "until they are shot at. Front-line ground units and EWRs are not "
+            "affected: they always come up on red alert."
+        ),
+    )
+    coastal_batteries_engage_ships: bool = boolean_option(
+        "Coastal batteries engage ships",
+        page=MISSION_GENERATOR_PAGE,
+        section=PERFORMANCE_SECTION,
+        default=False,
+        detail=(
+            "Let coastal anti-ship batteries fire on their own at enemy hulls that "
+            "enter range, the way fleets do. Off by default: a battery from a unit "
+            "mod firing anti-ship missiles has been seen to crash DCS, so try it on "
+            "a throwaway mission before using it in a campaign."
+        ),
     )
     perf_artillery: bool = boolean_option(
         "Artillery strikes",
@@ -1487,6 +1850,7 @@ class Settings:
         # restore Enum & timedelta types
         s = Settings()
         Settings._migrate_legacy_fast_forward(state)
+        Settings._migrate_legacy_bandit_clouds(state)
         for key, value in list(state.items()):
             default = s.__dict__.get(key)
             if isinstance(default, Enum):
@@ -1527,6 +1891,16 @@ class Settings:
             if isinstance(restored, enum_cls):
                 return restored
         return None
+
+    @staticmethod
+    def _migrate_legacy_bandit_clouds(state: dict[str, Any]) -> None:
+        """Pre-pack saves had a boolean ``use_bandit_clouds``; map it onto the new
+        ``cloud_preset_pack`` choice so a user who had Bandit's clouds on keeps them."""
+        legacy = state.pop("use_bandit_clouds", None)
+        if legacy is not None and "cloud_preset_pack" not in state:
+            state["cloud_preset_pack"] = (
+                CloudPresetPack.BANDIT if legacy else CloudPresetPack.NONE
+            )
 
     @staticmethod
     def _migrate_legacy_fast_forward(state: dict[str, Any]) -> None:

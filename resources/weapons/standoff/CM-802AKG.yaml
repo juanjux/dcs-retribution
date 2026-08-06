@@ -1,6 +1,7 @@
 name: CM-802AKG
+range: 97  # nm - stand-off launch range (DCS ref guide v34: 97nm / 180km)
 year: 2012
 clsids:
+  - "DIS_CM-802AKG"   # CM802AKG
   - "{CM_802AKG}"   # CM-802AKG
-  - "DIS_CM-802AKG"   # CM802AKG (DIS)
   - "DIS_CM-802AKG_AI"   # CM802AKG (DIS) for AI

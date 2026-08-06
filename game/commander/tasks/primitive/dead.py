@@ -12,6 +12,11 @@ from game.theater.theatergroundobject import IadsGroundObject
 @dataclass
 class PlanDead(PackagePlanningTask[IadsGroundObject]):
     def preconditions_met(self, state: TheaterState) -> bool:
+        # Already found to be shielded behind a belt no DEAD can reach this turn.
+        # Don't keep building (and reserving aircraft for) a package that can't
+        # accomplish anything -- wait until the belt is actually cleared.
+        if self.target in state.unreachable_air_defenses:
+            return False
         if (
             self.target not in state.threatening_air_defenses
             and self.target not in state.detecting_air_defenses
@@ -22,7 +27,21 @@ class PlanDead(PackagePlanningTask[IadsGroundObject]):
         return super().preconditions_met(state)
 
     def apply_effects(self, state: TheaterState) -> None:
-        state.eliminate_air_defense(self.target)
+        # Only treat the SAM as destroyed (clearing the threat gate for strikes
+        # that depend on it) if the DEAD can actually reach it. A SAM shielded
+        # behind another live radar SAM would turn the DEAD around before it
+        # employs, so clearing it here is what tasks strikers into a live belt.
+        # Leave it threatening and record it so dependent strikes stay deferred
+        # until real BDA confirms the kill on a later turn.
+        dead_flights = (
+            [f for f in self.package.flights if f.flight_type is FlightType.DEAD]
+            if self.package
+            else []
+        )
+        if state.dead_can_reach(self.target, dead_flights):
+            state.eliminate_air_defense(self.target)
+        else:
+            state.unreachable_air_defenses.add(self.target)
         super().apply_effects(state)
 
     def propose_flights(self) -> None:

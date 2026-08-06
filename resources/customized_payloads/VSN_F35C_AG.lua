@@ -568,6 +568,63 @@ local unitPayloads = {
 				[1] = 31,
 			},
 		},
+		[8] = {
+			["displayName"] = "Retribution DEAD",
+			["name"] = "Retribution DEAD",
+			["pylons"] = {
+				[1] = {
+					["CLSID"] = "{0519A264-0AB6-11d6-9193-00A0249B6F00}",
+					["num"] = 13,
+				},
+				[2] = {
+					["CLSID"] = "{44EE8698-89F9-48EE-AF36-5FD31896A82F}",
+					["num"] = 12,
+				},
+				[3] = {
+					["CLSID"] = "{5CE2FF2A-645A-4197-B48D-8720AC69394F}",
+					["num"] = 11,
+				},
+				[4] = {
+					["CLSID"] = "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}",
+					["num"] = 10,
+				},
+				[5] = {
+					["CLSID"] = "LAU_117_AGM_65G",
+					["num"] = 9,
+				},
+				[6] = {
+					["CLSID"] = "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}",
+					["num"] = 8,
+				},
+				[7] = {
+					["CLSID"] = "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}",
+					["num"] = 7,
+				},
+				[8] = {
+					["CLSID"] = "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}",
+					["num"] = 5,
+				},
+				[9] = {
+					["CLSID"] = "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}",
+					["num"] = 4,
+				},
+				[10] = {
+					["CLSID"] = "LAU_117_AGM_65G",
+					["num"] = 3,
+				},
+				[11] = {
+					["CLSID"] = "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}",
+					["num"] = 2,
+				},
+				[12] = {
+					["CLSID"] = "{5CE2FF2A-645A-4197-B48D-8720AC69394F}",
+					["num"] = 1,
+				},
+			},
+			["tasks"] = {
+				[1] = 31,
+			},
+		},
 	},
 	["tasks"] = {
 	},

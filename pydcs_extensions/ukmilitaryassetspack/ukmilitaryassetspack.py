@@ -119,7 +119,7 @@ class CH_SkySabreGiraffe(unittype.VehicleType):
 
 @vehiclemod
 class CH_SkySabreLN(unittype.VehicleType):
-    id = "CH_SkySabreLN"
+    id = "CH_SkySabre"
     name = "[CH] Sky Sabre iLauncher LN (HX)"
     detection_range = 0
     threat_range = 25000
@@ -160,7 +160,7 @@ class CH_Type26(unittype.ShipType):
 
 @shipmod
 class Type45(unittype.ShipType):
-    id = "Type45"
+    id = "CH_Type45"
     name = "[CH] Type 45 Destroyer"
     helicopter_num = 1
     parking = 1

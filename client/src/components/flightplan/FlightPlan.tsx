@@ -6,7 +6,7 @@ import {
 import WaypointMarker from "../waypointmarker";
 import { Polyline as LPolyline } from "leaflet";
 import { ReactElement, useEffect, useRef } from "react";
-import { Polyline } from "react-leaflet";
+import { Polyline, Tooltip } from "react-leaflet";
 
 const BLUE_PATH = "#0084ff";
 const RED_PATH = "#c85050";
@@ -27,6 +27,29 @@ const pathColor = (props: FlightPlanProps) => {
     return RED_PATH;
   }
 };
+
+// Hover summary of a package's intent: callsign / composition, task, target and
+// time-over-target. Fields are optional so it degrades gracefully if the server
+// hasn't supplied them (older data); the live server always populates them.
+function FlightTooltip({ flight }: { flight: Flight }) {
+  const composition =
+    flight.aircraft != null
+      ? `${flight.num_aircraft ?? "?"}x ${flight.aircraft}`
+      : null;
+  return (
+    <Tooltip sticky className="tooltip-delayed">
+      <b>{flight.callsign || composition || "Flight"}</b>
+      {flight.flight_type ? ` - ${flight.flight_type}` : ""}
+      {flight.callsign && composition ? <div>{composition}</div> : null}
+      {flight.package_target ? (
+        <div>
+          Target: {flight.package_target}
+          {flight.package_tot ? ` (TOT ${flight.package_tot})` : ""}
+        </div>
+      ) : null}
+    </Tooltip>
+  );
+}
 
 function FlightPlanPath(props: FlightPlanProps) {
   const color = pathColor(props);
@@ -51,10 +74,9 @@ function FlightPlanPath(props: FlightPlanProps) {
   // goes on top.
   useEffect(() => {
     if (props.selected) {
-        polylineRef.current?.bringToFront();
-    }
-    else {
-        polylineRef.current?.bringToBack();
+      polylineRef.current?.bringToFront();
+    } else {
+      polylineRef.current?.bringToBack();
     }
   });
 
@@ -70,31 +92,52 @@ function FlightPlanPath(props: FlightPlanProps) {
   // sidebar via a round-trip through the server.
   const interactive = props.flight.blue;
 
-  return (
+  // The thin visible route never catches the mouse itself. For blue flights a
+  // wide, invisible overlay polyline sits on top and handles hover (yellow
+  // highlight + tooltip) and the click-to-select, so the route is easy to grab
+  // without looking any thicker -- the same trick the SAM rings use.
+  const visible = (
     <Polyline
       positions={points}
-      pathOptions={{ color: color, interactive: interactive }}
+      pathOptions={{ color: color, interactive: false }}
       ref={polylineRef}
-      eventHandlers={
-        interactive
-          ? {
-              mouseover: () => {
-                polylineRef.current?.setStyle({ color: SELECTED_PATH });
-                polylineRef.current?.bringToFront();
-              },
-              mouseout: () => {
-                if (!props.selected) {
-                  polylineRef.current?.setStyle({ color: color });
-                  polylineRef.current?.bringToBack();
-                }
-              },
-              click: () => {
-                selectFlight({ flightId: props.flight.id });
-              },
-            }
-          : undefined
-      }
     />
+  );
+
+  if (!interactive) {
+    return visible;
+  }
+
+  return (
+    <>
+      {visible}
+      <Polyline
+        positions={points}
+        pathOptions={{
+          color: color,
+          weight: 16,
+          opacity: 0,
+          interactive: true,
+        }}
+        eventHandlers={{
+          mouseover: () => {
+            polylineRef.current?.setStyle({ color: SELECTED_PATH });
+            polylineRef.current?.bringToFront();
+          },
+          mouseout: () => {
+            if (!props.selected) {
+              polylineRef.current?.setStyle({ color: color });
+              polylineRef.current?.bringToBack();
+            }
+          },
+          click: () => {
+            selectFlight({ flightId: props.flight.id });
+          },
+        }}
+      >
+        <FlightTooltip flight={props.flight} />
+      </Polyline>
+    </>
   );
 }
 
@@ -112,7 +155,7 @@ const WaypointMarkers = (props: FlightPlanProps) => {
           number={idx}
           waypoint={p}
           flight={props.flight}
-        />
+        />,
       );
     }
   });
@@ -136,7 +179,7 @@ function CommitBoundary(props: CommitBoundaryProps) {
     //
     // This isn't perfect. It won't redraw until the component remounts. There
     // doesn't appear to be a better way.
-    { refetchOnMountOrArgChange: true }
+    { refetchOnMountOrArgChange: true },
   );
   if (isLoading) {
     return <></>;
@@ -147,7 +190,7 @@ function CommitBoundary(props: CommitBoundaryProps) {
   }
   if (!data) {
     console.log(
-      `Null response data when loading commit boundary for ${props.flightId}`
+      `Null response data when loading commit boundary for ${props.flightId}`,
     );
     return <></>;
   }

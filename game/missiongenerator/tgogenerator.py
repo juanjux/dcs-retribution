@@ -38,8 +38,10 @@ from dcs.task import (
     ControlledTask,
     Hold,
     EPLRS,
+    EWR,
     FireAtPoint,
     OptAlarmState,
+    OptROE,
 )
 from dcs.terrain import Airport
 from dcs.translation import String
@@ -81,9 +83,13 @@ from game.theater import (
 )
 from game.theater.theatergroundobject import (
     CarrierGroundObject,
+    CoastalSiteGroundObject,
+    EwrGroundObject,
     GenericCarrierGroundObject,
     LhaGroundObject,
     MissileSiteGroundObject,
+    ShipGroundObject,
+    MotorpoolGroundObject,
 )
 from game.theater.theatergroup import SceneryUnit, IadsGroundGroup
 from game.unitmap import UnitMap
@@ -283,8 +289,13 @@ class GroundObjectGenerator:
         return self.game.iads_considerate_culling(self.ground_object)
 
     def generate(self) -> None:
-        if self.culled:
-            return
+        # Culling skips what costs performance: spawned statics, vehicles and ships.
+        # It must NOT skip the scenery-objective apparatus below -- the map buildings
+        # backing a scenery objective exist whether or not the campaign spawns
+        # anything, so a culled trigger zone leaves a bombable, visibly collapsing
+        # target whose death is never recorded and the strike vanishes from the
+        # debrief. The zone, its kill-tracking rule and the IADS stand-in cost nothing.
+        culled = self.culled
         for group in self.ground_object.groups:
             vehicle_units = []
             ship_units = []
@@ -292,7 +303,7 @@ class GroundObjectGenerator:
             for unit in group.units:
                 if unit.is_static:
                     if isinstance(unit, SceneryUnit):
-                        # Special handling for scenery objects
+                        # Special handling for scenery objects: never culled.
                         self.add_trigger_zone_for_scenery(unit)
                         if (
                             self.game.settings.plugin_option("skynetiads")
@@ -301,7 +312,7 @@ class GroundObjectGenerator:
                         ):
                             # Generate a unit which can be controlled by skynet
                             self.generate_iads_command_unit(unit)
-                    else:
+                    elif not culled:
                         # Create a static group for each static unit
                         self.create_static_group(unit)
                 elif unit.is_vehicle and unit.alive:
@@ -310,10 +321,19 @@ class GroundObjectGenerator:
                 elif unit.is_ship and unit.alive:
                     # All alive Ships
                     ship_units.append(unit)
+            if culled:
+                continue
             if vehicle_units:
                 self.create_vehicle_group(group.group_name, vehicle_units)
             if ship_units:
-                self.create_ship_group(group.group_name, ship_units)
+                ship_group = self.create_ship_group(group.group_name, ship_units)
+                if (
+                    isinstance(self.ground_object, ShipGroundObject)
+                    and self.ground_object.target_position is not None
+                ):
+                    self.sail_to_destination(
+                        self.ground_object.target_position, ship_group
+                    )
 
     def create_vehicle_group(
         self, group_name: str, units: list[TheaterUnit]
@@ -332,8 +352,10 @@ class GroundObjectGenerator:
                 )
                 vehicle_group.units[0].player_can_drive = True
                 self.enable_eplrs(vehicle_group, unit.type)
+                self.enable_ewr(vehicle_group)
                 vehicle_group.units[0].name = unit.unit_name
                 self.set_alarm_state(vehicle_group)
+                self.set_coastal_engagement(vehicle_group)
                 GroundForcePainter(faction, vehicle_group.units[0]).apply_livery()
             else:
                 vehicle_unit = self.m.vehicle(unit.unit_name, unit.type)
@@ -369,7 +391,8 @@ class GroundObjectGenerator:
                 if frequency:
                     ship_group.set_frequency(frequency.hertz)
                 ship_group.units[0].name = unit.unit_name
-                self.set_alarm_state(ship_group)
+                self.set_alarm_state(ship_group, force_red=True)
+                self.set_ship_engagement(ship_group)
                 NavalForcePainter(faction, ship_group.units[0]).apply_livery()
             else:
                 ship_unit = self.m.ship(unit.unit_name, unit.type)
@@ -384,6 +407,19 @@ class GroundObjectGenerator:
             raise RuntimeError(f"Error creating ShipGroup for {group_name}")
         ship_group.hidden_on_mfd = self.ground_object.hide_on_mfd
         return ship_group
+
+    def sail_to_destination(self, destination: Point, group: ShipGroup) -> Heading:
+        """Add an in-mission waypoint sailing the ship toward its campaign
+        destination at a nominal cruise speed. Cosmetic only — the authoritative
+        position update is the end-of-turn snap. The destination is validated as
+        open water with no land crossing at queue time, so the path is clear."""
+        start = group.points[0].position
+        heading = Heading.from_degrees(start.heading_between_point(destination))
+        speed = knots(25)  # nominal cruise, mirrors the carrier baseline
+        group.points[0].speed = speed.meters_per_second
+        group.add_waypoint(destination, speed.kph)
+        self.ground_object.rotate(heading)
+        return heading
 
     def create_static_group(self, unit: TheaterUnit) -> None:
         static_group = self.m.static_group(
@@ -401,11 +437,53 @@ class GroundObjectGenerator:
         if eplrs_enabled and unit_type.eplrs:
             group.points[0].tasks.append(EPLRS(group.id))
 
-    def set_alarm_state(self, group: MovingGroup[Any]) -> None:
-        if self.game.settings.perf_red_alert_state:
+    def enable_ewr(self, group: VehicleGroup) -> None:
+        # EWR radars need the DCS "EWR" enroute task to actively scan and report
+        # contacts to their coalition. Without it they sit inert. Applied only to
+        # dedicated EWR sites (not SAM-as-EWR groups, which Skynet controls by group
+        # name), so it complements the Skynet IADS plugin rather than fighting it:
+        # Skynet reads EWR detections by unit name and does not manage the task list.
+        # (The matching RED alarm state is forced in set_alarm_state.)
+        if isinstance(self.ground_object, EwrGroundObject):
+            group.points[0].tasks.append(EWR())
+
+    def set_alarm_state(self, group: MovingGroup[Any], force_red: bool = False) -> None:
+        # Ships pass force_red so they always defend; the perf toggle only exists
+        # to let ground SAMs start "dark" for Skynet IADS, not to disarm fleets.
+        # EWR sites must likewise never start dark: a GREEN alarm state leaves the
+        # radar passive (no emission), which would defeat the EWR() enroute task, so
+        # they always come up RED regardless of the perf toggle. Skynet drives EWRs
+        # live anyway, so this stays consistent with IADS control.
+        ewr = isinstance(self.ground_object, EwrGroundObject)
+        if force_red or ewr or self.game.settings.perf_red_alert_state:
             group.points[0].tasks.append(OptAlarmState(2))
         else:
             group.points[0].tasks.append(OptAlarmState(1))
+
+    def set_coastal_engagement(self, group: MovingGroup[Any]) -> None:
+        # A coastal anti-ship battery engages the same way a fleet does (see
+        # set_ship_engagement): by OPTION, not by task. A forced RED alarm plus
+        # weapon-free ROE make it fire on its own at any enemy hull entering range;
+        # left on the DCS default it simply watches ships sail past. Off by default
+        # because a mod battery firing anti-ship missiles has crashed DCS before, so
+        # with the setting off this is byte-identical to not being here.
+        if not self.game.settings.coastal_batteries_engage_ships:
+            return
+        if not isinstance(self.ground_object, CoastalSiteGroundObject):
+            return
+        group.points[0].tasks.append(OptAlarmState(2))
+        group.points[0].tasks.append(OptROE(OptROE.Values.WeaponFree))
+
+    def set_ship_engagement(self, group: ShipGroup) -> None:
+        # Make fleets fight rather than sit passive. Ship weapons engagement in DCS is
+        # OPTION-driven, not task-driven: weapon-free ROE plus the RED alarm state set in
+        # set_alarm_state make a ship fire autonomously on any target that enters weapon
+        # range — SAMs on aircraft, anti-ship missiles/guns/torpedoes on enemy ships.
+        # Do NOT add an EngageTargets task here: it is an air-only enroute task, invalid
+        # for a ship controller (DCS me_action_db offers ships only NoTask), and feeding
+        # it to the naval AI crashed DCS (ACCESS_VIOLATION in AI::ControllerStack::start).
+        # Upstream ships likewise engage on ROE/alarm alone.
+        group.points[0].tasks.append(OptROE(OptROE.Values.WeaponFree))
 
     def _register_theater_unit(
         self,
@@ -637,10 +715,15 @@ class GenericCarrierGenerator(GroundObjectGenerator):
                     tacan = self.tacan_registry.alloc_for_band(
                         TacanBand.X, TacanUsage.TransmitReceive
                     )
+                    # Persist back so subsequent turns reuse the same channel
+                    # and the UI (base dialog, tooltip) reflects the value
+                    # instead of "AUTO".
+                    self.control_point.tacan = tacan
                 else:
                     tacan = self.control_point.tacan
                 if self.control_point.tcn_name is None:
                     tacan_callsign = self.tacan_callsign()
+                    self.control_point.tcn_name = tacan_callsign
                 else:
                     tacan_callsign = self.control_point.tcn_name
                 link4 = None
@@ -1410,21 +1493,46 @@ class PortableTacanGenerator:
         assigner = RunwayAssigner(self.game.conditions)
         runway_data = assigner.get_preferred_runway(self.game.theater, airport)
         if runway_data.tacan is not None:
+            # Built-in TACAN from the terrain. Reflect it on the airfield so the
+            # base dialog, map tooltip and other UI surfaces show it just like
+            # they do for portable beacons; no portable beacon needs to be
+            # placed.
+            self.airfield.tacan = runway_data.tacan
+            self.airfield.tcn_name = runway_data.tacan_callsign
             return
 
-        # Allocate a TACAN channel from the X band.
-        try:
-            tacan = self.tacan_registry.alloc_for_band(
-                TacanBand.X, TacanUsage.TransmitReceive
-            )
-        except OutOfTacanChannelsError:
-            logging.warning(
-                "No TACAN channels available for portable beacon at %s",
-                self.airfield.name,
-            )
+        # No built-in beacon. If the portable-TACAN feature is disabled, leave
+        # this airfield without a TACAN at all -- don't allocate or place
+        # anything.
+        if not self.game.settings.generate_portable_tacans:
             return
 
-        callsign = self._derive_callsign(self.airfield.name)
+        # Re-use a previously assigned TACAN channel and callsign for this
+        # airfield if it has one (set by the player from the base dialog, or
+        # auto-allocated on an earlier turn). Otherwise allocate fresh and
+        # persist the choice on the airfield so it stays stable across turns
+        # and is visible in tooltips/briefings even before the next mission
+        # generation.
+        if self.airfield.tacan is not None:
+            tacan = self.airfield.tacan
+        else:
+            try:
+                tacan = self.tacan_registry.alloc_for_band(
+                    TacanBand.X, TacanUsage.TransmitReceive
+                )
+            except OutOfTacanChannelsError:
+                logging.warning(
+                    "No TACAN channels available for portable beacon at %s",
+                    self.airfield.name,
+                )
+                return
+            self.airfield.tacan = tacan
+
+        if self.airfield.tcn_name is not None:
+            callsign = self.airfield.tcn_name
+        else:
+            callsign = self._derive_callsign(self.airfield.name)
+            self.airfield.tcn_name = callsign
 
         # Place the portable TACAN beacon near the airport reference point.
         position = airport.position.point_from_heading(
@@ -1432,7 +1540,7 @@ class PortableTacanGenerator:
         )
         group = self.mission.vehicle_group(
             country=self.country,
-            name=f"{self.airfield.name} TACAN",
+            name=f"{self.airfield.name} TACAN {tacan} ({callsign})",
             _type=VehicleFortification.TACAN_beacon,
             position=position,
             group_size=1,
@@ -1531,6 +1639,10 @@ class TgoGenerator:
         self._portable_tacan_callsigns: set[str] = set()
 
     def generate(self) -> None:
+        # Function-local import breaks the motorpoolgenerator <-> tgogenerator
+        # import cycle; hoisted here so it resolves once per call, not per TGO.
+        from game.missiongenerator.motorpoolgenerator import MotorpoolGenerator
+
         for cp in self.game.theater.controlpoints:
             # Use neutral country for neutral control points
             if cp.captured is Player.NEUTRAL:
@@ -1609,19 +1721,21 @@ class TgoGenerator:
                     generator = MissileSiteGenerator(
                         ground_object, country, self.game, self.m, self.unit_map
                     )
+                elif isinstance(ground_object, MotorpoolGroundObject):
+                    generator = MotorpoolGenerator(
+                        ground_object, country, self.game, self.m, self.unit_map
+                    )
                 else:
                     generator = GroundObjectGenerator(
                         ground_object, country, self.game, self.m, self.unit_map
                     )
                 generator.generate()
 
-            # Place portable TACAN beacons at blue airfields without built-in
-            # TACAN, if the setting is enabled.
-            if (
-                self.game.settings.generate_portable_tacans
-                and isinstance(cp, Airfield)
-                and cp.captured.is_blue
-            ):
+            # Reflect built-in airfield TACAN (and, if the setting is on,
+            # place portable beacons at airfields without a built-in TACAN) so
+            # the UI surfaces (base dialog, map tooltip, briefing) can show
+            # the channel everywhere.
+            if isinstance(cp, Airfield) and cp.captured.is_blue:
                 portable_tacan_gen = PortableTacanGenerator(
                     self.m,
                     self.game,

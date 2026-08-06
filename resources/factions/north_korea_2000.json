@@ -48,8 +48,9 @@
   ],
   "preset_groups": [
     "SA-5/S-200",
-    "SA-2/S-75",
     "HQ-2",
+    "SA-2/S-75",
+    "SA-2/SA-3 Mixed Site",
     "SA-3/S-125",
     "SA-3/S-125 V-601P/5V27",
     "SA-6",
@@ -62,7 +63,6 @@
   "air_defense_units": [
     "EWR 1L13",
     "EWR 55G6",
-    "SAM SA-5 S-200 ST-68U \"Tin Shield\" SR",
     "SA-9 Strela",
     "SA-13 Gopher (9K35 Strela-10M3)",
     "ZSU-57-2 'Sparka'",
@@ -77,3 +77,4 @@
   ],
   "has_jtac": false
 }
+

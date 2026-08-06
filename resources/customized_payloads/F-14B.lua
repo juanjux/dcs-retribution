@@ -6,39 +6,35 @@ local unitPayloads = {
 			["pylons"] = {
 				[1] = {
 					["CLSID"] = "{LAU-138 wtip - AIM-9M}",
-					["num"] = 10,
+					["num"] = 1,
 				},
 				[2] = {
 					["CLSID"] = "{LAU-138 wtip - AIM-9M}",
-					["num"] = 1,
+					["num"] = 10,
 				},
 				[3] = {
-					["CLSID"] = "{PHXBRU3242_2*LAU10 LS}",
+					["CLSID"] = "{SHOULDER AIM-7MH}",
 					["num"] = 2,
 				},
 				[4] = {
-					["CLSID"] = "{PHXBRU3242_2*LAU10 RS}",
+					["CLSID"] = "{F14-LANTIRN-TP}",
 					["num"] = 9,
 				},
 				[5] = {
-					["CLSID"] = "{F14-300gal}",
-					["num"] = 8,
+					["CLSID"] = "{BRU-32 GBU-24}",
+					["num"] = 4,
 				},
 				[6] = {
+					["CLSID"] = "{BRU-32 GBU-24}",
+					["num"] = 6,
+				},
+				[7] = {
 					["CLSID"] = "{F14-300gal}",
 					["num"] = 3,
 				},
-				[7] = {
-					["CLSID"] = "{AIM_54C_Mk60}",
-					["num"] = 7,
-				},
 				[8] = {
-					["CLSID"] = "{BELLY AIM-7MH}",
-					["num"] = 5,
-				},
-				[9] = {
-					["CLSID"] = "{AIM_54C_Mk60}",
-					["num"] = 4,
+					["CLSID"] = "{F14-300gal}",
+					["num"] = 8,
 				},
 			},
 			["tasks"] = {

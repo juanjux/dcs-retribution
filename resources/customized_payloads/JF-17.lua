@@ -254,6 +254,35 @@ local unitPayloads = {
 				[1] = 34,
 			},
 		},
+		[8] = {
+			["displayName"] = "Retribution DEAD",
+			["name"] = "Retribution DEAD",
+			["pylons"] = {
+				[1] = {
+					["CLSID"] = "DIS_PL-5EII",
+					["num"] = 1,
+				},
+				[2] = {
+					["CLSID"] = "DIS_GB6",
+					["num"] = 3,
+				},
+				[3] = {
+					["CLSID"] = "DIS_SPJ_POD",
+					["num"] = 4,
+				},
+				[4] = {
+					["CLSID"] = "DIS_GB6",
+					["num"] = 5,
+				},
+				[5] = {
+					["CLSID"] = "DIS_PL-5EII",
+					["num"] = 7,
+				},
+			},
+			["tasks"] = {
+				[1] = 31,
+			},
+		},
 	},
 	["unitType"] = "JF-17",
 }

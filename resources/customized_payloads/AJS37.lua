@@ -240,6 +240,43 @@ local unitPayloads = {
 				[1] = 34,
 			},
 		},
+		[8] = {
+			["displayName"] = "Retribution DEAD",
+			["name"] = "Retribution DEAD",
+			["pylons"] = {
+				[1] = {
+					["CLSID"] = "{RB75}",
+					["num"] = 5,
+				},
+				[2] = {
+					["CLSID"] = "{RB75}",
+					["num"] = 3,
+				},
+				[3] = {
+					["CLSID"] = "{RB75}",
+					["num"] = 2,
+				},
+				[4] = {
+					["CLSID"] = "{RB75}",
+					["num"] = 6,
+				},
+				[5] = {
+					["CLSID"] = "{Robot24J}",
+					["num"] = 1,
+				},
+				[6] = {
+					["CLSID"] = "{Robot24J}",
+					["num"] = 7,
+				},
+				[7] = {
+					["CLSID"] = "{VIGGEN_X-TANK}",
+					["num"] = 4,
+				},
+			},
+			["tasks"] = {
+				[1] = 31,
+			},
+		},
 	},
 	["tasks"] = {
 	},

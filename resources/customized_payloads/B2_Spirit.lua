@@ -72,18 +72,15 @@ local unitPayloads = {
 		{
 			["displayName"]="Retribution DEAD",
 			["name"]="Retribution DEAD",
-			["pylons"]=
-			{
-				[1]=
-				{
-					["CLSID"]="{B2_CBU97*18}",
-					["num"]=1
+			["pylons"] = {
+				[1] = {
+					["CLSID"] = "{B2_AGM-154C*8}",
+					["num"] = 1,
 				},
-				[2]=
-				{
-					["CLSID"]="{B2_GBU-27*4}",
-					["num"]=2
-				}
+				[2] = {
+					["CLSID"] = "{B2_GBU-38*40}",
+					["num"] = 2,
+				},
 			},
 			["tasks"]=
 			{

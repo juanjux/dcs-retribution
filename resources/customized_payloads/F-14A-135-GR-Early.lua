@@ -157,32 +157,24 @@ local unitPayloads = {
 					["num"] = 1,
 				},
 				[3] = {
-					["CLSID"] = "{PHXBRU3242_2*LAU10 LS}",
-					["num"] = 2,
-				},
-				[4] = {
-					["CLSID"] = "{PHXBRU3242_2*LAU10 RS}",
+					["CLSID"] = "{F14-LANTIRN-TP}",
 					["num"] = 9,
 				},
-				[5] = {
+				[4] = {
 					["CLSID"] = "{F14-300gal}",
 					["num"] = 8,
 				},
-				[6] = {
+				[5] = {
 					["CLSID"] = "{F14-300gal}",
 					["num"] = 3,
 				},
-				[7] = {
-					["CLSID"] = "{AIM_54C_Mk60}",
-					["num"] = 7,
-				},
-				[8] = {
-					["CLSID"] = "{BELLY AIM-7MH}",
-					["num"] = 5,
-				},
-				[9] = {
-					["CLSID"] = "{AIM_54C_Mk60}",
+				[6] = {
+					["CLSID"] = "{BRU-32 GBU-24}",
 					["num"] = 4,
+				},
+				[7] = {
+					["CLSID"] = "{BRU-32 GBU-24}",
+					["num"] = 6,
 				},
 			},
 			["tasks"] = {
@@ -383,6 +375,6 @@ local unitPayloads = {
 			},
 		},
 	},
-	["unitType"] = "F-14A-135-GR",
+	["unitType"] = "F-14A-135-GR-Early",
 }
 return unitPayloads

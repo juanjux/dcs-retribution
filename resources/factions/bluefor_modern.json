@@ -4,6 +4,9 @@
   "authors": "Khopa",
   "description": "<p>A generic bluefor modern faction. This also includes many redfor units and is meant to be a faction that has access to most modern flyable modules.</p>",
   "aircrafts": [
+    "F-15EX Eagle II",
+    "F-15C EG Golden Eagle",
+    "Eurofighter Typhoon",
     "A-10A Thunderbolt II",
     "A-10C Thunderbolt II (Suite 3)",
     "A-10C Thunderbolt II (Suite 7)",
@@ -20,6 +23,7 @@
     "CH-47D",
     "CH-47F Block I",
     "F-14B Tomcat",
+    "F-14B(U) Tomcat",
     "F-15C Eagle",
     "F-15D Baz",
     "F-15E Strike Eagle (AI)",

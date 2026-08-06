@@ -20,6 +20,9 @@ altitudes:
   cruise: 15000
   combat: 10000
 tasks:
+  DEAD: 680
   BAI: 680
   CAS: 680
   OCA/Aircraft: 680
+secondary_tasks:
+  - DEAD

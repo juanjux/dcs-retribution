@@ -53,9 +53,7 @@ class NewGameWizard(QtWidgets.QWizard):
         logging.info("New Game Wizard accept")
         logging.info("======================")
 
-        campaign = self.field("selectedCampaign")
-        if campaign is None:
-            campaign = self.theater_page.campaignList.selected_campaign
+        campaign = self.theater_page.campaignList.selected_campaign
         if campaign is None:
             campaign = self.campaigns[0]
 
@@ -99,6 +97,10 @@ class NewGameWizard(QtWidgets.QWizard):
             f_15_idf=self.field("f_15_idf"),
             f_16_idf=self.field("f_16_idf"),
             fa_18efg=self.field("fa_18efg"),
+            fa18c_aargm_er=self.field("fa18c_aargm_er"),
+            fa18c_aargm_er_realistic=self.field("fa18c_aargm_er_realistic"),
+            fa18c_lrasm=self.field("fa18c_lrasm"),
+            fa18c_jassm=self.field("fa18c_jassm"),
             fa18ef_tanker=self.field("fa18ef_tanker"),
             f4e_expanded_weapons=self.field("f4e_expanded_weapons"),
             f22_raptor=self.field("f22_raptor"),
@@ -119,6 +121,9 @@ class NewGameWizard(QtWidgets.QWizard):
             su15_flagon=self.field("su15_flagon"),
             su30_flanker_h=self.field("su30_flanker_h"),
             su35s_flanker_m=self.field("su35s_flanker_m"),
+            f15ex=self.field("f15ex"),
+            f15cge=self.field("f15cge"),
+            eurofighter=self.field("eurofighter"),
             su57_felon=self.field("su57_felon"),
             ov10a_bronco=self.field("ov10a_bronco"),
             frenchpack=self.field("frenchpack"),
@@ -129,6 +134,7 @@ class NewGameWizard(QtWidgets.QWizard):
             SWPack=self.field("SWPack"),
             vietnamwarvessels=self.field("vietnamwarvessels"),
             chinesemilitaryassetspack=self.field("chinesemilitaryassetspack"),
+            iranmilitaryassetspack=self.field("iranmilitaryassetspack"),
             russianmilitaryassetspack=self.field("russianmilitaryassetspack"),
             usamilitaryassetspack=self.field("usamilitaryassetspack"),
             ukmilitaryassetspack=self.field("ukmilitaryassetspack"),

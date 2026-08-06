@@ -30,5 +30,6 @@ clsids:
   - "{CBU-1/A_TER_2_R}"   # 2 x CBU-1/A pod - 19 x tubes of Bomblets BLU-4B x 27, HE (TER)
   - "{CBU-2/A_TER_2_L}"   # 2 x CBU-2/A pod - 19 x tubes of Bomblets BLU-3B x 19, HE (TER)
   - "{CBU-2/A_TER_2_R}"   # 2 x CBU-2/A pod - 19 x tubes of Bomblets BLU-3B x 19, HE (TER)
+  - "{GD_F100_CBU-2BA}"   # CBU-2B/A x 22x19 (418) Bomblets - BLU-3B x 22, HE Bomblets, HE
   - "{CBU-2B/A_TER_2_L}"   # 2 x CBU-2B/A pod - 19 x tubes of Bomblets BLU-3B x 19, HE (TER)
   - "{CBU-2B/A_TER_2_R}"   # 2 x CBU-2B/A pod - 19 x tubes of Bomblets BLU-3B x 19, HE (TER)

@@ -14,8 +14,8 @@ from PySide6.QtWidgets import (
     QCheckBox,
 )
 from dcs import Point
-
 from game.config import REWARDS
+from game.cruise_raids import tgo_magazines
 from game.data.building_data import FORTIFICATION_BUILDINGS
 from game.server import EventStream
 from game.sim.gameupdateevents import GameUpdateEvents
@@ -72,8 +72,10 @@ class QGroundObjectMenu(QDialog):
         self.intelBox = QGroupBox("Units :")
         self.buildingBox = QGroupBox("Buildings :")
         self.orientationBox = QGroupBox("Orientation :")
+        self.cruiseMissilesBox = QGroupBox("Cruise missiles :")
         self.intelLayout = QGridLayout()
         self.buildingsLayout = QGridLayout()
+        self.cruise_missile_rows: list[tuple[str, int]] = []
         self.sell_all_button = None
         self.total_value = 0
         self.init_ui()
@@ -91,6 +93,8 @@ class QGroundObjectMenu(QDialog):
                 self.mainLayout.addWidget(self.financesBox)
         else:
             self.mainLayout.addWidget(self.intelBox)
+            if self.cruise_missile_rows:
+                self.mainLayout.addWidget(self.cruiseMissilesBox)
             self.mainLayout.addWidget(self.orientationBox)
             if self.ground_object.is_iads and self.cp.is_friendly(to_player=Player.RED):
                 self.mainLayout.addWidget(self.hiddenBox)
@@ -135,19 +139,44 @@ class QGroundObjectMenu(QDialog):
                     QLabel(f"<b>Unit {str(unit.display_name)}</b>"), i, 0
                 )
 
-                if not unit.alive and unit.repairable and self.cp.captured.is_blue:
-                    price = unit.unit_type.price if unit.unit_type else 0
-                    repair = QPushButton(f"Repair [{price}M]")
-                    repair.setProperty("style", "btn-success")
-                    repair.clicked.connect(
-                        lambda u=unit, p=price: self.repair_unit(u, p)
-                    )
-                    self.intelLayout.addWidget(repair, i, 1)
+                if not unit.alive and unit.repairable:
+                    if unit.repair_turns_remaining is not None:
+                        repair_label = QLabel(
+                            "Repairing (" f"{unit.repair_turns_remaining} turns)"
+                        )
+                        self.intelLayout.addWidget(repair_label, i, 1)
+                    elif self.cp.captured.is_blue:
+                        price = unit.unit_type.price if unit.unit_type else 0
+                        repair = QPushButton(f"Repair [{price}M]")
+                        repair.setProperty("style", "btn-success")
+                        repair.clicked.connect(
+                            # clicked emits a `checked` bool as the first positional
+                            # arg; absorb it so it doesn't clobber the captured unit
+                            # default (it was binding u=False -> crash in repair_unit).
+                            lambda checked=False, u=unit, p=price: self.repair_unit(
+                                u, p
+                            )
+                        )
+                        self.intelLayout.addWidget(repair, i, 1)
+                    else:
+                        self.intelLayout.addWidget(QLabel("Destroyed"), i, 1)
                 i += 1
 
         stretch = QVBoxLayout()
         stretch.addStretch()
         self.intelLayout.addLayout(stretch, i, 0)
+
+        # Cruise missile magazine, friendly launchers only: what the enemy has left in
+        # its tubes is not intel one click should hand out.
+        self.cruise_missile_rows = self.friendly_cruise_missile_magazines()
+        self.cruiseMissilesBox = QGroupBox("Cruise missiles :")
+        cruiseMissilesLayout = QGridLayout()
+        for row, (group_name, remaining) in enumerate(self.cruise_missile_rows):
+            cruiseMissilesLayout.addWidget(QLabel(f"<b>{group_name}</b>"), row, 0)
+            cruiseMissilesLayout.addWidget(
+                QLabel(f"{remaining} missile(s) remaining (no rearm)"), row, 1
+            )
+        self.cruiseMissilesBox.setLayout(cruiseMissilesLayout)
 
         self.buildingBox = QGroupBox("Buildings :")
         self.buildingsLayout = QGridLayout()
@@ -158,7 +187,9 @@ class QGroundObjectMenu(QDialog):
         for static in self.ground_object.statics:
             if static not in FORTIFICATION_BUILDINGS:
                 self.buildingsLayout.addWidget(
-                    QBuildingInfo(static, self.ground_object), j / 3, j % 3
+                    QBuildingInfo(static, self.ground_object, self.repair_building),
+                    j / 3,
+                    j % 3,
                 )
                 j = j + 1
 
@@ -228,6 +259,12 @@ class QGroundObjectMenu(QDialog):
         self.orientationBox.setLayout(self.orientationBoxLayout)
         self.hiddenBox.setLayout(self.hiddenBoxLayout)
 
+    def friendly_cruise_missile_magazines(self) -> list[tuple[str, int]]:
+        viewer = Player.BLUE if self.game_model.is_ownfor else Player.RED
+        if not self.cp.is_friendly(to_player=viewer):
+            return []
+        return tgo_magazines(self.game, self.ground_object)
+
     def update_hidden_on_mfd(self, state: bool) -> None:
         self.ground_object.hide_on_mfd = bool(state)
 
@@ -246,6 +283,8 @@ class QGroundObjectMenu(QDialog):
                 self.mainLayout.addWidget(self.buildingBox)
             else:
                 self.mainLayout.addWidget(self.intelBox)
+                if self.cruise_missile_rows:
+                    self.mainLayout.addWidget(self.cruiseMissilesBox)
                 self.mainLayout.addWidget(self.orientationBox)
 
             self.actionLayout = QHBoxLayout()
@@ -262,24 +301,59 @@ class QGroundObjectMenu(QDialog):
     def update_total_value(self):
         if not self.ground_object.purchasable:
             return
-        self.total_value = self.ground_object.value
+        self.total_value = self.ground_object.value + self.pending_repair_value()
         if self.sell_all_button is not None:
             self.sell_all_button.setText("Disband (+$" + str(self.total_value) + "M)")
+
+    def pending_repair_value(self) -> int:
+        total = 0
+        for unit in self.ground_object.units:
+            if unit.alive:
+                continue
+            if unit.repair_turns_remaining is None:
+                continue
+            if unit.unit_type is None:
+                continue
+            total += unit.unit_type.price
+        return total
 
     def repair_unit(self, unit, price):
         if self.game.blue.budget > price:
             self.game.blue.budget -= price
-            unit.alive = True
+            repair_turns = self.game.settings.ground_object_repair_turns
+            if repair_turns == 0:
+                unit.alive = True
+                destroyed_units = self.game.get_destroyed_units()
+                for d in list(destroyed_units):
+                    p = Point(d["x"], d["z"], self.game.theater.terrain)
+                    if p.distance_to_point(unit.position) < 15:
+                        destroyed_units.remove(d)
+                        logging.info("Removed destroyed units " + str(d))
+                logging.info(f"Repaired unit: {unit.unit_name}")
+            else:
+                unit.repair_turns_remaining = repair_turns
+                logging.info(f"Scheduled unit repair: {unit.unit_name}")
             GameUpdateSignal.get_instance().updateGame(self.game)
 
-            # Remove destroyed units in the vicinity
-            destroyed_units = self.game.get_destroyed_units()
-            for d in destroyed_units:
-                p = Point(d["x"], d["z"], self.game.theater.terrain)
-                if p.distance_to_point(unit.position) < 15:
-                    destroyed_units.remove(d)
-                    logging.info("Removed destroyed units " + str(d))
-            logging.info(f"Repaired unit: {unit.unit_name}")
+        self.update_game()
+
+    def repair_building(self, unit, price):
+        if self.game.blue.budget > price:
+            self.game.blue.budget -= price
+            repair_turns = self.game.settings.building_repair_turns
+            if repair_turns == 0:
+                unit.alive = True
+                destroyed_units = self.game.get_destroyed_units()
+                for d in list(destroyed_units):
+                    p = Point(d["x"], d["z"], self.game.theater.terrain)
+                    if p.distance_to_point(unit.position) < 15:
+                        destroyed_units.remove(d)
+                        logging.info("Removed destroyed units " + str(d))
+                logging.info(f"Repaired building: {unit.unit_name}")
+            else:
+                unit.repair_turns_remaining = repair_turns
+                logging.info(f"Scheduled building repair: {unit.unit_name}")
+            GameUpdateSignal.get_instance().updateGame(self.game)
 
         self.update_game()
 

@@ -5,7 +5,7 @@ groups:
   - SkySabre:
     - name: Search Radar
       unit_count:
-        - 1
+        - 2  # guidance-radar redundancy: one ARM hit must not blind the whole site
       unit_types:
         - CH_SkySabreGiraffe
       unit_classes:
@@ -21,7 +21,7 @@ groups:
       unit_count:
         - 2
       unit_types:
-        - CH_SkySabreLN
+        - CH_SkySabre
       unit_classes:
         - Launcher
     - name: Logistics

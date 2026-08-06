@@ -174,6 +174,47 @@ local unitPayloads = {
 				[1] = 29,
 			},
 		},
+		[4] = {
+			["displayName"] = "Retribution DEAD",
+			["name"] = "Retribution DEAD",
+			["pylons"] = {
+				[1] = {
+					["CLSID"] = "{Su30-R-74M2-AA}",
+					["num"] = 2,
+				},
+				[2] = {
+					["CLSID"] = "{Su30-R-74M2-AA}",
+					["num"] = 11,
+				},
+				[3] = {
+					["CLSID"] = "{DUAL_77M}",
+					["num"] = 6,
+				},
+				[4] = {
+					["CLSID"] = "{DUAL_77M}",
+					["num"] = 7,
+				},
+				[5] = {
+					["CLSID"] = "{SU30_KH59MK2}",
+					["num"] = 3,
+				},
+				[6] = {
+					["CLSID"] = "{SU30_KH59MK2}",
+					["num"] = 4,
+				},
+				[7] = {
+					["CLSID"] = "{SU30_KH59MK2}",
+					["num"] = 9,
+				},
+				[8] = {
+					["CLSID"] = "{SU30_KH59MK2}",
+					["num"] = 10,
+				},
+			},
+			["tasks"] = {
+				[1] = 31,
+			},
+		},
 	},
 	["tasks"] = {
 	},

@@ -71,6 +71,7 @@ from .missiontarget import MissionTarget
 from .player import Player
 from .theatergroundobject import (
     GenericCarrierGroundObject,
+    MotorpoolGroundObject,
     TheaterGroundObject,
     VehicleGroupGroundObject,
 )
@@ -100,6 +101,60 @@ if TYPE_CHECKING:
 FREE_FRONTLINE_UNIT_SUPPLY: int = 15
 AMMO_DEPOT_FRONTLINE_UNIT_CONTRIBUTION: int = 12
 TRIGGER_RADIUS_CAPTURE = 3000
+
+
+def warn_if_motorpool_inside_capture_zone(
+    name: str, location: Point, control_point: ControlPoint
+) -> None:
+    """Log a loud error when a motorpool preset sits inside its CP's capture zone.
+
+    Motorpool vehicles render as live DCS ground units of the owning CP. While
+    any survive inside the capture radius, DCS's base-capture trigger
+    (AllOfCoalitionOutsideZone, unit_type=GROUND) counts them, so the base
+    cannot be captured by ground assault -- and the AI commander's
+    capture-blocking model ignores MotorpoolGroundObjects, so it won't clear
+    them either. Motorpools must therefore be authored outside the capture
+    perimeter. This is a campaign-authoring check only; it never relocates
+    anything.
+    """
+    distance = meters(location.distance_to_point(control_point.position))
+    if distance < meters(TRIGGER_RADIUS_CAPTURE):
+        logging.error(
+            f"Motorpool '{name}' is {distance} from control point "
+            f"'{control_point.name}', inside its approximately 2 nm "
+            f"({meters(TRIGGER_RADIUS_CAPTURE)} meter) capture zone. Its parked reserve vehicles are live ground units and "
+            "will block base capture. Relocate the motorpool's Garage_A marker "
+            "outside the capture radius."
+        )
+
+
+@dataclass(frozen=True)
+class MotorpoolCaptureViolation:
+    control_point: str
+    motorpool: str
+    distance: Distance
+
+    def __str__(self) -> str:
+        return f"{self.motorpool} ({self.distance} from {self.control_point})"
+
+
+def motorpools_inside_capture_zone(
+    control_points: Iterable[ControlPoint],
+) -> list[MotorpoolCaptureViolation]:
+    """Every motorpool TGO whose parked-vehicle position sits inside its CP's
+    capture zone. The owning CP cannot be captured by ground assault while any
+    of those live ground units survive inside the radius, so the UI warns
+    (both at new-game generation and on save load)."""
+    violations: list[MotorpoolCaptureViolation] = []
+    for cp in control_points:
+        for tgo in cp.ground_objects:
+            if isinstance(tgo, MotorpoolGroundObject):
+                distance = meters(tgo.position.distance_to_point(cp.position))
+                if distance < meters(TRIGGER_RADIUS_CAPTURE):
+                    violations.append(
+                        MotorpoolCaptureViolation(cp.name, tgo.name, distance)
+                    )
+    return violations
 
 
 class ControlPointType(Enum):
@@ -161,6 +216,9 @@ class PresetLocations:
     #: Locations of ammo depots for controlling number of units on the front line at a
     #: control point.
     ammunition_depots: List[PresetLocation] = field(default_factory=list)
+
+    #: Locations of per-campaign motorpool reserve-vehicle parks.
+    motorpools: List[PresetLocation] = field(default_factory=list)
 
     #: Locations of stationary armor groups.
     armor_groups: List[PresetLocation] = field(default_factory=list)
@@ -250,6 +308,10 @@ class GroundUnitAllocations:
         return sum(self.transferring.values())
 
 
+# A cratered runway takes this many turns to repair (RunwayStatus.begin_repair).
+RUNWAY_REPAIR_TURNS = 4
+
+
 @dataclass
 class RunwayStatus:
     damaged: bool = False
@@ -268,7 +330,7 @@ class RunwayStatus:
     def begin_repair(self) -> None:
         if self.repair_turns_remaining is not None:
             logging.error("Runway already under repair. Restarting.")
-        self.repair_turns_remaining = 4
+        self.repair_turns_remaining = RUNWAY_REPAIR_TURNS
 
     def process_turn(self) -> None:
         if self.repair_turns_remaining is not None:
@@ -1050,7 +1112,95 @@ class ControlPoint(MissionTarget, SidcDescribable, ABC):
             return
         self.runway_status.begin_repair()
 
-    def process_turn(self, game: Game) -> None:
+    def process_ground_object_repairs(
+        self, game: Game, events: GameUpdateEvents
+    ) -> None:
+        destroyed_units = game.get_destroyed_units()
+        for ground_object in self.ground_objects:
+            for unit in ground_object.units:
+                turns_remaining = unit.repair_turns_remaining
+                if turns_remaining is None:
+                    continue
+                if unit.alive:
+                    unit.repair_turns_remaining = None
+                    continue
+                if turns_remaining <= 1:
+                    unit.repair_turns_remaining = None
+                    unit.revive(events)
+                    for entry in list(destroyed_units):
+                        p = Point(
+                            float(entry["x"]),
+                            float(entry["z"]),
+                            game.theater.terrain,
+                        )
+                        if p.distance_to_point(unit.position) < 15:
+                            destroyed_units.remove(entry)
+                else:
+                    unit.repair_turns_remaining = turns_remaining - 1
+
+    @staticmethod
+    def _max_pending_repair_turns(ground_object: TheaterGroundObject) -> Optional[int]:
+        """Highest repair_turns_remaining among the object's still-dead units.
+
+        The object is only fully back in service once every pending unit has
+        finished, so the object-level estimate is the slowest of them. Returns
+        None when nothing is currently under repair.
+        """
+        turns: list[int] = [
+            unit.repair_turns_remaining
+            for unit in ground_object.units
+            if not unit.alive and unit.repair_turns_remaining is not None
+        ]
+        return max(turns) if turns else None
+
+    def report_repairs(
+        self,
+        game: Game,
+        runway_was_repairing: bool,
+        ground_objects_repairing: Iterable[TheaterGroundObject],
+    ) -> None:
+        """Surface this turn's repair progress in the info panel.
+
+        Finished repairs (completed this turn) are reported for both coalitions.
+        For the player's own bases we additionally report repairs that started or
+        continued this turn, with the number of turns remaining.
+
+        Args:
+            runway_was_repairing: Whether the runway was under repair before this
+                turn was processed.
+            ground_objects_repairing: Ground objects that had pending repairs
+                before this turn was processed.
+        """
+        if self.captured.is_neutral:
+            return
+        is_player = self.captured.is_blue
+        who = "We have" if is_player else "OPFOR has"
+
+        runway_status = self.runway_status
+        if runway_was_repairing and runway_status is not None:
+            if (
+                runway_status.repair_turns_remaining is None
+                and not runway_status.damaged
+            ):
+                game.message(f"{who} finished repairing the runway at {self}")
+            elif is_player and runway_status.repair_turns_remaining is not None:
+                game.message(
+                    f"Runway repair at {self} in progress, "
+                    f"{runway_status.repair_turns_remaining} turns remaining"
+                )
+
+        for ground_object in ground_objects_repairing:
+            if not ground_object.has_pending_repairs:
+                game.message(f"{who} finished repairs at {ground_object.obj_name}")
+            elif is_player:
+                turns_remaining = ControlPoint._max_pending_repair_turns(ground_object)
+                if turns_remaining is not None:
+                    game.message(
+                        f"Repairs at {ground_object.obj_name} in progress, "
+                        f"{turns_remaining} turns remaining"
+                    )
+
+    def process_turn(self, game: Game, events: GameUpdateEvents) -> None:
         # We're running at the end of the turn, so the time right now is irrelevant, and
         # we don't know what time the next turn will start yet. It doesn't actually
         # matter though, because the first thing the start of turn action will do is
@@ -1059,9 +1209,26 @@ class ControlPoint(MissionTarget, SidcDescribable, ABC):
 
         self.release_parking_slots()
 
+        # Snapshot repair state before processing so we can tell which repairs
+        # finished this turn (reported for both sides) from those still in
+        # progress (reported for the player only).
         runway_status = self.runway_status
+        runway_was_repairing = (
+            runway_status is not None
+            and runway_status.repair_turns_remaining is not None
+        )
+        ground_objects_repairing = [
+            ground_object
+            for ground_object in self.ground_objects
+            if self._max_pending_repair_turns(ground_object) is not None
+        ]
+
         if runway_status is not None:
             runway_status.process_turn()
+
+        self.process_ground_object_repairs(game, events)
+
+        self.report_repairs(game, runway_was_repairing, ground_objects_repairing)
 
         # Process movements for ships control points group
         if self.target_position is not None:
@@ -1221,7 +1388,7 @@ class ControlPoint(MissionTarget, SidcDescribable, ABC):
     def status(self) -> ControlPointStatus: ...
 
 
-class Airfield(ControlPoint, CTLD):
+class Airfield(ControlPoint, CTLD, TacanContainer):
     def __init__(
         self,
         airport: Airport,
@@ -1409,7 +1576,7 @@ class NavalControlPoint(
         else:
             yield from [
                 FlightType.ANTISHIP,
-                FlightType.SEAD_ESCORT,
+                FlightType.SEAD,
             ]
         yield from super().mission_types(for_player)
         if self.is_friendly(for_player):
@@ -1488,9 +1655,15 @@ class NavalControlPoint(
 
     @property
     def status(self) -> ControlPointStatus:
-        if not self.runway_is_operational():
+        # Reflect unit survival of the carrier group on the map symbol, the
+        # same way naval groups do: green when intact, yellow while anything
+        # survives (e.g. the carrier itself sunk but escorts remain), red only
+        # once the whole group is gone. This is purely cosmetic;
+        # runway_is_operational() still governs whether the carrier can launch.
+        main_tgo = self.find_main_tgo()
+        if main_tgo.is_dead:
             return ControlPointStatus.Destroyed
-        if self.find_main_tgo().dead_units:
+        if main_tgo.dead_units:
             return ControlPointStatus.Damaged
         return ControlPointStatus.Functional
 

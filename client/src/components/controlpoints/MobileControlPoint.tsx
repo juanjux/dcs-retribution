@@ -1,6 +1,12 @@
 import { ControlPoint } from "../../api/_liberationApi";
 import backend from "../../api/backend";
 import {
+  selectHighlightEmitters,
+  selectHoveredEmitter,
+  setHoveredEmitter,
+} from "../../api/mapSlice";
+import { useAppDispatch, useAppSelector } from "../../app/hooks";
+import {
   useClearControlPointDestinationMutation,
   useSetControlPointDestinationMutation,
 } from "../../api/liberationApi";
@@ -69,6 +75,13 @@ function PrimaryMarker(props: PrimaryMarkerProps) {
   // cause this component to redraw.
   const markerRef = useRef<LMarker | null>(null);
   const pathRef = useRef<MovementPathHandle | null>(null);
+  const dispatch = useAppDispatch();
+  // Raised above other icons while this emitter (or its ring) is hovered.
+  const raised = useAppSelector(
+    (state) =>
+      selectHighlightEmitters(state) &&
+      selectHoveredEmitter(state) === props.controlPoint.id
+  );
 
   const [hasDestination, setHasDestination] = useState<boolean>(
     props.controlPoint.destination != null
@@ -102,7 +115,12 @@ function PrimaryMarker(props: PrimaryMarkerProps) {
             true
           )
         : ReactDOMServer.renderToString(
-            <LocationTooltipText name={props.controlPoint.name} />
+            <LocationTooltipText
+              name={props.controlPoint.name}
+              units={props.controlPoint.units}
+              tacan={props.controlPoint.tacan}
+              atcFrequency={props.controlPoint.atc_frequency}
+            />
           )
     );
   });
@@ -121,7 +139,7 @@ function PrimaryMarker(props: PrimaryMarkerProps) {
         // We might draw other markers on top of the CP. The tooltips from the
         // other markers are helpful so we want to keep them, but make sure the CP
         // is always the clickable thing.
-        zIndexOffset={1000}
+        zIndexOffset={raised ? 10000 : 1000}
         opacity={props.controlPoint.destination ? 0.5 : 1}
         ref={(ref) => {
           if (ref != null) {
@@ -129,6 +147,15 @@ function PrimaryMarker(props: PrimaryMarkerProps) {
           }
         }}
         eventHandlers={{
+          // Hovering the carrier highlights its escorts' rings (and vice versa).
+          mouseover: () =>
+            dispatch(
+              setHoveredEmitter({
+                id: props.controlPoint.id,
+                source: "emitter",
+              })
+            ),
+          mouseout: () => dispatch(setHoveredEmitter(null)),
           click: () => {
             if (!hasDestination) {
               locationClickHandlers.click();

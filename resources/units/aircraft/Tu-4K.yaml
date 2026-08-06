@@ -16,3 +16,5 @@ tasks:
   Anti-ship: 200
   BAI: 270
   DEAD: 245
+secondary_tasks:
+  - DEAD

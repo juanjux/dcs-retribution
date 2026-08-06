@@ -20,3 +20,5 @@ tasks:
   Strike: 650
   Anti-ship: 490
   DEAD: 290
+secondary_tasks:
+  - DEAD

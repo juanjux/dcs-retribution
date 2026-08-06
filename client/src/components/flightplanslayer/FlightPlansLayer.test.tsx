@@ -96,10 +96,11 @@ describe("FlightPlansLayer", () => {
         },
       });
 
-      // For some reason passing ref to PolyLine causes it and its group to be
-      // redrawn, so these numbers don't match what you'd expect from the test.
-      // It probably needs to be rewritten without mocks.
-      expect(mockPolyline).toHaveBeenCalledTimes(3);
+      // Each drawn blue flight renders two polylines now: the visible route and
+      // a wide invisible hover overlay. Passing a ref to the visible one also
+      // causes a redraw, so these counts are higher than the flight count. (It
+      // probably needs to be rewritten without mocks.)
+      expect(mockPolyline).toHaveBeenCalledTimes(5);
       expect(mockLayerGroup).toBeCalledTimes(2);
     });
     it("are not drawn if wrong coalition", () => {
@@ -178,7 +179,7 @@ describe("FlightPlansLayer", () => {
           },
         },
       });
-      expect(mockPolyline).toHaveBeenCalledTimes(1);
+      expect(mockPolyline).toHaveBeenCalledTimes(2);
       expect(mockLayerGroup).toBeCalledTimes(1);
     });
     it("are not drawn when only selected flights are to be drawn", () => {
@@ -305,7 +306,7 @@ describe("FlightPlansLayer", () => {
           },
         },
       });
-      expect(mockPolyline).toHaveBeenCalledTimes(2);
+      expect(mockPolyline).toHaveBeenCalledTimes(4);
       expect(mockLayerGroup).toBeCalledTimes(1);
     });
     it("are not drawn twice", () => {
@@ -351,7 +352,7 @@ describe("FlightPlansLayer", () => {
           },
         },
       });
-      expect(mockPolyline).toHaveBeenCalledTimes(1);
+      expect(mockPolyline).toHaveBeenCalledTimes(2);
       expect(mockLayerGroup).toBeCalledTimes(1);
     });
     it("are not drawn if red", () => {

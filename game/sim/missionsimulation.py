@@ -34,6 +34,9 @@ class MissionSimulation:
         self.aircraft_simulation = AircraftSimulation(self.game)
         self.completed = False
         self.time = self.game.conditions.start_time
+        #: Wall-clock time the playable .miz was generated. Any state.json
+        #: written after this belongs to the current mission; older files are
+        #: stale leftovers and must be ignored by end-of-mission detection.
         self.miz_generated_at: float = 0.0
 
     def begin_simulation(self) -> None:

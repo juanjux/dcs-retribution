@@ -609,31 +609,31 @@ local unitPayloads = {
 			["name"] = "Retribution DEAD",
 			["pylons"] = {
 				[1] = {
-					["CLSID"] = "LAU_117_AGM_65G",
-					["num"] = 7,
+					["CLSID"] = "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}",
+					["num"] = 9,
 				},
 				[2] = {
-					["CLSID"] = "{F376DBEE-4CAE-41BA-ADD9-B2910AC95DEC}",
-					["num"] = 6,
-				},
-				[3] = {
-					["CLSID"] = "ALQ_184",
-					["num"] = 5,
-				},
-				[4] = {
 					["CLSID"] = "{5CE2FF2A-645A-4197-B48D-8720AC69394F}",
 					["num"] = 8,
 				},
+				[3] = {
+					["CLSID"] = "{BRU57_2*AGM-154A}",
+					["num"] = 7,
+				},
+				[4] = {
+					["CLSID"] = "{F376DBEE-4CAE-41BA-ADD9-B2910AC95DEC}",
+					["num"] = 6,
+				},
 				[5] = {
-					["CLSID"] = "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}",
-					["num"] = 9,
+					["CLSID"] = "ALQ_184",
+					["num"] = 5,
 				},
 				[6] = {
 					["CLSID"] = "{F376DBEE-4CAE-41BA-ADD9-B2910AC95DEC}",
 					["num"] = 4,
 				},
 				[7] = {
-					["CLSID"] = "LAU_117_AGM_65G",
+					["CLSID"] = "{BRU57_2*AGM-154A}",
 					["num"] = 3,
 				},
 				[8] = {

@@ -23,3 +23,5 @@ tasks:
   Strike: 600
   SEAD: 30
   SEAD Escort: 30
+secondary_tasks:
+  - DEAD

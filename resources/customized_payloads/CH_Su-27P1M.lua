@@ -357,11 +357,11 @@ local unitPayloads = {
 					["num"] = 9,
 				},
 				[3] = {
-					["CLSID"] = "{CH_AASM250}",
+					["CLSID"] = "{MIG29MU2_JDAM-ER}",
 					["num"] = 8,
 				},
 				[4] = {
-					["CLSID"] = "{CH_AASM250}",
+					["CLSID"] = "{MIG29MU2_JDAM-ER}",
 					["num"] = 7,
 				},
 				[5] = {
@@ -373,11 +373,11 @@ local unitPayloads = {
 					["num"] = 5,
 				},
 				[7] = {
-					["CLSID"] = "{CH_AASM250}",
+					["CLSID"] = "{MIG29MU2_JDAM-ER}",
 					["num"] = 4,
 				},
 				[8] = {
-					["CLSID"] = "{CH_AASM250}",
+					["CLSID"] = "{MIG29MU2_JDAM-ER}",
 					["num"] = 3,
 				},
 				[9] = {

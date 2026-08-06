@@ -88,23 +88,23 @@ local unitPayloads = {
 					["num"] = 1,
 				},
 				[3] = {
-					["CLSID"] = "LAU_117_AGM_65F",
-					["num"] = 6,
+					["CLSID"] = "{GBU_32_V_2B}",
+					["num"] = 7,
 				},
 				[4] = {
-					["CLSID"] = "LAU_117_AGM_65F",
-					["num"] = 3,
+					["CLSID"] = "{GBU_32_V_2B}",
+					["num"] = 6,
 				},
 				[5] = {
 					["CLSID"] = "{A111396E-D3E8-4b9c-8AC9-2432489304D5}",
 					["num"] = 5,
 				},
 				[6] = {
-					["CLSID"] = "LAU_117_AGM_65F",
-					["num"] = 7,
+					["CLSID"] = "{GBU_32_V_2B}",
+					["num"] = 3,
 				},
 				[7] = {
-					["CLSID"] = "LAU_117_AGM_65F",
+					["CLSID"] = "{GBU_32_V_2B}",
 					["num"] = 2,
 				},
 			},

@@ -12,6 +12,7 @@ from dcs.mission import Mission
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from game.ato.flightwaypoint import FlightWaypoint
+from game.cruise_raids import CruiseRaid, LacmShip, player_briefing_info
 from game.ground_forces.combat_stance import CombatStance
 from game.radio.radios import RadioFrequency
 from game.runways import RunwayData
@@ -30,6 +31,16 @@ class CommInfo:
 
     name: str
     freq: RadioFrequency
+
+
+@dataclass
+class OwnedAirbaseInfo:
+    """A friendly airbase with its (optional) TACAN and ATC, for the briefing."""
+
+    name: str
+    tacan: str
+    tacan_callsign: str
+    atc: str
 
 
 class FrontLineInfo:
@@ -150,6 +161,8 @@ class BriefingGenerator(MissionInfoGenerator):
     def __init__(self, mission: Mission, game: Game):
         super().__init__(mission, game)
         self.allied_flights_by_departure: Dict[str, List[FlightData]] = {}
+        self.cruise_missile_ships: List[LacmShip] = []
+        self.cruise_missile_raids: List[CruiseRaid] = []
         env = Environment(
             loader=FileSystemLoader("resources/briefing/templates"),
             autoescape=select_autoescape(
@@ -167,16 +180,62 @@ class BriefingGenerator(MissionInfoGenerator):
     def generate(self) -> None:
         """Generate the mission briefing"""
         self._generate_frontline_info()
+        self._generate_cruise_missile_info()
         self.generate_allied_flights_by_departure()
+        self.owned_airbases = self._collect_owned_airbases()
         self.mission.set_description_text(self.template.render(vars(self)))
         self.mission.add_picture_blue(
             os.path.abspath("./resources/ui/splash_screen.png")
         )
 
+    def _collect_owned_airbases(self) -> List[OwnedAirbaseInfo]:
+        """List friendly airfields with their TACAN and ATC (when present).
+
+        The existing 'Carriers and FARPs' section only covers runways the
+        mission generator registers (carriers and per-flight alternates), so
+        regular blue airfields don't appear there.
+        """
+        from game.atcdata import AtcData
+        from game.radio.TacanContainer import TacanContainer
+        from game.theater.controlpoint import Airfield
+
+        owned: List[OwnedAirbaseInfo] = []
+        for cp in self.game.theater.controlpoints:
+            if not isinstance(cp, Airfield):
+                continue
+            if not cp.is_friendly(cp.coalition.player):
+                continue
+            tacan = "-"
+            callsign = ""
+            if isinstance(cp, TacanContainer) and cp.tacan is not None:
+                tacan = str(cp.tacan)
+                callsign = cp.tcn_name or ""
+            atc = "-"
+            atc_radio = AtcData.from_pydcs(cp.airport)
+            if atc_radio is not None and atc_radio.uhf is not None:
+                atc = str(atc_radio.uhf)
+            owned.append(
+                OwnedAirbaseInfo(
+                    name=cp.name,
+                    tacan=tacan,
+                    tacan_callsign=callsign,
+                    atc=atc,
+                )
+            )
+        owned.sort(key=lambda a: a.name)
+        return owned
+
     def _generate_frontline_info(self) -> None:
         """Build FrontLineInfo objects from FrontLine type and append to briefing."""
         for front_line in self.game.theater.conflicts():
             self.add_frontline(FrontLineInfo(front_line))
+
+    def _generate_cruise_missile_info(self) -> None:
+        """Friendly cruise missile ships with their magazines, plus this turn's planned
+        raid, so the tasking is visible before the in-mission launch message."""
+        self.cruise_missile_ships, self.cruise_missile_raids = player_briefing_info(
+            self.game
+        )
 
     # TODO: This should determine if runway is friendly through a method more robust than the existing string match
     def generate_allied_flights_by_departure(self) -> None:

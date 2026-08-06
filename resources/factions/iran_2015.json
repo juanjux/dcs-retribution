@@ -7,6 +7,8 @@
     "fa_IR"
   ],
   "aircrafts": [
+    "F-14A Tomcat (AI)",
+    "F-14A Tomcat (Block 135-GR Late)",
     "F-14A Tomcat (Block 95-GR Export)",
     "F-4E Phantom II",
     "F-4E-45MC Phantom II",
@@ -76,8 +78,7 @@
     "Frigate 1135M Rezky"
   ],
   "air_defense_units": [
-    "SAM P19 \"Flat Face\" SR (SA-2/3)",
-    "SAM Hawk SR (AN/MPQ-50)",
+    "EWR 1L13",
     "SA-15 Tor",
     "ZSU-57-2 'Sparka'",
     "ZU-23 on Ural-375",

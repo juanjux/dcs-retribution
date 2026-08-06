@@ -19,4 +19,7 @@ variants:
   F-117A Nighthawk: {}
 has_built_in_target_pod: true
 tasks:
+  DEAD: 710
   Strike: 710
+secondary_tasks:
+  - DEAD

@@ -7,6 +7,7 @@ from pydantic import BaseModel
 
 from game.data.groups import GroupTask
 from game.server.leaflet import LeafletPoint
+from game.theater.theatergroundobject import ShipGroundObject
 
 if TYPE_CHECKING:
     from game import Game
@@ -24,20 +25,50 @@ class TgoJs(BaseModel):
     threat_ranges: list[float]  # TODO: Event stream
     detection_ranges: list[float]  # TODO: Event stream
     dead: bool  # TODO: Event stream
+    # Whether the group can be rebuilt or repaired, so the map's "destroyed
+    # (non-repairable)" layer must NOT hide it even when dead: re-purchasable
+    # groups (SAM/EWR/armor), or buildings the building-repair feature can rebuild.
+    # (Wire name kept as `purchasable` for the JS client; value is tgo.repairable.)
+    purchasable: bool
+    # Repairs pending on this group's dead units. The client shows the health bar
+    # ORANGE (instead of the damaged yellow) while this is true, for partial and
+    # fully-dead groups alike.
+    repairing: bool
     sidc: str  # TODO: Event stream
     task: Optional[GroupTask]
+    mobile: bool
+    destination: Optional[LeafletPoint]
 
     class Config:
         title = "Tgo"
 
     @staticmethod
     def for_tgo(tgo: TheaterGroundObject) -> TgoJs:
-        threat_ranges = [group.max_threat_range().meters for group in tgo.groups]
-        detection_ranges = [group.max_detection_range().meters for group in tgo.groups]
+        # Only include non-zero ranges: a zero-radius circle renders as a stray
+        # dot (normally hidden under the unit icon, but visible once the icon is
+        # hidden by the destroyed-object layers). Matches ControlPointJs.
+        threat_ranges = [
+            meters
+            for meters in (group.max_threat_range().meters for group in tgo.groups)
+            if meters > 0
+        ]
+        detection_ranges = [
+            meters
+            for meters in (group.max_detection_range().meters for group in tgo.groups)
+            if meters > 0
+        ]
         if tgo.control_point.captured.is_blue:
             blue = True
         else:
             blue = False
+        mobile = isinstance(tgo, ShipGroundObject) and blue
+        destination: Optional[LeafletPoint] = None
+        if (
+            isinstance(tgo, ShipGroundObject)
+            and blue
+            and tgo.target_position is not None
+        ):
+            destination = LeafletPoint.from_latlng(tgo.target_position.latlng())
         return TgoJs(
             id=tgo.id,
             name=tgo.name,
@@ -49,8 +80,12 @@ class TgoJs(BaseModel):
             threat_ranges=threat_ranges,
             detection_ranges=detection_ranges,
             dead=tgo.is_dead,
+            purchasable=tgo.repairable,
+            repairing=tgo.has_pending_repairs,
             sidc=str(tgo.sidc()),
             task=tgo.groups[0].ground_object.task if tgo.groups else None,
+            mobile=mobile,
+            destination=destination,
         )
 
     @staticmethod

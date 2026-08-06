@@ -189,6 +189,35 @@ local unitPayloads = {
 				[1] = 31,
 			},
 		},
+		[7] = {
+			["displayName"] = "Retribution DEAD",
+			["name"] = "Retribution DEAD",
+			["pylons"] = {
+				[1] = {
+					["CLSID"] = "ALQ_184",
+					["num"] = 1,
+				},
+				[2] = {
+					["CLSID"] = "{DB434044-F5D0-4F1F-9BA9-B73027E18DD3}",
+					["num"] = 11,
+				},
+				[3] = {
+					["CLSID"] = "{A111396E-D3E8-4b9c-8AC9-2432489304D5}",
+					["num"] = 10,
+				},
+				[4] = {
+					["CLSID"] = "{GBU-31}",
+					["num"] = 8,
+				},
+				[5] = {
+					["CLSID"] = "{GBU-31}",
+					["num"] = 4,
+				},
+			},
+			["tasks"] = {
+				[1] = 31,
+			},
+		},
 	},
 	["unitType"] = "A-10C",
 }

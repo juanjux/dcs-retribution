@@ -15,7 +15,7 @@ from game.dcs.aircrafttype import AircraftType
 from game.purchaseadapter import AircraftPurchaseAdapter
 from game.squadrons import Squadron
 from game.theater import ControlPoint, ParkingType
-from qt_ui.models import GameModel
+from qt_ui.models import GameModel, SquadronModel
 from qt_ui.uiconstants import ICONS
 from qt_ui.windows.basemenu.UnitTransactionFrame import UnitTransactionFrame
 
@@ -93,6 +93,30 @@ class QAircraftRecruitmentMenu(UnitTransactionFrame[Squadron]):
     def post_transaction_update(self) -> None:
         super().post_transaction_update()
         self.hangar_status.update_label()
+
+    def existing_units_text(self, item: Squadron, count: int) -> str:
+        text = f"{count} ({item.untasked_aircraft} idle)"
+        if item.destination is not None:
+            text += f" - transfer ordered to {item.destination.name}"
+        return text
+
+    def supports_item_dialog(self) -> bool:
+        return True
+
+    def stacked_existing_units(self) -> bool:
+        return True
+
+    def on_item_clicked(self, item: Squadron) -> None:
+        from qt_ui.windows.SquadronDialog import SquadronDialog
+
+        self.squadron_dialog = SquadronDialog(
+            self.game_model.ato_model,
+            SquadronModel(item),
+            self.game_model.game.theater,
+            self.game_model.sim_controller,
+            self,
+        )
+        self.squadron_dialog.show()
 
 
 class QHangarStatus(QHBoxLayout):

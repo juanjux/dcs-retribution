@@ -56,13 +56,16 @@ clsids:
   - "{E79759F7-C622-4AA4-B1EF-37639A34D924}"   # 6 x Mk-20 Rockeye - 490lbs CBUs, 247 x HEAT Bomblets
   - "{BRU33_2X_CBU-99}"   # BRU-33 with 2 x CBU-99 - 490lbs, 247 x HEAT Bomblets
   - "{HB_A6E_MK20_MER_1x}"   # 1x Mk-20 Rockeye - 490lbs CBU, 247 x HEAT Bomblets (MER)
+  - "{GD_F100_TER_ROCKEYE_x1}"   # 1x Mk-20 Rockeye - 490lbs CBU, 247 x HEAT Bomblets (TER)
   - "{HB_A6E_MK20_MER_2x}"   # 2x Mk-20 Rockeye - 490lbs CBU, 247 x HEAT Bomblets (MER)
   - "{HB_A6E_MK20_TER_2x_RIGHT}"   # 2x Mk-20 Rockeye - 490lbs CBU, 247 x HEAT Bomblets (TER)
   - "{HB_A6E_MK20_TER_2x_LEFT}"   # 2x Mk-20 Rockeye - 490lbs CBU, 247 x HEAT Bomblets (TER)
+  - "{GD_F100_TER_ROCKEYE_x2}"   # 2x Mk-20 Rockeye - 490lbs CBU, 247 x HEAT Bomblets (TER)
   - "{HB_F4E_ROCKEYE_2x}"   # 2x Mk-20 Rockeye - 490lbs CBU, 247 x HEAT Bomblets (TER)
   - "{HB_A6E_MK20_MER_3x_RIGHT}"   # 3x Mk-20 Rockeye - 490lbs CBU, 247 x HEAT Bomblets (MER)
   - "{HB_A6E_MK20_MER_3x_LEFT}"   # 3x Mk-20 Rockeye - 490lbs CBU, 247 x HEAT Bomblets (MER)
   - "{HB_A6E_MK20_TER_3x}"   # 3x Mk-20 Rockeye - 490lbs CBU, 247 x HEAT Bomblets (TER)
+  - "{GD_F100_TER_ROCKEYE_x3}"   # 3x Mk-20 Rockeye - 490lbs CBU, 247 x HEAT Bomblets (TER)
   - "{HB_F4E_ROCKEYE_3x}"   # 3x Mk-20 Rockeye - 490lbs CBU, 247 x HEAT Bomblets (TER)
   - "{HB_A6E_MK20_MER_4x_RIGHT}"   # 4x Mk-20 Rockeye - 490lbs CBU, 247 x HEAT Bomblets (MER)
   - "{HB_A6E_MK20_MER_4x_LEFT}"   # 4x Mk-20 Rockeye - 490lbs CBU, 247 x HEAT Bomblets (MER)

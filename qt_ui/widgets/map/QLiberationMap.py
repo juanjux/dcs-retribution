@@ -53,3 +53,33 @@ class QLiberationMap(QWebEngineView):
         url.setQuery(f"server={host}:{port}")
         self.page.load(url)
         self.setPage(self.page)
+
+    def discard_renderer(self) -> None:
+        """Stop the QtWebEngine renderer process for this map.
+
+        Hiding/reparenting the view does NOT kill the renderer; its live desktop-GL
+        compositing is the peer the GUI thread's ``wglSwapLayerBuffers`` deadlocks on
+        (a synchronous SendMessage that never returns -> "Not Responding"). Discarding
+        the page lifecycle actually stops the renderer process. The page reloads
+        automatically when the view is shown again. Used while the mission panel owns
+        the map's splitter slot.
+        """
+        try:
+            self.page.setLifecycleState(QWebEnginePage.LifecycleState.Discarded)
+            # setLifecycleState is a silent no-op (not an exception) if the page is
+            # still visible or hasn't finished loading, so confirm it actually took --
+            # otherwise the renderer stays alive and the panel can still deadlock.
+            if self.page.lifecycleState() != QWebEnginePage.LifecycleState.Discarded:
+                logging.warning(
+                    "Map renderer not discarded (page still active/loading?); "
+                    "the mission panel may still hit the desktop-GL deadlock."
+                )
+        except (AttributeError, RuntimeError):
+            logging.exception("Failed to discard the map renderer")
+
+    def restore_renderer(self) -> None:
+        """Reactivate the renderer discarded by :meth:`discard_renderer` (reloads)."""
+        try:
+            self.page.setLifecycleState(QWebEnginePage.LifecycleState.Active)
+        except (AttributeError, RuntimeError):
+            logging.exception("Failed to reactivate the map renderer")

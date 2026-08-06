@@ -12,6 +12,7 @@ jest.mock("react-leaflet", () => ({
   Circle: (props: any) => {
     mockCircle(props);
   },
+  Tooltip: (props: PropsWithChildren<any>) => <>{props.children}</>,
 }));
 
 describe("colorFor", () => {
@@ -56,8 +57,10 @@ describe("AirDefenseRangeLayer", () => {
               threat_ranges: [],
               detection_ranges: [20],
               dead: false,
+              purchasable: true,
               sidc: "",
               task: [],
+              mobile: false,
             },
           },
         },
@@ -86,8 +89,10 @@ describe("AirDefenseRangeLayer", () => {
               threat_ranges: [10],
               detection_ranges: [20],
               dead: false,
+              purchasable: true,
               sidc: "",
               task: [],
+              mobile: false,
             },
           },
         },
@@ -102,7 +107,7 @@ describe("AirDefenseRangeLayer", () => {
         },
         radius: 10,
         color: colorFor(true, false),
-      })
+      }),
     );
   });
 
@@ -125,8 +130,10 @@ describe("AirDefenseRangeLayer", () => {
               threat_ranges: [10],
               detection_ranges: [20],
               dead: false,
+              purchasable: true,
               sidc: "",
               task: [],
+              mobile: false,
             },
           },
         },
@@ -141,7 +148,7 @@ describe("AirDefenseRangeLayer", () => {
         },
         radius: 20,
         color: colorFor(true, true),
-      })
+      }),
     );
   });
 });

@@ -29,6 +29,7 @@ variants:
   F-35A Lightning II (A/G): {}
 utc_kneeboard: true
 tasks:
+  DEAD: 500
   Armed Recon: 500
   BAI: 740
   CAS: 740
@@ -38,3 +39,5 @@ tasks:
   Strike: 600
 
 has_built_in_ecm: true
+secondary_tasks:
+  - DEAD

@@ -1,5 +1,5 @@
 altgraph==0.17.4
-anyio==3.7.1
+anyio==4.14.1
 asgiref==3.8.1
 atomicwrites==1.4.1
 attrs==25.3.0
@@ -20,6 +20,8 @@ iniconfig==2.1.0
 Jinja2==3.1.6
 lupa==2.7
 MarkupSafe==3.0.2
+mcp[cli]<2
+mgrs>=1.4.6
 mypy==1.15.0
 mypy-extensions==1.0.0
 nodeenv==1.9.1
@@ -33,7 +35,7 @@ pluggy==1.5.0
 pre-commit==4.2.0
 pydantic==2.11.0b2
 pydantic-settings==2.8.1
-pydcs @ git+https://github.com/dcs-retribution/pydcs@b0fc06a72be9787455747290cdad969c49a827df
+pydcs @ git+https://github.com/dcs-retribution/pydcs@3a79b8edf923042a5b933feb64543da9e6bdfd37
 pyinstaller==6.19.0
 pyinstaller-hooks-contrib==2026.0
 pyparsing==3.2.1
@@ -65,5 +67,4 @@ types-PyYAML==6.0.12.20241230
 types-tabulate==0.9.0.20241207
 uvicorn==0.34.0
 virtualenv==20.36.1
-watchgod==0.8.2
 websockets==15.0.1

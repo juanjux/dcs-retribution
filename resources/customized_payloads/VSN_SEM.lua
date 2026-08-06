@@ -138,6 +138,35 @@ local unitPayloads = {
 				[1] = 32,
 			},
 		},
+		[6] = {
+			["displayName"] = "Retribution DEAD",
+			["name"] = "Retribution DEAD",
+			["pylons"] = {
+				[1] = {
+					["CLSID"] = "{FC23864E-3B80-48E3-9C03-4DA8B1D7497B}",
+					["num"] = 1,
+				},
+				[2] = {
+					["CLSID"] = "{69DC8AE7-8F77-427B-B8AA-B19D3F478B65}",
+					["num"] = 2,
+				},
+				[3] = {
+					["CLSID"] = "{69DC8AE7-8F77-427B-B8AA-B19D3F478B65}",
+					["num"] = 6,
+				},
+				[4] = {
+					["CLSID"] = "{69DC8AE7-8F77-427B-B8AA-B19D3F478B65}",
+					["num"] = 10,
+				},
+				[5] = {
+					["CLSID"] = "{FC23864E-3B80-48E3-9C03-4DA8B1D7497B}",
+					["num"] = 11,
+				},
+			},
+			["tasks"] = {
+				[1] = 31,
+			},
+		},
 	},
 	["tasks"] = {
 	},

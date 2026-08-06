@@ -12,13 +12,16 @@ clsids:
   - "{B52H_BAY_M117}"   # 27 x M117 - 750lb GP Bomb LD
   - "{B58F99BA-5480-4572-8602-28B0449F5260}"   # 27 x M117 - 750lb GP Bombs LD
   - "{F4B_BRU42A_M117_3_LAU105_AIM9J_2}"   # BRU 42A M117*3 LAU105 AIM9J*2
+  - "{GD_F100_TER_M117_x1}"   # 1x M117 - 750lb GP Bomb LD (TER)
   - "{HB_A6E_M117_TER_2x_RIGHT}"   # 2x M117 - 750lb GP Bomb LD (TER)
   - "{HB_A6E_M117_TER_2x_LEFT}"   # 2x M117 - 750lb GP Bomb LD (TER)
+  - "{GD_F100_TER_M117_x2}"   # 2x M117 - 750lb GP Bomb LD (TER)
   - "{HB_F4E_M117_2x_Left}"   # 2x M117 - 750lb GP Bomb LD (TER)
   - "{HB_F4E_M117_2x_Right}"   # 2x M117 - 750lb GP Bomb LD (TER)
   - "{HB_F4E_M117_MER_3x_Left}"   # 3x M117 - 750lb GP Bomb LD (MER)
   - "{HB_F4E_M117_MER_3x_Right}"   # 3x M117 - 750lb GP Bomb LD (MER)
   - "{HB_A6E_M117_TER_3x}"   # 3x M117 - 750lb GP Bomb LD (TER)
+  - "{GD_F100_TER_M117_x3}"   # 3x M117 - 750lb GP Bomb LD (TER)
   - "{HB_F4E_M117_3x}"   # 3x M117 - 750lb GP Bomb LD (TER)
   - "{HB_A6E_M117_MER_4x}"   # 4x M117 - 750lb GP Bomb LD (MER)
   - "{HB_F4E_M117_MER_5x}"   # 5x M117 - 750lb GP Bomb LD (MER)

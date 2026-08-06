@@ -1,7 +1,9 @@
 import argparse
 import logging
 import ntpath
+import os
 import sys
+import tempfile
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -67,11 +69,29 @@ def on_game_load(game: Optional[Game]) -> None:
 
 
 def run_ui(game: Optional[Game], ui_flags: UiFlags) -> None:
+    # Use ANGLE (Direct3D) instead of desktop OpenGL for Qt. The desktop-GL path
+    # (opengl32/nvoglv64 + wglSwapLayerBuffers) can deadlock the main thread on a
+    # synchronous Win32 message when a modal dialog is shown over the live
+    # QtWebEngine map -- e.g. interacting with / clicking outside the "Waiting for
+    # mission completion" window froze the whole app ("Not Responding"). ANGLE
+    # keeps hardware acceleration (via Direct3D) but removes that wgl* synchronous
+    # path. Must be set before Qt initialises its GL integration, i.e. before the
+    # QApplication below; setdefault lets an explicit QT_OPENGL still override it.
+    os.environ.setdefault("QT_OPENGL", "angle")
+
     QApplication.setHighDpiScaleFactorRoundingPolicy(
         Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
     )
 
     app = QApplication(sys.argv)
+
+    # Use Qt's own (non-native) file/colour/font dialogs everywhere. The native
+    # Windows dialogs can deadlock when opened while the embedded QtWebEngine map
+    # is alive: the platform plugin issues a synchronous Win32 SendMessage that
+    # never returns, freezing the whole app. This bit us opening the "submit
+    # manually" file picker from the modal "waiting for mission result" dialog,
+    # but every native dialog launched over the map is at risk.
+    app.setAttribute(Qt.ApplicationAttribute.AA_DontUseNativeDialogs)
 
     # init the theme and load the stylesheet based on the theme index
     liberation_theme.init()
@@ -300,6 +320,8 @@ def create_game(
             automate_runway_repair=auto_procurement,
             automate_front_line_reinforcements=auto_procurement,
             automate_aircraft_reinforcements=auto_procurement,
+            automate_ground_object_repairs=auto_procurement,
+            automate_building_repairs=auto_procurement,
             enable_frontline_cheats=cheats,
             enable_base_capture_cheat=cheats,
             enable_transfer_cheat=cheats,
@@ -344,6 +366,9 @@ def create_game(
             su15_flagon=False,
             su30_flanker_h=False,
             su35s_flanker_m=False,
+            f15ex=False,
+            f15cge=False,
+            eurofighter=False,
             su57_felon=False,
             coldwarassets=False,
             frenchpack=False,
@@ -410,8 +435,47 @@ def dump_task_priorities() -> None:
         yaml.dump(data, output, sort_keys=False, allow_unicode=True)
 
 
+_single_instance_lock = None  # held lock-file handle; the OS frees it on exit
+
+
+def _acquire_single_instance_lock() -> bool:
+    """Become the only running instance; return False if another one holds the lock.
+
+    Uses an OS advisory lock on a temp file that the OS releases automatically when
+    this process exits, even on a crash. Without it, relaunching the executable
+    starts a second process that cannot bind the already-used web-server port, hangs
+    without ever showing a window, and is left orphaned when the first window closes.
+    """
+    global _single_instance_lock
+    lock_path = Path(tempfile.gettempdir()) / "dcs_retribution.lock"
+    try:
+        handle = open(lock_path, "w")
+    except OSError:
+        return True  # never block startup on a lock-file problem
+    try:
+        if sys.platform == "win32":
+            import msvcrt
+
+            msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+        else:
+            import fcntl
+
+            fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        handle.close()
+        return False
+    _single_instance_lock = handle  # keep open for the lifetime of the process
+    return True
+
+
 def main():
     logging_config.init_logging(VERSION)
+
+    if not _acquire_single_instance_lock():
+        logging.warning(
+            "DCS Retribution is already running; exiting this duplicate instance."
+        )
+        sys.exit(0)
 
     logging.debug("Python version %s", sys.version)
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from typing import TYPE_CHECKING
 from uuid import UUID
 
@@ -22,6 +23,14 @@ class FlightJs(BaseModel):
     position: LeafletPoint | None
     sidc: str
     waypoints: list[FlightWaypointJs] | None
+    # Summary of the flight and its package, surfaced as a map route tooltip so
+    # the player can read a package's intent without opening the Qt sidebar.
+    aircraft: str
+    num_aircraft: int
+    flight_type: str
+    callsign: str | None
+    package_target: str
+    package_tot: str
 
     class Config:
         title = "Flight"
@@ -45,12 +54,20 @@ class FlightJs(BaseModel):
             blue = True
         else:
             blue = False
+        package = flight.package
+        tot = package.time_over_target
         return FlightJs(
             id=flight.id,
             blue=blue,
             position=position,
             sidc=str(flight.sidc()),
             waypoints=waypoints,
+            aircraft=flight.unit_type.display_name,
+            num_aircraft=flight.count,
+            flight_type=flight.flight_type.value,
+            callsign=flight.custom_name,
+            package_target=package.target.name,
+            package_tot=tot.strftime("%H:%M:%SZ") if tot != datetime.min else "",
         )
 
     @staticmethod

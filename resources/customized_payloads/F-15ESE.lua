@@ -480,27 +480,27 @@ local unitPayloads = {
 					["num"] = 9,
 				},
 				[6] = {
-					["CLSID"] = "{F15E_EXTTANK}",
-					["num"] = 8,
-				},
-				[7] = {
 					["CLSID"] = "{F-15E_AAQ-14_LANTIRN}",
 					["num"] = 7,
 				},
+				[7] = {
+					["CLSID"] = "{F15E_EXTTANK}",
+					["num"] = 8,
+				},
 				[8] = {
-					["CLSID"] = "{CFT_L_GBU_31V3B_x_2}",
+					["CLSID"] = "{AGM-154A}",
 					["num"] = 4,
 				},
 				[9] = {
-					["CLSID"] = "{CFT_R_GBU_31V3B_x_2}",
+					["CLSID"] = "{AGM-154A}",
 					["num"] = 12,
 				},
 				[10] = {
-					["CLSID"] = "{GBU-31V3B}",
+					["CLSID"] = "{AGM-154A}",
 					["num"] = 14,
 				},
 				[11] = {
-					["CLSID"] = "{GBU-31V3B}",
+					["CLSID"] = "{AGM-154A}",
 					["num"] = 2,
 				},
 			},

@@ -169,6 +169,35 @@ local unitPayloads = {
 				[1] = 34,
 			},
 		},
+		[7] = {
+			["displayName"] = "Retribution DEAD",
+			["name"] = "Retribution DEAD",
+			["pylons"] = {
+				[1] = {
+					["CLSID"] = "{E2C426E3-8B10-4E09-B733-9CDC26520F48}",
+					["num"] = 2,
+				},
+				[2] = {
+					["CLSID"] = "{APU-60-1_R_60M}",
+					["num"] = 3,
+				},
+				[3] = {
+					["CLSID"] = "{A5BAEAB7-6FAF-4236-AF72-0FD900F493F9}",
+					["num"] = 5,
+				},
+				[4] = {
+					["CLSID"] = "{APU-60-1_R_60M}",
+					["num"] = 7,
+				},
+				[5] = {
+					["CLSID"] = "{E2C426E3-8B10-4E09-B733-9CDC26520F48}",
+					["num"] = 8,
+				},
+			},
+			["tasks"] = {
+				[1] = 31,
+			},
+		},
 	},
 	["unitType"] = "MiG-27K",
 }

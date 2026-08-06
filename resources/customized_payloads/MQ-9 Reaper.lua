@@ -25,6 +25,31 @@ local unitPayloads = {
 				[1] = 17,
 			},
 		},
+		[2] = {
+			["displayName"] = "Retribution DEAD",
+			["name"] = "Retribution DEAD",
+			["pylons"] = {
+				[1] = {
+					["CLSID"] = "{GBU-38}",
+					["num"] = 1,
+				},
+				[2] = {
+					["CLSID"] = "{GBU-38}",
+					["num"] = 2,
+				},
+				[3] = {
+					["CLSID"] = "{GBU-38}",
+					["num"] = 3,
+				},
+				[4] = {
+					["CLSID"] = "{GBU-38}",
+					["num"] = 4,
+				},
+			},
+			["tasks"] = {
+				[1] = 31,
+			},
+		},
 	},
 	["tasks"] = {
 	},

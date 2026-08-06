@@ -22,11 +22,11 @@ local unitPayloads = {
 					},
 				},
 				[4] = {
-					["CLSID"] = "{69DC8AE7-8F77-427B-B8AA-B19D3F478B66}",
+					["CLSID"] = "{CBU_105}",
 					["num"] = 10,
 				},
 				[5] = {
-					["CLSID"] = "{69DC8AE7-8F77-427B-B8AA-B19D3F478B66}",
+					["CLSID"] = "{CBU_105}",
 					["num"] = 9,
 				},
 				[6] = {
@@ -46,11 +46,11 @@ local unitPayloads = {
 					["num"] = 4,
 				},
 				[10] = {
-					["CLSID"] = "{69DC8AE7-8F77-427B-B8AA-B19D3F478B66}",
+					["CLSID"] = "{CBU_105}",
 					["num"] = 3,
 				},
 				[11] = {
-					["CLSID"] = "{69DC8AE7-8F77-427B-B8AA-B19D3F478B66}",
+					["CLSID"] = "{CBU_105}",
 					["num"] = 2,
 				},
 				[12] = {
@@ -152,11 +152,11 @@ local unitPayloads = {
 					},
 				},
 				[4] = {
-					["CLSID"] = "{69DC8AE7-8F77-427B-B8AA-B19D3F478B66}",
+					["CLSID"] = "{CBU_105}",
 					["num"] = 10,
 				},
 				[5] = {
-					["CLSID"] = "{69DC8AE7-8F77-427B-B8AA-B19D3F478B66}",
+					["CLSID"] = "{CBU_105}",
 					["num"] = 9,
 				},
 				[6] = {
@@ -176,11 +176,11 @@ local unitPayloads = {
 					["num"] = 4,
 				},
 				[10] = {
-					["CLSID"] = "{69DC8AE7-8F77-427B-B8AA-B19D3F478B66}",
+					["CLSID"] = "{CBU_105}",
 					["num"] = 3,
 				},
 				[11] = {
-					["CLSID"] = "{69DC8AE7-8F77-427B-B8AA-B19D3F478B66}",
+					["CLSID"] = "{CBU_105}",
 					["num"] = 2,
 				},
 				[12] = {
@@ -221,7 +221,7 @@ local unitPayloads = {
 					["num"] = 10,
 				},
 				[5] = {
-					["CLSID"] = "LAU_117_AGM_65G",
+					["CLSID"] = "{CBU_105}",
 					["num"] = 9,
 				},
 				[6] = {
@@ -241,7 +241,7 @@ local unitPayloads = {
 					["num"] = 4,
 				},
 				[10] = {
-					["CLSID"] = "LAU_117_AGM_65G",
+					["CLSID"] = "{CBU_105}",
 					["num"] = 3,
 				},
 				[11] = {
@@ -627,6 +627,63 @@ local unitPayloads = {
 						["NFP_PRESID"] = "MDRN_M_A_AIM9",
 						["NFP_VIS_DrawArgNo_57"] = 0.1,
 					},
+				},
+			},
+			["tasks"] = {
+				[1] = 31,
+			},
+		},
+		[9] = {
+			["displayName"] = "Retribution DEAD",
+			["name"] = "Retribution DEAD",
+			["pylons"] = {
+				[1] = {
+					["CLSID"] = "{0519A264-0AB6-11d6-9193-00A0249B6F00}",
+					["num"] = 13,
+				},
+				[2] = {
+					["CLSID"] = "{44EE8698-89F9-48EE-AF36-5FD31896A82F}",
+					["num"] = 12,
+				},
+				[3] = {
+					["CLSID"] = "{5CE2FF2A-645A-4197-B48D-8720AC69394F}",
+					["num"] = 11,
+				},
+				[4] = {
+					["CLSID"] = "{AF42E6DF-9A60-46D8-A9A0-1708B241AADB}",
+					["num"] = 10,
+				},
+				[5] = {
+					["CLSID"] = "{AF42E6DF-9A60-46D8-A9A0-1708B241AADB}",
+					["num"] = 9,
+				},
+				[6] = {
+					["CLSID"] = "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}",
+					["num"] = 8,
+				},
+				[7] = {
+					["CLSID"] = "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}",
+					["num"] = 7,
+				},
+				[8] = {
+					["CLSID"] = "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}",
+					["num"] = 5,
+				},
+				[9] = {
+					["CLSID"] = "{40EF17B7-F508-45de-8566-6FFECC0C1AB8}",
+					["num"] = 4,
+				},
+				[10] = {
+					["CLSID"] = "{AF42E6DF-9A60-46D8-A9A0-1708B241AADB}",
+					["num"] = 3,
+				},
+				[11] = {
+					["CLSID"] = "{AF42E6DF-9A60-46D8-A9A0-1708B241AADB}",
+					["num"] = 2,
+				},
+				[12] = {
+					["CLSID"] = "{5CE2FF2A-645A-4197-B48D-8720AC69394F}",
+					["num"] = 1,
 				},
 			},
 			["tasks"] = {

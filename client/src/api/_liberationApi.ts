@@ -183,6 +183,34 @@ const injectedRtkApi = api.injectEndpoints({
     getTgoById: build.query<GetTgoByIdApiResponse, GetTgoByIdApiArg>({
       query: (queryArg) => ({ url: `/tgos/${queryArg.tgoId}` }),
     }),
+    tgoDestinationInRange: build.query<
+      TgoDestinationInRangeApiResponse,
+      TgoDestinationInRangeApiArg
+    >({
+      query: (queryArg) => ({
+        url: `/tgos/${queryArg.tgoId}/destination-in-range`,
+        params: { lat: queryArg.lat, lng: queryArg.lng },
+      }),
+    }),
+    setTgoDestination: build.mutation<
+      SetTgoDestinationApiResponse,
+      SetTgoDestinationApiArg
+    >({
+      query: (queryArg) => ({
+        url: `/tgos/${queryArg.tgoId}/destination`,
+        method: "PUT",
+        body: queryArg.body,
+      }),
+    }),
+    clearTgoDestination: build.mutation<
+      ClearTgoDestinationApiResponse,
+      ClearTgoDestinationApiArg
+    >({
+      query: (queryArg) => ({
+        url: `/tgos/${queryArg.tgoId}/cancel-travel`,
+        method: "PUT",
+      }),
+    }),
     listAllWaypointsForFlight: build.query<
       ListAllWaypointsForFlightApiResponse,
       ListAllWaypointsForFlightApiArg
@@ -331,6 +359,24 @@ export type GetTgoByIdApiResponse = /** status 200 Successful Response */ Tgo;
 export type GetTgoByIdApiArg = {
   tgoId: string;
 };
+export type TgoDestinationInRangeApiResponse =
+  /** status 200 Successful Response */ boolean;
+export type TgoDestinationInRangeApiArg = {
+  tgoId: string;
+  lat: number;
+  lng: number;
+};
+export type SetTgoDestinationApiResponse =
+  /** status 204 Successful Response */ undefined;
+export type SetTgoDestinationApiArg = {
+  tgoId: string;
+  body: LatLng;
+};
+export type ClearTgoDestinationApiResponse =
+  /** status 204 Successful Response */ undefined;
+export type ClearTgoDestinationApiArg = {
+  tgoId: string;
+};
 export type ListAllWaypointsForFlightApiResponse =
   /** status 200 Successful Response */ Waypoint[];
 export type ListAllWaypointsForFlightApiArg = {
@@ -363,6 +409,12 @@ export type ControlPoint = {
   mobile: boolean;
   destination?: LatLng;
   sidc: string;
+  tacan?: string | null;
+  atc_frequency?: string | null;
+  units: string[];
+  threat_ranges: number[];
+  detection_ranges: number[];
+  dead?: boolean;
 };
 export type ValidationError = {
   loc: (string | number)[];
@@ -404,6 +456,12 @@ export type Flight = {
   position?: LatLng;
   sidc: string;
   waypoints?: Waypoint[];
+  aircraft?: string;
+  num_aircraft?: number;
+  flight_type?: string;
+  callsign?: string | null;
+  package_target?: string;
+  package_tot?: string;
 };
 export type FrontLine = {
   id: string;
@@ -420,8 +478,12 @@ export type Tgo = {
   threat_ranges: number[];
   detection_ranges: number[];
   dead: boolean;
+  purchasable: boolean;
+  repairing?: boolean;
   sidc: string;
   task?: string[];
+  mobile: boolean;
+  destination?: LatLng;
 };
 export type SupplyRoute = {
   id: string;
@@ -514,6 +576,9 @@ export const {
   useListSupplyRoutesQuery,
   useListTgosQuery,
   useGetTgoByIdQuery,
+  useTgoDestinationInRangeQuery,
+  useSetTgoDestinationMutation,
+  useClearTgoDestinationMutation,
   useListAllWaypointsForFlightQuery,
   useSetWaypointPositionMutation,
   useGetIadsNetworkQuery,

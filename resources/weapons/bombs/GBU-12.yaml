@@ -21,10 +21,13 @@ clsids:
   - "{JAS39_BRU33_GBU12}"   # 2 x GBU-12 500 lb Laser-guided Bomb
   - "{B52H_BAY_3x_GBU12}"   # 3 x GBU-12 - 500lb Laser Guided Bomb
   - "{HB_A6E_GBU12_TER_1x}"   # 1x GBU-12 - 500lb Laser Guided Bomb (TER)
+  - "{GD_F100_TER_GBU-12_x1}"   # 1x GBU-12 - 500lb Laser Guided Bomb (TER)
   - "{HB_A6E_GBU12_MER_2x_RIGHT}"   # 2x GBU-12 - 500lb Laser Guided Bomb (MER)
   - "{HB_A6E_GBU12_MER_2x_LEFT}"   # 2x GBU-12 - 500lb Laser Guided Bomb (MER)
   - "{HB_A6E_GBU12_TER_2x}"   # 2x GBU-12 - 500lb Laser Guided Bomb (TER)
+  - "{GD_F100_TER_GBU-12_x2}"   # 2x GBU-12 - 500lb Laser Guided Bomb (TER)
   - "{HB_F4E_GBU-12_2x}"   # 2x GBU-12 - 500lb Laser Guided Bomb (TER)
+  - "{GD_F100_TER_GBU-12_x3}"   # 3x GBU-12 - 500lb Laser Guided Bomb (TER)
   - "{BRUL657_2*GBU-12}"   # Pylon 3,4 GBU-12 - 500lb Laser Guided Bomb
   - "{BRUR657_2*GBU-12}"   # Pylon 6,7 GBU-12 - 500lb Laser Guided Bomb
   - "{CSRL_GBU12}"   # CSRL - 8 x GBU-12 - 500lb Laser Guided Bomb

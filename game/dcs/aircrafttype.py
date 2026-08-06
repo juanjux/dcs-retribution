@@ -17,6 +17,7 @@ from dcs.weapons_data import weapon_ids
 
 from game.ato import FlightType
 from game.data.units import UnitClass
+from game.dcs.aircraftproperties import PropertyDateGate
 from game.dcs.lasercodeconfig import LaserCodeConfig
 from game.dcs.unittype import UnitType
 from game.persistency import user_custom_weapon_injections_dir
@@ -58,6 +59,12 @@ from game.utils import (
     kph,
     nautical_miles,
 )
+from game.dcs.payload_loading import install_resilient_payload_loading
+
+# Make pydcs tolerate a single unparseable payload .lua (common with hand-written
+# third-party mod files) instead of dropping every payload for the airframe.
+# Installed here because this module is imported before any payload is loaded.
+install_resilient_payload_loading()
 
 if TYPE_CHECKING:
     from game.missiongenerator.aircraft.flightdata import FlightData
@@ -247,6 +254,16 @@ class AircraftType(UnitType[Type[FlyingType]]):
     laser_code_configs: list[LaserCodeConfig]
 
     use_f15e_waypoint_names: bool
+
+    #: Tasks the aircraft is capable of but that are not auto-assignable by default
+    #: (the squadron's mission-type checkbox starts unchecked). Still selectable
+    #: manually. Each must also appear in ``tasks`` to supply its priority.
+    secondary_tasks: frozenset[FlightType] = frozenset()
+    #: Date gate for era-specific payload-editor properties (e.g. the helmet-mounted
+    #: cueing selection), built from the aircraft data file's
+    #: ``date_gated_properties`` block. Empty (gates nothing) for the many airframes
+    #: that declare no block.
+    property_date_gate: PropertyDateGate = PropertyDateGate()
 
     _by_name: ClassVar[dict[str, AircraftType]] = {}
     _by_unit_type: ClassVar[dict[type[FlyingType], list[AircraftType]]] = defaultdict(
@@ -569,6 +586,9 @@ class AircraftType(UnitType[Type[FlyingType]]):
             cls._set_props_overrides(prop_overrides, aircraft)
 
         task_priorities = cls.get_task_priorities(data)
+        secondary_tasks = frozenset(
+            FlightType(t) for t in data.get("secondary_tasks", [])
+        )
 
         cls._custom_weapon_injections(aircraft, data)
         cls._user_weapon_injections(aircraft)
@@ -608,6 +628,7 @@ class AircraftType(UnitType[Type[FlyingType]]):
             cabin_size=data.get("cabin_size", 10 if aircraft.helicopter else 0),
             can_carry_crates=data.get("can_carry_crates", aircraft.helicopter),
             task_priorities=task_priorities,
+            secondary_tasks=secondary_tasks,
             has_built_in_target_pod=data.get("has_built_in_target_pod", False),
             has_built_in_ecm=data.get("has_built_in_ecm", False),
             has_built_in_jamming=data.get("has_built_in_jamming", False),
@@ -615,6 +636,9 @@ class AircraftType(UnitType[Type[FlyingType]]):
                 LaserCodeConfig.from_yaml(d) for d in data.get("laser_codes", [])
             ],
             use_f15e_waypoint_names=data.get("use_f15e_waypoint_names", False),
+            property_date_gate=PropertyDateGate.from_data(
+                data.get("date_gated_properties")
+            ),
         )
 
     @classmethod

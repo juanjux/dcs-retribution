@@ -22,13 +22,16 @@ clsids:
   - "{90321C8E-7ED1-47D4-A160-E074D5ABD902}"   # Mk-81 - 250lb GP Bomb LD
   - "{MK-81SE}"   # Mk-81 Snakeye - 250lb GP Bomb HD
   - "{HB_A6E_MK81_MER_1x}"   # 1x Mk-81 - 250lb GP Bomb LD (MER)
+  - "{GD_F100_TER_MK-81_x1}"   # 1x Mk-81 - 250lb GP Bomb LD (TER)
   - "{HB_A6E_MK81_MER_2x}"   # 2x Mk-81 - 250lb GP Bomb LD (MER)
   - "{HB_A6E_MK81_TER_2x_RIGHT}"   # 2x Mk-81 - 250lb GP Bomb LD (TER)
   - "{HB_A6E_MK81_TER_2x_LEFT}"   # 2x Mk-81 - 250lb GP Bomb LD (TER)
+  - "{GD_F100_TER_MK-81_x2}"   # 2x Mk-81 - 250lb GP Bomb LD (TER)
   - "{HB_F4E_MK-81_2x}"   # 2x Mk-81 - 250lb GP Bomb LD (TER)
   - "{HB_A6E_MK81_MER_3x_RIGHT}"   # 3x Mk-81 - 250lb GP Bomb LD (MER)
   - "{HB_A6E_MK81_MER_3x_LEFT}"   # 3x Mk-81 - 250lb GP Bomb LD (MER)
   - "{HB_A6E_MK81_TER_3x}"   # 3x Mk-81 - 250lb GP Bomb LD (TER)
+  - "{GD_F100_TER_MK-81_x3}"   # 3x Mk-81 - 250lb GP Bomb LD (TER)
   - "{HB_F4E_MK-81_3x}"   # 3x Mk-81 - 250lb GP Bomb LD (TER)
   - "{HB_A6E_MK81_MER_4x_RIGHT}"   # 4x Mk-81 - 250lb GP Bomb LD (MER)
   - "{HB_A6E_MK81_MER_4x_LEFT}"   # 4x Mk-81 - 250lb GP Bomb LD (MER)

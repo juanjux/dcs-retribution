@@ -62,10 +62,12 @@ class SquadronDelegate(TwoColumnRowDelegate):
         elif (row, column) == (1, 1):
             pilots = len(squadron.living_pilots)
             aircraft = squadron.owned_aircraft
-            unassigned = squadron.untasked_aircraft
+            # "unassigned" counted airframes with no free pilot to fly them, which
+            # overstated the real force available. Cap it at the crewed count.
+            unassigned = squadron.untasked_crewed_aircraft
             return (
                 f"{pilots} {'pilot' if pilots == 1 else 'pilots'}, "
-                f"{aircraft} aircraft ({unassigned} unassigned)"
+                f"{aircraft} aircraft ({unassigned} crewed unassigned)"
             )
         return ""
 
@@ -307,7 +309,7 @@ class AirWingTabs(QTabWidget):
         )
 
     def open_awcd(self):
-        AirWingConfigurationDialog(self.game_model.game, True, self).exec_()
+        AirWingConfigurationDialog(self.game_model.game, True, self, cheat=True).exec_()
         events = GameUpdateEvents().begin_new_turn()
         EventStream.put_nowait(events)
         self.game_model.ato_model.on_sim_update(events)

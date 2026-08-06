@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import logging
 from enum import Enum
-from typing import Generic, TypeVar
+from typing import Callable, Generic, Optional, TypeVar
 
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QMouseEvent
 from PySide6.QtWidgets import (
     QApplication,
     QFrame,
@@ -17,6 +18,7 @@ from PySide6.QtWidgets import (
     QPushButton,
     QSizePolicy,
     QSpacerItem,
+    QVBoxLayout,
 )
 
 from game.purchaseadapter import PurchaseAdapter, TransactionError
@@ -28,6 +30,23 @@ from qt_ui.windows.QUnitInfoWindow import QUnitInfoWindow
 class RecruitType(Enum):
     BUY = 0
     SELL = 1
+
+
+class ClickableLabel(QLabel):
+    """A QLabel that invokes a callback when left-clicked."""
+
+    def __init__(self, text: str) -> None:
+        super().__init__(text)
+        self._on_click: Optional[Callable[[], None]] = None
+
+    def set_on_click(self, callback: Callable[[], None]) -> None:
+        self._on_click = callback
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+
+    def mousePressEvent(self, event: QMouseEvent) -> None:
+        if self._on_click is not None and event.button() == Qt.MouseButton.LeftButton:
+            self._on_click()
+        super().mousePressEvent(event)
 
 
 TransactionItemType = TypeVar("TransactionItemType")
@@ -136,6 +155,26 @@ class UnitTransactionFrame(QFrame, Generic[TransactionItemType]):
     def price_of(self, item: TransactionItemType) -> int:
         return self.purchase_adapter.price_of(item)
 
+    def existing_units_text(self, item: TransactionItemType, count: int) -> str:
+        """Text for the current-quantity label. Subclasses may add detail."""
+        return str(count)
+
+    def supports_item_dialog(self) -> bool:
+        """Whether clicking an item's name opens a detail dialog."""
+        return False
+
+    def stacked_existing_units(self) -> bool:
+        """Whether the existing-units label sits below the name (vs. beside).
+
+        Useful when that label can hold long text that would otherwise widen
+        the row and force a horizontal scrollbar.
+        """
+        return False
+
+    def on_item_clicked(self, item: TransactionItemType) -> None:
+        """Handle a click on an item's name. No-op unless overridden."""
+        return None
+
     @property
     def budget(self) -> float:
         return self.game_model.game.blue.budget
@@ -150,25 +189,39 @@ class UnitTransactionFrame(QFrame, Generic[TransactionItemType]):
         layout: QGridLayout,
         row: int,
     ) -> None:
+        stacked = self.stacked_existing_units()
         exist = QGroupBox()
         exist.setProperty("style", "buy-box")
-        exist.setMaximumHeight(72)
+        exist.setMaximumHeight(96 if stacked else 72)
         exist.setMinimumHeight(36)
         existLayout = QHBoxLayout()
         existLayout.setSizeConstraint(QLayout.SizeConstraint.SetMinimumSize)
         exist.setLayout(existLayout)
 
-        existing_units = self.current_quantity_of(item)
+        existing_count = self.current_quantity_of(item)
 
-        unitName = QLabel(f"<b>{self.display_name_of(item, multiline=True)}</b>")
+        display = self.display_name_of(item, multiline=True)
+        clickable = self.supports_item_dialog()
+        if clickable:
+            unitName = ClickableLabel(f"<b><u>{display}</u></b>")
+        else:
+            unitName = ClickableLabel(f"<b>{display}</b>")
         unitName.setSizePolicy(
             QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         )
+        if clickable:
+            unitName.set_on_click(lambda: self.on_item_clicked(item))
 
-        existing_units = QLabel(str(existing_units))
-        existing_units.setSizePolicy(
-            QSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
-        )
+        existing_units = QLabel(self.existing_units_text(item, existing_count))
+        if stacked:
+            existing_units.setWordWrap(True)
+            existing_units.setSizePolicy(
+                QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
+            )
+        else:
+            existing_units.setSizePolicy(
+                QSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+            )
 
         self.existing_units_labels[item] = existing_units
 
@@ -196,15 +249,31 @@ class UnitTransactionFrame(QFrame, Generic[TransactionItemType]):
             QSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         )
 
-        existLayout.addWidget(unitName)
-        existLayout.addItem(
-            QSpacerItem(20, 0, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
-        )
-        existLayout.addWidget(existing_units)
-        existLayout.addItem(
-            QSpacerItem(20, 0, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
-        )
-        existLayout.addWidget(price)
+        if stacked:
+            name_box = QVBoxLayout()
+            name_box.addWidget(unitName)
+            name_box.addWidget(existing_units)
+            existLayout.addLayout(name_box)
+            existLayout.addItem(
+                QSpacerItem(
+                    20, 0, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum
+                )
+            )
+            existLayout.addWidget(price)
+        else:
+            existLayout.addWidget(unitName)
+            existLayout.addItem(
+                QSpacerItem(
+                    20, 0, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum
+                )
+            )
+            existLayout.addWidget(existing_units)
+            existLayout.addItem(
+                QSpacerItem(
+                    20, 0, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum
+                )
+            )
+            existLayout.addWidget(price)
 
         infolayout.addWidget(unitInfo)
 

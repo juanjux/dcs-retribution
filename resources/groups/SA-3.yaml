@@ -6,5 +6,5 @@ units:
   - SAM SA-3 S-125 "Low Blow" TR
   - SAM SA-3 S-125 "Goa" LN
 layouts:
-  - 4 Launcher Site (Semicircle) 
-  - 4 Launcher Site (Circle)
+  - SA-3 Site (4 Launcher Semicircle)
+  - SA-3 Site (4 Launcher Circle)

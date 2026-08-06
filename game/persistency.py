@@ -41,6 +41,7 @@ class MigrationUnpickler(pickle.Unpickler):
             self._handle_airport_migrations,
             self._handle_weather_classes,
             self._handle_ch_russian_assets,
+            self._handle_ch_usa_assets,
             self._handle_su30,
             self._handle_misc,
         ]
@@ -219,6 +220,39 @@ class MigrationUnpickler(pickle.Unpickler):
         
         return None
     
+    def _handle_ch_usa_assets(self, module: str, name: str) -> Any:
+        """Handle migrations for the US military assets pack: the MIM-104 Patriot
+        classes were renamed with the pack's CH_ prefix (MIM104_* -> CH_MIM104_*), and
+        the mod 2.4.x export refresh renamed/removed units (HIMARS M142 -> M270A1, the
+        FMTV/M-ATV trucks, B-21) -> map old saves to the closest current class."""
+        if module != "pydcs_extensions.usamilitaryassetspack.usamilitaryassetspack":
+            return None
+        from pydcs_extensions.usamilitaryassetspack import usamilitaryassetspack
+
+        if name.startswith("MIM104_"):
+            return getattr(usamilitaryassetspack, "CH_" + name, None)
+        # Mod -> native DCS: ED shipped these as CHAP units, so migrate old saves to the
+        # native class (mirrors the CH Russia handler above and the groundunittype
+        # display-name migrator). The HIMARS variants ED didn't add (GLSDB / PrSM /
+        # PrSM-AShM) fall back to the closest native CHAP HIMARS.
+        from dcs.vehicles import Armor, Artillery, Unarmed
+
+        native = {
+            "M142_HIMARS_GLSDB": Artillery.CHAP_M142_GMLRS_M31,
+            "M142_HIMARS_ATACMS": Artillery.CHAP_M142_ATACMS_M48,
+            "M142_HIMARS_GMLRS": Artillery.CHAP_M142_GMLRS_M31,
+            "M142_HIMARS_PRSM": Artillery.CHAP_M142_ATACMS_M48,
+            "M142_HIMARS_PRSM_ASHM": Artillery.CHAP_M142_ATACMS_M48,
+            "CH_FMTV_M1083": Unarmed.CHAP_M1083,
+            "CH_OshkoshMATV_M2": Armor.CHAP_MATV,
+        }
+        if name in native:
+            return native[name]
+        # The B-21 has no native DCS equivalent -> a rename within the mod.
+        if name == "B_21":
+            return getattr(usamilitaryassetspack, "CH_B_21", None)
+        return None
+
     def _handle_su30(self, module: str, name: str) -> Any:
         """Handle migrations for Su-30 aircraft variants"""
         if name == "Su_30MKA_AG":
@@ -291,7 +325,7 @@ class MigrationUnpickler(pickle.Unpickler):
 
 def _create_dir_if_needed(path: Path) -> Path:
     if not path.exists():
-        path.mkdir(755, parents=True)
+        path.mkdir(0o755, parents=True)
     return path
 
 
@@ -345,6 +379,32 @@ def airwing_dir() -> Path:
 
 def kneeboards_dir() -> Path:
     return _create_dir_if_needed(base_path() / "Retribution" / "Kneeboards")
+
+
+def tile_cache_dir() -> Path:
+    """Directory for cached basemap tiles used by recon kneeboards.
+
+    Prefers ``<save_dir>/Retribution/TileCache`` under the Saved Games tree
+    that retribution already writes to. When ``persistency.setup`` has not
+    been called (standalone dev scripts, golden-image generators, ad-hoc
+    test harnesses), falls back to the OS-conventional user cache location
+    so the tile pipeline still works.
+
+    Users may delete this directory at any time to reclaim space or force
+    a fresh fetch.
+    """
+    global _dcs_saved_game_folder
+    if _dcs_saved_game_folder:
+        return _create_dir_if_needed(base_path() / "Retribution" / "TileCache")
+    import os
+    import platform
+
+    if platform.system() == "Windows":
+        root = Path(os.environ.get("LOCALAPPDATA", Path.home() / "AppData" / "Local"))
+    else:
+        root = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache"))
+    path = root / "retribution" / "tilecache"
+    return _create_dir_if_needed(path)
 
 
 def payloads_dir(backup: bool = False) -> Path:
