@@ -157,6 +157,12 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   (branch [`juanjux/ch_china_1.1.6`](https://github.com/juanjux/dcs-retribution/tree/juanjux/ch_china_1.1.6))
 
 ### Fixes
+- **The `/start` doc sent the LLM planner to twelve endpoints that do not exist.**
+  It documented `POST /transfers`, `POST /buy/auto`, `GET /ai_log`, `POST /squadrons`
+  and others the server never served, while omitting nine it does — so the planner
+  404'd on the documented name and never found the real one. Corrected against the
+  router, and a test now fails the build if the two drift apart again.
+  ([#90](https://github.com/juanjux/dcs-retribution/pull/90))
 - **The LLM planner could not see what aircraft cost.** `buyable_ground[]` carried
   a `price`, but the squadron view did not, so the planner guessed — it assumed an
   Apache was 5M, tried to buy several, and read the refusal as a broken squadron
