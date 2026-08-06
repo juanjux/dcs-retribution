@@ -62,7 +62,8 @@ tool/resource of the same name.
 - `GET /packages?side=red` — current packages/flights (each with `id` + pilots + waypoints)
 - `GET /waypoints/{flight_id}` — a flight's waypoints
 - `GET /map/image?side=red[&bbox=s,w,n,e]` — rendered PNG strategic map (control points, front lines, threat umbrellas, your naval) for visual analysis; `bbox` (lat/lng south,west,north,east) zooms in
-- `GET /faction/aircraft?side=red` — airframes your faction may field
+- `GET /iads?side=red` — the enemy air-defense network as a graph: each site's role
+  (`PowerSource`/`ConnectionNode`/`CommandCenter`/`Ewr`/`Sam`) and what feeds it
 - `GET /aircraft/pylons?squadron_id=…` — every weapon each pylon of that squadron's airframe accepts, to build a custom payload
 - `GET /aircraft/loadouts?squadron_id=…` — named ready-made loadouts for that airframe
 - `GET /turn_status` — turn #, phase, whose turn
@@ -76,16 +77,21 @@ tool/resource of the same name.
 - `POST /payload/validate` — check a custom `{pylon: clsid}` payload is valid for an airframe.
 - `POST /waypoints/edit` — move/adjust a flight waypoint (position/altitude); never deletes
   (waypoint 0 immovable). Read them first with `GET /waypoints/{flight_id}`.
-- `POST /plan/validate` — dry-run lint of a plan (TOT window, SAM coverage, pilots,
+- `POST /packages/evaluate` — score a package before committing to it.
+- `POST /packages/{index}/tot` — set a package's time over target.
+- `GET /validate?side=red` — dry-run lint of the plan (TOT window, SAM coverage, pilots,
   budget…); fix warnings before committing.
-- `DELETE /packages/{id}` · `DELETE /packages/{pkg_id}/flights/{flight_id}` ·
-  `DELETE /packages?side=red` (clear all)
+- `DELETE /packages/{index}` (one package, by its index in `GET /packages`) ·
+  `DELETE /packages?side=red` (clear all). There is no endpoint for deleting a single
+  flight — drop the package and rebuild it.
 
 **Plan — economy & forces**
-- `POST /buy/aircraft` · `POST /sell/aircraft` · `POST /buy/ground` ·
-  `POST /buy/ground/cancel` · `POST /buy/auto` (auto-procure the rest)
-- `POST /transfers` (move ground units between your bases) · `GET /transfers` ·
-  `DELETE /transfers/{id}`
+- `POST /buy/aircraft` · `POST /sell/aircraft` · `POST /buy/ground`
+- `POST /ground/transfer` `{side, origin_cp_id, dest_cp_id, unit_name, quantity, by_air}`
+  — move ground units between your bases. This is the only transfer endpoint; there is
+  no list or cancel.
+- `GET /ground/options/{tgo_id}` · `POST /ground/rebuild` — what a destroyed SAM/EWR/
+  armor/ship/coastal site can be rebuilt into, and rebuilding it.
 - `POST /stances` (front-line stance)
 
 **Plan — map moves (player-legal)**
@@ -96,9 +102,9 @@ tool/resource of the same name.
   `turn_context.repairs`): a SAM/EWR/armor unit group, a building, or a runway. Instant or
   over a few turns; debits your budget. (Leftover budget also auto-repairs at turn end.)
 
-**Air wings** (turn-0 config always; mid-campaign only if the air-wing cheat is on)
-- `POST /squadrons` (create) · `DELETE /squadrons/{id}` (delete) — new squadrons
-  start at 0 aircraft; fill them by **buying**, never for free.
+**Air wings**
+- `POST /squadron/relocate` `{side, squadron_id, dest_cp_id}` — move a squadron to another
+  friendly base. There is no endpoint to create or delete squadrons.
 
 **Memory**
 - `GET /stored_context` · `PUT /stored_context` (replace) · `POST /stored_context`
@@ -111,9 +117,11 @@ tool/resource of the same name.
 - The toolbar robot lights up automatically for a few seconds on **every** API call
   (no on/off to toggle); Take Off is gated while it's lit. `set_ai_status` sets an
   optional one-line note shown on the robot.
-- `GET /turn_status` (also reports cancelled flag + session holder) · `GET /ai_log`
-  (audit of what red did this turn) — the player can cancel you; stop gracefully.
-- `POST /plan_opfor` — clear+regenerate red from scratch (e.g. to drop a half-done turn)
+- `GET /turn_status` (also reports cancelled flag + session holder) — the player can
+  cancel you; stop gracefully.
+- `POST /ai/status` — set the one-line note shown on the toolbar robot.
+- To drop a half-done turn, clear the packages with `DELETE /packages?side=red` and plan
+  again; there is no regenerate-from-scratch endpoint.
 
 ## Rules of engagement (short version)
 
