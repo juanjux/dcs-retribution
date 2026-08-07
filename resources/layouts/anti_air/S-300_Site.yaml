@@ -9,7 +9,6 @@ groups:
       unit_types:
         - S-300PS 40B6MD sr # SA-10 Clam Shell SR
         - S-300PS 40B6MD sr_19J6 # SA-10 Tin Shield SR
-        - S-300PS SA-10B 40B6MD MAST sr # SA-10B
         - S-300V 9S15 sr # SA-12
         - S-300PMU1 40B6MD sr # SA-20 + B, is the 5N66E
         - S-300VM 9S15M2 sr # SA-23
@@ -19,7 +18,6 @@ groups:
       unit_types:
         - S-300PS 64H6E sr # SA-10 Flap Lid-A TR
         - S-300PS 40B6MD sr_19J6 # SA-10 Tin Shield SR
-        - S-300PS 64H6E TRAILER sr # SA-10B
         - S-300V 9S19 sr # SA-12
         - S-300PMU1 64N6E sr # SA-20 + B
         - S-300VM 9S19M2 sr # SA-23

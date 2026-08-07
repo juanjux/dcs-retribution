@@ -172,9 +172,9 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
 - **Take Off died with "Duplicate convoy unit", stranding the campaign** — the name
   counter reset each turn onto a convoy still in transit. Same bug upstream.
   ([#93](https://github.com/juanjux/dcs-retribution/pull/93))
-- **SA-10B/S-300PS sites spawned crippled.** Four of the preset's six units no longer
-  exist in High Digit SAMs, and DCS silently drops a unit type it cannot resolve, so the
-  site came up without command post, tracking radar or launchers. Now stock S-300PS.
+- **SA-10B/S-300PS sites never spawned and were immortal.** High Digit SAMs 2.1.0 no
+  longer ships the S-300PS family, DCS silently drops unit types it cannot resolve, and
+  Retribution kept the site alive and its threat ring up. Now the stock S-300PS.
 - **A refused purchase now says why.** "Cannot buy more X" was the same message
   whether you were short of money, out of parking, or at the squadron's aircraft
   cap — three problems with three different answers. It now names the one that
