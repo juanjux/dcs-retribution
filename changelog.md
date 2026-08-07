@@ -1,6 +1,7 @@
 # Retribution v1.6.0
 
 ## Features/Improvements
+* **[Modding]** Update High Digit SAMs support to 2.1.0: adds the SAMP/T battery (Aster 30, Block 1/1NT/2 launchers up to 200 km, ARABEL and Ground Fire 300 radars) and the SA-7/SA-7b Strela-2 MANPADS, and retires the units the mod dropped.
 * **[Mission Generation]** Ship-launched cruise missile strikes: warships carrying land-attack cruise missiles (Burke/Ticonderoga, CurrentHill Kalibr hulls) can hit shore targets, with an F10 "Cruise Missile Strike" call-for-fire onto your last map marker and an optional one-raid-per-side-per-turn auto planner. Each ship group carries a finite campaign magazine that never rearms, tracked across turns and shown in the briefing, the ground object dialog and the debrief. Both settings are off by default (adapted from the 414Ret fork).
 * **[Performance]** Faster mission generation: the land/sea point tests behind front-line and ground-unit placement now use shapely's `contains_xy` (no per-check `Point` allocation or predicate-wrapper overhead), ~5x faster on the check that dominated a Take-Off profile.
 * **[Mod]** Add support for the F-15EX Eagle II mod (by Spino).
