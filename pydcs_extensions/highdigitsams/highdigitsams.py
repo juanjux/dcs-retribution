@@ -3,6 +3,8 @@ from dcs import unittype
 from game.modsupport import vehiclemod
 
 
+# Removed from High Digit SAMs in 2.x: DCS cannot resolve these two, so nothing may
+# offer them to a layout again. Kept declared only so campaigns saved earlier still load.
 @vehiclemod
 class AAA_SON_9_Fire_Can(unittype.VehicleType):
     id = "Fire Can radar"
@@ -379,3 +381,100 @@ class _34Ya6E_Gazetchik_E_decoy(unittype.VehicleType):
     detection_range = 20000
     threat_range = 0
     air_weapon_dist = 0
+
+
+# --- Added in High Digit SAMs 2.1.0 -----------------------------------------
+#
+# The SAMP/T battery (Aster 30) and the two early Strela MANPADS. Ranges are read
+# straight from the mod's own unit files, so the threat rings the planner draws match
+# what the units will actually do in the mission.
+
+
+@vehiclemod
+class SAM_SAMPT_MLT_Launcher_Block_1(unittype.VehicleType):
+    id = "SAMPT_MLT_Blk1"
+    name = "SAM SAMP/T MLT Launcher Block 1"
+    detection_range = 0
+    threat_range = 120000
+    air_weapon_dist = 120000
+
+
+@vehiclemod
+class SAM_SAMPT_MLT_Launcher_Block_1NT(unittype.VehicleType):
+    id = "SAMPT_MLT_Blk1NT"
+    name = "SAM SAMP/T MLT Launcher Block 1NT"
+    detection_range = 0
+    threat_range = 150000
+    air_weapon_dist = 150000
+
+
+@vehiclemod
+class SAM_SAMPT_MLT_Launcher_Block_2(unittype.VehicleType):
+    id = "SAMPT_MLT_Blk2"
+    name = "SAM SAMP/T MLT Launcher Block 2"
+    detection_range = 0
+    threat_range = 200000
+    air_weapon_dist = 200000
+
+
+@vehiclemod
+class SAM_SAMPT_MRI_ARABEL_STR(unittype.VehicleType):
+    id = "SAMPT_MRI_ARABEL"
+    name = "SAM SAMP/T MRI ARABEL STR"
+    detection_range = 120000
+    threat_range = 0
+    air_weapon_dist = 0
+
+
+@vehiclemod
+class SAM_SAMPT_MRI_Ground_Fire_300_STR(unittype.VehicleType):
+    id = "SAMPT_MRI_GF300"
+    name = "SAM SAMP/T MRI Ground Fire 300 STR"
+    detection_range = 400000
+    threat_range = 0
+    air_weapon_dist = 0
+
+
+@vehiclemod
+class SAM_SAMPT_Control_Station(unittype.VehicleType):
+    id = "SAMPT_MC"
+    name = "SAM SAMP/T Control Station"
+    detection_range = 0
+    threat_range = 0
+    air_weapon_dist = 0
+
+
+@vehiclemod
+class SAM_SAMPT_Engagement_Station(unittype.VehicleType):
+    id = "SAMPT_ME"
+    name = "SAM SAMP/T Engagement Station"
+    detection_range = 0
+    threat_range = 0
+    air_weapon_dist = 0
+
+
+@vehiclemod
+class SAM_SAMPT_Electric_Generator(unittype.VehicleType):
+    id = "SAMPT_MGE"
+    name = "SAM SAMP/T Electric Generator"
+    detection_range = 0
+    threat_range = 0
+    air_weapon_dist = 0
+
+
+@vehiclemod
+class MANPADS_SA_7_Strela_2(unittype.VehicleType):
+    id = "SA-7 Strela-2 manpad"
+    name = "MANPADS SA-7 Strela-2"
+    detection_range = 0
+    threat_range = 3200
+    air_weapon_dist = 3200
+
+
+@vehiclemod
+class MANPADS_SA_7b_Strela_2M(unittype.VehicleType):
+    id = "SA-7b Strela-2M manpad"
+    name = "MANPADS SA-7b Strela-2M"
+    detection_range = 0
+    threat_range = 4200
+    air_weapon_dist = 4200

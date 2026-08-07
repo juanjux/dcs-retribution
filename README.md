@@ -151,6 +151,15 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   replaces the stock JSOW-A in place with a 925 km stealthy cruise missile on
   every carrier of that slot (F/A-18C, F-15E, F-16).
   ([#67](https://github.com/juanjux/dcs-retribution/pull/67))
+- **High Digit SAMs updated to 1.4.0 → 2.1.0** — the New Game wizard still offered
+  v1.4.0 while the mod had moved on in both directions. Adds the **SAMP/T battery**
+  (Aster 30 — Block 1/1NT/2 launchers at 120/150/200 km, ARABEL fire control, Ground
+  Fire 300 search radar at 400 km) and the **SA-7/SA-7b Strela-2 MANPADS**, which go to
+  six 1970s-80s factions that fielded no MANPADS at all. Retires what the mod dropped.
+  A unit type DCS cannot resolve is discarded in silence, so a stale preset costs you a
+  site that never spawns while Retribution still counts it: a new test walks every
+  preset and fails on anything that does not exist.
+  ([#96](https://github.com/juanjux/dcs-retribution/pull/96))
 - **CurrentHill China pack synced to 1.1.6** — the New Game wizard label and unit
   data track the latest CH China Military Asset Pack. 1.1.4→1.1.6 added/removed no
   units (only upstream fixes), so this is a version-note sync, not a data migration.
