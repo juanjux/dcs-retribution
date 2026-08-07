@@ -169,6 +169,14 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   (branch [`juanjux/ch_china_1.1.6`](https://github.com/juanjux/dcs-retribution/tree/juanjux/ch_china_1.1.6))
 
 ### Fixes
+- **Take Off died with "Duplicate convoy unit", stranding the campaign.** Convoy names
+  come from a counter that mission generation reset every turn, but a convoy lives
+  across turns while it travels — so a new one was handed a name a travelling one still
+  carried, their units collided in the unit map and the mission could never be
+  generated again. The counters for convoys and cargo ships (campaign objects, not
+  per-mission groups) no longer reset, and the generator disambiguates duplicates so a
+  campaign already saved with them still launches. Same bug upstream.
+  ([#93](https://github.com/juanjux/dcs-retribution/pull/93))
 - **Air-assault troops stood still instead of taking the base.** Capturing needs
   every enemy ground unit out of a 3 km radius, but CTLD walked unloaded troops to
   their waypoint and left them there, so one surviving vehicle a kilometre away
