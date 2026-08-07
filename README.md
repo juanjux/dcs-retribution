@@ -178,6 +178,13 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   (branch [`juanjux/ch_china_1.1.6`](https://github.com/juanjux/dcs-retribution/tree/juanjux/ch_china_1.1.6))
 
 ### Fixes
+- **Take Off died with "Duplicate convoy unit", stranding the campaign** — the name
+  counter reset each turn onto a convoy still in transit. Same bug upstream.
+  ([#93](https://github.com/juanjux/dcs-retribution/pull/93))
+- **SA-10B/S-300PS sites never spawned and were immortal.** High Digit SAMs 2.1.0 no
+  longer ships the S-300PS family, DCS silently drops unit types it cannot resolve, and
+  Retribution kept the site alive and its threat ring up. Now the stock S-300PS.
+  ([#96](https://github.com/juanjux/dcs-retribution/pull/96))
 - **Spanish AAA sites were empty, and then wrong.** The faction listed the WWII 2 cm
   Flak 38, which needs the WWII Assets Pack; without it DCS discards every gun and the
   site defends nothing. Spain fields no AAA and no SHORAD, so the Soviet ZU-23 and the
