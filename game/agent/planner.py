@@ -377,11 +377,16 @@ def _diagnose_flights(
             most = max(
                 (s.untasked_aircraft - used[id(s)] for s in candidates), default=0
             )
-            after = (
-                " (after earlier flights in this package took theirs)"
-                if any(used[id(s)] for s in candidates)
-                else ""
-            )
+            if any(used[id(s)] for s in candidates):
+                after = " (after earlier flights in this package took theirs)"
+            elif most <= 0 and any(
+                _try(lambda s: s.owned_aircraft, s) for s in candidates
+            ):
+                # The squadron shows aircraft on hand, so "0 free" looks like a
+                # contradiction unless we say where they went.
+                after = " — its aircraft are already tasked in other packages"
+            else:
+                after = ""
             out.append(
                 (
                     i,

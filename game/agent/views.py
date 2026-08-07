@@ -132,10 +132,14 @@ class SquadronView(BaseModel):
     aircraft: str
     base: str
     owned: int | None = None  # aircraft on hand (omitted when 0)
-    untasked: int | None = None  # available to task (omitted when 0)
+    untasked: int | None = (
+        None  # available to task; a literal 0 whenever the squadron owns aircraft,
+        # omitted only when it owns none (see `unflyable`)
+    )
     flyable: int | None = (
         None  # aircraft you can actually LAUNCH now = min(untasked, pilots), 0 if grounded —
-        # the real number to plan with (untasked can exceed available pilots); omitted when 0
+        # the real number to plan with (untasked can exceed available pilots); a literal 0
+        # whenever the squadron owns aircraft, omitted only when it owns none
     )
     pending: int | None = None  # arriving next turn (omitted when 0)
     pilots: int
@@ -148,6 +152,11 @@ class SquadronView(BaseModel):
     grounded: bool | None = (
         None  # can't sortie this turn: base enemy-held OR runway cratered / hull sunk
         # (else omitted). flyable is 0 while grounded.
+    )
+    unflyable: str | None = (
+        None  # why a squadron that HAS aircraft can launch none of them right now
+        # ("all 2 already tasked" / "no available pilots" / "grounded"); omitted whenever
+        # flyable > 0, so its presence alone means "do not plan with this squadron"
     )
 
 
@@ -536,6 +545,23 @@ def _squadron_grounded(sq: Squadron, player: Player | None) -> bool:
     return not sq.location.runway_is_operational()
 
 
+def _unflyable_reason(sq: Squadron, grounded: bool) -> str | None:
+    """Why a squadron holding aircraft can launch none of them, or None if it can.
+
+    Only ever set when the squadron owns aircraft: `owned: 1` with no other number beside
+    it reads as "one jet ready", and the omit-when-zero rule that keeps the payload small
+    hides the one field that says otherwise. Naming the reason turns a silence the planner
+    fills with its own assumption into a fact it can plan around.
+    """
+    if not sq.owned_aircraft or _squadron_flyable(sq, grounded):
+        return None
+    if grounded:
+        return "grounded"  # the `grounded` flag carries the detail
+    if sq.untasked_aircraft <= 0:
+        return f"all {sq.owned_aircraft} already tasked"
+    return "no available pilots"
+
+
 def idle_flyable_total(game: Game, side: str) -> int:
     """Total launchable-now aircraft still untasked across the side's air wing (the headline
     'force left on the ramp' number)."""
@@ -551,14 +577,19 @@ def build_squadron(sq: Squadron, player: Player | None = None) -> SquadronView:
     # hull) is excluded by the engine's mission planner, so flag it instead of
     # advertising phantom flyable aircraft to the planner.
     grounded = _squadron_grounded(sq, player)
+    # Zero is only noise for a squadron with nothing on the ramp. Once it owns aircraft,
+    # "none of them are free" is the single most decision-changing fact about it, so
+    # untasked/flyable are emitted as literal zeros rather than omitted.
+    owned = sq.owned_aircraft
     return SquadronView(
         id=str(sq.id),
         name=str(sq),
         aircraft=sq.aircraft.display_name,
         base=sq.location.name,
-        owned=sq.owned_aircraft or None,
-        untasked=sq.untasked_aircraft or None,
-        flyable=_squadron_flyable(sq, grounded) or None,
+        owned=owned or None,
+        untasked=sq.untasked_aircraft if owned else None,
+        flyable=_squadron_flyable(sq, grounded) if owned else None,
+        unflyable=_unflyable_reason(sq, grounded),
         pending=sq.pending_deliveries or None,
         pilots=sq.number_of_available_pilots,
         price=sq.aircraft.price,
