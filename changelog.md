@@ -65,9 +65,7 @@
 * **[UX]** Add the ability to filter campaigns by version, map, and performance
 
 ## Fixes
-* **[Mission Generation]** Fix mission generation dying on "Duplicate convoy unit": convoy and cargo-ship names no longer reset each turn onto a convoy still in transit.
-* **[Mod Support]** Fix SA-10B/S-300PS sites never spawning at all: High Digit SAMs 2.1.0 dropped the whole S-300PS family, DCS silently discards a unit type it cannot resolve, and Retribution went on believing the site was alive. Now uses the stock S-300PS.
-* **[Data]** Drop the WWII 2 cm Flak 38 from the modern Spain faction: it comes from the WWII Assets Pack, so without that module DCS discarded every gun and Spanish AAA sites came up empty while Retribution counted them as defended.
+* **[Data]** Fix the modern Spain faction's air defence: the WWII 2 cm Flak 38 needs the WWII Assets Pack, so without it DCS discarded every gun and the sites came up empty while Retribution counted them as defended. Spain operates neither the Soviet ZU-23 nor the US Avenger either, so its point defence is now the Stinger alone.
 * **[Data]** The F-14A-135-GR Early's payload file declared the wrong unitType, so the Early Tomcat flew every tasking unarmed; its loadouts now resolve (with a guard test pinning the payload to the airframe). (#889)
 * **[Mission Generator]** EWR sites now get the DCS "EWR" enroute task and come up on RED alarm, so their radars actually scan and report contacts (previously they could sit inert, especially with the "red alert state" performance option off). Works with or without the Skynet IADS plugin.
 * **[Plugins]** Fix the escort leash never running (DCS has no `Group.getByID`; look the group up by name via mist), so escorts are actually held to their engagement range.

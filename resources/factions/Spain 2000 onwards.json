@@ -65,8 +65,6 @@
   ],
   "air_defense_units": [
     "EWR AN/FPS-117 Radar",
-    "M1097 Heavy HMMWV Avenger",
-    "AAA ZU-23 Emplacement",
     "MANPADS Stinger"
   ],
   "missiles": [],
