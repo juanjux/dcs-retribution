@@ -189,10 +189,6 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   enough) made the state encoder build a multi-million-hole array on the sim thread.
   Scenery deaths are now ignored by the state export.
   ([#80](https://github.com/juanjux/dcs-retribution/pull/80))
-- **Right-click on a front line under a flight-plan route** now opens the new-package
-  dialog: the blue route's invisible hover overlay swallowed the click and the browser
-  context menu appeared instead (front lines render in their own map pane now).
-  ([#71](https://github.com/juanjux/dcs-retribution/pull/71))
 - The **Support Info** kneeboard page now spans multiple pages when a package has
   many flights, instead of pushing the AEW&C / tanker / JTAC tables off the bottom
   of a single page (they were silently lost). Sections are packed by measured height
