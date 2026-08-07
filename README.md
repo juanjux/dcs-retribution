@@ -157,6 +157,9 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   (branch [`juanjux/ch_china_1.1.6`](https://github.com/juanjux/dcs-retribution/tree/juanjux/ch_china_1.1.6))
 
 ### Fixes
+- **SA-10B/S-300PS sites spawned crippled.** Four of the preset's six units no longer
+  exist in High Digit SAMs, and DCS silently drops a unit type it cannot resolve, so the
+  site came up without command post, tracking radar or launchers. Now stock S-300PS.
 - **A refused purchase now says why.** "Cannot buy more X" was the same message
   whether you were short of money, out of parking, or at the squadron's aircraft
   cap — three problems with three different answers. It now names the one that

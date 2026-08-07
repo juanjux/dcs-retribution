@@ -2,11 +2,16 @@ name: SA-10B/S-300PS
 tasks:
   - LORAD
 units:
+  # Only the two search radars still exist in the High Digit SAMs mod. The mod dropped
+  # the "SA-10B" command post, the 30N6 trailer TR and the 5P85SE/5P85SU launchers, and
+  # DCS refuses a GROUP containing any unknown unit type — so the whole site silently
+  # failed to spawn while Retribution went on believing it was alive and projecting its
+  # threat ring. The rest of the site is the stock S-300PS, which is the same hardware.
   - SAM SA-10B S-300PS 40B6MD SR
   - SAM SA-10B S-300PS 64H6E SR
-  - SAM SA-10B S-300PS 54K6 CP
-  - SAM SA-10B S-300PS 30N6 TR
-  - SAM SA-10B S-300PS 5P85SE LN
-  - SAM SA-10B S-300PS 5P85SU LN
+  - SAM SA-10 S-300 "Grumble" C2
+  - SAM SA-10 S-300 "Grumble" Flap Lid-B TR
+  - SAM SA-10 S-300 "Grumble" TEL C
+  - SAM SA-10 S-300 "Grumble" TEL D
 layouts:
   - S-300 Site
