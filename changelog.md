@@ -64,6 +64,7 @@
 * **[UX]** Add the ability to filter campaigns by version, map, and performance
 
 ## Fixes
+* **[Data]** Drop the WWII 2 cm Flak 38 from the modern Spain faction: it comes from the WWII Assets Pack, so without that module DCS discarded every gun and Spanish AAA sites came up empty while Retribution counted them as defended.
 * **[Data]** The F-14A-135-GR Early's payload file declared the wrong unitType, so the Early Tomcat flew every tasking unarmed; its loadouts now resolve (with a guard test pinning the payload to the airframe). (#889)
 * **[Mission Generator]** EWR sites now get the DCS "EWR" enroute task and come up on RED alarm, so their radars actually scan and report contacts (previously they could sit inert, especially with the "red alert state" performance option off). Works with or without the Skynet IADS plugin.
 * **[Plugins]** Fix the escort leash never running (DCS has no `Group.getByID`; look the group up by name via mist), so escorts are actually held to their engagement range.

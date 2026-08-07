@@ -157,6 +157,9 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   (branch [`juanjux/ch_china_1.1.6`](https://github.com/juanjux/dcs-retribution/tree/juanjux/ch_china_1.1.6))
 
 ### Fixes
+- **Spanish AAA sites were empty.** The faction listed the WWII 2 cm Flak 38, which needs
+  the WWII Assets Pack; without it DCS discards the guns and the site defends nothing.
+  ([#95](https://github.com/juanjux/dcs-retribution/pull/95))
 - **A refused purchase now says why.** "Cannot buy more X" was the same message
   whether you were short of money, out of parking, or at the squadron's aircraft
   cap — three problems with three different answers. It now names the one that
