@@ -172,6 +172,16 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
 - **Take Off died with "Duplicate convoy unit", stranding the campaign** — the name
   counter reset each turn onto a convoy still in transit. Same bug upstream.
   ([#93](https://github.com/juanjux/dcs-retribution/pull/93))
+- **SA-10B/S-300PS sites spawned crippled.** Four of the preset's six units no longer
+  exist in High Digit SAMs, and DCS silently drops a unit type it cannot resolve, so the
+  site came up without command post, tracking radar or launchers. Now stock S-300PS.
+- **A refused purchase now says why.** "Cannot buy more X" was the same message
+  whether you were short of money, out of parking, or at the squadron's aircraft
+  cap — three problems with three different answers. It now names the one that
+  applied ("costs 20M, budget is 16.2M", "no free parking at Beirut-Rafic Hariri",
+  "squadron is at its cap of 24"). The LLM planner reads the same string over the
+  API, where an opaque refusal is worse still.
+  ([#87](https://github.com/juanjux/dcs-retribution/pull/87))
 - **Air-assault troops stood still instead of taking the base.** Capturing needs
   every enemy ground unit out of a 3 km radius, but CTLD walked unloaded troops to
   their waypoint and left them there, so one surviving vehicle a kilometre away
