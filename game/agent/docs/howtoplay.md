@@ -548,7 +548,9 @@ means none/empty** (stated once so the per-turn payloads stay small).
   breakdown the human reads on that base's Intel tab, for BOTH sides. **On an enemy
   field this is what decides an OCA/Aircraft package**: seven fighters is worth a
   strike, two transports is not, and the count is aircraft PRESENT, not ordered or in
-  transit), `motorpool`? (how many of that armor
+  transit. On YOUR OWN base it is inventory, **not availability** — an airframe counted
+  here may already be tasked; `air_wing[].flyable` is the only number that says what you
+  can still launch), `motorpool`? (how many of that armor
   sit **undeployed in a bombable depot**: on YOUR base that is what a blue BAI strike can
   destroy and force you to repurchase — deploy it or defend it; on an enemy base it sizes
   the prize behind a `kind:motorpool` target. Omitted when the base has no motorpool or
@@ -566,7 +568,14 @@ means none/empty** (stated once so the per-turn payloads stay small).
 - `air_wing[]` — your squadrons — {`id`, `name`, `aircraft`, `base`, `owned`?,
   `untasked`?, `flyable`? (**the number to plan with**: aircraft you can actually
   LAUNCH this turn = `min(untasked, pilots)`, or 0 if grounded — `untasked` can exceed
-  your pilots, `flyable` can't; omitted when 0), `pending`?, `pilots`, `price` (cost of
+  your pilots, `flyable` can't. Both are omitted ONLY when the squadron owns nothing;
+  once `owned` is present they are always shown, **including a literal `0`**, so
+  `owned: 1` with `flyable: 0` means that jet is NOT available), `unflyable`? (when
+  `flyable` is 0 and the squadron still holds aircraft, the reason in words — `all 1
+  already tasked` / `no available pilots` / `grounded`. **Its presence means: do not
+  plan with this squadron this turn**, and `all N already tasked` means those aircraft
+  are flying in packages you already created — check `packages` before concluding a
+  jet is idle), `pending`?, `pilots`, `price` (cost of
   **ONE** aircraft — `buy/aircraft` with `quantity: n` costs `n * price`, so
   `budget / price` is how many you can actually afford this turn; do not guess it),
   `max_ac`?
