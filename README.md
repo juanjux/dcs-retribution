@@ -84,6 +84,11 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   [#20](https://github.com/juanjux/dcs-retribution/pull/20))
 
 ### Missions, AI & tasking
+- **High Digit SAMs updated to 2.1.0** — the wizard still claimed v1.4.0. Adds the
+  SAMP/T battery (Aster 30, up to 200 km) and the SA-7/SA-7b Strela-2 MANPADS, retires
+  what the mod dropped, and a test now refuses any preset naming a unit that
+  does not exist.
+  ([#96](https://github.com/juanjux/dcs-retribution/pull/96))
 - **Campaign Doctrine: "non-combat (crash) air losses don't count"** — AI
   crashes/collisions DCS not credited to a weapon or SAM (which happen a lot because DCS AI is stupid) no longer deplete a
   squadron or kill the pilot; backed by per-loss kill attribution and shown in
