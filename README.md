@@ -157,6 +157,9 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   (branch [`juanjux/ch_china_1.1.6`](https://github.com/juanjux/dcs-retribution/tree/juanjux/ch_china_1.1.6))
 
 ### Fixes
+- **Take Off died with "Duplicate convoy unit", stranding the campaign** — the name
+  counter reset each turn onto a convoy still in transit. Same bug upstream.
+  ([#93](https://github.com/juanjux/dcs-retribution/pull/93))
 - **A refused purchase now says why.** "Cannot buy more X" was the same message
   whether you were short of money, out of parking, or at the squadron's aircraft
   cap — three problems with three different answers. It now names the one that
