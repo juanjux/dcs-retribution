@@ -18,7 +18,7 @@ description:
   <p>To put more pressure and distress onto the Spanish Government, they have also started attacks to take over the
   cities of Ceuta (FOB in Iskenderun) and Melilla (Bassel Al-Assad).</p>
   <p>You must support ground troops while reinforcements arrive to Canarias, as there are no armament production
-  centers there. Ships will be sent from Rota Naval Base (Mersin) and Moron Naval and Air Base (Gazipasa).
+  centers there. Ships will be sent from Rota Naval Base (Mersin) and Getafe Air Base (Adana Sakirpasa).
   Morocco will also try to support their expeditionary forces by sending reinforcements by sea.</p>
   <p>Prioritize naval targets!</p>
   <p>L-61 "Juan Carlos I" naval assault group has also been sent to the zone to support operations. F-18 Hornets from 
@@ -118,7 +118,7 @@ iads_config:
     - Spain EWR Torrejon B:
         - IADS Command Center Spain
         - Power IADS Spain Peninsula
-    - Spain EWR Moron:
+    - Spain EWR Getafe:
         - IADS Command Center Spain
         - Power IADS Spain Peninsula
     - Spain EWR Tarifa:
