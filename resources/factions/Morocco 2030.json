@@ -12,7 +12,9 @@
     "C-130J-30",
     "UH-60A",
     "SH-60B Seahawk",
-    "AH-64D Apache Longbow"
+    "AH-64D Apache Longbow",
+    "F-35A Lightning II",
+    "JF-17 Thunder"
   ],
   "awacs": [
     "E-3A"
@@ -67,8 +69,8 @@
     "Type 054A Frigate"
   ],
   "missiles": [],
-  "has_jtac": false,
-  "jtac_unit": null,
+  "has_jtac": true,
+  "jtac_unit": "MQ-9 Reaper",
   "doctrine": "modern",
   "building_set": [
     "ware",
@@ -206,6 +208,8 @@
     ]
   },
   "unrestricted_satnav": false,
-  "requirements": {},
+  "requirements": {
+    "VSN F-35 mod": "https://filedn.eu/lry92aiYXwlhFlDghoB2OEp/VSN_html_Links/VSN_MODS.html"
+  },
   "carriers": {}
 }

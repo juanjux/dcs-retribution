@@ -4,7 +4,12 @@ theater: Syria
 authors: NoGoodNews
 description:
   <p>Fictional Campaign where Morocco is attacking Spain through Ceuta, Melilla and Canary Islands in 2030. This is a variation of the 
-  "Invation of Canary Islands" campaign where Morocco is stronger for better balance even if not totally realistic.</p>
+  "Invation of Canary Islands" campaign where Morocco is stronger for better balance.</p>
+  <p>Many old aircrafts have been removed from both sides (F-5, Mirages, Gazelles, et cetera) and replaced by modern planes or choppers</p>
+  <p>Spain will mostly use Eurofighter Squadrons as already have or planned to have by 2030, so you need that mod. It also have one squadron of F/A-18C since Eurofighters can't totally replace it in game (e.g. no standoff bombs) and many players fly the F/A-18C</p>
+  <p>The Harrier probably should be replaced by the F-35B but DCS' IA is pretty bugged when flying the AG version, so the Harriers have been kept</p>
+  <p>Morocco now have several planes that are rumored to be in the talks of adquiring like the F-35A (only AA version, see above) and the JF-17, while keeping some F-16CM that many players will fly</p>
+  <p>Both sides have now access to an AWACS, JTAC (drone) and refuelers</p>
   <p>Using DCS' Syria map as the terrain, it results in a close representation of the terrain around Morocco and
   south of Spain, mainly due to the similar distances between Canary Islands (Cyprus) and Morocco Mainland (Syria, Lebanon).</p>
   <p>Morocco Armed Forces have landed in Tenerife (Akrotiri) and are trying to extend towards Tenerife Norte (Larnaca),
@@ -61,11 +66,11 @@ settings:
   f100_supersabre: false
   f104_starfighter: false
   f105_thunderchief: false
-  hercules: false          # el C-130J-30 del juego, no el mod
+  hercules: false          # both sides fly the C-130J-30 that ships with DCS
   uh_60l: true
   eurofighter: true
-  mam: true            # A400M
-  VSN_F35: true        # F-35 de Marruecos, solo la variante aire-aire
+  mam: true                # Spain's A400M
+  VSN_F35: true            # Morocco's F-35, air-to-air variant only
   jas39_gripen: false
   su30_flanker_h: false
   su57_felon: false
