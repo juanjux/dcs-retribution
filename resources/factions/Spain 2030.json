@@ -65,7 +65,8 @@
   ],
   "air_defense_units": [
     "EWR AN/FPS-117 Radar",
-    "MANPADS Stinger"
+    "MANPADS Stinger",
+    "Flakpanzer Gepard"
   ],
   "naval_units": [
     "FFG Oliver Hazard Perry",
