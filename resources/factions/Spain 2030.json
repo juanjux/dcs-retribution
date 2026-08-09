@@ -16,7 +16,9 @@
     "AH-64D Apache Longbow (AI)",
     "C-130J-30",
     "UH-60A",
-    "SH-60B Seahawk"
+    "SH-60B Seahawk",
+    "E-3A",
+    "KC-135 Stratotanker MPRS"
   ],
   "awacs": [
     "E-3A"

@@ -10,6 +10,7 @@ description:
   <p>The Harrier probably should be replaced by the F-35B but DCS' IA is pretty bugged when flying the AG version, so the Harriers have been kept</p>
   <p>Morocco now have several planes that are rumored to be in the talks of adquiring like the F-35A (only AA version, see above) and the JF-17, while keeping some F-16CM that many players will fly</p>
   <p>Both sides have now access to an AWACS, JTAC (drone) and refuelers</p>
+  <p>Both sides also have semi-realistic navies (from light frigate up, corvette and patrollers are not included). In this case, the Spanish navy is stronger which balances Morocco's F-35 and the need of the Spanish faction to capture a lot more control points to win</p>
   <p>Using DCS' Syria map as the terrain, it results in a close representation of the terrain around Morocco and
   south of Spain, mainly due to the similar distances between Canary Islands (Cyprus) and Morocco Mainland (Syria, Lebanon).</p>
   <p>Morocco Armed Forces have landed in Tenerife (Akrotiri) and are trying to extend towards Tenerife Norte (Larnaca),
@@ -399,6 +400,17 @@ iads_config:
 
 
         
+carriers:
+  Blue LHA:
+    preferred_name: Juan Carlos I
+    preferred_type: L61 Juan Carlos I
+  Blue LHA Castilla:
+    preferred_name: Castilla
+    preferred_type: L52 Castilla
+  Blue LHA Galicia:
+    preferred_name: Galicia
+    preferred_type: L52 Castilla
+
 squadrons:
     #SPANISH ARMED FORCES
     #Gazipasa (Morón)
