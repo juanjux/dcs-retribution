@@ -77,6 +77,7 @@ settings:
   su57_felon: false
   frenchpack: true
   high_digit_sams: true
+  enable_squadron_aircraft_limits: true   # no buying past a squadron's defined size
   ov10a_bronco: false
   swedishmilitaryassetspack: false
   spanishnavypack: true
@@ -412,311 +413,308 @@ carriers:
     preferred_type: L52 Castilla
 
 squadrons:
-    #SPANISH ARMED FORCES
-    #Gazipasa (Morón)
-    218:
-        - primary: BARCAP
-          secondary: air-to-ground
-          aircraft:
-            - ALA 14 - 142 Escuadron - Albacete F1M-EE
-          size: 12
-        - primary: BAI
-          secondary: air-to-ground
-          aircraft:
-            - Ala 23 - 232 Escuadron
-          size: 12
-        - primary: Transport
-          aircraft:
-            - Ala 31 - Grupo 20
-          size: 4
-          
-    #Inclirk (Torrejón)
-    16:
-        - primary: AEW&C
-          size: 2
-        - primary: Refueling
-          aircraft: 
-            - Ala 31 - Grupo 15
-          size: 3
-        - primary: BARCAP
-          secondary: air-to-ground
-          aircraft:
-            - Ala 12 - 121 Escuadron
-          size: 12
-        - primary: BARCAP
-          secondary: air-to-ground
-          aircraft:
-            - Ala 15 - 151 Escuadron
-          size: 12
-        - primary: CAS
-          aircraft:
-            - FAMET 251 Escuadrilla
-          size: 8
-        - primary: Transport
-          aircraft:
-            - BHELTRA-V
-          size: 4
-        - primary: Transport
-          aircraft:
-            - Ala 31 - Grupo 20
-          size: 4
-          
-    #Larnaca (Gran Canarias)
-    47:
-        - primary: BARCAP
-          secondary: air-to-ground
-          aircraft:
-            - 462 Escuadron
-          size: 8
-        - primary: CAS
-          secondary: any
-          aircraft:
-            - ALA 46 - 462 Escuadron - Gando F1M-EE
-          size: 8
-        - primary: Refueling
-          aircraft: 
-            - Ala 31 - Grupo 10
-          size: 3
-        - primary: CAS
-          aircraft:
-            - CEFAMET 216 Escuadirlla
-          size: 8
-        - primary: Transport
-          aircraft:
-            - BHELTRA-V Bosque
-          size: 4
-        - primary: Transport
-          aircraft:
-            - Ala 31 - Grupo 30
-          size: 4
-          
-    #Paphos (Gando)
-    46:
-        - primary: BARCAP
-          secondary: air-to-ground
-          aircraft:
-           - ALA 46 - 462 Escuadron - Gando F1EE
-          size: 10
-        - primary: CAS
-          aircraft:
-            - CEFAMET 214 Escuadrilla
-          size: 8
-        - primary: BAI
-          aircraft:
-           - Ala 21 - 211 Escuadron
-          size: 8
-           
-    #Basel Al-Assad (Melilla)
-    21:
-        - primary: BARCAP
-          secondary: air-to-ground
-          aircraft:
-            - ALA 14 - 141 Escuadron - Albacete F1BE
-          size: 10
-        - primary: BAI
-          aircraft:
-            - Escuadrón de Vigilancia Aérea nº21 (Macan)
-          size: 8
-        - primary: Transport
-          aircraft:
-            - FAMET 257 Escuadrilla
-          size: 8
-        - primary: Transport
-          aircraft:
-            - BHELTRA-V Arido
-          size: 3
-        - primary: Transport
-          aircraft:
-            - Ala 46
-          size: 3
-    
-    #Akrotiri (Tenerife)
-    44:
-        - primary: BAI
-          secondary: any
-          aircraft:
-            - Ala 46 - 462 Escuadron
-          size: 8
-        - primary: Transport
-          aircraft:
-            - CEFAMET 217 Escuadrilla
-          size: 8
-            
-    #L-61 Juan Carlos I
-    Blue LHA:
-        - primary: Strike
-          aircraft:
-            - 9a Escuadrilla Armada Española
-          size: 10
-        - primary: CAS
-          aircraft:
-            - 3a Escuadrilla de Aeronaves
-          size: 8
-        - primary: BAI
-          aircraft:
-            - 7a Escuadrilla de Aeronaves
-          size: 8
-        - primary: Transport
-          aircraft:
-            - 10a Escuadrilla de Aeronaves
-          size: 3
-            
-    #Ceuta
-    Spain FOB Ceuta:
-        - primary: Transport
-          aircraft:
-            - Spain - FAMET SAHARA
-          size: 8
-    
-    #GC Norte
-    Spain FOB GC Norte:
-        - primary: Transport
-          aircraft:
-            - CEFAMET 217 Escuadrilla
-          size: 8
-    
-    #MOROCCO ARMED FORCES
-    #Aleppo
-    27:
-        - primary: BARCAP
-          Secondary: any
-          aircraft:
-            - Mirage-F1CE
-          size: 10
-        - primary: CAS
-          aircraft:
-            - AH-64D Apache Longbow
-          size: 6
-        - primary: Transport
-          aircraft:
-            - UH-1H Iroquois
-          size: 8
-        - primary: Transport
-          aircraft:
-            - CH-47D
-          size: 3
-        
-    #Hama
-    14:
-        - primary: BARCAP
-          Secondary: any
-          aircraft:
-            - F-16CM Fighting Falcon (Block 50)
-          size: 10
-        - primary: CAS
-          aircraft:
-            - SA 342M Gazelle
-          size: 6
-        - primary: Transport
-          aircraft:
-            - UH-1H Iroquois
-          size: 8
-        - primary: Transport
-          aircraft:
-            - CH-47D
-          size: 3
-            
-    #Rene Mouawad
-    33:
-        - primary: BARCAP
-          Secondary: any
-          aircraft:
-            - F-5E Tiger II
-          size: 12
-        - primary: CAS
-          aircraft:
-            - SA 342M Gazelle
-          size: 6
-        - primary: Transport
-          aircraft:
-            - UH-1H Iroquois
-          size: 8
-        - primary: Transport
-          aircraft:
-            - CH-47D
-          size: 3
-    #Tiyas
-    39:
-        - primary: BARCAP
-          Secondary: any
-          aircraft:
-            - F-16CM Fighting Falcon (Block 50)
-          size: 10
-        - primary: BAI
-          Secondary: any
-          aircraft:
-            - Mirage-F1CE
-          size: 10
-            
-    #Palmyra
-    28:
-        - primary: BARCAP
-          Secondary: any
-          aircraft:
-            - Mirage-F1CE
-          size: 8
-        - primary: BARCAP
-          Secondary: any
-          aircraft:
-            - F-5E Tiger II
-          size: 10
-        - primary: Transport
-          aircraft:
-            - C-130
-          size: 3
-   
-   #Beyrut
-    6:
-        - primary: BARCAP
-          Secondary: any
-          aircraft:
-            - F-16CM Fighting Falcon (Block 50)
-          size: 5
-        - primary: BAI
-          Secondary: any
-          aircraft:
-            - Mirage-F1CE
-          size: 5
-    
-    #Ramat David
-    30:
-        - primary: BARCAP
-          Secondary: any
-          aircraft:
-            - F-16CM Fighting Falcon (Block 50)
-          size: 5
-        - primary: BARCAP
-          Secondary: any
-          aircraft:
-            - F-5E Tiger II
-          size: 5
-    #Haifa
-    13:
-        - primary: CAS
-          aircraft:
-            - SA 342M Gazelle
-          size: 6
-        - primary: Transport
-          aircraft:
-            - UH-1H Iroquois
-          size: 8
-        - primary: Transport
-          aircraft:
-            - CH-47D
-          size: 2
-    #Damascus
-    7:
-        - primary: BARCAP
-          Secondary: any
-          aircraft:
-            - Mirage-F1CE
-          size: 6
-        - primary: BARCAP
-          Secondary: any
-          aircraft:
-            - F-5E Tiger II
-          size: 6
-        - primary: Transport
-          aircraft:
-            - C-130
-          size: 3
+  2:
+  - primary: BARCAP
+    secondary:
+    - Escort
+    - BAI
+    aircraft:
+    - Eurofighter Typhoon
+    name: Ala 11 - Esc. 111
+    size: 24
+  - primary: Transport
+    secondary:
+    - Air Assault
+    aircraft:
+    - UH-60A
+    name: Esc. 802
+    size: 8
+  90:
+  - primary: BARCAP
+    secondary:
+    - Escort
+    - CAS
+    aircraft:
+    - Eurofighter Typhoon
+    name: Ala 14 - Esc. 141/142
+    size: 24
+  - primary: Air Assault
+    secondary:
+    - Transport
+    aircraft:
+    - UH-60A
+    name: BHELMA III
+    size: 12
+  47:
+  - primary: BARCAP
+    secondary:
+    - Escort
+    aircraft:
+    - Eurofighter Typhoon
+    name: Ala 15 - Esc. 151/152
+    size: 20
+  16:
+  - primary: BARCAP
+    secondary:
+    - Strike
+    - SEAD
+    - DEAD
+    - Anti-ship
+    aircraft:
+    - F/A-18C Hornet (Lot 20)
+    name: Ala 12 - Esc. 121
+    size: 24
+  - primary: BARCAP
+    secondary:
+    - Escort
+    - BAI
+    aircraft:
+    - Eurofighter Typhoon
+    name: Ala 12 - Esc. 122
+    size: 22
+  - primary: AEW&C
+    aircraft:
+    - E-3A
+    name: OTAN AWACS
+    size: 1
+  46:
+  - primary: BARCAP
+    secondary:
+    - Escort
+    - CAS
+    aircraft:
+    - Eurofighter Typhoon
+    name: Ala 46 - Esc. 462
+    size: 22
+  218:
+  - primary: Transport
+    aircraft:
+    - A400M Atlas
+    name: Ala 31 - Esc. 311/312
+    size: 14
+  - primary: Refueling
+    aircraft:
+    - KC-135 Stratotanker MPRS
+    name: Ala 45 - Esc. 451
+    size: 4
+  21:
+  - primary: Transport
+    aircraft:
+    - C-130
+    name: Ala 35 - Esc. 351
+    size: 6
+  - primary: Transport
+    secondary:
+    - Air Assault
+    aircraft:
+    - UH-60A
+    name: Esc. 803
+    size: 8
+  - primary: CAS
+    secondary:
+    - BAI
+    - Armed Recon
+    aircraft:
+    - AH-64D Apache Longbow (AI)
+    name: BHELA IA
+    size: 8
+  Spain FOB Ceuta:
+  - primary: CAS
+    secondary:
+    - BAI
+    - Armed Recon
+    aircraft:
+    - AH-64D Apache Longbow (AI)
+    name: BHELA IB
+    size: 8
+  Spain FOB GC Norte:
+  - primary: Air Assault
+    secondary:
+    - Transport
+    aircraft:
+    - UH-60A
+    name: BHELMA VI
+    size: 8
+  Blue LHA:
+  - primary: CAS
+    secondary:
+    - BAI
+    - Anti-ship
+    aircraft:
+    - AV-8B Harrier II Night Attack
+    name: 9a Escuadrilla
+    size: 12
+  - primary: Anti-ship
+    secondary:
+    - Transport
+    aircraft:
+    - SH-60B Seahawk
+    name: 10a Escuadrilla
+    size: 8
+  Blue LHA Castilla:
+  - primary: Air Assault
+    secondary:
+    - Transport
+    aircraft:
+    - CH-47F Block I
+    name: BHELTRA VB
+    size: 8
+  - primary: Air Assault
+    secondary:
+    - Transport
+    aircraft:
+    - UH-60A
+    name: BHELMA IV
+    size: 12
+  Blue LHA Galicia:
+  - primary: CAS
+    secondary:
+    - BAI
+    aircraft:
+    - AH-64D Apache Longbow (AI)
+    name: BHELA IC
+    size: 8
+  - primary: Air Assault
+    secondary:
+    - Transport
+    aircraft:
+    - CH-47F Block I
+    name: BHELTRA VA
+    size: 8
+  - primary: Transport
+    secondary:
+    - Air Assault
+    aircraft:
+    - UH-1H Iroquois
+    name: 3a Escuadrilla
+    size: 4
+  27:
+  - primary: BARCAP
+    Secondary: any
+    aircraft:
+    - Mirage-F1CE
+    size: 10
+  - primary: CAS
+    aircraft:
+    - AH-64D Apache Longbow
+    size: 6
+  - primary: Transport
+    aircraft:
+    - UH-1H Iroquois
+    size: 8
+  - primary: Transport
+    aircraft:
+    - CH-47D
+    size: 3
+  14:
+  - primary: BARCAP
+    Secondary: any
+    aircraft:
+    - F-16CM Fighting Falcon (Block 50)
+    size: 10
+  - primary: CAS
+    aircraft:
+    - SA 342M Gazelle
+    size: 6
+  - primary: Transport
+    aircraft:
+    - UH-1H Iroquois
+    size: 8
+  - primary: Transport
+    aircraft:
+    - CH-47D
+    size: 3
+  33:
+  - primary: BARCAP
+    Secondary: any
+    aircraft:
+    - F-5E Tiger II
+    size: 12
+  - primary: CAS
+    aircraft:
+    - SA 342M Gazelle
+    size: 6
+  - primary: Transport
+    aircraft:
+    - UH-1H Iroquois
+    size: 8
+  - primary: Transport
+    aircraft:
+    - CH-47D
+    size: 3
+  39:
+  - primary: BARCAP
+    Secondary: any
+    aircraft:
+    - F-16CM Fighting Falcon (Block 50)
+    size: 10
+  - primary: BAI
+    Secondary: any
+    aircraft:
+    - Mirage-F1CE
+    size: 10
+  28:
+  - primary: BARCAP
+    Secondary: any
+    aircraft:
+    - Mirage-F1CE
+    size: 8
+  - primary: BARCAP
+    Secondary: any
+    aircraft:
+    - F-5E Tiger II
+    size: 10
+  - primary: Transport
+    aircraft:
+    - C-130
+    size: 3
+  6:
+  - primary: BARCAP
+    Secondary: any
+    aircraft:
+    - F-16CM Fighting Falcon (Block 50)
+    size: 5
+  - primary: BAI
+    Secondary: any
+    aircraft:
+    - Mirage-F1CE
+    size: 5
+  30:
+  - primary: BARCAP
+    Secondary: any
+    aircraft:
+    - F-16CM Fighting Falcon (Block 50)
+    size: 5
+  - primary: BARCAP
+    Secondary: any
+    aircraft:
+    - F-5E Tiger II
+    size: 5
+  13:
+  - primary: CAS
+    aircraft:
+    - SA 342M Gazelle
+    size: 6
+  - primary: Transport
+    aircraft:
+    - UH-1H Iroquois
+    size: 8
+  - primary: Transport
+    aircraft:
+    - CH-47D
+    size: 2
+  7:
+  - primary: BARCAP
+    Secondary: any
+    aircraft:
+    - Mirage-F1CE
+    size: 6
+  - primary: BARCAP
+    Secondary: any
+    aircraft:
+    - F-5E Tiger II
+    size: 6
+  - primary: Transport
+    aircraft:
+    - C-130
+    size: 3
