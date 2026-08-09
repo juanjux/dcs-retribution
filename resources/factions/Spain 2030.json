@@ -1,0 +1,394 @@
+{
+  "country": "Spain",
+  "name": "Spain 2030",
+  "description": "<p>Spain 2026 USAR ESTA</p>",
+  "authors": "Juanjo",
+  "aircrafts": [
+    "Eurofighter Typhoon",
+    "CH-47F Block I",
+    "C-130",
+    "A400M Atlas",
+    "AV-8B Harrier II Night Attack",
+    "UH-60L",
+    "F/A-18C Hornet (Lot 20)",
+    "AH-64A Apache",
+    "UH-1H Iroquois",
+    "AH-64D Apache Longbow (AI)",
+    "C-130J-30",
+    "EF-18A+ Hornet",
+    "UH-60A",
+    "SH-60B Seahawk"
+  ],
+  "awacs": [
+    "E-3A"
+  ],
+  "tankers": [
+    "KC-135 Stratotanker MPRS",
+    "KC-130"
+  ],
+  "frontline_units": [
+    "M1126 Stryker ICV (M2 HMG)",
+    "M1043 HMMWV (M2 HMG)",
+    "M113",
+    "FV510 Warrior",
+    "M1128 Stryker Mobile Gun System",
+    "TPz Fuchs",
+    "Leopard 2A4",
+    "Leopard 2A6M",
+    "M1045 HMMWV (BGM-71 TOW)",
+    "M1097 Heavy HMMWV Avenger",
+    "LAV-25"
+  ],
+  "artillery_units": [
+    "M109A6 Paladin",
+    "M270 Multiple Launch Rocket System"
+  ],
+  "logistics_units": [
+    "Truck Land Rover 101 FC",
+    "Truck KAMAZ 43101",
+    "LUV Land Rover 109",
+    "Truck M818 6x6"
+  ],
+  "infantry_units": [
+    "MANPADS Stinger",
+    "Infantry M4 Georgia",
+    "Infantry M249",
+    "Infantry M4"
+  ],
+  "preset_groups": [
+    "Hawk",
+    "Roland",
+    "Patriot",
+    "NASAMS AIM-120B"
+  ],
+  "air_defense_units": [
+    "EWR AN/FPS-117 Radar",
+    "MANPADS Stinger"
+  ],
+  "naval_units": [
+    "FFG Oliver Hazard Perry",
+    "L61 Juan Carlos I",
+    "F100 Álvaro de Bazán",
+    "F105 Cristobal Colon",
+    "L52 Castilla"
+  ],
+  "missiles": [],
+  "has_jtac": true,
+  "jtac_unit": "MQ-9 Reaper",
+  "doctrine": "modern",
+  "building_set": [
+    "ware",
+    "comms",
+    "invisiblefob",
+    "oil",
+    "factory",
+    "commandcenter",
+    "fuel",
+    "fob",
+    "farp",
+    "power",
+    "ammo",
+    "derrick"
+  ],
+  "liveries_overrides": {
+    "EF-18A+ Hornet": [
+      "spain - 111th escuadron c.15-73",
+      "spain - 111th escuadron c.15-88",
+      "spain - 121th escuadron c.15-34 50th anniversary",
+      "spain - 121th escuadron c.15-45",
+      "spain - 121th escuadron c.15-49",
+      "spain - 121th escuadron c.15-50",
+      "spain - 121th escuadron c.15-56",
+      "spain - 121th escuadron c.15-60",
+      "spain - 151th escuadron c.15-14",
+      "spain - 151th escuadron c.15-14 tiger meet",
+      "spain - 151th escuadron c.15-18",
+      "spain - 151th escuadron c.15-22 tiger meet",
+      "spain - 151th escuadron c.15-23",
+      "spain - 151th escuadron c.15-24",
+      "spain - 211th escuadron c.15-76",
+      "spain - 211th escuadron c.15-77",
+      "spain - 462th escuadron c.15-79",
+      "spain - 462th escuadron c.15-88 50 años",
+      "spain - 462th escuadron c.15-90"
+    ],
+    "AV-8B Harrier II Night Attack": [
+      "spain - 8a escuadrilla matador 07",
+      "spain - 8a escuadrilla matador 69",
+      "spain - 9a escuadrilla armada",
+      "spain - 9a escuadrilla riat 2019 01-914",
+      "spain - 9a escuadrilla riat 2019 01-925",
+      "spain - 9a escuadrilla armada - 13",
+      "spain - 9a escuadrilla armada - 16",
+      "spain - 9a escuadrilla armada - 23",
+      "spain - 9a escuadrilla armada - 26"
+    ],
+    "C-130": [
+      "spain - t10-03 31-03 gris",
+      "spain - t10-04 31-04  gris",
+      "spain - t10-08 31-05 camo",
+      "spain - t10-09 31-06  gris",
+      "spain - t10-10 31-07  gris",
+      "spain - tl10-01 31-01 gris"
+    ],
+    "C-101CC Aviojet": [
+      "aga (spanish air school)",
+      "aga (spanish air school) 1980",
+      "aga (spanish air school) 1985",
+      "claex desert camu skin - centro logistico de armamento y experimentacion",
+      "claex green camu skin - centro logistico de armamento y experimentacion",
+      "claex - centro logístico de armamento y experimentación"
+    ],
+    "F-5E Tiger II": [
+      "sp spanish air force 21-51",
+      "spain - ala 23 ultra weathered 4k",
+      "spain - ala 23 - actual",
+      "spain - ala 23 -01 23-23",
+      "spain - ala 23 -05 23-25",
+      "spain - ala 23 -07 23-01",
+      "spain - ala 23 -08 23-02",
+      "spain - ala 23 -09 23-03",
+      "spain - ala 23 -10 23-04",
+      "spain - ala 23 -11 23-05",
+      "spain - ala 23 -12 23-06",
+      "spain - ala 23 -14 23-07",
+      "spain - ala 23 -16 23-09",
+      "spain - ala 23 -17 23-10",
+      "spain - ala 23 -18 23-26",
+      "spain - ala 23 -22 23-12",
+      "spain - ala 23 -23 23-13",
+      "spain - ala 23 -24 23-14",
+      "spain - ala 23 -27 23-16",
+      "spain - ala 23 -28 23-17",
+      "spain - ala 23 -29 23-18",
+      "spain - ala 23 -30 23-19",
+      "spain - ala 23 -31 23-20"
+    ],
+    "Mirage-F1BE": [
+      "ala 14 blue skin (be) albacete",
+      "ala 14 camu lagarto 1975-1990 albacete",
+      "ala 14 camu lagarto 1975-1990 albacete sq 141",
+      "ala 14 camu lagarto 1975-1990 albacete sq 142",
+      "ala 14 nato skin 1 (be) albacete",
+      "ala 14 nato skin 2 (bm) albacete",
+      "ala 46 blue skin (be) gando",
+      "ala 46 camu lagarto 1975-1990 gando sq 462"
+    ],
+    "Mirage-F1CE": [
+      "ala 14 camu lagarto 1975-1990",
+      "ala 14 camu lagarto 1975-1990 sq 141",
+      "ala 14 camu lagarto 1975-1990 sq 142",
+      "ala 14 nato skin 1 (ce)",
+      "ala 14 nato skin 1 (ce) 1990"
+    ],
+    "Mirage-F1EE": [
+      "ala 14 blue skin (ee) albacete",
+      "ala 14 nato skin 1 (ee)",
+      "ala 46 blue skin (ee) gando",
+      "ala 46 sq 462 blue skin (ee) gando"
+    ],
+    "Mirage-F1M-CE": [
+      "ala 14 nato skin 1 (m-ce)",
+      "ala 14 nato skin 2 (m-ce)",
+      "ala 14 nato skin 2 (m-ce) sq142 squadron 30th anniversary",
+      "ala 14 nato skin 2 (m-ce) tiger meet 09",
+      "ala 14 nato skin 2 (m-ce) tiger ocean 08"
+    ],
+    "Mirage-F1M-EE": [
+      "ala 14 nato skin 1 (m-ee)",
+      "ala 14 nato skin 2 (m-ee)",
+      "ala 14 nato skin 2 (m-ee) tiger meet",
+      "ala 14 nato skin 2 (m-ee) tiger meet 09"
+    ],
+    "UH-1H Iroquois": [
+      "hd bhela 257 spn",
+      "hd bhelma 228 spn",
+      "hd bhelma 251 spn",
+      "hd cefamet 214 spn",
+      "hd cefamet 216 spn",
+      "hd cefamet 217 spn",
+      "spain - 3a escuadrilla de aeronaves - armada",
+      "spanish army",
+      "spanish army 07",
+      "spanish army 12",
+      "spanish army 15",
+      "spanish army 17",
+      "spanish army 18",
+      "spanish army 22",
+      "spanish army 24",
+      "spanish army 27"
+    ],
+    "KC-130": [
+      "spain - tk10-02 31-02 camo",
+      "spain - tk10-05 31-50 camo",
+      "spain - tk10-06 31-51 camo",
+      "spain - tk10-07 31-52 camo",
+      "spain - tk10-11 31-53  gris",
+      "spain - tk10-12 31-54  gris"
+    ],
+    "CH-47D": [
+      "spain - add ch-47_famet arido",
+      "spain - add ch-47_famet boscoso",
+      "spain - add ch-47_famet standard"
+    ],
+    "E-3A": [
+      "nato (90443) 25 year - 4k",
+      "nato (90443) 4k",
+      "nato (90450) 35 year - 4k",
+      "nato (90458) 4k"
+    ],
+    "UH-60L": [
+      "spain - 10a escuadrilla de aeronaves - armada"
+    ],
+    "An-26B": [
+      "spain - ala 46",
+      "spain - ala 49 sar"
+    ],
+    "AH-1J SeaCobra": [
+      "spain - 7a escuadrilla de aeronaves - armada"
+    ]
+  },
+  "liveries_overrides_ground_forces": {
+    "leopard-2A4": [
+      "esp"
+    ],
+    "Leopard-2": [
+      "esp",
+      "riac-61"
+    ],
+    "M1097 Avenger": [
+      "esp"
+    ],
+    "M-113": [
+      "spn_desert",
+      "spn_green"
+    ],
+    "M1043 HMMWV Armament": [
+      "esp",
+      "spn goe iii arm des",
+      "spn goe iii arm green"
+    ],
+    "M1045 HMMWV TOW": [
+      "esp",
+      "spn goe iii tow des",
+      "spn goe iii tow green"
+    ],
+    "M1126 Stryker ICV": [
+      "esp"
+    ],
+    "M1128 Stryker MGS": [
+      "esp"
+    ],
+    "LAV-25": [
+      "green"
+    ],
+    "MCV-80": [
+      "desert"
+    ],
+    "TPZ": [
+      "esp"
+    ],
+    "M 818": [
+      "esp"
+    ],
+    "KAMAZ Truck": [
+      "spn_aalog 41",
+      "esp"
+    ],
+    "Land_Rover_109_S3": [
+      "lr españa",
+      "ambulance green",
+      "spn_raaa 71"
+    ],
+    "Roland ADS": [
+      "esp"
+    ],
+    "ZU-23 Emplacement": [
+      "esp"
+    ],
+    "Patriot EPP": [
+      "esp"
+    ],
+    "Patriot ECS": [
+      "esp"
+    ],
+    "Patriot cp": [
+      "esp"
+    ],
+    "Patriot AMG": [
+      "esp"
+    ],
+    "MLRS": [
+      "esp"
+    ],
+    "M-109": [
+      "esp",
+      "m109_spn"
+    ],
+    "Soldier M249": [
+      "esp-des",
+      "goe iii spn desert",
+      "goe iii spn m249"
+    ],
+    "Soldier M4": [
+      "esp-des",
+      "goe iii spn desert",
+      "goe iii spn m4"
+    ],
+    "Soldier M4 GRG": [
+      "esp-des-1",
+      "esp-des-2"
+    ],
+    "Soldier stinger": [
+      "esp-des",
+      "digital_green_spn"
+    ],
+    "F100 Álvaro de Bazán": [
+      "f102",
+      "f103",
+      "f104"
+    ],
+    "PERRY": [
+      "f-81_santa maria",
+      "f-82_victoria"
+    ],
+    "Juan Carlos I": [
+      "dry"
+    ],
+    "Hawk ln": [
+      "summer"
+    ],
+    "Hawk pcp": [
+      "summer"
+    ],
+    "Hawk sr": [
+      "summer"
+    ],
+    "Hawk tr": [
+      "summer"
+    ],
+    "Patriot ln": [
+      "grc_summer"
+    ],
+    "Patriot str": [
+      "grc_summer"
+    ],
+    "NASAMS_Command_Post": [
+      "raaa71"
+    ],
+    "NASAMS_Radar_MPQ64F1": [
+      "raaa71"
+    ]
+  },
+  "unrestricted_satnav": false,
+  "requirements": {
+    "DesdeMiCabina Spanish Asset Pack": "https://desdemicabina.gumroad.com/",
+    "Military Aircraft Mod (A400M)": "https://www.digitalcombatsimulator.com/en/files/",
+    "Eurofighter Typhoon by Lechuzas Negras": "https://www.digitalcombatsimulator.com/en/files/"
+  },
+  "carriers": {
+    "L61 Juan Carlos I": [
+      "Juan Carlos I"
+    ]
+  }
+}
