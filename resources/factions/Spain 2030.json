@@ -15,9 +15,10 @@
     "UH-1H Iroquois",
     "AH-64D Apache Longbow (AI)",
     "C-130J-30",
-    "EF-18A+ Hornet",
     "UH-60A",
-    "SH-60B Seahawk"
+    "SH-60B Seahawk",
+    "E-3A",
+    "KC-135 Stratotanker MPRS"
   ],
   "awacs": [
     "E-3A"
@@ -131,75 +132,6 @@
       "spain - t10-10 31-07  gris",
       "spain - tl10-01 31-01 gris"
     ],
-    "C-101CC Aviojet": [
-      "aga (spanish air school)",
-      "aga (spanish air school) 1980",
-      "aga (spanish air school) 1985",
-      "claex desert camu skin - centro logistico de armamento y experimentacion",
-      "claex green camu skin - centro logistico de armamento y experimentacion",
-      "claex - centro logístico de armamento y experimentación"
-    ],
-    "F-5E Tiger II": [
-      "sp spanish air force 21-51",
-      "spain - ala 23 ultra weathered 4k",
-      "spain - ala 23 - actual",
-      "spain - ala 23 -01 23-23",
-      "spain - ala 23 -05 23-25",
-      "spain - ala 23 -07 23-01",
-      "spain - ala 23 -08 23-02",
-      "spain - ala 23 -09 23-03",
-      "spain - ala 23 -10 23-04",
-      "spain - ala 23 -11 23-05",
-      "spain - ala 23 -12 23-06",
-      "spain - ala 23 -14 23-07",
-      "spain - ala 23 -16 23-09",
-      "spain - ala 23 -17 23-10",
-      "spain - ala 23 -18 23-26",
-      "spain - ala 23 -22 23-12",
-      "spain - ala 23 -23 23-13",
-      "spain - ala 23 -24 23-14",
-      "spain - ala 23 -27 23-16",
-      "spain - ala 23 -28 23-17",
-      "spain - ala 23 -29 23-18",
-      "spain - ala 23 -30 23-19",
-      "spain - ala 23 -31 23-20"
-    ],
-    "Mirage-F1BE": [
-      "ala 14 blue skin (be) albacete",
-      "ala 14 camu lagarto 1975-1990 albacete",
-      "ala 14 camu lagarto 1975-1990 albacete sq 141",
-      "ala 14 camu lagarto 1975-1990 albacete sq 142",
-      "ala 14 nato skin 1 (be) albacete",
-      "ala 14 nato skin 2 (bm) albacete",
-      "ala 46 blue skin (be) gando",
-      "ala 46 camu lagarto 1975-1990 gando sq 462"
-    ],
-    "Mirage-F1CE": [
-      "ala 14 camu lagarto 1975-1990",
-      "ala 14 camu lagarto 1975-1990 sq 141",
-      "ala 14 camu lagarto 1975-1990 sq 142",
-      "ala 14 nato skin 1 (ce)",
-      "ala 14 nato skin 1 (ce) 1990"
-    ],
-    "Mirage-F1EE": [
-      "ala 14 blue skin (ee) albacete",
-      "ala 14 nato skin 1 (ee)",
-      "ala 46 blue skin (ee) gando",
-      "ala 46 sq 462 blue skin (ee) gando"
-    ],
-    "Mirage-F1M-CE": [
-      "ala 14 nato skin 1 (m-ce)",
-      "ala 14 nato skin 2 (m-ce)",
-      "ala 14 nato skin 2 (m-ce) sq142 squadron 30th anniversary",
-      "ala 14 nato skin 2 (m-ce) tiger meet 09",
-      "ala 14 nato skin 2 (m-ce) tiger ocean 08"
-    ],
-    "Mirage-F1M-EE": [
-      "ala 14 nato skin 1 (m-ee)",
-      "ala 14 nato skin 2 (m-ee)",
-      "ala 14 nato skin 2 (m-ee) tiger meet",
-      "ala 14 nato skin 2 (m-ee) tiger meet 09"
-    ],
     "UH-1H Iroquois": [
       "hd bhela 257 spn",
       "hd bhelma 228 spn",
@@ -239,13 +171,6 @@
     ],
     "UH-60L": [
       "spain - 10a escuadrilla de aeronaves - armada"
-    ],
-    "An-26B": [
-      "spain - ala 46",
-      "spain - ala 49 sar"
-    ],
-    "AH-1J SeaCobra": [
-      "spain - 7a escuadrilla de aeronaves - armada"
     ]
   },
   "liveries_overrides_ground_forces": {
