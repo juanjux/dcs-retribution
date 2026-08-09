@@ -414,7 +414,7 @@ carriers:
 squadrons:
     #SPANISH ARMED FORCES
     #Gazipasa (Morón)
-    41:
+    218:
         - primary: BARCAP
           secondary: air-to-ground
           aircraft:

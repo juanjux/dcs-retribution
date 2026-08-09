@@ -14,7 +14,8 @@
     "SH-60B Seahawk",
     "AH-64D Apache Longbow",
     "F-35A Lightning II",
-    "JF-17 Thunder"
+    "JF-17 Thunder",
+    "AH-64D Apache Longbow (AI)"
   ],
   "awacs": [
     "E-3A"
