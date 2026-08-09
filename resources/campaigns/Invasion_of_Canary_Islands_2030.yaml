@@ -3,7 +3,8 @@ name: Syria - Invasion of the Canary Islands 2030
 theater: Syria
 authors: NoGoodNews
 description:
-  <p>Fictional Campaign where Morocco is attacking Spain through Ceuta, Melilla and Canary Islands in the late 90s and early 2000s.</p>
+  <p>Fictional Campaign where Morocco is attacking Spain through Ceuta, Melilla and Canary Islands in 2030. This is a variation of the 
+  "Invation of Canary Islands" campaign where Morocco is stronger for better balance even if not totally realistic.</p>
   <p>Using DCS' Syria map as the terrain, it results in a close representation of the terrain around Morocco and
   south of Spain, mainly due to the similar distances between Canary Islands (Cyprus) and Morocco Mainland (Syria, Lebanon).</p>
   <p>Morocco Armed Forces have landed in Tenerife (Akrotiri) and are trying to extend towards Tenerife Norte (Larnaca),
@@ -20,6 +21,7 @@ description:
   <p>Very complex IADS network on each side.</p>
   <p>Recommended mods/plugins to use:<ul>
   <li>Spain Naval Assets Pack (it's a must)</li>
+  <li>Eurofighter by Lechuzas Negras (it's a must)</li>
   <li>Frenchpack</li><li>High Digit SAMs</li>
   <li>UH-60L Black Hawk</li>
   <li>Skynet IADS and CTLD are also highly recommended.</li>
@@ -28,9 +30,9 @@ recommended_player_faction: Spain 2030
 recommended_enemy_faction: Morocco 2030
 recommended_start_date: 2030-06-01
 recommended_player_money: 1500
-recommended_enemy_money: 1000
+recommended_enemy_money: 1500
 recommended_player_income_multiplier: 0.75
-recommended_enemy_income_multiplier: 0.5
+recommended_enemy_income_multiplier: 0.75
 miz: Invasion_of_Canary_Islands_2030.miz
 performance: 3
 version: "10.7"
@@ -63,6 +65,7 @@ settings:
   uh_60l: true
   eurofighter: true
   mam: true            # A400M
+  VSN_F35: true        # F-35 de Marruecos, solo la variante aire-aire
   jas39_gripen: false
   su30_flanker_h: false
   su57_felon: false
@@ -76,7 +79,7 @@ settings:
 # AI Difficulty
   player_skill: "Excellent"
   enemy_skill:  "Average"
-  enemy_vehicle_skill: "Average"
+  enemy_vehicle_skill: "Excellent"
   invulnerable_player_pilots: true
   manpads: true
   night_day_missions: NightMissions.DayAndNight
@@ -97,8 +100,6 @@ settings:
             # "Neutral Dot"
             # "Off"
         #default="Full"
-
-
 
 iads_config:
 
