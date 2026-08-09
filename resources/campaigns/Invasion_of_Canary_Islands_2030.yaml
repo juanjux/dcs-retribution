@@ -414,14 +414,11 @@ carriers:
 
 squadrons:
   2:
-  - primary: BARCAP
-    secondary:
-    - Escort
-    - BAI
+  - primary: Transport
     aircraft:
-    - Eurofighter Typhoon
-    name: Ala 11 - Esc. 111
-    size: 24
+    - C-130
+    name: Ala 35 - Esc. 351
+    size: 6
   - primary: Transport
     secondary:
     - Air Assault
@@ -449,10 +446,11 @@ squadrons:
   - primary: BARCAP
     secondary:
     - Escort
+    - BAI
     aircraft:
     - Eurofighter Typhoon
-    name: Ala 15 - Esc. 151/152
-    size: 20
+    name: Ala 11 - Esc. 111
+    size: 24
   16:
   - primary: BARCAP
     secondary:
@@ -497,12 +495,14 @@ squadrons:
     - KC-135 Stratotanker MPRS
     name: Ala 45 - Esc. 451
     size: 4
-  21:
-  - primary: Transport
+  - primary: BARCAP
+    secondary:
+    - Escort
     aircraft:
-    - C-130
-    name: Ala 35 - Esc. 351
-    size: 6
+    - Eurofighter Typhoon
+    name: Ala 15 - Esc. 151/152
+    size: 20
+  21:
   - primary: Transport
     secondary:
     - Air Assault
