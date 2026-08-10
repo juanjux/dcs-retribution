@@ -142,7 +142,17 @@ class IadsNetwork:
             # but if it does, we want to know because it's supposed to be impossible afaict
             skynet_node = SkynetNode.from_group(node.group)
             for connection in node.connections.values():
-                if not any([x.alive for x in connection.units]):
+                # A destroyed building has to keep reaching Skynet. Dropping it here left
+                # the element with an empty list, and genericCheckOneObjectIsAlive reads
+                # an empty list as alive -- so bombing a power station switched its SAMs
+                # back on next mission instead of keeping them dark. DCS reports a static
+                # spawned dead as getByName=ok, isExist=false, life=0, which is exactly
+                # what Skynet needs to see. Vehicle-backed roles still drop out: their
+                # groups have no name once every unit is gone.
+                if (
+                    not any([x.alive for x in connection.units])
+                    and connection.iads_role not in STATIC_BACKED_ROLES
+                ):
                     continue
                 if connection.ground_object.is_friendly(
                     skynet_node.player

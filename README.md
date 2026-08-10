@@ -136,6 +136,14 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   the network becomes an attrition loop rather than a one-off: the SAMs behind a
   destroyed power station go dark, and the owner has to pay to bring them back. The AI
   ranks them alongside its ammo depots so it does not rebuild every oil derrick first.
+- **A destroyed IADS building now reads as destroyed, not as absent.** `skynet_nodes`
+  dropped any node or connection whose units were all dead, and Skynet treats a missing
+  dependency as satisfied — so bombing a power station switched its SAMs back on the
+  next mission, and destroying a coalition's *last* command centre emptied the table and
+  handed it perfect command back. Buildings keep reaching Skynet destroyed; verified in
+  DCS that a static spawned dead answers `getByName=ok, isExist=false, life=0`, which is
+  exactly what Skynet tests. Vehicle-backed roles still drop out, since their groups have
+  no name left once every unit is gone.
 
 ### LLM-controlled OPFOR (REST API + MCP)
 - **An external LLM can play the enemy commander.** A REST API and an MCP server
