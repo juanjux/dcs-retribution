@@ -5,12 +5,11 @@ tasks:
   - AAA
 groups:
   - AAA:
-    - name: AAA Site Radar
-      optional: true # Optional if the AAA Site has a Radar
-      unit_count:
-        - 1
-      unit_classes:
-        - SearchRadar
+    # No search radar. The slot took whatever SearchRadar the faction could reach, which
+    # for anyone whose only radars belong to a SAM battery meant a Patriot STR or an
+    # S-300 Big Bird sitting inside a nest of 23mm guns -- a strategic sensor guarding a
+    # 2.5 km bubble, and one more emitter per site. The guns that need a radar carry
+    # their own (Gepard, Vulcan, Shilka); the optical ones are point defence anyway.
     - name: AAA Site
       unit_count:
         - 2
