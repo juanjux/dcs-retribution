@@ -771,133 +771,151 @@ squadrons:
     name: 3a Escuadrilla
     aircraft_type: UH-1H Iroquois
     size: 4
-  27:
+  13:
   - primary: BARCAP
-    Secondary: any
-    aircraft:
-    - Mirage-F1CE
-    size: 10
-  - primary: CAS
-    aircraft:
-    - AH-64D Apache Longbow
-    size: 6
-  - primary: Transport
-    aircraft:
-    - UH-1H Iroquois
-    size: 8
-  - primary: Transport
-    aircraft:
-    - CH-47D
-    size: 3
-  14:
-  - primary: BARCAP
-    Secondary: any
+    secondary:
+    - Escort
+    - Fighter sweep
+    - Intercept
+    - CAS
+    - BAI
+    - Strike
+    - SEAD
+    - DEAD
     aircraft:
     - F-16CM Fighting Falcon (Block 50)
-    size: 10
-  - primary: CAS
-    aircraft:
-    - SA 342M Gazelle
-    size: 6
-  - primary: Transport
-    aircraft:
-    - UH-1H Iroquois
-    size: 8
-  - primary: Transport
-    aircraft:
-    - CH-47D
-    size: 3
-  33:
-  - primary: BARCAP
-    Secondary: any
-    aircraft:
-    - F-5E Tiger II
-    size: 12
-  - primary: CAS
-    aircraft:
-    - SA 342M Gazelle
-    size: 6
-  - primary: Transport
-    aircraft:
-    - UH-1H Iroquois
-    size: 8
-  - primary: Transport
-    aircraft:
-    - CH-47D
-    size: 3
-  39:
-  - primary: BARCAP
-    Secondary: any
-    aircraft:
-    - F-16CM Fighting Falcon (Block 50)
-    size: 10
-  - primary: BAI
-    Secondary: any
-    aircraft:
-    - Mirage-F1CE
-    size: 10
-  28:
-  - primary: BARCAP
-    Secondary: any
-    aircraft:
-    - Mirage-F1CE
-    size: 8
-  - primary: BARCAP
-    Secondary: any
-    aircraft:
-    - F-5E Tiger II
-    size: 10
-  - primary: Transport
-    aircraft:
-    - C-130
-    size: 3
+    name: Fighter Squadron 1
+    size: 16
   6:
   - primary: BARCAP
-    Secondary: any
+    secondary:
+    - Escort
+    - Fighter sweep
+    - Intercept
+    - CAS
+    - BAI
+    - Strike
+    - SEAD
+    - DEAD
     aircraft:
     - F-16CM Fighting Falcon (Block 50)
-    size: 5
-  - primary: BAI
-    Secondary: any
-    aircraft:
-    - Mirage-F1CE
-    size: 5
-  30:
-  - primary: BARCAP
-    Secondary: any
-    aircraft:
-    - F-16CM Fighting Falcon (Block 50)
-    size: 5
-  - primary: BARCAP
-    Secondary: any
-    aircraft:
-    - F-5E Tiger II
-    size: 5
-  13:
-  - primary: CAS
-    aircraft:
-    - SA 342M Gazelle
-    size: 6
-  - primary: Transport
-    aircraft:
-    - UH-1H Iroquois
-    size: 8
-  - primary: Transport
-    aircraft:
-    - CH-47D
-    size: 2
-  7:
-  - primary: BARCAP
-    Secondary: any
-    aircraft:
-    - Mirage-F1CE
-    size: 6
-  - primary: BARCAP
-    Secondary: any
-    aircraft:
-    - F-5E Tiger II
-    size: 6
+    name: Fighter Squadron 2
+    size: 24
   - primary: Transport
     aircraft:
     - C-130
+    name: Tactical Transport 1
+    size: 7
+  14:
+  - primary: BARCAP
+    secondary:
+    - Escort
+    - Fighter sweep
+    - Intercept
+    - CAS
+    - BAI
+    - Strike
+    - Anti-ship
+    aircraft:
+    - JF-17 Thunder
+    name: Fighter Squadron 3
+    size: 16
+  - primary: CAS
+    secondary:
+    - BAI
+    - Armed Recon
+    aircraft:
+    - AH-64D Apache Longbow
+    name: Attack Squadron 2
+    size: 8
+  - primary: Air Assault
+    secondary:
+    - Transport
+    aircraft:
+    - UH-60A
+    name: Medium Transport Squadron 1
+    size: 12
+  7:
+  - primary: BARCAP
+    secondary:
+    - Escort
+    - Fighter sweep
+    - Intercept
+    aircraft:
+    - F-35A Lightning II
+    name: Fighter Squadron 4
+    size: 16
+  - primary: Transport
+    aircraft:
+    - C-130
+    name: Transport Squadron 1
+    size: 16
+  28:
+  - primary: BARCAP
+    secondary:
+    - Escort
+    - Fighter sweep
+    - Intercept
+    aircraft:
+    - F-35A Lightning II
+    name: Fighter Squadron 5
+    size: 16
+  39:
+  - primary: BARCAP
+    secondary:
+    - Escort
+    - Fighter sweep
+    - Intercept
+    - CAS
+    - BAI
+    - Strike
+    - Anti-ship
+    aircraft:
+    - JF-17 Thunder
+    name: Fighter Squadron 6
+    size: 16
+  - primary: Transport
+    secondary:
+    - Air Assault
+    aircraft:
+    - UH-1H Iroquois
+    name: Utility Squadron 1
+    size: 20
+  27:
+  - primary: Refueling
+    aircraft:
+    - KC-130
+    name: Refuel Squadron 1
     size: 3
+  - primary: CAS
+    secondary:
+    - BAI
+    - Armed Recon
+    aircraft:
+    - AH-64D Apache Longbow
+    name: Attack Squadron 3
+    size: 8
+  44:
+  - primary: CAS
+    secondary:
+    - BAI
+    - Armed Recon
+    aircraft:
+    - AH-64D Apache Longbow
+    name: Attack Squadron 1
+    size: 8
+  - primary: Air Assault
+    secondary:
+    - Transport
+    aircraft:
+    - UH-60A
+    name: Medium Transport Squadron 2
+    size: 12
+  59:
+  - primary: Transport
+    secondary:
+    - Air Assault
+    aircraft:
+    - CH-47D
+    name: Heavy Transport Squadron 1
+    size: 12

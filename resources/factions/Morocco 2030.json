@@ -4,18 +4,16 @@
   "description": "<p>Morocco 2030</p>",
   "authors": "Juanjo",
   "aircrafts": [
-    "UH-60L",
     "F-16CM Fighting Falcon (Block 50)",
     "UH-1H Iroquois",
     "CH-47D",
     "C-130",
-    "C-130J-30",
     "UH-60A",
-    "SH-60B Seahawk",
     "AH-64D Apache Longbow",
     "F-35A Lightning II",
     "JF-17 Thunder",
-    "AH-64D Apache Longbow (AI)"
+    "AH-64D Apache Longbow (AI)",
+    "KC-130"
   ],
   "awacs": [
     "E-3A"
