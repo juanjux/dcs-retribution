@@ -219,8 +219,6 @@ iads_config:
 
     - Morocco Damascus SAM SR-1:
         - IADS Command Center Damascus-1
-    - Morocco Damascus SAM SR-2:
-        - IADS Command Center Damascus-1
     - Morocco Damascus SAM SR-3:
         - IADS Command Center Damascus-1
     - Morocco Damascus SAM SR-4:
@@ -255,8 +253,6 @@ iads_config:
     
     - Morocco Beyrut SAM MR-1:
         - IADS Command Center Damascus-1
-    - Morocco Beyrut SAM SR-1:
-        - IADS Command Center Damascus-1
     - Morocco Beyrut SAM SR-2:
         - IADS Command Center Damascus-1
     - Morocco Beyrut SAM SR-3:
@@ -273,9 +269,6 @@ iads_config:
 
     - Morocco Rene SAM SR-2:
         - IADS Command Center Damascus-1
-    - Morocco Rene SAM SR-3:
-        - IADS Command Center Damascus-1
-        
 #Morocco Air Defence Network North
 # EWR Network
     - Morocco EWR Homs: #Homs
@@ -315,10 +308,6 @@ iads_config:
         - IADS Command Center Tiyas
     - Morocco Tiyas SAM SR-1:
         - IADS Command Center Tiyas
-    - Morocco Tiyas SAM SR-2:
-        - IADS Command Center Tiyas
-    - Morocco Tiyas SAM SR-3:
-        - IADS Command Center Tiyas
 
 # SAMs Palmyra:
     - Morocco Palmyra SAM LR-1:
@@ -332,8 +321,6 @@ iads_config:
         - IADS Command Center Tiyas
 
 # SAMs Hama:        
-    - Morocco Hama SAM LR-1:
-        - IADS Command Center Tiyas
     - Morocco Hama SAM LR-2:
         - IADS Command Center Tiyas
     - Morocco Hama SAM LR-3:
@@ -352,8 +339,6 @@ iads_config:
 # SAMs Aleppo:
     - Morocco Aleppo SAM LR-1:
         - IADS Command Center Tiyas
-    - Morocco Aleppo SAM LR-2:
-        - IADS Command Center Tiyas
     - Morocco Aleppo SAM LR-3:
         - IADS Command Center Tiyas
     
@@ -363,8 +348,6 @@ iads_config:
     - Morocco Aleppo SAM SR-1:
         - IADS Command Center Tiyas
     - Morocco Aleppo SAM SR-2:
-        - IADS Command Center Tiyas
-    - Morocco Aleppo SAM SR-3:
         - IADS Command Center Tiyas
 
 
