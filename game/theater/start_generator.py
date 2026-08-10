@@ -379,7 +379,17 @@ class CarrierGroundObjectGenerator(GenericCarrierGroundObjectGenerator):
             )
             return False
 
-        unit_group = self.armed_forces.random_group_for_task(GroupTask.AIRCRAFT_CARRIER)
+        # Honour the campaign's ground_forces override, keyed by the control
+        # point's name -- a designer picking which hull sails as which ship has
+        # nowhere else to say it. Falls back to a random group when unpinned.
+        unit_group = self.get_unit_group_for_task(
+            PresetLocation(
+                self.control_point.name,
+                self.control_point.position,
+                self.control_point.heading,
+            ),
+            GroupTask.AIRCRAFT_CARRIER,
+        )
         if not unit_group:
             logging.error(f"{self.faction_name} has no access to AircraftCarrier")
             return False
@@ -430,8 +440,16 @@ class LhaGroundObjectGenerator(GenericCarrierGroundObjectGenerator):
             )
             return False
 
-        unit_group = self.armed_forces.random_group_for_task(
-            GroupTask.HELICOPTER_CARRIER
+        # Honour the campaign's ground_forces override, keyed by the control
+        # point's name -- a designer picking which hull sails as which ship has
+        # nowhere else to say it. Falls back to a random group when unpinned.
+        unit_group = self.get_unit_group_for_task(
+            PresetLocation(
+                self.control_point.name,
+                self.control_point.position,
+                self.control_point.heading,
+            ),
+            GroupTask.HELICOPTER_CARRIER,
         )
         if not unit_group:
             logging.error(f"{self.faction_name} has no access to HelicopterCarrier")

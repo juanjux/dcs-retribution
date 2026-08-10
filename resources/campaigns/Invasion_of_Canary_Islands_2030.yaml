@@ -566,6 +566,9 @@ ground_forces:
   Morocco Frigates: Morocco Frigate Pair
   Morocco FAC: Morocco Fast Attack Pair
   Spain Escort: Spain Escort Group
+  Blue LHA: Spain LHA Group
+  Blue LHA Castilla: Spain LPD Group
+  Blue LHA Galicia: Spain LPD Group
 
 carriers:
   Blue LHA:
@@ -671,6 +674,14 @@ squadrons:
     name: Ala 45 - Esc. 451
     size: 4
   21:
+  - primary: Air Assault
+    secondary:
+    - Transport
+    aircraft:
+    - BHELMA IV
+    name: BHELMA IV
+    aircraft_type: UH-60A
+    size: 12
   - primary: Transport
     secondary:
     - Air Assault
@@ -696,6 +707,14 @@ squadrons:
     aircraft_type: Eurofighter Typhoon
     size: 20
   Spain FOB Ceuta:
+  - primary: Air Assault
+    secondary:
+    - Transport
+    aircraft:
+    - BHELTRA VA
+    name: BHELTRA VA
+    aircraft_type: CH-47F Block I
+    size: 8
   - primary: CAS
     secondary:
     - BAI
@@ -705,6 +724,13 @@ squadrons:
     name: BHELA IB
     size: 8
   Spain FOB GC Norte:
+  - primary: CAS
+    secondary:
+    - BAI
+    aircraft:
+    - AH-64D Apache Longbow (AI)
+    name: BHELA IC
+    size: 8
   - primary: Air Assault
     secondary:
     - Transport
@@ -738,31 +764,8 @@ squadrons:
     - BHELTRA VB
     name: BHELTRA VB
     aircraft_type: CH-47F Block I
-    size: 8
-  - primary: Air Assault
-    secondary:
-    - Transport
-    aircraft:
-    - BHELMA IV
-    name: BHELMA IV
-    aircraft_type: UH-60A
-    size: 12
+    size: 2
   Blue LHA Galicia:
-  - primary: CAS
-    secondary:
-    - BAI
-    aircraft:
-    - AH-64D Apache Longbow (AI)
-    name: BHELA IC
-    size: 8
-  - primary: Air Assault
-    secondary:
-    - Transport
-    aircraft:
-    - BHELTRA VA
-    name: BHELTRA VA
-    aircraft_type: CH-47F Block I
-    size: 8
   - primary: Transport
     secondary:
     - Air Assault
@@ -770,7 +773,7 @@ squadrons:
     - 3a Escuadrilla
     name: 3a Escuadrilla
     aircraft_type: UH-1H Iroquois
-    size: 4
+    size: 2
   13:
   - primary: BARCAP
     secondary:
