@@ -558,6 +558,15 @@ iads_config:
     - F102 Almirante Juan de Borbon
     - F103 Blas de Lezo
 
+# Pins the composition of a naval group to its marker. Without this every fleet is
+# whatever the faction happens to roll per marker, so "the heavy one" and "the patrol
+# boats" cannot be told apart.
+ground_forces:
+  Morocco SAG: Morocco Surface Action Group
+  Morocco Frigates: Morocco Frigate Pair
+  Morocco FAC: Morocco Fast Attack Pair
+  Spain Escort: Spain Escort Group
+
 carriers:
   Blue LHA:
     preferred_name: Juan Carlos I

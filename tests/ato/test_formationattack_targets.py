@@ -20,10 +20,20 @@ class _FakeType:
 
 
 class _FakeUnit:
-    """Stands in for a TheaterUnit (not a SceneryUnit, so .type.id is used)."""
+    """Stands in for a vehicle TheaterUnit, which has a unit_type, so .type.id is used.
 
-    def __init__(self, id_: str) -> None:
+    Statics have unit_type None and carry the objective in their name instead.
+    """
+
+    def __init__(
+        self,
+        id_: str,
+        unit_type: object | None = object(),
+        name: str | None = None,
+    ) -> None:
         self.type = _FakeType(id_)
+        self.unit_type = unit_type
+        self.name = id_ if name is None else name
 
 
 class _FakeLocation:
@@ -77,3 +87,18 @@ def test_target_waypoints_fall_back_to_area_when_no_live_targets() -> None:
     targets = [StrikeTarget("a #0", object()), StrikeTarget("b #1", object())]  # type: ignore[arg-type]
     result = builder._target_waypoints(wp_builder, targets)  # type: ignore[arg-type]
     assert result == [("point", targets[0]), ("point", targets[1])]
+
+
+def test_a_static_is_named_after_its_objective_not_its_type() -> None:
+    # A static has no unit_type and carries the campaign designer's name, which beats
+    # repeating the DCS type in a target list. A vehicle alongside it keeps its type.
+    location = _FakeLocation(
+        [
+            _FakeUnit("Workshop A", unit_type=None, name="Factory Zaragoza-2"),
+            _FakeUnit("SA-10 ln"),
+        ]
+    )
+
+    targets = FormationAttackBuilder.strike_targets_for(location)  # type: ignore[arg-type]
+
+    assert [t.name for t in targets] == ["Factory Zaragoza-2 #0", "SA-10 ln #1"]
