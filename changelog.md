@@ -65,6 +65,7 @@
 * **[UX]** Add the ability to filter campaigns by version, map, and performance
 
 ## Fixes
+* **[Mission Generation]** Fix mission generation dying on "Duplicate convoy unit": convoy and cargo-ship names no longer reset each turn onto a convoy still in transit.
 * **[Mod Support]** Fix SA-10B/S-300PS sites never spawning at all: High Digit SAMs 2.1.0 dropped the whole S-300PS family, DCS silently discards a unit type it cannot resolve, and Retribution went on believing the site was alive. Now uses the stock S-300PS.
 * **[Data]** The F-14A-135-GR Early's payload file declared the wrong unitType, so the Early Tomcat flew every tasking unarmed; its loadouts now resolve (with a guard test pinning the payload to the airframe). (#889)
 * **[Mission Generator]** EWR sites now get the DCS "EWR" enroute task and come up on RED alarm, so their radars actually scan and report contacts (previously they could sit inert, especially with the "red alert state" performance option off). Works with or without the Skynet IADS plugin.
