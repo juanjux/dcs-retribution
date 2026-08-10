@@ -138,7 +138,8 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   Air defences are roughly a third lighter than the original, mostly duplicates removed
   from the same field, which shortens the DEAD grind and helps the frame rate. The IADS
   is fully wired: every command centre, comms tower and power station feeds something
-  local, so striking the network actually degrades it.
+  local, so striking the network actually degrades it, and every base on a front has a
+  motorpool holding its undeployed armour as a bombable target.
   ([#98](https://github.com/juanjux/dcs-retribution/pull/98))
 
 ### Modding & data
