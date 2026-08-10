@@ -128,6 +128,20 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   preset keys for different clouds).
   ([#53](https://github.com/juanjux/dcs-retribution/pull/53))
 
+### Campaigns
+- **Syria — Invasion of the Canary Islands 2030**, with the **Spain 2030** and
+  **Morocco 2030** factions. A rework of NoGoodNews' original: both sides fly what they
+  are expected to field by 2030 (Spain on Eurofighters plus one Hornet wing, Morocco on
+  F-16s, JF-17s and F-35s), each Spanish wing carries its own livery, and both navies are
+  built from real hulls with pinned compositions -- the Juan Carlos I as an LHA, Castilla
+  and Galicia as L-52 landing docks, and a Moroccan surface group south of the islands.
+  Air defences are roughly a third lighter than the original, mostly duplicates removed
+  from the same field, which shortens the DEAD grind and helps the frame rate. The IADS
+  is fully wired: every command centre, comms tower and power station feeds something
+  local, so striking the network actually degrades it, and every base on a front has a
+  motorpool holding its undeployed armour as a bombable target.
+  ([#98](https://github.com/juanjux/dcs-retribution/pull/98))
+
 ### Modding & data
 - **F-15EX Eagle II, F-15C EG (Golden Eagle) and Eurofighter Typhoon** mod aircraft.
   ([#31](https://github.com/juanjux/dcs-retribution/pull/31),
