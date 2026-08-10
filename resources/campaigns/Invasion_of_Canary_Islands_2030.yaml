@@ -774,21 +774,6 @@ squadrons:
     name: 3a Escuadrilla
     aircraft_type: UH-1H Iroquois
     size: 2
-  13:
-  - primary: BARCAP
-    secondary:
-    - Escort
-    - Fighter sweep
-    - Intercept
-    - CAS
-    - BAI
-    - Strike
-    - SEAD
-    - DEAD
-    aircraft:
-    - F-16CM Fighting Falcon (Block 50)
-    name: Fighter Squadron 1
-    size: 16
   6:
   - primary: BARCAP
     secondary:
@@ -922,3 +907,19 @@ squadrons:
     - CH-47D
     name: Heavy Transport Squadron 1
     size: 12
+
+  30:
+  - primary: BARCAP
+    secondary:
+    - Escort
+    - Fighter sweep
+    - Intercept
+    - CAS
+    - BAI
+    - Strike
+    - SEAD
+    - DEAD
+    aircraft:
+    - F-16CM Fighting Falcon (Block 50)
+    name: Fighter Squadron 1
+    size: 24
