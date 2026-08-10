@@ -7,6 +7,7 @@ directly instead -- rebuildable, still earning nothing.
 """
 
 from types import SimpleNamespace
+from typing import Any
 
 import pytest
 
@@ -14,12 +15,12 @@ from game.config import IADS_REPAIR_COST, REWARDS
 from game.theater.theatergroundobject import BuildingGroundObject
 
 
-def _building(category: str) -> SimpleNamespace:
+def _building(category: str) -> Any:
     """Stand-in for a BuildingGroundObject.
 
     repair_cost only reads self.category, self.control_point (for the settings) and the
     is_ammo_depot / is_factory flags, so a namespace is enough and keeps the test free
-    of a whole Game.
+    of a whole Game. Typed Any so the unbound calls below type-check against it.
     """
     settings = SimpleNamespace(
         building_repair_income_multiplier=2.0,
