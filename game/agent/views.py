@@ -13,6 +13,7 @@ means 0. The one-time docs (start/howtoplay) are exempt — only per-turn data i
 
 from __future__ import annotations
 
+import math
 from typing import TYPE_CHECKING
 
 from dcs.mapping import Point as DcsPoint
@@ -592,7 +593,7 @@ def build_squadron(sq: Squadron, player: Player | None = None) -> SquadronView:
         unflyable=_unflyable_reason(sq, grounded),
         pending=sq.pending_deliveries or None,
         pilots=sq.number_of_available_pilots,
-        price=sq.aircraft.price,
+        price=math.ceil(sq.aircraft.price),
         max_ac=(sq.max_size if sq.settings.enable_squadron_aircraft_limits else None),
         grounded=grounded or None,
     )
@@ -1022,7 +1023,9 @@ def build_buyable_ground(game: Game, side: str) -> list[GroundUnitView]:
         for u in sorted(units, key=lambda x: x.display_name):
             out.append(
                 GroundUnitView(
-                    name=u.display_name, price=int(getattr(u, "price", 0)), kind=kind
+                    name=u.display_name,
+                    price=math.ceil(getattr(u, "price", 0)),
+                    kind=kind,
                 )
             )
     return out
@@ -1256,7 +1259,7 @@ def _layout_option(force_group, layout) -> LayoutOption | None:
     for tgo_group in layout.groups:
         for unit_group in tgo_group.unit_groups:
             unit_types = [
-                UnitTypeOption(name=ut.display_name, price=int(ut.price))
+                UnitTypeOption(name=ut.display_name, price=math.ceil(ut.price))
                 for ut in force_group.unit_types_for_group(unit_group)
             ]
             has_static = (
@@ -1283,7 +1286,7 @@ def _layout_option(force_group, layout) -> LayoutOption | None:
     return LayoutOption(
         force_group=force_group.name,
         layout=layout.name,
-        price=int(price),
+        price=math.ceil(price),
         groups=slots,
     )
 
