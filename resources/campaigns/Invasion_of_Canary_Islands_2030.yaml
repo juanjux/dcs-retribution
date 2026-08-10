@@ -134,7 +134,13 @@ iads_config:
     - Spain EWR Africa:
         - IADS Command Center Africa
         - Power IADS Spain Africa
-    
+    - Spain EWR Albacete:
+        - IADS Command Center Spain
+        - Power IADS Spain Peninsula
+    - Spain EWR Zaragoza:
+        - IADS Command Center Spain
+        - Power IADS Spain Peninsula
+
 # SAMs Long Range
     - Spain SAM LR_P-1:
         - IADS Command Center Spain
@@ -151,6 +157,8 @@ iads_config:
     - Spain SAM LR_C-2:
         - IADS Command Center Canarias
         - IADS Command Center Spain
+    - Spain SAM LR_Zaragoza:
+        - IADS Command Center Spain
 # SAMs Medium Range Peninsula
     - Spain SAM MR_P-1:
         - IADS Command Center Spain
@@ -166,7 +174,13 @@ iads_config:
         - IADS Command Center Spain
     - Spain SAM MR_P-7:
         - IADS Command Center Spain
-# SAMs Medium Range Canarias    
+    - Spain SAM MR_Albacete:
+        - IADS Command Center Spain
+    - Spain SAM MR_Zaragoza:
+        - IADS Command Center Spain
+    - Spain SAM MR_Zaragoza-2:
+        - IADS Command Center Spain
+# SAMs Medium Range Canarias
     - Spain SAM MR_C-1:
         - IADS Command Center Canarias
     - Spain SAM MR_C-2:
@@ -482,7 +496,7 @@ squadrons:
     - Escort
     - CAS
     aircraft:
-    - Eurofighter Typhoon
+    - Ala 46 - Esc. 462
     name: Ala 46 - Esc. 462
     size: 22
   218:

@@ -94,85 +94,49 @@
     "derrick"
   ],
   "liveries_overrides": {
-    "EF-18A+ Hornet": [
-      "spain - 111th escuadron c.15-73",
-      "spain - 111th escuadron c.15-88",
-      "spain - 121th escuadron c.15-34 50th anniversary",
-      "spain - 121th escuadron c.15-45",
-      "spain - 121th escuadron c.15-49",
-      "spain - 121th escuadron c.15-50",
-      "spain - 121th escuadron c.15-56",
-      "spain - 121th escuadron c.15-60",
-      "spain - 151th escuadron c.15-14",
-      "spain - 151th escuadron c.15-14 tiger meet",
-      "spain - 151th escuadron c.15-18",
-      "spain - 151th escuadron c.15-22 tiger meet",
-      "spain - 151th escuadron c.15-23",
-      "spain - 151th escuadron c.15-24",
-      "spain - 211th escuadron c.15-76",
-      "spain - 211th escuadron c.15-77",
-      "spain - 462th escuadron c.15-79",
-      "spain - 462th escuadron c.15-88 50 años",
-      "spain - 462th escuadron c.15-90"
+    "F/A-18C Hornet (Lot 20)": [
+      "spain 111th escuadron c.15-73",
+      "spain 111th escuadron c.15-88",
+      "spain 121th escuadron c.15-34 50th anniversary",
+      "spain 121th escuadron c.15-45",
+      "spain 121th escuadron c.15-50",
+      "spain 121th escuadron c.15-60",
+      "spain 151th escuadron c.15-14",
+      "spain 151th escuadron c.15-14 tiger meet",
+      "spain 151th escuadron c.15-18",
+      "spain 151th escuadron c.15-23",
+      "spain 151th escuadron c.15-24",
+      "spain 211th escuadron c.15-76",
+      "spain 211th escuadron c.15-77",
+      "spain 462th escuadron c.15-79",
+      "spain 462th escuadron c.15-90"
+    ],
+    "Eurofighter Typhoon": [
+      "spanish eurofighter typhoon 11-24",
+      "spanish eurofighter typhoon 14-04",
+      "spanish eurofighter typhoon 14-06",
+      "spanish eurofighter typhoon 14-31"
     ],
     "AV-8B Harrier II Night Attack": [
-      "spain - 8a escuadrilla matador 07",
-      "spain - 8a escuadrilla matador 69",
-      "spain - 9a escuadrilla armada",
-      "spain - 9a escuadrilla riat 2019 01-914",
-      "spain - 9a escuadrilla riat 2019 01-925",
-      "spain - 9a escuadrilla armada - 13",
-      "spain - 9a escuadrilla armada - 16",
-      "spain - 9a escuadrilla armada - 23",
-      "spain - 9a escuadrilla armada - 26"
+      "l-61 harrier 13",
+      "l-61 harrier 16",
+      "l-61 harrier 23",
+      "l-61 harrier 26"
     ],
-    "C-130": [
-      "spain - t10-03 31-03 gris",
-      "spain - t10-04 31-04  gris",
-      "spain - t10-08 31-05 camo",
-      "spain - t10-09 31-06  gris",
-      "spain - t10-10 31-07  gris",
-      "spain - tl10-01 31-01 gris"
+    "UH-60A": [
+      "standard"
     ],
     "UH-1H Iroquois": [
-      "hd bhela 257 spn",
-      "hd bhelma 228 spn",
-      "hd bhelma 251 spn",
-      "hd cefamet 214 spn",
-      "hd cefamet 216 spn",
-      "hd cefamet 217 spn",
-      "spain - 3a escuadrilla de aeronaves - armada",
-      "spanish army",
-      "spanish army 07",
-      "spanish army 12",
-      "spanish army 15",
-      "spanish army 17",
-      "spanish army 18",
-      "spanish army 22",
-      "spanish army 24",
-      "spanish army 27"
+      "spanish army"
     ],
-    "KC-130": [
-      "spain - tk10-02 31-02 camo",
-      "spain - tk10-05 31-50 camo",
-      "spain - tk10-06 31-51 camo",
-      "spain - tk10-07 31-52 camo",
-      "spain - tk10-11 31-53  gris",
-      "spain - tk10-12 31-54  gris"
+    "CH-47F Block I": [
+      "spanish army aviation"
     ],
-    "CH-47D": [
-      "spain - add ch-47_famet arido",
-      "spain - add ch-47_famet boscoso",
-      "spain - add ch-47_famet standard"
+    "C-130": [
+      "spanish air force"
     ],
     "E-3A": [
-      "nato (90443) 25 year - 4k",
-      "nato (90443) 4k",
-      "nato (90450) 35 year - 4k",
-      "nato (90458) 4k"
-    ],
-    "UH-60L": [
-      "spain - 10a escuadrilla de aeronaves - armada"
+      "nato"
     ]
   },
   "liveries_overrides_ground_forces": {
