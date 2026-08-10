@@ -11,7 +11,6 @@ from dcs import Point
 
 from game.flightplan import HoldZoneGeometry
 from game.theater import MissionTarget, TheaterGroundObject
-from game.theater.theatergroup import SceneryUnit
 from game.utils import nautical_miles, Speed, feet
 from .flightplan import FlightPlan
 from .formation import FormationFlightPlan, FormationLayout
@@ -290,7 +289,9 @@ class FormationAttackBuilder(IBuilder[FlightPlanT, LayoutT], ABC):
         """
         targets: list[StrikeTarget] = []
         for idx, unit in enumerate(location.strike_targets):
-            name = unit.name if isinstance(unit, SceneryUnit) else unit.type.id
+            # Vehicles read better as their type ("Patriot ln #3"); statics carry the
+            # objective in their name ("Factory Zaragoza-2"), which beats the DCS type.
+            name = unit.type.id if unit.unit_type is not None else unit.name
             targets.append(StrikeTarget(f"{name} #{idx}", unit))
         return targets
 

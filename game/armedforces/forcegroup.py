@@ -22,6 +22,7 @@ from game.layout.layout import (
 )
 from game.point_with_heading import PointWithHeading
 from game.theater.theatergroundobject import (
+    BuildingGroundObject,
     IadsGroundObject,
     IadsBuildingGroundObject,
     NavalGroundObject,
@@ -259,6 +260,22 @@ class ForceGroup:
                 self.create_theater_group_for_tgo(
                     go, unit_group, tgo_group_name, game, unit_type
                 )
+
+        # Statics have no GroundUnitType, so create_theater_group_for_tgo falls back to
+        # the DCS type name and a building objective reads "Command Center" /
+        # "Hangar B" -- a type label in a name field. Scenery-backed objectives get the
+        # designer's name from their trigger zone ("Factory Torrejon 1"); give the
+        # placeholder-backed ones the same courtesy from their group name.
+        if isinstance(go, BuildingGroundObject):
+            building = 0
+            for theater_group in go.groups:
+                for unit in theater_group.units:
+                    if unit.unit_type is not None:
+                        continue
+                    building += 1
+                    unit.name = escape_string_for_lua(
+                        f"{location.original_name}-{building}"
+                    )
 
         return go
 

@@ -111,13 +111,17 @@ class TheaterUnit:
     @property
     def display_name(self) -> str:
         dead_label = " [DEAD]" if not self.alive else ""
-        unit_label = self.unit_type or self.type.name or self.name
+        # Statics have no unit_type, and their name carries the objective it belongs to
+        # ("Command Zaragoza-1"), which beats repeating the DCS type. Older saves named
+        # them after the type anyway, so they render exactly as before.
+        unit_label = self.unit_type or self.name or self.type.name
         return f"{str(self.id).zfill(4)} | {unit_label}{dead_label}"
 
     @property
     def short_name(self) -> str:
         dead_label = " [DEAD]" if not self.alive else ""
-        return f"<b>{self.type.id[0:18]}</b> {dead_label}"
+        label = self.type.id if self.unit_type is not None else self.name
+        return f"<b>{label[0:18]}</b> {dead_label}"
 
     @property
     def is_static(self) -> bool:
