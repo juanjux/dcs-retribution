@@ -352,6 +352,33 @@ iads_config:
 
 
         
+# Command centres. isCommandCenterUsable() is coalition-wide: while one of a side's
+# centres is standing its SAMs stay cued and dark and its EWRs stay live; when the last
+# one goes, every SAM of that coalition goes autonomous with its radar permanently on and
+# every EWR goes dark. None of these were keys, so Skynet was never told they existed and
+# the whole layer did nothing. Listing them as values (which the SAM entries already do)
+# only draws the map link -- initializeIADSElement reads ConnectionNode, PowerSource and
+# PD, never CommandCenter.
+# Spain
+    - IADS Command Center Spain
+    - IADS Command Center Canarias
+    - IADS Command Center Africa
+    - Command Torrejon
+    - Command Rota
+    - Command Albacete
+    - Command Zaragoza
+    - Command Tenerife Norte
+    - Command Gando
+    - Command GC Norte
+# Morocco
+    - IADS Command Center Damascus-1
+    - IADS Command Center Morocco Homs
+    - Command Tenerife
+    - Commnad Beyrut
+    - Haifa_Command
+    - GreenZoneCommand-1
+    - Ramat_Command
+
 # Naval air search. addEarlyWarningRadar branches on Unit.Category.SHIP and builds an
 # AWACS-type radar straight from the hull's own sensors, so these need no unit-database
 # entry. Listed without dependencies on purpose: a ship must never be wired to a shore

@@ -27,6 +27,17 @@ class IadsNetworkException(Exception):
     pass
 
 
+# Roles whose objects are buildings. A destroyed one has to keep reaching Skynet, or the
+# element vanishes from its table and its absence reads as "no such dependency", which
+# for command centres means the coalition regains command by losing its last one. These
+# are all statics or scenery, so dcs_name_for_group has a name for them when nothing is
+# alive; the roles that are not on this list are vehicle groups, where the same lookup
+# raises instead.
+STATIC_BACKED_ROLES = frozenset(
+    {IadsRole.COMMAND_CENTER, IadsRole.CONNECTION_NODE, IadsRole.POWER_SOURCE}
+)
+
+
 @dataclass
 class SkynetNode:
     """Dataclass for a SkynetNode used in the LUA Data table by the luagenerator"""
@@ -123,7 +134,7 @@ class IadsNetwork:
                 continue
 
             all_dead = not any([x.alive for x in node.group.units])
-            if all_dead:
+            if all_dead and node.group.iads_role not in STATIC_BACKED_ROLES:
                 continue
 
             # SkynetNode.from_group(node.group) may raise an exception
