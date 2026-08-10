@@ -7,7 +7,7 @@ from pydantic import BaseModel
 
 from game.data.groups import GroupTask
 from game.server.leaflet import LeafletPoint
-from game.theater.theatergroundobject import ShipGroundObject
+from game.theater.theatergroundobject import MotorpoolGroundObject, ShipGroundObject
 
 if TYPE_CHECKING:
     from game import Game
@@ -69,6 +69,19 @@ class TgoJs(BaseModel):
             and tgo.target_position is not None
         ):
             destination = LeafletPoint.from_latlng(tgo.target_position.latlng())
+        units = [unit.display_name for unit in tgo.units]
+        dead = tgo.is_dead
+        if isinstance(tgo, MotorpoolGroundObject) and not tgo.groups:
+            # Between missions a motorpool holds nothing: the populator fills it at
+            # mission generation from the base's reserve and the units are not
+            # persisted. is_dead therefore read True and the map drew a destroyed
+            # objective, or nothing at all. Show what it would actually spawn.
+            from game.ground_forces.ai_ground_planner import reserve_armor_for
+
+            reserve = reserve_armor_for(tgo.control_point)
+            units = [f"{count}x {unit_type}" for unit_type, count in reserve.items()]
+            dead = not reserve
+
         return TgoJs(
             id=tgo.id,
             name=tgo.name,
@@ -76,10 +89,10 @@ class TgoJs(BaseModel):
             category=tgo.category,
             blue=blue,
             position=tgo.position.latlng(),
-            units=[unit.display_name for unit in tgo.units],
+            units=units,
             threat_ranges=threat_ranges,
             detection_ranges=detection_ranges,
-            dead=tgo.is_dead,
+            dead=dead,
             purchasable=tgo.repairable,
             repairing=tgo.has_pending_repairs,
             sidc=str(tgo.sidc()),

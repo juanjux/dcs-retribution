@@ -524,7 +524,11 @@ class QBaseMenu2(QDialog):
             or self.cp.cptype == ControlPointType.LHA_GROUP
         ):
             carrier_type = self.cp.get_carrier_group_type(always_supercarrier=True)
-            return f"./resources/ui/units/ships/{carrier_type.id}.png"
+            # A hull whose class the lookup does not recognise gives None; show the
+            # generic art rather than taking the whole dialog down.
+            if carrier_type is not None:
+                return f"./resources/ui/units/ships/{carrier_type.id}.png"
+            return "./resources/ui/airbase.png"
         elif self.cp.cptype == ControlPointType.FOB and self.cp.has_helipads:
             return "./resources/ui/heliport.png"
         elif self.cp.cptype == ControlPointType.FOB:

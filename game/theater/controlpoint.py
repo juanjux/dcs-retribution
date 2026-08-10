@@ -846,6 +846,11 @@ class ControlPoint(MissionTarget, SidcDescribable, ABC):
                         in [
                             UnitClass.AIRCRAFT_CARRIER,
                             UnitClass.HELICOPTER_CARRIER,
+                            # An LHA control point's ship is not always a helicopter
+                            # carrier: a landing dock like the Spanish L-52 flies two
+                            # helicopters and is class LandingShip. Leaving it out
+                            # returned None and crashed the base dialog.
+                            UnitClass.LANDING_SHIP,
                         ]
                         and issubclass(carrier_type, ShipType)
                     ):
