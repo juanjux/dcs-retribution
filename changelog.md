@@ -1,6 +1,7 @@
 # Retribution v1.6.0
 
 ## Features/Improvements
+* **[IADS]** IADS infrastructure can be rebuilt: comms towers, power stations and command centres produce no income, so they had no repair price and stayed rubble for the rest of the campaign once bombed -- neither side ever restored its own network. They now cost a flat 15M (power station), 10M (command centre) or 5M (comms tower) to rebuild, and still generate no income, so striking the network becomes an attrition loop instead of a one-off: the SAMs behind a destroyed power station go dark and the owner has to pay to bring them back.
 * **[Mission Generation]** Ship-launched cruise missile strikes: warships carrying land-attack cruise missiles (Burke/Ticonderoga, CurrentHill Kalibr hulls) can hit shore targets, with an F10 "Cruise Missile Strike" call-for-fire onto your last map marker and an optional one-raid-per-side-per-turn auto planner. Each ship group carries a finite campaign magazine that never rearms, tracked across turns and shown in the briefing, the ground object dialog and the debrief. Both settings are off by default (adapted from the 414Ret fork).
 * **[Performance]** Faster mission generation: the land/sea point tests behind front-line and ground-unit placement now use shapely's `contains_xy` (no per-check `Point` allocation or predicate-wrapper overhead), ~5x faster on the check that dominated a Take-Off profile.
 * **[Mod]** Add support for the F-15EX Eagle II mod (by Spino).

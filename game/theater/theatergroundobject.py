@@ -8,7 +8,7 @@ from typing import Any, Iterator, List, Optional, TYPE_CHECKING
 from dcs.mapping import Point
 from shapely.geometry import Point as ShapelyPoint
 
-from game.config import REWARDS
+from game.config import IADS_REPAIR_COST, REWARDS
 from game.data.units import UnitClass
 from game.sidc import (
     Entity,
@@ -405,6 +405,12 @@ class BuildingGroundObject(TheaterGroundObject):
         return self.repair_cost() > 0
 
     def repair_cost(self) -> float:
+        # IADS infrastructure is priced directly rather than off income, which it does
+        # not have. The multipliers and bonuses below are all income-shaped, so they do
+        # not apply.
+        flat_cost = IADS_REPAIR_COST.get(self.category)
+        if flat_cost is not None:
+            return flat_cost
         income = REWARDS.get(self.category, 0.0)
         if income <= 0:
             return 0.0

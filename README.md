@@ -127,6 +127,14 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   installed in DCS (only one active at a time, since the packs reuse the same
   preset keys for different clouds).
   ([#53](https://github.com/juanjux/dcs-retribution/pull/53))
+- **IADS infrastructure can be rebuilt** — comms towers, power stations and command
+  centres produce no income, so they had no repair price and stayed rubble for the rest
+  of the campaign once bombed. A network you can only dismantle is not worth attacking
+  twice, and neither side ever restored its own. They now have a flat rebuild cost
+  (power 15M, command centre 10M, comms tower 5M) and still earn nothing, so striking
+  the network becomes an attrition loop rather than a one-off: the SAMs behind a
+  destroyed power station go dark, and the owner has to pay to bring them back. The AI
+  ranks them alongside its ammo depots so it does not rebuild every oil derrick first.
 
 ### Modding & data
 - **F-15EX Eagle II, F-15C EG (Golden Eagle) and Eurofighter Typhoon** mod aircraft.
