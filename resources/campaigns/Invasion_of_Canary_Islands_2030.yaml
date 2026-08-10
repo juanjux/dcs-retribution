@@ -71,7 +71,8 @@ settings:
   uh_60l: true
   eurofighter: true
   mam: true                # Spain's A400M
-  VSN_F35: true            # Morocco's F-35, air-to-air variant only
+  vsnf35: true             # Morocco's F-35, air-to-air variant only
+  squadrons_start_full: true
   jas39_gripen: false
   su30_flanker_h: false
   su57_felon: false
