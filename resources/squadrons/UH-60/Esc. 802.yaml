@@ -1,0 +1,10 @@
+---
+name: Esc. 802
+nickname: SAR Gando
+country: Spain
+role: Search and Rescue / Transport
+aircraft: UH-60A
+livery: standard
+mission_types:
+  - Transport
+  - Air Assault

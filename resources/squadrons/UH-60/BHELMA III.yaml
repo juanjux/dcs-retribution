@@ -1,0 +1,10 @@
+---
+name: BHELMA III
+nickname: Agoncillo
+country: Spain
+role: Transport / Air Assault
+aircraft: UH-60A
+livery: standard
+mission_types:
+  - Air Assault
+  - Transport

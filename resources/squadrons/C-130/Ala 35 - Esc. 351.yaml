@@ -1,0 +1,9 @@
+---
+name: Ala 35 - Esc. 351
+nickname: Hercules
+country: Spain
+role: Tactical Transport
+aircraft: C-130
+livery: spanish air force
+mission_types:
+  - Transport
