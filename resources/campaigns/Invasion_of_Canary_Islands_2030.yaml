@@ -433,7 +433,7 @@ squadrons:
     - Escort
     - CAS
     aircraft:
-    - Eurofighter Typhoon
+    - Ala 14 - Esc. 141/142
     name: Ala 14 - Esc. 141/142
     size: 24
   - primary: Air Assault
@@ -460,7 +460,7 @@ squadrons:
     - DEAD
     - Anti-ship
     aircraft:
-    - F/A-18C Hornet (Lot 20)
+    - Ala 12 - Esc. 121
     name: Ala 12 - Esc. 121
     size: 24
   - primary: BARCAP

@@ -1,0 +1,16 @@
+name: Ala 14 - Esc. 141/142
+nickname: Los Guerreros
+country: Spain
+role: Multirole Fighter
+aircraft: Eurofighter Typhoon
+livery: Ala 14-04
+mission_types:
+  - BARCAP
+  - TARCAP
+  - Escort
+  - Fighter sweep
+  - Intercept
+  - CAS
+  - BAI
+  - Strike
+  - Armed Recon
