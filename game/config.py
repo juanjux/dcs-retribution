@@ -17,3 +17,14 @@ REWARDS = {
     "village": 0.25,
     "allycamp": 0.5,
 }
+
+# IADS infrastructure produces no income, so it has no REWARDS entry -- and repair_cost()
+# derives the rebuild price from income, which left every comms tower, power station and
+# command centre unrepairable for the rest of the campaign once it was bombed. A network
+# you can only ever dismantle is not one worth attacking twice. Price them directly
+# instead: rebuildable, still earning nothing.
+IADS_REPAIR_COST = {
+    "power": 15.0,
+    "commandcenter": 10.0,
+    "comms": 5.0,
+}
