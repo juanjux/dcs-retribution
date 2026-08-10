@@ -1,0 +1,17 @@
+name: Spanish Escort Group
+description: An air-defence frigate leading two general-purpose ones
+tasks:
+  - Navy
+groups:
+  - Naval Group:
+    - name: Naval Group 2
+      unit_count:
+        - 1
+      unit_types:
+        - F105
+    - name: Naval Group 0
+      unit_count:
+        - 2
+      unit_types:
+        - F100
+layout_file: resources/layouts/naval/Naval-Group.miz

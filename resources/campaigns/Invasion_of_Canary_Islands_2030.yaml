@@ -1,0 +1,926 @@
+---
+name: Syria - Invasion of the Canary Islands 2030
+theater: Syria
+authors: NoGoodNews
+description:
+  <p>Fictional Campaign where Morocco is attacking Spain through Ceuta, Melilla and Canary Islands in 2030. This is a variation of the 
+  "Invation of Canary Islands" campaign where Morocco is stronger for better balance and uses more modern planes like the Eurofighter, JF-17 or F-35.</p>
+  <p>Many old aircrafts have been removed from both sides (F-5, Mirages, Gazelles, et cetera) and replaced by modern planes or choppers.</p>
+  <p>Spain will mostly use Eurofighter Squadrons as already have or planned to have by 2030, so you need that mod. It also have one squadron of F/A-18C since Eurofighters can't totally replace it in game (e.g. no standoff bombs) and many players fly the F/A-18C</p>
+  <p>The Harrier probably should be replaced by the F-35B but DCS' IA is pretty bugged when flying the AG version, so the Harriers have been kept.</p>
+  <p>Morocco now have several planes that are rumored to be in the talks of adquiring like the F-35A (only AA version, see above) and the JF-17, while keeping some F-16CM that many players will fly.</p>
+  <p>Both sides have now access to AWACS, JTAC (drone) and refuelers.</p>
+  <p>Both sides also have semi-realistic navies (from light frigate up, corvette and patrollers are not included). In this case, the Spanish navy is stronger which balances Morocco's F-35 and the need of the Spanish faction to capture a lot more control points to win.</p>
+  <p>SAM and AAA defenses have been reduced a lot, mostly removing duplicate defenses, which improves the campaign rythm removing some DEAD grind and also improves the performance.</p>
+  <p>Using DCS' Syria map as the terrain, it results in a close representation of the terrain around Morocco and
+  south of Spain, mainly due to the similar distances between Canary Islands (Cyprus) and Morocco Mainland (Syria, Lebanon).</p>
+  <p>Morocco Armed Forces have landed in Tenerife (Akrotiri) and are trying to extend towards Tenerife Norte (Larnaca),
+  Gando (Paphos) and eventually to Gran Canaria Norte (FOB).</p>
+  <p>To put more pressure and distress onto the Spanish Government, they have also started attacks to take over the
+  cities of Ceuta (FOB in Iskenderun) and Melilla (Bassel Al-Assad).</p>
+  <p>You must support ground troops while reinforcements arrive to Canarias, as there are no armament production
+  centers there. Ships will be sent from Rota Naval Base (Mersin) and Getafe Air Base (Adana Sakirpasa).
+  Morocco will also try to support their expeditionary forces by sending reinforcements by sea.</p>
+  <p>Prioritize naval targets!</p>
+  <p>L-61 "Juan Carlos I" naval assault group has also been sent to the zone to support operations. F-18 Hornets from 
+  Torrejon (Incirlik), Albacete and Gando will be your main assets. Additionally you can also use Mirage F-1s,
+  F-5s or Harriers from the "Juan Carlos I".</p>
+  <p>Very complex IADS network on each side.</p>
+  <p>Recommended mods/plugins to use:<ul>
+  <li>Spain Naval Assets Pack (it's a must)</li>
+  <li>Eurofighter by Lechuzas Negras (it's a must)</li>
+  <li>Frenchpack</li><li>High Digit SAMs</li>
+  <li>Skynet IADS and CTLD are also highly recommended.</li>
+  </ul></p>
+recommended_player_faction: Spain 2030
+recommended_enemy_faction: Morocco 2030
+recommended_start_date: 2030-06-01
+recommended_player_money: 1500
+recommended_enemy_money: 1500
+recommended_player_income_multiplier: 0.75
+recommended_enemy_income_multiplier: 0.75
+miz: Invasion_of_Canary_Islands_2030.miz
+performance: 3
+version: "10.7"
+advanced_iads: true # Campaign has connection_nodes / power_sources / command_centers 
+#IADS: EWR and C2 get power generators. batteries have their own generators.
+
+settings:
+  automate_runway_repair: true
+  automate_front_line_reinforcements: true
+  automate_aircraft_reinforcements: false
+  no_enemy_navy: false
+  desired_player_mission_duration: 60
+  external_views_allowed: true
+  max_frontline_width: 30
+ 
+ #Mods to be used
+  a4_skyhawk: false
+  a6a_intruder: false
+  a7e_corsair2: false
+  f4bc_phantom: false
+  f15d_baz: false
+  f_16_idf: false
+  fa_18efg: false
+  f22_raptor: false
+  f84g_thunderjet: false
+  f100_supersabre: false
+  f104_starfighter: false
+  f105_thunderchief: false
+  hercules: false          # both sides fly the C-130J-30 that ships with DCS
+  uh_60l: true
+  eurofighter: true
+  mam: true                # Spain's A400M
+  vsnf35: true             # Morocco's F-35, air-to-air variant only
+  squadrons_start_full: true
+  jas39_gripen: false
+  su30_flanker_h: false
+  su57_felon: false
+  frenchpack: true
+  high_digit_sams: true
+  enable_squadron_aircraft_limits: true   # no buying past a squadron's defined size
+  ov10a_bronco: false
+  swedishmilitaryassetspack: false
+  spanishnavypack: true
+
+# Difficulty settings
+# AI Difficulty
+  player_skill: "Excellent"
+  enemy_skill:  "Average"
+  enemy_vehicle_skill: "Excellent"
+  invulnerable_player_pilots: true
+  manpads: true
+  night_day_missions: NightMissions.DayAndNight
+        #"Night/day mission options"
+        #choices:   
+            # NightMissions.DayAndNight
+            # NightMissions.OnlyDay
+            # NightMissions.OnlyNight
+        #default=NightMissions.DayAndNight
+
+# Mission Restrictions
+  labels: "Dot Only"
+        #In game labels
+        #choices:
+            # "Full"
+            # "Abbreviated"
+            # "Dot Only"
+            # "Neutral Dot"
+            # "Off"
+        #default="Full"
+
+iads_config:
+
+# SPAIN IADS
+# EWRs
+    - Spain EWR Torrejon A:
+        - IADS Command Center Spain
+        - Power IADS Spain Peninsula
+        - Comms Torrejon
+        - Comms Getafe
+        - Power Albacete
+    - Spain EWR Torrejon B:
+        - IADS Command Center Spain
+        - Power IADS Spain Peninsula
+        - Comms Ceuta
+        - Comms Torrejon
+        - Power IADS Spain Africa
+    - Spain EWR Getafe:
+        - IADS Command Center Spain
+        - Power IADS Spain Peninsula
+        - Comms Getafe
+        - Comms Torrejon
+        - Power Albacete
+    - Spain EWR Tarifa:
+        - IADS Command Center Spain
+        - Power IADS Spain Peninsula
+        - Comms Torrejon
+        - Comms Getafe
+        - Power Albacete
+    - Spain EWR Gando:
+        - IADS Command Center Canarias
+        - Power IADS Spain Canarias
+        - Comms Gando
+    - Spain EWR Teide:
+        - IADS Command Center Canarias
+        - Power IADS Spain Canarias
+        - Comms GC Norte
+        - Comms Tenerife Norte
+    - Spain EWR Africa:
+        - IADS Command Center Africa
+        - Power IADS Spain Africa
+        - Comms Melilla
+    - Spain EWR Albacete:
+        - IADS Command Center Spain
+        - Power IADS Spain Peninsula
+        - Comms Albacete
+        - Comms Getafe
+        - Power Albacete
+    - Spain EWR Zaragoza:
+        - IADS Command Center Spain
+        - Power IADS Spain Peninsula
+        - Comms Zaragoza
+        - Power Zaragoza
+
+# SAMs Long Range
+    - Spain SAM LR_P-1:
+        - IADS Command Center Spain
+        - Comms Getafe
+        - Comms Torrejon
+        - Power IADS Spain Peninsula
+        - Power Albacete
+    - Spain SAM LR_P-2:
+        - IADS Command Center Spain
+        - Comms Rota
+        - Comms Albacete
+        - Power Albacete
+        - Power IADS Spain Peninsula
+    - Spain SAM LR_A-1:
+        - IADS Command Center Africa
+        - IADS Command Center Spain
+        - Comms Melilla
+    - Spain SAM LR_C-1:
+        - IADS Command Center Canarias
+    - Spain SAM LR_C-2:
+        - IADS Command Center Canarias
+        - IADS Command Center Spain
+        - Comms GC Norte
+        - Comms Tenerife Norte
+        - Power IADS Spain Canarias
+    - Spain SAM LR_Zaragoza:
+        - IADS Command Center Spain
+        - Comms Zaragoza
+        - Power Zaragoza
+# SAMs Medium Range Peninsula
+    - Spain SAM MR_P-1:
+        - IADS Command Center Spain
+        - Comms Torrejon
+        - Comms Getafe
+        - Power IADS Spain Peninsula
+        - Power Albacete
+    - Spain SAM MR_P-2:
+        - IADS Command Center Spain
+        - Comms Ceuta
+        - Comms Torrejon
+        - Power IADS Spain Africa
+        - Power IADS Spain Peninsula
+    - Spain SAM MR_P-3:
+        - IADS Command Center Spain
+        - Comms Getafe
+        - Comms Albacete
+        - Power IADS Spain Peninsula
+        - Power Albacete
+    - Spain SAM MR_P-4:
+        - IADS Command Center Spain
+        - Comms Rota
+        - Comms Albacete
+        - Power Albacete
+        - Power IADS Spain Peninsula
+    - Spain SAM MR_P-5:
+        - IADS Command Center Spain
+        - Comms Torrejon
+        - Comms Getafe
+        - Power IADS Spain Peninsula
+        - Power Albacete
+    - Spain SAM MR_P-7:
+        - IADS Command Center Spain
+        - Comms Torrejon
+        - Comms Getafe
+        - Power IADS Spain Peninsula
+        - Power Albacete
+    - Spain SAM MR_Albacete:
+        - IADS Command Center Spain
+        - Comms Albacete
+        - Comms Getafe
+        - Power Albacete
+        - Power IADS Spain Peninsula
+    - Spain SAM MR_Zaragoza:
+        - IADS Command Center Spain
+        - Comms Zaragoza
+        - Power Zaragoza
+# SAMs Medium Range Canarias
+    - Spain SAM MR_C-1:
+        - IADS Command Center Canarias
+        - Comms GC Norte
+        - Comms Tenerife Norte
+        - Power IADS Spain Canarias
+    - Spain SAM MR_C-2:
+        - IADS Command Center Canarias
+        - Comms Gando
+    - Spain SAM MR_C-3:
+        - IADS Command Center Canarias
+        - Comms GC Norte
+        - Comms Tenerife Norte
+        - Power IADS Spain Canarias
+    - Spain SAM MR_C-4:
+        - IADS Command Center Canarias
+        - Comms Tenerife Norte
+        - Comms GC Norte
+        - Power IADS Spain Canarias
+    - Spain SAM MR_C-5:
+        - IADS Command Center Canarias
+        - Comms Tenerife Norte
+        - Comms GC Norte
+        - Power IADS Spain Canarias
+    - Spain SAM MR_C-6:
+        - IADS Command Center Canarias
+        - Comms Tenerife
+    - Spain SAM MR_C-7:
+        - IADS Command Center Canarias
+        - Comms Tenerife
+# SAMs Medium Range Africa
+    - Spain SAM MR_A-1:
+        - IADS Command Center Africa
+        - Comms Ceuta
+        - Comms Torrejon
+        - Power IADS Spain Africa
+    - Spain SAM MR_A-2:
+        - IADS Command Center Africa
+        - Comms Melilla
+
+
+#Morocco IADS Network South
+# EWR Network
+    - Morocco EWR ReneMouawad: #ReneMouawad
+        - IADS Command Center Damascus-1
+        - Power IADS  Damascus
+        - Power IADS Haifa
+        - Comms Rene Mouawad
+        - Comms Homs
+        - Power Homs - Mobile
+    - Morocco EWR Ramat: #Ramat David
+        - IADS Command Center Damascus-1
+        - Power IADS  Damascus
+        - Power IADS Haifa
+        - Comms Haifa
+    - Morocco EWR Beyrut: #Beyrut
+        - IADS Command Center Damascus-1
+        - Power IADS  Damascus
+
+# SAMs Damascus
+    - Morocco Damascus SAM LR-1:
+        - IADS Command Center Damascus-1
+        - IADS Command Center Tiyas
+        - Comms Damascus
+        - Power IADS  Damascus
+
+    - Morocco Damascus SAM MR-1:
+        - IADS Command Center Damascus-1
+        - Comms Damascus
+        - Power IADS  Damascus
+
+    - Morocco Damascus SAM SR-1:
+        - IADS Command Center Damascus-1
+        - Comms Damascus
+        - Power IADS  Damascus
+    - Morocco Damascus SAM SR-3:
+        - IADS Command Center Damascus-1
+        - Comms Damascus
+        - Power IADS  Damascus
+    - Morocco Damascus SAM SR-4:
+        - IADS Command Center Damascus-1
+        
+        - Comms Damascus
+        - Power IADS  Damascus
+# SAMs Ramat David:
+    - Morocco Ramat SAM LR-1:
+        - IADS Command Center Damascus-1
+        - Comms Haifa
+        - Power IADS Haifa
+
+    - Morocco Ramat SAM MR-2:
+        - IADS Command Center Damascus-1
+        
+        - Comms Haifa
+        - Power IADS Haifa
+    - Morocco Ramat SAM SR-1:
+        - IADS Command Center Damascus-1
+        - Comms Haifa
+        - Power IADS Haifa
+    - Morocco Ramat SAM SR-2:
+        - IADS Command Center Damascus-1
+        - Comms Haifa
+        - Power IADS Haifa
+
+# SAMs Haifa:
+    - Morocco Haifa SAM MR-2:
+        - IADS Command Center Damascus-1
+        
+        - Comms Haifa
+        - Power IADS Haifa
+    - Morocco Haifa SAM SR-1:
+        - IADS Command Center Damascus-1
+        - Comms Haifa
+        - Power IADS Haifa
+    - Morocco Haifa SAM SR-2:
+        - IADS Command Center Damascus-1
+        - Comms Haifa
+        - Power IADS Haifa
+    - Morocco Haifa SAM SR-3:
+        - IADS Command Center Damascus-1
+        - Comms Haifa
+        - Power IADS Haifa
+
+# SAMs Beyrut:
+    - Morocco Beyrut SAM  LR-1:
+        - IADS Command Center Damascus-1
+    
+    - Morocco Beyrut SAM MR-1:
+        - IADS Command Center Damascus-1
+    - Morocco Beyrut SAM SR-2:
+        - IADS Command Center Damascus-1
+    - Morocco Beyrut SAM SR-3:
+        - IADS Command Center Damascus-1
+
+# SAMs Rene Mouawad:
+    - Morocco Rene SAM LR-1:
+        - IADS Command Center Damascus-1
+        - Comms Rene Mouawad
+        - Comms Homs
+        - Power Homs - Mobile
+    - Morocco Rene SAM LR-2:
+        - IADS Command Center Damascus-1
+        
+        - Comms Rene Mouawad
+        - Comms Homs
+        - Power Homs - Mobile
+    - Morocco Rene SAM MR-2:
+        - IADS Command Center Damascus-1
+        - Comms Rene Mouawad
+        - Comms Homs
+        - Power Homs - Mobile
+
+    - Morocco Rene SAM SR-2:
+        - IADS Command Center Damascus-1
+        - Comms Rene Mouawad
+        - Comms Homs
+        - Power Homs - Mobile
+#Morocco Air Defence Network North
+# EWR Network
+    - Morocco EWR Homs: #Homs
+        - IADS Command Center Tiyas
+        - Power IADS Tiyas
+        - Power Palmyra
+        - Power Homs - Mobile
+        - Power IADS Haifa
+        - Comms Homs
+        - Comms Rene Mouawad
+    - Morocco EWR Aleppo: #Aleppo
+        - IADS Command Center Tiyas
+        - Power IADS Tiyas
+        - Power IADS Haifa
+    - Morocco EWR Tiyas: #Tiyas
+        - IADS Command Center Tiyas
+        - Power IADS Tiyas
+        - Power Palmyra
+        - Power IADS Haifa
+        - Comms Palmyra
+    - Morocco EWR Palmyra: #Palmyra
+        - IADS Command Center Tiyas
+        - Power IADS Tiyas
+        - Power Palmyra
+        - Power IADS Haifa
+        - Comms Palmyra
+
+#SAMs Homs FOB        
+    - Morocco Homs SAM MR-2:
+        - IADS Command Center Tiyas
+        
+        - Comms Homs
+        - Comms Rene Mouawad
+        - Power Homs - Mobile
+    - Morocco Homs SAM SR-1:
+        - IADS Command Center Tiyas
+        - Comms Homs
+        - Comms Rene Mouawad
+        - Power Homs - Mobile
+    - Morocco Homs SAM SR-2:
+        - IADS Command Center Tiyas
+        - Comms Homs
+        - Comms Rene Mouawad
+        - Power Homs - Mobile
+    - Morocco Homs SAM SR-3:
+        - IADS Command Center Tiyas
+        
+        - Comms Homs
+        - Comms Rene Mouawad
+        - Power Homs - Mobile
+# SAMs Tiyas:
+    - Morocco Tiyas SAM MR-1:
+        - IADS Command Center Tiyas
+        - Comms Palmyra
+        - Power IADS Tiyas
+        - Power Palmyra
+    - Morocco Tiyas SAM SR-1:
+        - IADS Command Center Tiyas
+        - Comms Palmyra
+        - Power IADS Tiyas
+        - Power Palmyra
+
+# SAMs Palmyra:
+    - Morocco Palmyra SAM LR-1:
+        - IADS Command Center Tiyas
+        
+        - Comms Palmyra
+        - Power Palmyra
+        - Power IADS Tiyas
+    - Morocco Palmyra SAM MR-1:
+        - IADS Command Center Tiyas
+        - Comms Palmyra
+        - Power Palmyra
+        - Power IADS Tiyas
+    
+        - IADS Command Center Tiyas
+    - Morocco Palmyra SAM SR-1:
+        - IADS Command Center Tiyas
+        - Comms Palmyra
+        - Power Palmyra
+        - Power IADS Tiyas
+
+# SAMs Hama:        
+    - Morocco Hama SAM LR-2:
+        - IADS Command Center Tiyas
+        - Comms Homs
+        - Power Homs - Mobile
+    - Morocco Hama SAM LR-3:
+        - IADS Command Center Tiyas
+        
+        - Comms Homs
+        - Power Homs - Mobile
+    - Morocco Hama SAM MR-3:
+        - IADS Command Center Tiyas
+        - Comms Homs
+        - Power Homs - Mobile
+
+    - Morocco Hamas SAM SR-1:
+        - IADS Command Center Tiyas
+        - Comms Homs
+        - Power Homs - Mobile
+    - Morocco Hamas SAM SR-2:
+        - IADS Command Center Tiyas
+        - Comms Homs
+        - Power Homs - Mobile
+    - Morocco Hamas SAM SR-3:
+        - IADS Command Center Tiyas
+        
+        - Comms Homs
+        - Power Homs - Mobile
+# SAMs Aleppo:
+    - Morocco Aleppo SAM LR-1:
+        - IADS Command Center Tiyas
+    - Morocco Aleppo SAM LR-3:
+        - IADS Command Center Tiyas
+    
+    - Morocco Aleppo SAM MR-1:
+        - IADS Command Center Tiyas
+    
+    - Morocco Aleppo SAM SR-1:
+        - IADS Command Center Tiyas
+    - Morocco Aleppo SAM SR-2:
+        - IADS Command Center Tiyas
+
+
+        
+# Command centres. isCommandCenterUsable() is coalition-wide: while one of a side's
+# centres is standing its SAMs stay cued and dark and its EWRs stay live; when the last
+# one goes, every SAM of that coalition goes autonomous with its radar permanently on and
+# every EWR goes dark. None of these were keys, so Skynet was never told they existed and
+# the whole layer did nothing. Listing them as values (which the SAM entries already do)
+# only draws the map link -- initializeIADSElement reads ConnectionNode, PowerSource and
+# PD, never CommandCenter.
+# Spain
+    - IADS Command Center Spain
+    - IADS Command Center Canarias
+    - IADS Command Center Africa
+    - Command Torrejon
+    - Command Rota
+    - Command Albacete
+    - Command Zaragoza
+    - Command Tenerife Norte
+    - Command Gando
+    - Command GC Norte
+# Morocco
+    - IADS Command Center Damascus-1
+    - IADS Command Center Morocco Homs
+    - Command Tenerife
+    - Commnad Beyrut
+    - Haifa_Command
+    - GreenZoneCommand-1
+    - Ramat_Command
+
+# Naval air search. addEarlyWarningRadar branches on Unit.Category.SHIP and builds an
+# AWACS-type radar straight from the hull's own sensors, so these need no unit-database
+# entry. Listed without dependencies on purpose: a ship must never be wired to a shore
+# power station or comms tower, or bombing that building sends the ship dark.
+    - Blue LHA
+    - Blue LHA Castilla
+    - Blue LHA Galicia
+    - F102 Almirante Juan de Borbon
+    - F103 Blas de Lezo
+
+# Pins the composition of a naval group to its marker. Without this every fleet is
+# whatever the faction happens to roll per marker, so "the heavy one" and "the patrol
+# boats" cannot be told apart.
+ground_forces:
+  Morocco SAG: Morocco Surface Action Group
+  Morocco Frigates: Morocco Frigate Pair
+  Morocco FAC: Morocco Fast Attack Pair
+  Spain Escort: Spain Escort Group
+  F102 Almirante Juan de Borbon: Spain Frigate Pair
+  Blue LHA: Spain LHA Group
+  Blue LHA Castilla: Spain LPD Group
+  Blue LHA Galicia: Spain LPD Group
+
+carriers:
+  Blue LHA:
+    preferred_name: Juan Carlos I
+    preferred_type: L61 Juan Carlos I
+  Blue LHA Castilla:
+    preferred_name: Castilla
+    preferred_type: L52 Castilla
+  Blue LHA Galicia:
+    preferred_name: Galicia
+    preferred_type: L52 Castilla
+
+squadrons:
+  2:
+  - primary: Transport
+    aircraft:
+    - Ala 35 - Esc. 351
+    name: Ala 35 - Esc. 351
+    aircraft_type: C-130
+    size: 6
+  - primary: Transport
+    secondary:
+    - Air Assault
+    aircraft:
+    - Esc. 802
+    name: Esc. 802
+    aircraft_type: UH-60A
+    size: 8
+  90:
+  - primary: BARCAP
+    secondary:
+    - Escort
+    - CAS
+    aircraft:
+    - Ala 14 - Esc. 141/142
+    name: Ala 14 - Esc. 141/142
+    aircraft_type: Eurofighter Typhoon
+    size: 24
+  - primary: Air Assault
+    secondary:
+    - Transport
+    aircraft:
+    - BHELMA III
+    name: BHELMA III
+    aircraft_type: UH-60A
+    size: 12
+  47:
+  - primary: BARCAP
+    secondary:
+    - Escort
+    - BAI
+    aircraft:
+    - Ala 11 - Esc. 111
+    name: Ala 11 - Esc. 111
+    aircraft_type: Eurofighter Typhoon
+    size: 24
+  16:
+  - primary: BARCAP
+    secondary:
+    - Strike
+    - SEAD
+    - DEAD
+    - Anti-ship
+    aircraft:
+    - Ala 12 - Esc. 121
+    name: Ala 12 - Esc. 121
+    aircraft_type: F/A-18C Hornet (Lot 20)
+    size: 24
+  - primary: BARCAP
+    secondary:
+    - Escort
+    - BAI
+    aircraft:
+    - Ala 12 - Esc. 122
+    name: Ala 12 - Esc. 122
+    aircraft_type: Eurofighter Typhoon
+    size: 22
+  - primary: AEW&C
+    aircraft:
+    - E-3A
+    name: OTAN AWACS
+    size: 1
+  46:
+  - primary: BARCAP
+    secondary:
+    - Escort
+    - CAS
+    aircraft:
+    - Ala 46 - Esc. 462
+    name: Ala 46 - Esc. 462
+    aircraft_type: Eurofighter Typhoon
+    size: 22
+  218:
+  - primary: Transport
+    aircraft:
+    - Ala 31 - Esc. 311/312
+    name: Ala 31 - Esc. 311/312
+    aircraft_type: A400M Atlas
+    size: 14
+  - primary: Refueling
+    aircraft:
+    - KC-135 Stratotanker MPRS
+    name: Ala 45 - Esc. 451
+    size: 4
+  21:
+  - primary: Air Assault
+    secondary:
+    - Transport
+    aircraft:
+    - BHELMA IV
+    name: BHELMA IV
+    aircraft_type: UH-60A
+    size: 12
+  - primary: Transport
+    secondary:
+    - Air Assault
+    aircraft:
+    - Esc. 803
+    name: Esc. 803
+    aircraft_type: UH-60A
+    size: 8
+  - primary: CAS
+    secondary:
+    - BAI
+    - Armed Recon
+    aircraft:
+    - AH-64D Apache Longbow (AI)
+    name: BHELA IA
+    size: 8
+  - primary: BARCAP
+    secondary:
+    - Escort
+    aircraft:
+    - Ala 15 - Esc. 151/152
+    name: Ala 15 - Esc. 151/152
+    aircraft_type: Eurofighter Typhoon
+    size: 20
+  Spain FOB Ceuta:
+  - primary: Air Assault
+    secondary:
+    - Transport
+    aircraft:
+    - BHELTRA VA
+    name: BHELTRA VA
+    aircraft_type: CH-47F Block I
+    size: 8
+  - primary: CAS
+    secondary:
+    - BAI
+    - Armed Recon
+    aircraft:
+    - AH-64D Apache Longbow (AI)
+    name: BHELA IB
+    size: 8
+  Spain FOB GC Norte:
+  - primary: CAS
+    secondary:
+    - BAI
+    aircraft:
+    - AH-64D Apache Longbow (AI)
+    name: BHELA IC
+    size: 8
+  - primary: Air Assault
+    secondary:
+    - Transport
+    aircraft:
+    - BHELMA VI
+    name: BHELMA VI
+    aircraft_type: UH-60A
+    size: 8
+  Blue LHA:
+  - primary: CAS
+    secondary:
+    - BAI
+    - Anti-ship
+    aircraft:
+    - 9a Escuadrilla
+    name: 9a Escuadrilla
+    aircraft_type: AV-8B Harrier II Night Attack
+    size: 12
+  - primary: Anti-ship
+    secondary:
+    - Transport
+    aircraft:
+    - SH-60B Seahawk
+    name: 10a Escuadrilla
+    size: 8
+  Blue LHA Castilla:
+  - primary: Air Assault
+    secondary:
+    - Transport
+    aircraft:
+    - BHELTRA VB
+    name: BHELTRA VB
+    aircraft_type: CH-47F Block I
+    size: 2
+  Blue LHA Galicia:
+  - primary: Transport
+    secondary:
+    - Air Assault
+    aircraft:
+    - 3a Escuadrilla
+    name: 3a Escuadrilla
+    aircraft_type: UH-1H Iroquois
+    size: 2
+  6:
+  - primary: BARCAP
+    secondary:
+    - Escort
+    - Fighter sweep
+    - Intercept
+    - CAS
+    - BAI
+    - Strike
+    - SEAD
+    - DEAD
+    aircraft:
+    - F-16CM Fighting Falcon (Block 50)
+    name: Fighter Squadron 2
+    size: 24
+  - primary: Transport
+    aircraft:
+    - C-130
+    name: Tactical Transport 1
+    size: 7
+  14:
+  - primary: BARCAP
+    secondary:
+    - Escort
+    - Fighter sweep
+    - Intercept
+    - CAS
+    - BAI
+    - Strike
+    - Anti-ship
+    aircraft:
+    - JF-17 Thunder
+    name: Fighter Squadron 3
+    size: 16
+  - primary: CAS
+    secondary:
+    - BAI
+    - Armed Recon
+    aircraft:
+    - AH-64D Apache Longbow
+    name: Attack Squadron 2
+    size: 8
+  - primary: Air Assault
+    secondary:
+    - Transport
+    aircraft:
+    - UH-60A
+    name: Medium Transport Squadron 1
+    size: 12
+  7:
+  - primary: BARCAP
+    secondary:
+    - Escort
+    - Fighter sweep
+    - Intercept
+    aircraft:
+    - F-35A Lightning II
+    name: Fighter Squadron 4
+    size: 16
+  - primary: Transport
+    aircraft:
+    - C-130
+    name: Transport Squadron 1
+    size: 16
+  28:
+  - primary: BARCAP
+    secondary:
+    - Escort
+    - Fighter sweep
+    - Intercept
+    aircraft:
+    - F-35A Lightning II
+    name: Fighter Squadron 5
+    size: 16
+  39:
+  - primary: BARCAP
+    secondary:
+    - Escort
+    - Fighter sweep
+    - Intercept
+    - CAS
+    - BAI
+    - Strike
+    - Anti-ship
+    aircraft:
+    - JF-17 Thunder
+    name: Fighter Squadron 6
+    size: 16
+  - primary: Transport
+    secondary:
+    - Air Assault
+    aircraft:
+    - UH-1H Iroquois
+    name: Utility Squadron 1
+    size: 20
+  27:
+  - primary: Refueling
+    aircraft:
+    - KC-130
+    name: Refuel Squadron 1
+    size: 3
+  - primary: CAS
+    secondary:
+    - BAI
+    - Armed Recon
+    aircraft:
+    - AH-64D Apache Longbow
+    name: Attack Squadron 3
+    size: 8
+  44:
+  - primary: CAS
+    secondary:
+    - BAI
+    - Armed Recon
+    aircraft:
+    - AH-64D Apache Longbow
+    name: Attack Squadron 1
+    size: 8
+  - primary: Air Assault
+    secondary:
+    - Transport
+    aircraft:
+    - UH-60A
+    name: Medium Transport Squadron 2
+    size: 12
+  59:
+  - primary: Transport
+    secondary:
+    - Air Assault
+    aircraft:
+    - CH-47D
+    name: Heavy Transport Squadron 1
+    size: 12
+
+  30:
+  - primary: BARCAP
+    secondary:
+    - Escort
+    - Fighter sweep
+    - Intercept
+    - CAS
+    - BAI
+    - Strike
+    - SEAD
+    - DEAD
+    aircraft:
+    - F-16CM Fighting Falcon (Block 50)
+    name: Fighter Squadron 1
+    size: 24

@@ -1,0 +1,19 @@
+---
+name: 9a Escuadrilla
+nickname: Juan Carlos I
+country: Spain
+role: V/STOL Attack
+aircraft: AV-8B Harrier II Night Attack
+livery: l-61 harrier 16
+bases:
+  shore: false
+  carrier: false
+  lha: true
+mission_types:
+  - CAS
+  - BAI
+  - Anti-ship
+  - Strike
+  - Armed Recon
+  - OCA/Aircraft
+  - OCA/Runway
