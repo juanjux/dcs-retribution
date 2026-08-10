@@ -449,7 +449,7 @@ squadrons:
     - Escort
     - BAI
     aircraft:
-    - Eurofighter Typhoon
+    - Ala 11 - Esc. 111
     name: Ala 11 - Esc. 111
     size: 24
   16:
@@ -468,7 +468,7 @@ squadrons:
     - Escort
     - BAI
     aircraft:
-    - Eurofighter Typhoon
+    - Ala 12 - Esc. 122
     name: Ala 12 - Esc. 122
     size: 22
   - primary: AEW&C
@@ -496,13 +496,6 @@ squadrons:
     - KC-135 Stratotanker MPRS
     name: Ala 45 - Esc. 451
     size: 4
-  - primary: BARCAP
-    secondary:
-    - Escort
-    aircraft:
-    - Eurofighter Typhoon
-    name: Ala 15 - Esc. 151/152
-    size: 20
   21:
   - primary: Transport
     secondary:
@@ -519,6 +512,13 @@ squadrons:
     - AH-64D Apache Longbow (AI)
     name: BHELA IA
     size: 8
+  - primary: BARCAP
+    secondary:
+    - Escort
+    aircraft:
+    - Ala 15 - Esc. 151/152
+    name: Ala 15 - Esc. 151/152
+    size: 20
   Spain FOB Ceuta:
   - primary: CAS
     secondary:
