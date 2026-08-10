@@ -189,8 +189,10 @@ class IadsNetwork:
         """Update the IADS Network for the given TGO"""
         if self.advanced_iads and IadsRole.for_category(tgo.category).is_comms_or_power:
             return self._update_iads_comms_and_power(tgo, events)
-        # Remove existing nodes for the given tgo
-        for cn in self.nodes:
+        # Remove existing nodes for the given tgo. Iterate a copy: removing from the
+        # list being walked skips the element after each hit, so a TGO with more than
+        # one node kept a stale one.
+        for cn in list(self.nodes):
             if cn.group.ground_object == tgo:
                 self.nodes.remove(cn)
                 for cID in cn.connections:
@@ -289,7 +291,11 @@ class IadsNetwork:
     def _add_connections_from_config(self, node: IadsNetworkNode) -> None:
         """Add all connections for the given primary node based on the iads_config"""
         primary_node = node.group.ground_object.original_name
-        connections = self.iads_config[primary_node]
+        # iads_config is a defaultdict and is pickled with the Game, so subscripting it
+        # here quietly inserted an empty entry for every objective that is not in the
+        # campaign's config -- and update_tgo reaches this for any site that self-enrols
+        # after a unit dies. The saved config drifted away from the campaign yaml.
+        connections = self.iads_config.get(primary_node, [])
         for secondary_node in connections:
             try:
                 node.add_connection_for_tgo(self.ground_objects[secondary_node])

@@ -352,6 +352,16 @@ iads_config:
 
 
         
+# Naval air search. addEarlyWarningRadar branches on Unit.Category.SHIP and builds an
+# AWACS-type radar straight from the hull's own sensors, so these need no unit-database
+# entry. Listed without dependencies on purpose: a ship must never be wired to a shore
+# power station or comms tower, or bombing that building sends the ship dark.
+    - Blue LHA
+    - Blue LHA Castilla
+    - Blue LHA Galicia
+    - F102 Almirante Juan de Borbon
+    - F103 Blas de Lezo
+
 carriers:
   Blue LHA:
     preferred_name: Juan Carlos I
