@@ -694,6 +694,53 @@ def edit_waypoint(
         return schemas.OpResult(ok=False, error=str(exc))
 
 
+def set_flight_loadout(
+    game: Game, side: str, flight_id: str, loadout: str | dict[int, str]
+) -> schemas.OpResult:
+    """Re-arm a flight that already exists, the way the player uses the Payload tab.
+
+    ``/packages`` arms the flights it creates, but the engine also creates flights on
+    its own, and not all of them are armed: a squadron relocation launches its ferry
+    flights with the "Empty" loadout, because no airframe ships a payload named for
+    the Ferry task and that task has no fallback. Without this the LLM could not fix
+    that, while the player can.
+    """
+    flight = flight_for_side(game, side, flight_id)
+    if flight is None:
+        return schemas.OpResult(ok=False, error=f"no flight with id {flight_id!r}")
+    try:
+        if isinstance(loadout, dict):
+            built = _build_loadout(flight.unit_type, flight.flight_type, loadout)
+        else:
+            # Resolve against the same list /aircraft/loadouts offers. iter_for drops
+            # payloads carrying clsids the installed mods do not declare, which
+            # loadout_by_name does not -- and DCS discards those stores in silence.
+            from game.ato.loadouts import Loadout
+
+            name = str(loadout)
+            built = next(
+                (lo for lo in Loadout.iter_for(flight) if lo.name == name), None
+            )
+            if built is None:
+                raise ValueError(
+                    f"no loadout named {name!r} for "
+                    f"{flight.unit_type.display_name} -- see /aircraft/loadouts"
+                )
+        for member in flight.iter_members():
+            member.loadout = built
+            member.use_custom_loadout = built.is_custom
+        events = _new_map_events()
+        events.update_flight(flight)
+        _push_map_events(events)
+        return schemas.OpResult(
+            ok=True,
+            detail=f"{flight.flight_type.value} / "
+            f"{flight.unit_type.display_name}: {built.name}",
+        )
+    except Exception as exc:
+        return schemas.OpResult(ok=False, error=str(exc))
+
+
 def validate_plan(game: Game, side: str) -> schemas.ValidateResult:
     """Health-check the whole committed plan (no changes): every package's TOT vs the
     mission window and whether any flight is uncrewed (not enough pilots)."""

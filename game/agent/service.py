@@ -206,6 +206,7 @@ def capabilities() -> dict:
             "packages/evaluate (dry-run a package's TOT, no commit)",
             "payload/validate (check a {pylon: clsid} loadout is valid for an airframe)",
             "waypoints/edit (move/adjust a flight waypoint — never deletes)",
+            "flights/loadout (re-arm a flight that already exists — ferries launch empty)",
             "packages/{index} (delete)",
             "packages/{index}/tot (set/clear a committed package's TOT — stagger multi-axis strikes)",
             "buy/aircraft",
@@ -247,6 +248,14 @@ def edit_waypoint(side, flight_id, waypoint_idx, lat=None, lng=None, alt_m=None)
     return planner.edit_waypoint(
         _require_game(), side, flight_id, waypoint_idx, lat, lng, alt_m
     )
+
+
+@opfor_only
+def set_flight_loadout(side, flight_id, loadout):
+    """Re-arm an existing flight (named loadout or {pylon: clsid})."""
+    from game.agent import planner
+
+    return planner.set_flight_loadout(_require_game(), side, flight_id, loadout)
 
 
 @opfor_only

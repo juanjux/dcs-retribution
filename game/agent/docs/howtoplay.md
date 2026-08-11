@@ -770,6 +770,12 @@ Write bodies:
   a flight's waypoint (position and/or altitude), like dragging it on the map. Waypoint 0
   (takeoff) is immovable, and waypoints can NEVER be deleted (a deleted waypoint crashes
   the AI flight plan). Read a flight's waypoints first with `GET /waypoints/{flight_id}`.
+- `POST /flights/loadout` `{side, flight_id, loadout}` → re-arm a flight that ALREADY
+  exists, the way the player uses the Payload tab. `loadout` is a name from
+  `GET /aircraft/loadouts` or a custom `{pylon: clsid}` map. `POST /packages` already arms
+  what it creates, so this is for flights the engine made for you — above all the ferry
+  flights of a `squadron/relocate`, which launch **Empty** (read the relocate entry first:
+  a ferry holds its weapons, so re-arming it is cosmetic).
 - `POST /packages/evaluate` `{side, package:{target_id, flights:[…]}}` → a DRY RUN:
   plans the package and returns its `package` (with `tot`), `tot_minutes_into_mission`,
   `mission_window_min` and `within_window` — WITHOUT committing it. Use it to check a
@@ -807,12 +813,16 @@ Write bodies:
   **The rescue works in the OTHER direction too**: when your runways are cratered, a
   grounded squadron relocated TO a carrier/LHA flies again — the deck cannot be
   cratered, and the ship sails wherever you need it. Helicopter squadrons especially:
-  embarked, they regain AIR_ASSAULT reach against any coast. Also: **the ferry flight
-  flies ARMED with the squadron's current loadout** — it ignores ground targets en
-  route but defends itself air-to-air. So (1) never send a ferry naked, give it
-  air-to-air; (2) treat ENEMY ferries crossing your airspace as hostile fighters, not
-  freight; (3) route the relocation like any other sortie — not through enemy SAM
-  bubbles.
+  embarked, they regain AIR_ASSAULT reach against any coast. Know what a ferry flight
+  actually is, because it is not a fighter: it launches with an **Empty** loadout (no
+  airframe ships a payload for the Ferry task), and DCS flies it on the `Nothing` task
+  with **weapons held** — it evades incoming fire but never shoots, armed or not. So
+  (1) a ferry cannot defend itself: escort it, or route the relocation clear of enemy
+  CAP and SAM bubbles like any other sortie; (2) an ENEMY ferry crossing your airspace
+  is a defenceless target, not a hostile fighter — intercept it and the aircraft it is
+  carrying are gone before they ever reach their new base; (3) you *can* re-arm it with
+  `POST /flights/loadout`, but weapons hold makes that cosmetic — spend the effort on
+  the escort.
 - `POST /ground/transfer` `{side, origin_cp_id, dest_cp_id, unit_name, quantity, by_air}`
   (move existing ground units between your bases; route pre-validated)
 - `POST /repair` `{side, id}` — pay to repair one of your damaged assets (an `id` from
