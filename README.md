@@ -180,6 +180,13 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   (branch [`juanjux/ch_china_1.1.6`](https://github.com/juanjux/dcs-retribution/tree/juanjux/ch_china_1.1.6))
 
 ### Fixes
+- **A package with an impossible TOT could hold for the whole mission** — flight plans
+  are built backwards from the time on target, so a TOT the flights cannot physically
+  reach puts the push time before the mission even starts. The hold point emitted that
+  as its release timer without a floor, and DCS never fires a trigger scheduled for a
+  negative time. Seen on a DEAD package given TOT +5 min from a base 29 minutes away:
+  four aircraft orbited instead of flying. The release is now clamped to mission start.
+  ([#100](https://github.com/juanjux/dcs-retribution/pull/100))
 - **Take Off died with "Duplicate convoy unit", stranding the campaign** — the name
   counter reset each turn onto a convoy still in transit. Same bug upstream.
   ([#93](https://github.com/juanjux/dcs-retribution/pull/93))
