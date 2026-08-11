@@ -127,6 +127,11 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   installed in DCS (only one active at a time, since the packs reuse the same
   preset keys for different clouds).
   ([#53](https://github.com/juanjux/dcs-retribution/pull/53))
+- **Ferry flights may return fire** — a relocating squadron flew on Weapon Hold, so it
+  would evade a missile without ever shooting at the fighter that launched it and a
+  relocation across contested airspace was a free kill. Ferries now fly Return Fire:
+  still a transit that will not go hunting, but no longer defenceless.
+  ([#99](https://github.com/juanjux/dcs-retribution/pull/99))
 
 ### Campaigns
 - **Syria — Invasion of the Canary Islands 2030**, with the **Spain 2030** and
