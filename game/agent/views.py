@@ -227,8 +227,8 @@ class TargetView(BaseModel):
 
 class ThreatView(BaseModel):
     """An enemy air-defense umbrella ranked by reach — the route-shaping threats to
-    avoid or suppress. Same ``id`` as the matching target, so you can DEAD/ANTISHIP it
-    directly."""
+    avoid or suppress. The list is COMPLETE, not a top-N sample. Same ``id`` as the
+    matching target, so you can DEAD/ANTISHIP it directly."""
 
     id: str  # same id as the target in targets[] — task DEAD (sam) / ANTISHIP (ship) on it
     name: str
@@ -796,16 +796,17 @@ def build_own_sams(game: Game, side: str) -> list[TargetView]:
     return out
 
 
-_THREAT_TOP_N = (
-    12  # cap the ranked digest; the full per-target ranges stay in targets[]
-)
-
-
 def build_threats(targets: list[TargetView]) -> list[ThreatView]:
-    """The strongest enemy air-defense umbrellas (radar SAMs + SAM-armed ships), ranked
-    by reach — the route-shaping threats. A frugal digest derived from ``targets`` so the
-    planner doesn't have to sort them itself; the long-range ones dominate, which is
-    exactly what a strike route must avoid or suppress."""
+    """EVERY enemy air-defense umbrella (radar SAMs + SAM-armed ships), ranked by reach.
+
+    Complete on purpose. This was a top-12 digest, which silently dropped 42 of 54 live
+    umbrellas on a dense campaign -- and the cut landed inside a nine-way tie at 24 nm,
+    so one site was listed while eight identical ones were not. The planner is told to
+    route around ``threats``, so a list that quietly ends is worse than no list: it reads
+    as "these are the bubbles" and the omitted ones get flown through. Ranking is the
+    value here, not brevity; the payload already carries every one of these in
+    ``targets`` with its full composition.
+    """
     ranked = sorted(
         (t for t in targets if t.kind in ("sam", "ship") and t.threat_nm),
         key=lambda t: t.threat_nm or 0,
@@ -815,7 +816,7 @@ def build_threats(targets: list[TargetView]) -> list[ThreatView]:
         ThreatView(
             id=t.id, name=t.name, kind=t.kind, threat_nm=t.threat_nm or 0, pos=t.pos
         )
-        for t in ranked[:_THREAT_TOP_N]
+        for t in ranked
     ]
 
 
