@@ -774,8 +774,8 @@ Write bodies:
   exists, the way the player uses the Payload tab. `loadout` is a name from
   `GET /aircraft/loadouts` or a custom `{pylon: clsid}` map. `POST /packages` already arms
   what it creates, so this is for flights the engine made for you — above all the ferry
-  flights of a `squadron/relocate`, which launch **Empty** (read the relocate entry first:
-  a ferry holds its weapons, so re-arming it is cosmetic).
+  flights of a `squadron/relocate`, which launch **Empty**. Arm those before they cross
+  contested airspace: a ferry returns fire, but only with what it is carrying.
 - `POST /packages/evaluate` `{side, package:{target_id, flights:[…]}}` → a DRY RUN:
   plans the package and returns its `package` (with `tot`), `tot_minutes_into_mission`,
   `mission_window_min` and `within_window` — WITHOUT committing it. Use it to check a
@@ -815,14 +815,14 @@ Write bodies:
   cratered, and the ship sails wherever you need it. Helicopter squadrons especially:
   embarked, they regain AIR_ASSAULT reach against any coast. Know what a ferry flight
   actually is, because it is not a fighter: it launches with an **Empty** loadout (no
-  airframe ships a payload for the Ferry task), and DCS flies it on the `Nothing` task
-  with **weapons held** — it evades incoming fire but never shoots, armed or not. So
-  (1) a ferry cannot defend itself: escort it, or route the relocation clear of enemy
-  CAP and SAM bubbles like any other sortie; (2) an ENEMY ferry crossing your airspace
-  is a defenceless target, not a hostile fighter — intercept it and the aircraft it is
-  carrying are gone before they ever reach their new base; (3) you *can* re-arm it with
-  `POST /flights/loadout`, but weapons hold makes that cosmetic — spend the effort on
-  the escort.
+  airframe ships a payload named for the Ferry task), and DCS flies it on the `Nothing`
+  task — it will not go hunting, but it does **return fire**. So (1) **re-arm it** with
+  `POST /flights/loadout` before it crosses anything contested: an Empty ferry cannot
+  shoot back at all, an armed one can answer whatever jumps it; (2) it still will not
+  win a fight it did not pick — escort it, or route the relocation clear of enemy CAP
+  and SAM bubbles like any other sortie; (3) an ENEMY ferry is a soft target, not a
+  hostile CAP — intercept it and the aircraft it is carrying are gone before they ever
+  reach their new base.
 - `POST /ground/transfer` `{side, origin_cp_id, dest_cp_id, unit_name, quantity, by_air}`
   (move existing ground units between your bases; route pre-validated)
 - `POST /repair` `{side, id}` — pay to repair one of your damaged assets (an `id` from
