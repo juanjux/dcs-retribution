@@ -615,12 +615,15 @@ means none/empty** (stated once so the per-turn payloads stay small).
   nearly-dead one and not over-commit a DEAD package),
   `damage`? (a damaged target — don't waste sorties finishing it)};
   **aim a package at the `id`**;
-- `threats[]` — blue's strongest air-defense umbrellas (radar SAMs + SAM-armed ships)
-  **ranked by reach** (largest first), a frugal digest of `targets` so you needn't sort
-  them — {`id` (same id as the target → DEAD a sam / ANTISHIP a ship to remove it),
-  `name`, `kind` (sam/ship), `threat_nm`, `pos`}. These are the route-shapers: keep
-  strike/transit routes outside them, or suppress/sink them first. (The full per-target
-  ranges, including small point defenses, stay in `targets`.)
+- `threats[]` — **every** blue air-defense umbrella (radar SAMs + SAM-armed ships)
+  **ranked by reach** (largest first), so you needn't sort them — {`id` (same id as the
+  target → DEAD a sam / ANTISHIP a ship to remove it), `name`, `kind` (sam/ship),
+  `threat_nm`, `pos`}. These are the route-shapers: keep strike/transit routes outside
+  them, or suppress/sink them first. **The list is complete, not a sample** — it used to
+  stop at the twelve longest-ranged, which on a dense map hid dozens of live batteries
+  and cut a tie in half. Anything with a live radar and launchers is here; a site that is
+  absent is one with no reach left. `targets` carries the same sites with their full
+  composition and damage state if you need to judge one in detail.
 - `naval[]` — **YOUR own movable naval groups** (not the enemy ships in `targets`) —
   combatant ship groups AND carriers/LHAs — {`id`, `name`, `kind` (ship/carrier), `pos`,
   `move_range_nm` (max reposition per turn, ~80 nm over water), `destination`? (a pending
