@@ -142,6 +142,12 @@ class WaypointEditRequest(BaseModel):
     alt_m: float | None = None  # new altitude in metres (optional)
 
 
+class FlightLoadoutRequest(BaseModel):
+    side: str = "red"
+    flight_id: str
+    loadout: str | dict[int, str]  # a name from /aircraft/loadouts, or {pylon: clsid}
+
+
 class BuyAircraftRequest(BaseModel):
     side: str = "red"
     squadron_id: str

@@ -77,6 +77,9 @@ tool/resource of the same name.
 - `POST /payload/validate` — check a custom `{pylon: clsid}` payload is valid for an airframe.
 - `POST /waypoints/edit` — move/adjust a flight waypoint (position/altitude); never deletes
   (waypoint 0 immovable). Read them first with `GET /waypoints/{flight_id}`.
+- `POST /flights/loadout` — re-arm a flight that already exists (`flight_id` + a `loadout`
+  name or `{pylon: clsid}` map). For flights the engine made for you, not you for it:
+  a squadron relocation launches its ferries with an **Empty** loadout.
 - `POST /packages/evaluate` — score a package before committing to it.
 - `POST /packages/{index}/tot` — set a package's time over target.
 - `GET /validate?side=red` — dry-run lint of the plan (TOT window, SAM coverage, pilots,

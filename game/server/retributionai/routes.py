@@ -116,6 +116,13 @@ def edit_waypoint(body: schemas.WaypointEditRequest) -> schemas.OpResult:
     )
 
 
+@router.post("/flights/loadout", operation_id="ai_set_flight_loadout")
+def set_flight_loadout(body: schemas.FlightLoadoutRequest) -> schemas.OpResult:
+    """Re-arm a flight that already exists, like the player's Payload tab. Takes a name
+    from /aircraft/loadouts or a custom {pylon: clsid} map."""
+    return service.set_flight_loadout(body.side, body.flight_id, body.loadout)
+
+
 @router.get("/capabilities", operation_id="ai_capabilities")
 def capabilities() -> dict:
     return service.capabilities()

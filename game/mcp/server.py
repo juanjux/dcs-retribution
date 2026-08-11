@@ -135,6 +135,17 @@ def edit_waypoint(
 
 
 @_tool()
+def set_flight_loadout(
+    flight_id: str, loadout: str | dict[int, str], side: str = "red"
+) -> dict:
+    """Re-arm a flight that already exists, like the player's Payload tab. `loadout` is a
+    name from aircraft_loadouts, or a custom {pylon: clsid} map. Use it on flights the
+    engine created for you rather than you: a squadron relocation launches its ferry
+    flights EMPTY. Returns {ok, detail/error}."""
+    return _dump(service.set_flight_loadout(side, flight_id, loadout))
+
+
+@_tool()
 def get_packages(side: str = "red") -> list:
     """Current ATO for a side — packages and flights with stable ids."""
     return _dump(service.get_packages(side))
