@@ -10,6 +10,7 @@ structured per-item result so partial failures are reported, not raised.
 from __future__ import annotations
 
 import contextlib
+import math
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Union
 from uuid import UUID
@@ -224,13 +225,43 @@ def _apply_remain(package, flight_specs) -> None:
             break
 
 
+def earliest_tot_minutes(package, now: datetime) -> tuple[int, str] | None:
+    """Minutes after mission start before which this package CANNOT be over its target,
+    plus the base that sets the limit — the slowest flight's startup, taxi, takeoff and
+    transit (``FlightPlan.minimum_duration_from_start_to_tot``).
+
+    Asking for less is not merely optimistic, it damages the mission. Flight plans are
+    built backwards from the TOT, so an unreachable one puts the push time before the
+    mission starts; the hold point then emits a release timer of (push time - start),
+    which goes negative, and DCS never fires a trigger scheduled for a negative time.
+    Returns None when nothing in the package can be measured.
+    """
+    worst: timedelta | None = None
+    where = ""
+    for flight in package.flights:
+        try:
+            need = flight.flight_plan.minimum_duration_from_start_to_tot()
+        except Exception:
+            continue
+        if worst is None or need > worst:
+            worst = need
+            where = getattr(flight.departure, "name", "") or ""
+    if worst is None:
+        return None
+    return math.ceil(worst.total_seconds() / 60), where
+
+
 def _apply_tot(package, spec, now: datetime) -> None:
     """Set the package's Time-On-Target from the spec: a manual TOT (``tot_minutes`` into
     the mission) when given, else ASAP. Mirrors the player's set_tot/set_asap — flight-plan
-    TOTs derive from ``package.time_over_target``, so setting it is enough."""
+    TOTs derive from ``package.time_over_target``, so setting it is enough. An unreachable
+    TOT is raised to the earliest one the package can actually make."""
     tot_minutes = getattr(spec, "tot_minutes", None)
     if tot_minutes is not None:
         package.auto_asap = False
+        floor = earliest_tot_minutes(package, now)
+        if floor is not None and tot_minutes < floor[0]:
+            tot_minutes = floor[0]
         package.time_over_target = now + timedelta(minutes=tot_minutes)
     else:
         package.set_tot_asap(now)
@@ -765,6 +796,18 @@ def validate_plan(game: Game, side: str) -> schemas.ValidateResult:
             issues.append(
                 f"#{i} {view.target}: TOT {tot_min} min is past the {window}-min window"
             )
+        floor = earliest_tot_minutes(pkg, now)
+        earliest = floor[0] if floor else None
+        unreachable = (
+            tot_min is not None and earliest is not None and tot_min < earliest
+        )
+        if unreachable and floor is not None:
+            issues.append(
+                f"#{i} {view.target}: TOT +{tot_min} min is unreachable"
+                + (f" from {floor[1]}" if floor[1] else "")
+                + f" (needs +{earliest}) — the flights cannot be there in time and the "
+                "hold release is computed from it"
+            )
         checks.append(
             schemas.PackageCheck(
                 index=i,
@@ -773,6 +816,7 @@ def validate_plan(game: Game, side: str) -> schemas.ValidateResult:
                 tot_minutes_into_mission=tot_min,
                 within_window=within,
                 uncrewed=uncrewed or None,
+                earliest_tot_minutes=earliest if unreachable else None,
             )
         )
     hard = list(
@@ -834,6 +878,19 @@ def set_package_tot(
                 ok=True, detail=f"package {index} TOT reset to ASAP"
             )
         pkg.auto_asap = False
+        floor = earliest_tot_minutes(pkg, now)
+        if floor is not None and tot_minutes < floor[0]:
+            earliest, where = floor
+            pkg.time_over_target = now + timedelta(minutes=earliest)
+            _push_map_events(_new_map_events())
+            return schemas.OpResult(
+                ok=True,
+                detail=(
+                    f"package {index}: TOT +{tot_minutes} min is unreachable"
+                    + (f" from {where}" if where else "")
+                    + f" — set to the earliest it can make, +{earliest} min"
+                ),
+            )
         pkg.time_over_target = now + timedelta(minutes=tot_minutes)
         return schemas.OpResult(
             ok=True, detail=f"package {index} TOT set to +{tot_minutes} min"

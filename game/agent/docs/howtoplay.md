@@ -692,9 +692,11 @@ named loadouts you can pick instead of building one by hand.
 
 `GET /validate?side=red` → a health check of the WHOLE committed plan (no changes):
 `{ok, mission_window_min, packages:[{index, target, tot, tot_minutes_into_mission,
-within_window, uncrewed?}], issues?}`. `ok:false` + `issues` lists any uncrewed flights
-or packages whose TOT is past the window. (`evaluate` checks ONE not-yet-created package;
-`validate` checks everything you've already created.)
+within_window, uncrewed?, earliest_tot_minutes?}], issues?}`. `ok:false` + `issues` lists any
+uncrewed flights, packages whose TOT is past the window, and packages whose TOT is **below the
+floor** — too early for the flights to reach the target, with `earliest_tot_minutes` giving the
+first minute they can. (`evaluate` checks ONE not-yet-created package; `validate` checks
+everything you've already created.)
 
 `GET /capabilities` → a small manifest of the available reads/writes (so you needn't
 guess endpoint names). Full prose is here in `/howtoplay`.
@@ -788,6 +790,13 @@ Write bodies:
 - `POST /packages/{index}/tot` `{side, tot_minutes}` — set/clear the TOT of an ALREADY-created
   package (`tot_minutes` = minutes into the mission; `null` resets it to ASAP). Same as setting
   `tot_minutes` at creation, but for a package already in your ATO — adjust timing after the fact.
+  **A TOT has a floor: the flights need time to start up, take off and fly there.** Ask for
+  less and it is raised to the earliest the package can actually make, and the reply says so
+  (`"TOT +5 min is unreachable from Ramat David — set to the earliest it can make, +23 min"`).
+  Read that reply: an early TOT does not make a package arrive sooner, it only stops being the
+  time you thought. When you stagger a SEAD ahead of a strike, stagger from the floor, not from
+  zero — `evaluate_package` reports the transit before you commit, and `validate` flags any
+  committed package whose TOT is below its floor with `earliest_tot_minutes`.
 - `POST /buy/aircraft` · `POST /sell/aircraft` `{side, squadron_id, quantity}` — a buy
   is refused when the squadron is at its `max_ac` cap, its base has no free parking, or
   you lack budget. An aircraft bought at a base whose runway is cratered is born

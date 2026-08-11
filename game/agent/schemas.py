@@ -92,6 +92,11 @@ class PackageCheck(BaseModel):
     tot_minutes_into_mission: int | None = None
     within_window: bool | None = None
     uncrewed: int | None = None  # missing pilot slots in this package (omitted when 0)
+    earliest_tot_minutes: int | None = (
+        None  # present ONLY when the TOT is unreachable: the earliest minute this
+        # package can be over its target (slowest flight's startup + transit). Raise
+        # the TOT to at least this, or reset to ASAP with tot_minutes:null
+    )
 
 
 class ValidateResult(BaseModel):
