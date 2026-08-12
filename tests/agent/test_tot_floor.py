@@ -80,3 +80,40 @@ def test_the_clamp_is_reported_not_silent() -> None:
     assert "+29" in (result.detail or "")
     assert "Ramat David" in (result.detail or "")
     assert pkg.time_over_target == _NOW + timedelta(minutes=29)
+
+
+def test_an_asap_tot_is_never_reported_late() -> None:
+    """The regression GeneraLLM hit: five of six packages flagged, all of them ASAP.
+
+    set_tot_asap uses TotEstimator.earliest_tot, which is this same minimum, so an ASAP
+    TOT lands exactly on it. Rounding the TOT down to minutes while rounding the floor
+    up made every package with a fractional minimum look a minute late.
+    """
+    pkg = _package(28.2)
+    asap_tot = _NOW + timedelta(minutes=28.2)  # what set_tot_asap produces
+    assert planner.tot_shortfall(pkg, _NOW, asap_tot) is None
+
+
+def test_a_genuinely_early_tot_is_still_reported() -> None:
+    pkg = _package(28.2)
+    assert planner.tot_shortfall(pkg, _NOW, _NOW + timedelta(minutes=5)) == (
+        29,
+        "Ramat David",
+    )
+
+
+def test_seconds_of_drift_are_not_an_issue() -> None:
+    """A plan rebuilt after the TOT was set can move the minimum by a few seconds."""
+    pkg = _package(28.2)
+    just_short = _NOW + timedelta(minutes=28.2) - timedelta(seconds=10)
+    assert planner.tot_shortfall(pkg, _NOW, just_short) is None
+
+
+def test_the_reported_minute_is_always_reachable() -> None:
+    """It is rounded UP: +28 would still be short of a 28.2-minute transit."""
+    pkg = _package(28.2)
+    earliest = planner.earliest_tot_minutes(pkg, _NOW)
+    assert earliest is not None
+    assert (
+        planner.tot_shortfall(pkg, _NOW, _NOW + timedelta(minutes=earliest[0])) is None
+    )
