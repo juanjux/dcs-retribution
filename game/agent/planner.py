@@ -225,10 +225,13 @@ def _apply_remain(package, flight_specs) -> None:
             break
 
 
-def earliest_tot_minutes(package, now: datetime) -> tuple[int, str] | None:
-    """Minutes after mission start before which this package CANNOT be over its target,
-    plus the base that sets the limit — the slowest flight's startup, taxi, takeoff and
-    transit (``FlightPlan.minimum_duration_from_start_to_tot``).
+def earliest_tot_duration(package) -> tuple[timedelta, str] | None:
+    """How long before this package CAN be over its target, exactly, plus the base that
+    sets the limit — the slowest flight's startup, taxi, takeoff and transit
+    (``FlightPlan.minimum_duration_from_start_to_tot``). This is the same quantity
+    ``TotEstimator.earliest_tot`` uses for an ASAP package, so an ASAP TOT sits exactly
+    on it. Compare against it in full precision: rounding both sides to minutes made
+    every ASAP package with a fractional minimum look a minute late.
 
     Asking for less is not merely optimistic, it damages the mission. Flight plans are
     built backwards from the TOT, so an unreachable one puts the push time before the
@@ -248,7 +251,39 @@ def earliest_tot_minutes(package, now: datetime) -> tuple[int, str] | None:
             where = getattr(flight.departure, "name", "") or ""
     if worst is None:
         return None
-    return math.ceil(worst.total_seconds() / 60), where
+    return worst, where
+
+
+def earliest_tot_minutes(package, now: datetime) -> tuple[int, str] | None:
+    """``earliest_tot_duration`` as whole minutes, rounded UP — the smallest integer
+    ``tot_minutes`` that is actually reachable. For reporting and for clamping an
+    explicit request; never for deciding whether an existing TOT is late."""
+    duration = earliest_tot_duration(package)
+    if duration is None:
+        return None
+    return math.ceil(duration[0].total_seconds() / 60), duration[1]
+
+
+def tot_shortfall(
+    package, now: datetime, tot: datetime | None
+) -> tuple[int, str] | None:
+    """(earliest whole minute, limiting base) when the package cannot make ``tot``, else
+    None.
+
+    Compared in full precision on purpose. Rounding both sides to minutes reported every
+    ASAP package with a fractional minimum as a minute late -- ``round(28.2) = 28``
+    against ``ceil(28.2) = 29`` -- and an ASAP TOT sits EXACTLY on the minimum by
+    construction (``TotEstimator.earliest_tot`` is the same computation). The half-minute
+    grace absorbs a plan rebuilt since the TOT was set; a TOT that is genuinely too early
+    is short by minutes, not by seconds.
+    """
+    duration = earliest_tot_duration(package)
+    if duration is None or tot is None:
+        return None
+    needed, where = duration
+    if tot + timedelta(seconds=30) >= now + needed:
+        return None
+    return math.ceil(needed.total_seconds() / 60), where
 
 
 def _apply_tot(package, spec, now: datetime) -> None:
@@ -796,17 +831,14 @@ def validate_plan(game: Game, side: str) -> schemas.ValidateResult:
             issues.append(
                 f"#{i} {view.target}: TOT {tot_min} min is past the {window}-min window"
             )
-        floor = earliest_tot_minutes(pkg, now)
-        earliest = floor[0] if floor else None
-        unreachable = (
-            tot_min is not None and earliest is not None and tot_min < earliest
-        )
-        if unreachable and floor is not None:
+        shortfall = tot_shortfall(pkg, now, tot)
+        earliest = shortfall[0] if shortfall else None
+        if shortfall is not None:
             issues.append(
                 f"#{i} {view.target}: TOT +{tot_min} min is unreachable"
-                + (f" from {floor[1]}" if floor[1] else "")
-                + f" (needs +{earliest}) — the flights cannot be there in time and the "
-                "hold release is computed from it"
+                + (f" from {shortfall[1]}" if shortfall[1] else "")
+                + f" (needs +{earliest}) — the flights cannot be there in time and "
+                "the hold release is computed from it"
             )
         checks.append(
             schemas.PackageCheck(
@@ -816,7 +848,7 @@ def validate_plan(game: Game, side: str) -> schemas.ValidateResult:
                 tot_minutes_into_mission=tot_min,
                 within_window=within,
                 uncrewed=uncrewed or None,
-                earliest_tot_minutes=earliest if unreachable else None,
+                earliest_tot_minutes=earliest,
             )
         )
     hard = list(
