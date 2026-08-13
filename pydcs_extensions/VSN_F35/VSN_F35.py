@@ -62,6 +62,10 @@ class VSN_F35A(PlaneType):
             2,
             Weapons.AIM_120C_AMRAAM___Active_Radar_AAM,
         )
+        AIM_120B_AMRAAM___Active_Radar_AAM = (
+            2,
+            Weapons.AIM_120B_AMRAAM___Active_Radar_AAM,
+        )
         Mk_82___500lb_GP_Bomb_LD = (2, Weapons.Mk_82___500lb_GP_Bomb_LD)
         MER2_with_2_x_Mk_82___500lb_GP_Bombs_LD = (
             2,
@@ -108,6 +112,10 @@ class VSN_F35A(PlaneType):
         AIM_120C_AMRAAM___Active_Radar_AAM = (
             3,
             Weapons.AIM_120C_AMRAAM___Active_Radar_AAM,
+        )
+        AIM_120B_AMRAAM___Active_Radar_AAM = (
+            3,
+            Weapons.AIM_120B_AMRAAM___Active_Radar_AAM,
         )
         LAU_115_2_LAU_127_AIM_120C = (3, Weapons.LAU_115_2_LAU_127_AIM_120C)
         GBU_10___2000lb_Laser_Guided_Bomb = (
@@ -173,6 +181,10 @@ class VSN_F35A(PlaneType):
             4,
             Weapons.AIM_120C_AMRAAM___Active_Radar_AAM,
         )
+        AIM_120B_AMRAAM___Active_Radar_AAM = (
+            4,
+            Weapons.AIM_120B_AMRAAM___Active_Radar_AAM,
+        )
         GBU_12___500lb_Laser_Guided_Bomb = (4, Weapons.GBU_12___500lb_Laser_Guided_Bomb)
         GBU_16___1000lb_Laser_Guided_Bomb = (
             4,
@@ -195,6 +207,10 @@ class VSN_F35A(PlaneType):
             5,
             Weapons.AIM_120C_AMRAAM___Active_Radar_AAM,
         )
+        AIM_120B_AMRAAM___Active_Radar_AAM = (
+            5,
+            Weapons.AIM_120B_AMRAAM___Active_Radar_AAM,
+        )
 
     class Pylon6:
         Smoke_Generator___red_ = (6, Weapons.Smoke_Generator___red_)
@@ -209,11 +225,19 @@ class VSN_F35A(PlaneType):
             7,
             Weapons.AIM_120C_AMRAAM___Active_Radar_AAM,
         )
+        AIM_120B_AMRAAM___Active_Radar_AAM = (
+            7,
+            Weapons.AIM_120B_AMRAAM___Active_Radar_AAM,
+        )
 
     class Pylon8:
         AIM_120C_AMRAAM___Active_Radar_AAM = (
             8,
             Weapons.AIM_120C_AMRAAM___Active_Radar_AAM,
+        )
+        AIM_120B_AMRAAM___Active_Radar_AAM = (
+            8,
+            Weapons.AIM_120B_AMRAAM___Active_Radar_AAM,
         )
         GBU_12___500lb_Laser_Guided_Bomb = (8, Weapons.GBU_12___500lb_Laser_Guided_Bomb)
         GBU_16___1000lb_Laser_Guided_Bomb = (
@@ -239,6 +263,10 @@ class VSN_F35A(PlaneType):
         AIM_120C_AMRAAM___Active_Radar_AAM = (
             9,
             Weapons.AIM_120C_AMRAAM___Active_Radar_AAM,
+        )
+        AIM_120B_AMRAAM___Active_Radar_AAM = (
+            9,
+            Weapons.AIM_120B_AMRAAM___Active_Radar_AAM,
         )
         LAU_115_2_LAU_127_AIM_120C = (9, Weapons.LAU_115_2_LAU_127_AIM_120C)
         GBU_10___2000lb_Laser_Guided_Bomb = (
@@ -306,6 +334,10 @@ class VSN_F35A(PlaneType):
         AIM_120C_AMRAAM___Active_Radar_AAM = (
             10,
             Weapons.AIM_120C_AMRAAM___Active_Radar_AAM,
+        )
+        AIM_120B_AMRAAM___Active_Radar_AAM = (
+            10,
+            Weapons.AIM_120B_AMRAAM___Active_Radar_AAM,
         )
         Mk_82___500lb_GP_Bomb_LD = (10, Weapons.Mk_82___500lb_GP_Bomb_LD)
         MER2_with_2_x_Mk_82___500lb_GP_Bombs_LD = (
@@ -413,6 +445,10 @@ class VSN_F35A_AG(PlaneType):
             2,
             Weapons.AIM_120C_AMRAAM___Active_Radar_AAM,
         )
+        AIM_120B_AMRAAM___Active_Radar_AAM = (
+            2,
+            Weapons.AIM_120B_AMRAAM___Active_Radar_AAM,
+        )
         Mk_82___500lb_GP_Bomb_LD = (2, Weapons.Mk_82___500lb_GP_Bomb_LD)
         MER2_with_2_x_Mk_82___500lb_GP_Bombs_LD = (
             2,
@@ -459,6 +495,10 @@ class VSN_F35A_AG(PlaneType):
         AIM_120C_AMRAAM___Active_Radar_AAM = (
             3,
             Weapons.AIM_120C_AMRAAM___Active_Radar_AAM,
+        )
+        AIM_120B_AMRAAM___Active_Radar_AAM = (
+            3,
+            Weapons.AIM_120B_AMRAAM___Active_Radar_AAM,
         )
         LAU_115_2_LAU_127_AIM_120C = (3, Weapons.LAU_115_2_LAU_127_AIM_120C)
         GBU_10___2000lb_Laser_Guided_Bomb = (
@@ -524,6 +564,10 @@ class VSN_F35A_AG(PlaneType):
             4,
             Weapons.AIM_120C_AMRAAM___Active_Radar_AAM,
         )
+        AIM_120B_AMRAAM___Active_Radar_AAM = (
+            4,
+            Weapons.AIM_120B_AMRAAM___Active_Radar_AAM,
+        )
         GBU_12___500lb_Laser_Guided_Bomb = (4, Weapons.GBU_12___500lb_Laser_Guided_Bomb)
         GBU_16___1000lb_Laser_Guided_Bomb = (
             4,
@@ -546,6 +590,10 @@ class VSN_F35A_AG(PlaneType):
             5,
             Weapons.AIM_120C_AMRAAM___Active_Radar_AAM,
         )
+        AIM_120B_AMRAAM___Active_Radar_AAM = (
+            5,
+            Weapons.AIM_120B_AMRAAM___Active_Radar_AAM,
+        )
 
     class Pylon6:
         Smoke_Generator___red_ = (6, Weapons.Smoke_Generator___red_)
@@ -560,11 +608,19 @@ class VSN_F35A_AG(PlaneType):
             7,
             Weapons.AIM_120C_AMRAAM___Active_Radar_AAM,
         )
+        AIM_120B_AMRAAM___Active_Radar_AAM = (
+            7,
+            Weapons.AIM_120B_AMRAAM___Active_Radar_AAM,
+        )
 
     class Pylon8:
         AIM_120C_AMRAAM___Active_Radar_AAM = (
             8,
             Weapons.AIM_120C_AMRAAM___Active_Radar_AAM,
+        )
+        AIM_120B_AMRAAM___Active_Radar_AAM = (
+            8,
+            Weapons.AIM_120B_AMRAAM___Active_Radar_AAM,
         )
         GBU_12___500lb_Laser_Guided_Bomb = (8, Weapons.GBU_12___500lb_Laser_Guided_Bomb)
         GBU_16___1000lb_Laser_Guided_Bomb = (
@@ -590,6 +646,10 @@ class VSN_F35A_AG(PlaneType):
         AIM_120C_AMRAAM___Active_Radar_AAM = (
             9,
             Weapons.AIM_120C_AMRAAM___Active_Radar_AAM,
+        )
+        AIM_120B_AMRAAM___Active_Radar_AAM = (
+            9,
+            Weapons.AIM_120B_AMRAAM___Active_Radar_AAM,
         )
         LAU_115_2_LAU_127_AIM_120C = (9, Weapons.LAU_115_2_LAU_127_AIM_120C)
         GBU_10___2000lb_Laser_Guided_Bomb = (
@@ -657,6 +717,10 @@ class VSN_F35A_AG(PlaneType):
         AIM_120C_AMRAAM___Active_Radar_AAM = (
             10,
             Weapons.AIM_120C_AMRAAM___Active_Radar_AAM,
+        )
+        AIM_120B_AMRAAM___Active_Radar_AAM = (
+            10,
+            Weapons.AIM_120B_AMRAAM___Active_Radar_AAM,
         )
         Mk_82___500lb_GP_Bomb_LD = (10, Weapons.Mk_82___500lb_GP_Bomb_LD)
         MER2_with_2_x_Mk_82___500lb_GP_Bombs_LD = (
@@ -770,6 +834,10 @@ class VSN_F35B(PlaneType):
             2,
             Weapons.AIM_120C_AMRAAM___Active_Radar_AAM,
         )
+        AIM_120B_AMRAAM___Active_Radar_AAM = (
+            2,
+            Weapons.AIM_120B_AMRAAM___Active_Radar_AAM,
+        )
         Mk_82___500lb_GP_Bomb_LD = (2, Weapons.Mk_82___500lb_GP_Bomb_LD)
         MER2_with_2_x_Mk_82___500lb_GP_Bombs_LD = (
             2,
@@ -816,6 +884,10 @@ class VSN_F35B(PlaneType):
         AIM_120C_AMRAAM___Active_Radar_AAM = (
             3,
             Weapons.AIM_120C_AMRAAM___Active_Radar_AAM,
+        )
+        AIM_120B_AMRAAM___Active_Radar_AAM = (
+            3,
+            Weapons.AIM_120B_AMRAAM___Active_Radar_AAM,
         )
         LAU_115_2_LAU_127_AIM_120C = (3, Weapons.LAU_115_2_LAU_127_AIM_120C)
         GBU_10___2000lb_Laser_Guided_Bomb = (
@@ -881,6 +953,10 @@ class VSN_F35B(PlaneType):
             4,
             Weapons.AIM_120C_AMRAAM___Active_Radar_AAM,
         )
+        AIM_120B_AMRAAM___Active_Radar_AAM = (
+            4,
+            Weapons.AIM_120B_AMRAAM___Active_Radar_AAM,
+        )
         GBU_12___500lb_Laser_Guided_Bomb = (4, Weapons.GBU_12___500lb_Laser_Guided_Bomb)
         GBU_16___1000lb_Laser_Guided_Bomb = (
             4,
@@ -903,6 +979,10 @@ class VSN_F35B(PlaneType):
             5,
             Weapons.AIM_120C_AMRAAM___Active_Radar_AAM,
         )
+        AIM_120B_AMRAAM___Active_Radar_AAM = (
+            5,
+            Weapons.AIM_120B_AMRAAM___Active_Radar_AAM,
+        )
 
     class Pylon6:
         Smoke_Generator___red_ = (6, Weapons.Smoke_Generator___red_)
@@ -920,11 +1000,19 @@ class VSN_F35B(PlaneType):
             7,
             Weapons.AIM_120C_AMRAAM___Active_Radar_AAM,
         )
+        AIM_120B_AMRAAM___Active_Radar_AAM = (
+            7,
+            Weapons.AIM_120B_AMRAAM___Active_Radar_AAM,
+        )
 
     class Pylon8:
         AIM_120C_AMRAAM___Active_Radar_AAM = (
             8,
             Weapons.AIM_120C_AMRAAM___Active_Radar_AAM,
+        )
+        AIM_120B_AMRAAM___Active_Radar_AAM = (
+            8,
+            Weapons.AIM_120B_AMRAAM___Active_Radar_AAM,
         )
         GBU_12___500lb_Laser_Guided_Bomb = (8, Weapons.GBU_12___500lb_Laser_Guided_Bomb)
         GBU_16___1000lb_Laser_Guided_Bomb = (
@@ -950,6 +1038,10 @@ class VSN_F35B(PlaneType):
         AIM_120C_AMRAAM___Active_Radar_AAM = (
             9,
             Weapons.AIM_120C_AMRAAM___Active_Radar_AAM,
+        )
+        AIM_120B_AMRAAM___Active_Radar_AAM = (
+            9,
+            Weapons.AIM_120B_AMRAAM___Active_Radar_AAM,
         )
         LAU_115_2_LAU_127_AIM_120C = (9, Weapons.LAU_115_2_LAU_127_AIM_120C)
         GBU_10___2000lb_Laser_Guided_Bomb = (
@@ -1017,6 +1109,10 @@ class VSN_F35B(PlaneType):
         AIM_120C_AMRAAM___Active_Radar_AAM = (
             10,
             Weapons.AIM_120C_AMRAAM___Active_Radar_AAM,
+        )
+        AIM_120B_AMRAAM___Active_Radar_AAM = (
+            10,
+            Weapons.AIM_120B_AMRAAM___Active_Radar_AAM,
         )
         Mk_82___500lb_GP_Bomb_LD = (10, Weapons.Mk_82___500lb_GP_Bomb_LD)
         MER2_with_2_x_Mk_82___500lb_GP_Bombs_LD = (
@@ -1125,6 +1221,10 @@ class VSN_F35B_AG(PlaneType):
             2,
             Weapons.AIM_120C_AMRAAM___Active_Radar_AAM,
         )
+        AIM_120B_AMRAAM___Active_Radar_AAM = (
+            2,
+            Weapons.AIM_120B_AMRAAM___Active_Radar_AAM,
+        )
         Mk_82___500lb_GP_Bomb_LD = (2, Weapons.Mk_82___500lb_GP_Bomb_LD)
         MER2_with_2_x_Mk_82___500lb_GP_Bombs_LD = (
             2,
@@ -1171,6 +1271,10 @@ class VSN_F35B_AG(PlaneType):
         AIM_120C_AMRAAM___Active_Radar_AAM = (
             3,
             Weapons.AIM_120C_AMRAAM___Active_Radar_AAM,
+        )
+        AIM_120B_AMRAAM___Active_Radar_AAM = (
+            3,
+            Weapons.AIM_120B_AMRAAM___Active_Radar_AAM,
         )
         LAU_115_2_LAU_127_AIM_120C = (3, Weapons.LAU_115_2_LAU_127_AIM_120C)
         GBU_10___2000lb_Laser_Guided_Bomb = (
@@ -1236,6 +1340,10 @@ class VSN_F35B_AG(PlaneType):
             4,
             Weapons.AIM_120C_AMRAAM___Active_Radar_AAM,
         )
+        AIM_120B_AMRAAM___Active_Radar_AAM = (
+            4,
+            Weapons.AIM_120B_AMRAAM___Active_Radar_AAM,
+        )
         GBU_12___500lb_Laser_Guided_Bomb = (4, Weapons.GBU_12___500lb_Laser_Guided_Bomb)
         GBU_16___1000lb_Laser_Guided_Bomb = (
             4,
@@ -1258,6 +1366,10 @@ class VSN_F35B_AG(PlaneType):
             5,
             Weapons.AIM_120C_AMRAAM___Active_Radar_AAM,
         )
+        AIM_120B_AMRAAM___Active_Radar_AAM = (
+            5,
+            Weapons.AIM_120B_AMRAAM___Active_Radar_AAM,
+        )
 
     class Pylon6:
         Smoke_Generator___red_ = (6, Weapons.Smoke_Generator___red_)
@@ -1275,11 +1387,19 @@ class VSN_F35B_AG(PlaneType):
             7,
             Weapons.AIM_120C_AMRAAM___Active_Radar_AAM,
         )
+        AIM_120B_AMRAAM___Active_Radar_AAM = (
+            7,
+            Weapons.AIM_120B_AMRAAM___Active_Radar_AAM,
+        )
 
     class Pylon8:
         AIM_120C_AMRAAM___Active_Radar_AAM = (
             8,
             Weapons.AIM_120C_AMRAAM___Active_Radar_AAM,
+        )
+        AIM_120B_AMRAAM___Active_Radar_AAM = (
+            8,
+            Weapons.AIM_120B_AMRAAM___Active_Radar_AAM,
         )
         GBU_12___500lb_Laser_Guided_Bomb = (8, Weapons.GBU_12___500lb_Laser_Guided_Bomb)
         GBU_16___1000lb_Laser_Guided_Bomb = (
@@ -1305,6 +1425,10 @@ class VSN_F35B_AG(PlaneType):
         AIM_120C_AMRAAM___Active_Radar_AAM = (
             9,
             Weapons.AIM_120C_AMRAAM___Active_Radar_AAM,
+        )
+        AIM_120B_AMRAAM___Active_Radar_AAM = (
+            9,
+            Weapons.AIM_120B_AMRAAM___Active_Radar_AAM,
         )
         LAU_115_2_LAU_127_AIM_120C = (9, Weapons.LAU_115_2_LAU_127_AIM_120C)
         GBU_10___2000lb_Laser_Guided_Bomb = (
@@ -1372,6 +1496,10 @@ class VSN_F35B_AG(PlaneType):
         AIM_120C_AMRAAM___Active_Radar_AAM = (
             10,
             Weapons.AIM_120C_AMRAAM___Active_Radar_AAM,
+        )
+        AIM_120B_AMRAAM___Active_Radar_AAM = (
+            10,
+            Weapons.AIM_120B_AMRAAM___Active_Radar_AAM,
         )
         Mk_82___500lb_GP_Bomb_LD = (10, Weapons.Mk_82___500lb_GP_Bomb_LD)
         MER2_with_2_x_Mk_82___500lb_GP_Bombs_LD = (
@@ -1498,6 +1626,10 @@ class VSN_F35C(PlaneType):
             2,
             Weapons.AIM_120C_AMRAAM___Active_Radar_AAM,
         )
+        AIM_120B_AMRAAM___Active_Radar_AAM = (
+            2,
+            Weapons.AIM_120B_AMRAAM___Active_Radar_AAM,
+        )
         Mk_82___500lb_GP_Bomb_LD = (2, Weapons.Mk_82___500lb_GP_Bomb_LD)
         MER2_with_2_x_Mk_82___500lb_GP_Bombs_LD = (
             2,
@@ -1544,6 +1676,10 @@ class VSN_F35C(PlaneType):
         AIM_120C_AMRAAM___Active_Radar_AAM = (
             3,
             Weapons.AIM_120C_AMRAAM___Active_Radar_AAM,
+        )
+        AIM_120B_AMRAAM___Active_Radar_AAM = (
+            3,
+            Weapons.AIM_120B_AMRAAM___Active_Radar_AAM,
         )
         LAU_115_2_LAU_127_AIM_120C = (3, Weapons.LAU_115_2_LAU_127_AIM_120C)
         GBU_10___2000lb_Laser_Guided_Bomb = (
@@ -1609,6 +1745,10 @@ class VSN_F35C(PlaneType):
             4,
             Weapons.AIM_120C_AMRAAM___Active_Radar_AAM,
         )
+        AIM_120B_AMRAAM___Active_Radar_AAM = (
+            4,
+            Weapons.AIM_120B_AMRAAM___Active_Radar_AAM,
+        )
         GBU_12___500lb_Laser_Guided_Bomb = (4, Weapons.GBU_12___500lb_Laser_Guided_Bomb)
         GBU_16___1000lb_Laser_Guided_Bomb = (
             4,
@@ -1631,6 +1771,10 @@ class VSN_F35C(PlaneType):
             5,
             Weapons.AIM_120C_AMRAAM___Active_Radar_AAM,
         )
+        AIM_120B_AMRAAM___Active_Radar_AAM = (
+            5,
+            Weapons.AIM_120B_AMRAAM___Active_Radar_AAM,
+        )
 
     class Pylon6:
         Smoke_Generator___red_ = (6, Weapons.Smoke_Generator___red_)
@@ -1648,11 +1792,19 @@ class VSN_F35C(PlaneType):
             7,
             Weapons.AIM_120C_AMRAAM___Active_Radar_AAM,
         )
+        AIM_120B_AMRAAM___Active_Radar_AAM = (
+            7,
+            Weapons.AIM_120B_AMRAAM___Active_Radar_AAM,
+        )
 
     class Pylon8:
         AIM_120C_AMRAAM___Active_Radar_AAM = (
             8,
             Weapons.AIM_120C_AMRAAM___Active_Radar_AAM,
+        )
+        AIM_120B_AMRAAM___Active_Radar_AAM = (
+            8,
+            Weapons.AIM_120B_AMRAAM___Active_Radar_AAM,
         )
         GBU_12___500lb_Laser_Guided_Bomb = (8, Weapons.GBU_12___500lb_Laser_Guided_Bomb)
         GBU_16___1000lb_Laser_Guided_Bomb = (
@@ -1678,6 +1830,10 @@ class VSN_F35C(PlaneType):
         AIM_120C_AMRAAM___Active_Radar_AAM = (
             9,
             Weapons.AIM_120C_AMRAAM___Active_Radar_AAM,
+        )
+        AIM_120B_AMRAAM___Active_Radar_AAM = (
+            9,
+            Weapons.AIM_120B_AMRAAM___Active_Radar_AAM,
         )
         LAU_115_2_LAU_127_AIM_120C = (9, Weapons.LAU_115_2_LAU_127_AIM_120C)
         GBU_10___2000lb_Laser_Guided_Bomb = (
@@ -1745,6 +1901,10 @@ class VSN_F35C(PlaneType):
         AIM_120C_AMRAAM___Active_Radar_AAM = (
             10,
             Weapons.AIM_120C_AMRAAM___Active_Radar_AAM,
+        )
+        AIM_120B_AMRAAM___Active_Radar_AAM = (
+            10,
+            Weapons.AIM_120B_AMRAAM___Active_Radar_AAM,
         )
         Mk_82___500lb_GP_Bomb_LD = (10, Weapons.Mk_82___500lb_GP_Bomb_LD)
         MER2_with_2_x_Mk_82___500lb_GP_Bombs_LD = (
@@ -1852,6 +2012,10 @@ class VSN_F35C_AG(PlaneType):
             2,
             Weapons.AIM_120C_AMRAAM___Active_Radar_AAM,
         )
+        AIM_120B_AMRAAM___Active_Radar_AAM = (
+            2,
+            Weapons.AIM_120B_AMRAAM___Active_Radar_AAM,
+        )
         Mk_82___500lb_GP_Bomb_LD = (2, Weapons.Mk_82___500lb_GP_Bomb_LD)
         MER2_with_2_x_Mk_82___500lb_GP_Bombs_LD = (
             2,
@@ -1898,6 +2062,10 @@ class VSN_F35C_AG(PlaneType):
         AIM_120C_AMRAAM___Active_Radar_AAM = (
             3,
             Weapons.AIM_120C_AMRAAM___Active_Radar_AAM,
+        )
+        AIM_120B_AMRAAM___Active_Radar_AAM = (
+            3,
+            Weapons.AIM_120B_AMRAAM___Active_Radar_AAM,
         )
         LAU_115_2_LAU_127_AIM_120C = (3, Weapons.LAU_115_2_LAU_127_AIM_120C)
         GBU_10___2000lb_Laser_Guided_Bomb = (
@@ -1963,6 +2131,10 @@ class VSN_F35C_AG(PlaneType):
             4,
             Weapons.AIM_120C_AMRAAM___Active_Radar_AAM,
         )
+        AIM_120B_AMRAAM___Active_Radar_AAM = (
+            4,
+            Weapons.AIM_120B_AMRAAM___Active_Radar_AAM,
+        )
         GBU_12___500lb_Laser_Guided_Bomb = (4, Weapons.GBU_12___500lb_Laser_Guided_Bomb)
         GBU_16___1000lb_Laser_Guided_Bomb = (
             4,
@@ -1985,6 +2157,10 @@ class VSN_F35C_AG(PlaneType):
             5,
             Weapons.AIM_120C_AMRAAM___Active_Radar_AAM,
         )
+        AIM_120B_AMRAAM___Active_Radar_AAM = (
+            5,
+            Weapons.AIM_120B_AMRAAM___Active_Radar_AAM,
+        )
 
     class Pylon6:
         Smoke_Generator___red_ = (6, Weapons.Smoke_Generator___red_)
@@ -2002,11 +2178,19 @@ class VSN_F35C_AG(PlaneType):
             7,
             Weapons.AIM_120C_AMRAAM___Active_Radar_AAM,
         )
+        AIM_120B_AMRAAM___Active_Radar_AAM = (
+            7,
+            Weapons.AIM_120B_AMRAAM___Active_Radar_AAM,
+        )
 
     class Pylon8:
         AIM_120C_AMRAAM___Active_Radar_AAM = (
             8,
             Weapons.AIM_120C_AMRAAM___Active_Radar_AAM,
+        )
+        AIM_120B_AMRAAM___Active_Radar_AAM = (
+            8,
+            Weapons.AIM_120B_AMRAAM___Active_Radar_AAM,
         )
         GBU_12___500lb_Laser_Guided_Bomb = (8, Weapons.GBU_12___500lb_Laser_Guided_Bomb)
         GBU_16___1000lb_Laser_Guided_Bomb = (
@@ -2032,6 +2216,10 @@ class VSN_F35C_AG(PlaneType):
         AIM_120C_AMRAAM___Active_Radar_AAM = (
             9,
             Weapons.AIM_120C_AMRAAM___Active_Radar_AAM,
+        )
+        AIM_120B_AMRAAM___Active_Radar_AAM = (
+            9,
+            Weapons.AIM_120B_AMRAAM___Active_Radar_AAM,
         )
         LAU_115_2_LAU_127_AIM_120C = (9, Weapons.LAU_115_2_LAU_127_AIM_120C)
         GBU_10___2000lb_Laser_Guided_Bomb = (
@@ -2099,6 +2287,10 @@ class VSN_F35C_AG(PlaneType):
         AIM_120C_AMRAAM___Active_Radar_AAM = (
             10,
             Weapons.AIM_120C_AMRAAM___Active_Radar_AAM,
+        )
+        AIM_120B_AMRAAM___Active_Radar_AAM = (
+            10,
+            Weapons.AIM_120B_AMRAAM___Active_Radar_AAM,
         )
         Mk_82___500lb_GP_Bomb_LD = (10, Weapons.Mk_82___500lb_GP_Bomb_LD)
         MER2_with_2_x_Mk_82___500lb_GP_Bombs_LD = (
