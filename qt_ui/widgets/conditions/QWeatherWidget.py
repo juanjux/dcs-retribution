@@ -1,4 +1,4 @@
-from PySide6.QtCore import Signal
+from PySide6.QtCore import QSize, Qt, Signal
 from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (
     QGridLayout,
@@ -101,9 +101,17 @@ class QWeatherWidget(QGroupBox):
             "Fetch the current METAR again and use it for this turn."
         )
         self.refresh_button.setAutoRaise(True)
+        # The glyph renders at the panel's small label size otherwise, which is far
+        # too fiddly a target for a button you press between planning and take-off.
+        font = self.refresh_button.font()
+        font.setPointSize(20)
+        self.refresh_button.setFont(font)
+        self.refresh_button.setFixedSize(QSize(40, 40))
         self.refresh_button.clicked.connect(self.refresh_requested.emit)
         self.refresh_button.hide()
-        self.layout.addWidget(self.refresh_button)
+        self.layout.addWidget(
+            self.refresh_button, alignment=Qt.AlignmentFlag.AlignVCenter
+        )
 
     def makeLabel(self, text: str = "") -> QLabel:
         """Shorthand to generate a QLabel with widget standard style
