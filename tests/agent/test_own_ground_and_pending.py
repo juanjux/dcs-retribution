@@ -93,3 +93,18 @@ def test_only_your_own_rebuildable_sites_are_listed(
     assert {t.name for t in listed} == {"SA-3 Kirovsk", "Armor Group Nalchik"}
     assert {t.kind for t in listed} == {"sam", "ground"}
     assert all(t.id for t in listed)
+
+
+def test_the_enemys_orders_stay_hidden(monkeypatch: Any) -> None:
+    """What blue ordered is not on the human's Intel tab either; §6 is fair play."""
+    ordered = SimpleNamespace(units={_UnitType("T-90A"): 12})
+    theirs = _cp("Batumi", Player.BLUE, [], orders=ordered)
+    mine = _cp("Nalchik", Player.RED, [], orders=ordered)
+
+    assert views._pending_ground(theirs) == {"T-90A": 12}  # the data is right there
+    for cp, viewer, expected in (
+        (mine, Player.RED, {"T-90A": 12}),
+        (theirs, Player.RED, {}),
+    ):
+        got = views._pending_ground(cp) if cp.captured == viewer else {}
+        assert got == expected

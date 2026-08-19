@@ -116,7 +116,8 @@ class ControlPointView(BaseModel):
     pending_ground: dict[str, int] | None = (
         None  # armor ORDERED here, arriving next turn (unit name -> count). Aircraft
         # have `pending` on the squadron; ground had nothing, so a planner that bought
-        # armor saw no change anywhere and bought it again.
+        # armor saw no change anywhere and bought it again. YOUR bases only -- what the
+        # enemy ordered is not visible to the human either.
     )
     air: dict[str, dict[str, int]] | None = (
         None  # aircraft based here, grouped by role: {"CAP": {"F-16CM …": 7}, …}. The
@@ -574,14 +575,18 @@ def _pending_ground(cp: ControlPoint) -> dict[str, int]:
     return {ut.display_name: n for ut, n in orders.items() if n}
 
 
-def build_control_point(game: Game, cp: ControlPoint) -> ControlPointView:
+def build_control_point(
+    game: Game, cp: ControlPoint, viewer: Player | None = None
+) -> ControlPointView:
     # Mirror game/server/leaflet.py: build a terrain-aware Point before converting.
     ll = DcsPoint(cp.position.x, cp.position.y, game.theater.terrain).latlng()
     sqns = sum(1 for _ in cp.squadrons)
     park = _parking(cp)
     armor = getattr(getattr(cp, "base", None), "armor", None)
     ground = {ut.display_name: n for ut, n in armor.items() if n} if armor else None
-    pending_ground = _pending_ground(cp)
+    # Only for your OWN bases: what the enemy has ORDERED is not something the
+    # human can see either, and §6 is fair play.
+    pending_ground = _pending_ground(cp) if cp.captured == viewer else {}
     links = [str(n.id) for n in getattr(cp, "connected_points", [])] or None
     try:
         recruit = bool(cp.has_ground_unit_source(game)) or None
@@ -1165,7 +1170,8 @@ def build_turn_context(game: Game, side: str = "red") -> TurnContextView:
         situation=build_situation(game),
         economy=build_economy(game, side),
         control_points=[
-            build_control_point(game, cp) for cp in game.theater.controlpoints
+            build_control_point(game, cp, player_for_side(side))
+            for cp in game.theater.controlpoints
         ],
         air_wing=[
             build_squadron(sq, player_for_side(side))
