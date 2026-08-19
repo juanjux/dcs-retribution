@@ -111,6 +111,11 @@ KNEEBOARD_SECTION = "Kneeboard"
 PERFORMANCE_SECTION = "Performance"
 
 
+def _atmosx_pack_selected(settings: Any) -> bool:
+    """The ATMOS-X live-weather options only mean anything with that pack selected."""
+    return settings.cloud_preset_pack is CloudPresetPack.ATMOSX
+
+
 @dataclass
 class Settings:
     version: Optional[str] = None
@@ -663,11 +668,12 @@ class Settings:
         default=False,
         detail=(
             "Replace the generated weather with a real METAR observation, fetched by "
-            "the ATMOS-X CLI for a station on this terrain. Requires the ATMOS-X cloud "
-            "preset pack above. If the observation cannot be fetched -- no ATMOS-X, no "
-            "network, nothing reported for that station -- the mission keeps the "
+            "the ATMOS-X CLI for a station on this terrain. If the observation cannot "
+            "be fetched -- no ATMOS-X, no network, nothing reported for that station "
+            "-- the mission keeps the "
             "weather Retribution generated and says so in the log."
         ),
+        visible_when=_atmosx_pack_selected,
     )
     atmosx_live_weather_time: AtmosxLiveWeatherTime = choices_option(
         "ATMOS-X live weather clock",
@@ -682,6 +688,7 @@ class Settings:
             "day. Use the observation's and the mission is moved to the real date and "
             "time it was recorded."
         ),
+        visible_when=_atmosx_pack_selected,
     )
     atmosx_cli_path: str = text_option(
         "ATMOS-X CLI path",
@@ -694,6 +701,7 @@ class Settings:
             "installation registered with Windows; set it only if ATMOS-X was not "
             "installed by its installer or lives somewhere unusual."
         ),
+        visible_when=_atmosx_pack_selected,
     )
     atmosx_metar_station: str = text_option(
         "ATMOS-X METAR station (ICAO)",
@@ -706,6 +714,7 @@ class Settings:
             "station is chosen from the airfields ATMOS-X knows on this terrain: the "
             "one you are flying from if it reports, otherwise the closest that does."
         ),
+        visible_when=_atmosx_pack_selected,
     )
 
     # Pilots and Squadrons

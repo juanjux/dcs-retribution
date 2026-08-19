@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 
 from .optiondescription import OptionDescription, SETTING_DESCRIPTION_KEY
 
@@ -26,6 +26,7 @@ def text_option(
     detail: Optional[str] = None,
     tooltip: Optional[str] = None,
     causes_expensive_game_update: bool = False,
+    visible_when: Optional[Callable[[Any], bool]] = None,
     **kwargs: Any,
 ) -> str:
     return field(
@@ -38,6 +39,7 @@ def text_option(
                 tooltip,
                 causes_expensive_game_update,
                 placeholder,
+                visible_when=visible_when,
             )
         },
         default=default,

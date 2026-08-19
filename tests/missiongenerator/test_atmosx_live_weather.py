@@ -209,3 +209,41 @@ _NOW = datetime(2026, 8, 19, 12, 0)
 def test_observation_date(mission_time: datetime, expected: Any) -> None:
     chosen = observation_date_for(mission_time, _NOW)
     assert chosen is not None and chosen.date() == expected
+
+
+# --- the settings only appear when they can do something -------------------------
+
+
+def test_the_atmosx_settings_hide_unless_that_pack_is_selected() -> None:
+    """Four settings that quietly do nothing are worse than four settings not shown."""
+    from game.settings import Settings
+    from game.settings.settings import CloudPresetPack
+
+    settings = Settings()
+    guarded = {
+        name: description
+        for name, description in Settings.fields("Campaign Management", "General")
+        if name.startswith("atmosx_")
+    }
+    assert set(guarded) == {
+        "atmosx_live_weather",
+        "atmosx_live_weather_time",
+        "atmosx_cli_path",
+        "atmosx_metar_station",
+    }
+
+    predicates = []
+    for description in guarded.values():
+        assert description.visible_when is not None
+        predicates.append(description.visible_when)
+
+    settings.cloud_preset_pack = CloudPresetPack.ATMOSX
+    assert all(predicate(settings) for predicate in predicates)
+
+    for pack in (
+        CloudPresetPack.NONE,
+        CloudPresetPack.BANDIT,
+        CloudPresetPack.WEATHER2,
+    ):
+        settings.cloud_preset_pack = pack
+        assert not any(predicate(settings) for predicate in predicates)
