@@ -13,7 +13,7 @@ means 0. The one-time docs (start/howtoplay) are exempt — only per-turn data i
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import Any, TYPE_CHECKING
 
 from dcs.mapping import Point as DcsPoint
 from dcs.weather import Weather as PydcsWeather, Wind
@@ -113,6 +113,11 @@ class ControlPointView(BaseModel):
     can_recruit_ground: bool | None = None  # has a factory/front — buy ground here
     links: list[str] | None = None  # adjacent control-point ids (land moves / fronts)
     ground: dict[str, int] | None = None  # armor on hand here (unit name -> count)
+    pending_ground: dict[str, int] | None = (
+        None  # armor ORDERED here, arriving next turn (unit name -> count). Aircraft
+        # have `pending` on the squadron; ground had nothing, so a planner that bought
+        # armor saw no change anywhere and bought it again.
+    )
     air: dict[str, dict[str, int]] | None = (
         None  # aircraft based here, grouped by role: {"CAP": {"F-16CM …": 7}, …}. The
         # same breakdown the human reads on a base's Intel tab, for both sides — on an
@@ -560,6 +565,15 @@ def _motorpool_exposed(game: Game, cp: ControlPoint) -> int | None:
         return None
 
 
+def _pending_ground(cp: ControlPoint) -> dict[str, int]:
+    """Ground units ordered at this base and arriving next turn."""
+    try:
+        orders = cp.ground_unit_orders.units
+    except AttributeError:  # pragma: no cover - carriers and off-map points
+        return {}
+    return {ut.display_name: n for ut, n in orders.items() if n}
+
+
 def build_control_point(game: Game, cp: ControlPoint) -> ControlPointView:
     # Mirror game/server/leaflet.py: build a terrain-aware Point before converting.
     ll = DcsPoint(cp.position.x, cp.position.y, game.theater.terrain).latlng()
@@ -567,6 +581,7 @@ def build_control_point(game: Game, cp: ControlPoint) -> ControlPointView:
     park = _parking(cp)
     armor = getattr(getattr(cp, "base", None), "armor", None)
     ground = {ut.display_name: n for ut, n in armor.items() if n} if armor else None
+    pending_ground = _pending_ground(cp)
     links = [str(n.id) for n in getattr(cp, "connected_points", [])] or None
     try:
         recruit = bool(cp.has_ground_unit_source(game)) or None
@@ -590,6 +605,7 @@ def build_control_point(game: Game, cp: ControlPoint) -> ControlPointView:
         can_recruit_ground=recruit,
         links=links,
         ground=ground or None,
+        pending_ground=pending_ground or None,
         air=_air_intel(cp),
         can_launch=(False if not operational else None),
         no_launch_reason=(None if operational else _no_launch_reason(cp)),
@@ -852,6 +868,39 @@ def build_targets(game: Game, side: str) -> list[TargetView]:
             )
         )
     return targets
+
+
+def build_own_ground_objects(game: Game, side: str) -> list[TargetView]:
+    """Your OWN ground objects, with their ids -- what ``ground/options`` needs.
+
+    ``targets`` is the enemy's, always: it comes from ObjectiveFinder, which only ever
+    yields what the other side owns. So there was no way to name one of your own sites
+    to upgrade it, even though rebuilding is free on turn 0 and the player can do it
+    from the map. Kept out of the per-turn payload (a dense campaign has hundreds of
+    these) and served on request instead.
+    """
+    from game.theater.theatergroundobject import (
+        IadsGroundObject,
+        MissileSiteGroundObject,
+        VehicleGroupGroundObject,
+    )
+
+    rebuildable = (IadsGroundObject, MissileSiteGroundObject, VehicleGroupGroundObject)
+    player = player_for_side(side)
+    out: list[TargetView] = []
+    for cp in game.theater.controlpoints:
+        if cp.captured != player:
+            continue
+        for go in cp.ground_objects:
+            if isinstance(go, rebuildable):
+                out.append(_build_target(game, go, _own_kind(go), "DEAD"))
+    return out
+
+
+def _own_kind(go: Any) -> str:
+    from game.theater.theatergroundobject import IadsGroundObject
+
+    return "sam" if isinstance(go, IadsGroundObject) else "ground"
 
 
 def build_own_sams(game: Game, side: str) -> list[TargetView]:

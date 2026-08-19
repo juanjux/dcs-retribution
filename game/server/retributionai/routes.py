@@ -70,6 +70,20 @@ def map_image(side: str = "red", bbox: str | None = None) -> Response:
 
 
 @router.get(
+    "/ground/mine",
+    operation_id="ai_my_ground_objects",
+    response_model_exclude_none=True,
+)
+def my_ground_objects(side: str = "red") -> list[views.TargetView]:
+    """YOUR own ground objects, with the ids ``ground/options`` and ``ground/rebuild`` need.
+
+    ``turn_context.targets`` is always the ENEMY's, so this is the only place to get the
+    id of one of your own sites -- and rebuilding is free on turn 0.
+    """
+    return service.my_ground_objects(side)
+
+
+@router.get(
     "/iads",
     operation_id="ai_iads",
     response_model_exclude_none=True,

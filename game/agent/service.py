@@ -88,6 +88,12 @@ def map_image(side: str = "red", bbox: str | None = None) -> bytes:
 
 
 @opfor_only
+def my_ground_objects(side: str = "red") -> list[views.TargetView]:
+    """``side``'s own ground objects and their ids -- what ground/options needs."""
+    return views.build_own_ground_objects(_require_game(), side)
+
+
+@opfor_only
 def iads(side: str = "red") -> views.IadsView:
     """The enemy IADS as a graph: participating sites and what feeds each one."""
     return views.build_iads(_require_game(), side)
@@ -194,6 +200,7 @@ def capabilities() -> dict:
             "aircraft/pylons (weapons each pylon accepts, to build a custom payload)",
             "aircraft/loadouts (named ready-made loadouts for an airframe)",
             "waypoints/{flight_id} (a flight's waypoints, to adjust its route)",
+            "ground/mine (YOUR OWN ground objects with their ids -- turn_context.targets is the enemy's, so this is the only place to get an id to rebuild/upgrade one of yours)",
             "ground/options/{tgo_id} (what a SAM/EWR/armor/ship site can be rebuilt into + costs)",
             "validate",
             "prev_turns",
