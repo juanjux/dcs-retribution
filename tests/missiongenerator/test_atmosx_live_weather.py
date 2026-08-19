@@ -238,6 +238,7 @@ def test_the_atmosx_settings_hide_unless_that_pack_is_selected() -> None:
         predicates.append(description.visible_when)
 
     settings.cloud_preset_pack = CloudPresetPack.ATMOSX
+    settings.atmosx_live_weather = True  # the clock asks for this one too
     assert all(predicate(settings) for predicate in predicates)
 
     for pack in (
@@ -247,3 +248,25 @@ def test_the_atmosx_settings_hide_unless_that_pack_is_selected() -> None:
     ):
         settings.cloud_preset_pack = pack
         assert not any(predicate(settings) for predicate in predicates)
+
+
+def test_the_clock_choice_hides_until_live_weather_is_on() -> None:
+    """Choosing between two clocks for weather you are not fetching is noise."""
+    from game.settings import Settings
+    from game.settings.settings import CloudPresetPack
+
+    settings = Settings()
+    clock = dict(Settings.fields("Campaign Management", "General"))[
+        "atmosx_live_weather_time"
+    ]
+    assert clock.visible_when is not None
+
+    settings.cloud_preset_pack = CloudPresetPack.ATMOSX
+    settings.atmosx_live_weather = False
+    assert not clock.visible_when(settings)
+
+    settings.atmosx_live_weather = True
+    assert clock.visible_when(settings)
+
+    settings.cloud_preset_pack = CloudPresetPack.BANDIT
+    assert not clock.visible_when(settings)

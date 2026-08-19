@@ -116,6 +116,11 @@ def _atmosx_pack_selected(settings: Any) -> bool:
     return settings.cloud_preset_pack is CloudPresetPack.ATMOSX
 
 
+def _atmosx_live_weather_on(settings: Any) -> bool:
+    """And the clock choice means nothing until live weather is actually on."""
+    return _atmosx_pack_selected(settings) and settings.atmosx_live_weather
+
+
 @dataclass
 class Settings:
     version: Optional[str] = None
@@ -688,7 +693,7 @@ class Settings:
             "day. Use the observation's and the mission is moved to the real date and "
             "time it was recorded."
         ),
-        visible_when=_atmosx_pack_selected,
+        visible_when=_atmosx_live_weather_on,
     )
     atmosx_cli_path: str = text_option(
         "ATMOS-X CLI path",

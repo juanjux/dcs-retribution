@@ -251,6 +251,7 @@ class AutoSettingsLayout(QGridLayout):
             if description.invert:
                 value = not value
             self.sc.settings.__dict__[name] = value
+            self.apply_visibility()
             if description.causes_expensive_game_update:
                 self.write_full_settings()
 
