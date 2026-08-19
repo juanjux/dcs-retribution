@@ -41,6 +41,7 @@ from game.settings import (
     MinutesOption,
     OptionDescription,
     Settings,
+    TextOption,
 )
 from game.settings.ISettingsContainer import SettingsContainer
 from game.settings.settings import CloudPresetPack, OPFOR_AI_SECTION
@@ -178,6 +179,8 @@ class AutoSettingsLayout(QGridLayout):
                 self.add_spinner_for(row, name, description)
             elif isinstance(description, MinutesOption):
                 self.add_duration_controls_for(row, name, description)
+            elif isinstance(description, TextOption):
+                self.add_line_edit_for(row, name, description)
             else:
                 raise TypeError(f"Unhandled option type: {description}")
         if self.section == OPFOR_AI_SECTION:
@@ -270,6 +273,19 @@ class AutoSettingsLayout(QGridLayout):
         combobox.currentIndexChanged.connect(on_changed)
         self.addWidget(combobox, row, 1, Qt.AlignmentFlag.AlignRight)
         self.settings_map[name] = combobox
+
+    def add_line_edit_for(self, row: int, name: str, description: TextOption) -> None:
+        edit = QLineEdit(self.sc.settings.__dict__[name])
+        if description.placeholder is not None:
+            edit.setPlaceholderText(description.placeholder)
+
+        def on_changed(value: str) -> None:
+            self.sc.settings.__dict__[name] = value.strip()
+
+        edit.textChanged.connect(on_changed)
+        edit.setMinimumWidth(260)
+        self.addWidget(edit, row, 1, Qt.AlignmentFlag.AlignRight)
+        self.settings_map[name] = edit
 
     def add_float_spin_slider_for(
         self, row: int, name: str, description: BoundedFloatOption

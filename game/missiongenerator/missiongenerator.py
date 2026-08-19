@@ -33,6 +33,7 @@ from .briefinggenerator import BriefingGenerator, MissionInfoGenerator
 from .cargoshipgenerator import CargoShipGenerator
 from .convoygenerator import ConvoyGenerator
 from .drawingsgenerator import DrawingsGenerator
+from .atmosxliveweather import apply_live_weather
 from .environmentgenerator import EnvironmentGenerator
 from .flotgenerator import FlotGenerator
 from .forcedoptionsgenerator import ForcedOptionsGenerator
@@ -101,6 +102,10 @@ class MissionGenerator:
         EnvironmentGenerator(
             self.mission, self.game.conditions, self.time, auto_fog
         ).generate()
+        # Last word on the weather, and only if the player asked for it: a real
+        # observation replaces what was just generated. Never fatal -- if it cannot be
+        # fetched the generated weather stands.
+        apply_live_weather(self.mission, self.game, self.time)
 
         tgo_generator = TgoGenerator(
             self.mission,
