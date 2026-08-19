@@ -16,16 +16,19 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from dcs.mapping import Point as DcsPoint
+from dcs.weather import Weather as PydcsWeather, Wind
 from pydantic import BaseModel
 
 from game.income import Income
 from game.theater.player import Player
+from game.utils import meters, mps
 
 if TYPE_CHECKING:
     from game import Game
     from game.coalition import Coalition
     from game.squadrons.squadron import Squadron
     from game.theater import ControlPoint
+    from game.weather.clouds import Clouds
 
 
 _SIDE_TO_PLAYER = {"red": Player.RED, "blue": Player.BLUE}
@@ -66,10 +69,30 @@ def _enum_str(value: object) -> str | None:
 # --- DTOs (omitted-when-None fields carry their "boring" default implicitly) ---
 
 
+class WeatherView(BaseModel):
+    """The turn's weather, in the terms it changes decisions.
+
+    Kept to what alters a plan: a ceiling rules out laser guidance from altitude,
+    precipitation and low visibility blunt sensors, and wind sets the carrier's course.
+    QNH is deliberately absent -- it is a cockpit number, not a planning one.
+    """
+
+    # "clear", a coverage code ("SCT", "OVC"), or a preset's name when the campaign
+    # uses one ("Three Layer Overcast").
+    clouds: str
+    base_ft: int | None = None  # cloud base, omitted when clear
+    precip: str | None = None  # "rain" / "thunderstorm", omitted when none
+    vis_nm: int | None = None  # omitted unless something actually limits visibility
+    wind_gl: str  # "dir/kts" at ground level
+    wind_fl26: str | None = None  # omitted when it matches the surface wind
+    temp_c: int
+
+
 class SituationView(BaseModel):
     turn: int
     date: str
     time_of_day: str
+    weather: WeatherView
     campaign_state: str | None = None  # set only when not "ongoing"
 
 
@@ -433,12 +456,62 @@ class GroundObjectOptionsView(BaseModel):
 # --- builders ---
 
 
+_CLOUD_COVERAGE = ((1, "FEW"), (4, "SCT"), (7, "BKN"), (11, "OVC"))
+
+
+def _cloud_summary(clouds: Clouds) -> str:
+    """What the sky looks like, in a couple of words."""
+    if clouds.preset is not None:
+        # A preset's description is two lines: a name after "##", then a METAR-style
+        # layer breakdown. The name alone is what a planner needs.
+        return clouds.preset.description.splitlines()[0].split("##")[-1].strip()
+    for limit, name in _CLOUD_COVERAGE:
+        if clouds.density < limit:
+            return name
+    return "OVC"
+
+
+def _wind(wind: Wind) -> str:
+    return (
+        f"{str(wind.direction or 0).rjust(3, '0')}/{round(mps(wind.speed or 0).knots)}"
+    )
+
+
+def build_weather(game: Game) -> WeatherView:
+    weather = game.conditions.weather
+    clouds = weather.clouds
+
+    precip = None
+    if (
+        clouds is not None
+        and clouds.precipitation is not PydcsWeather.Preceptions.None_
+    ):
+        precip = clouds.precipitation.name.lower()
+
+    vis_nm = None
+    if weather.fog is not None:
+        vis_nm = round(weather.fog.visibility.nautical_miles)
+
+    surface = _wind(weather.wind.at_0m)
+    high = _wind(weather.wind.at_8000m)
+    return WeatherView(
+        clouds="clear" if clouds is None else _cloud_summary(clouds),
+        base_ft=None if clouds is None else round(meters(clouds.base).feet),
+        precip=precip,
+        vis_nm=vis_nm,
+        wind_gl=surface,
+        wind_fl26=None if high == surface else high,
+        temp_c=round(weather.atmospheric.temperature_celsius),
+    )
+
+
 def build_situation(game: Game) -> SituationView:
     state = _CAMPAIGN_STATE_FROM_RED.get(game.check_win_loss().name, "ongoing")
     return SituationView(
         turn=game.turn,
         date=game.current_day.isoformat(),
         time_of_day=game.current_turn_time_of_day.name,
+        weather=build_weather(game),
         campaign_state=None if state == "ongoing" else state,
     )
 
