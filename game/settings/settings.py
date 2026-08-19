@@ -40,13 +40,6 @@ class CloudPresetPack(Enum):
 
 
 @unique
-class AtmosxLiveWeatherTime(Enum):
-    """Whether a fetched observation also sets the mission's date and time."""
-
-    CAMPAIGN = "Use campaign date and time"
-    OBSERVATION = "Use current date and time"
-
-
 @unique
 class NightMissions(Enum):
     DayAndNight = "nightmissions_nightandday"
@@ -114,11 +107,6 @@ PERFORMANCE_SECTION = "Performance"
 def _atmosx_pack_selected(settings: Any) -> bool:
     """The ATMOS-X live-weather options only mean anything with that pack selected."""
     return settings.cloud_preset_pack is CloudPresetPack.ATMOSX
-
-
-def _atmosx_live_weather_on(settings: Any) -> bool:
-    """And the clock choice means nothing until live weather is actually on."""
-    return _atmosx_pack_selected(settings) and settings.atmosx_live_weather
 
 
 @dataclass
@@ -679,21 +667,6 @@ class Settings:
             "weather Retribution generated and says so in the log."
         ),
         visible_when=_atmosx_pack_selected,
-    )
-    atmosx_live_weather_time: AtmosxLiveWeatherTime = choices_option(
-        "ATMOS-X live weather clock",
-        page=CAMPAIGN_MANAGEMENT_PAGE,
-        section=GENERAL_SECTION,
-        default=AtmosxLiveWeatherTime.CAMPAIGN,
-        choices={v.value: v for v in AtmosxLiveWeatherTime},
-        detail=(
-            "Whether the observation brings its date and time with it. Keep the "
-            "campaign's clock and only the weather is taken, which is what a campaign "
-            "set in another era wants: real weather, its own year, its own time of "
-            "day. Use the observation's and the mission is moved to the real date and "
-            "time it was recorded."
-        ),
-        visible_when=_atmosx_live_weather_on,
     )
     atmosx_cli_path: str = text_option(
         "ATMOS-X CLI path",

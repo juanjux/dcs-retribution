@@ -21,8 +21,6 @@ from game.missiongenerator.atmosxliveweather import (
     Station,
     apply_weather,
     choose_station,
-    clock_from,
-    observation_date_for,
     parse_preset,
     stations_for_theater,
 )
@@ -76,6 +74,7 @@ dtime = {
 
 
 def test_reads_both_top_level_blocks() -> None:
+    """dtime is parsed and then ignored -- the mission always keeps its own clock."""
     parsed = parse_preset(PRESET)
     assert set(parsed) == {"vdata", "dtime"}
     assert parsed["vdata"]["qnh"] == 758
@@ -88,10 +87,6 @@ def test_reads_both_top_level_blocks() -> None:
 def test_a_malformed_preset_is_an_error_not_a_wrong_answer() -> None:
     with pytest.raises(PresetParseError):
         parse_preset("vdata = { qnh = ")
-
-
-def test_the_clock_is_read_separately_from_the_weather() -> None:
-    assert clock_from(parse_preset(PRESET)["dtime"]) == datetime(2026, 8, 19, 12, 0)
 
 
 def test_the_observation_lands_on_the_mission() -> None:
@@ -180,42 +175,11 @@ def test_a_missing_csv_is_survivable(tmp_path: Path) -> None:
     assert stations_for_theater(tmp_path / "atmosx-cli.exe", "Syria") == []
 
 
-# --- which day to ask about ------------------------------------------------------
-
-_NOW = datetime(2026, 8, 19, 12, 0)
-
-
-@pytest.mark.parametrize(
-    "mission_time,expected",
-    [
-        pytest.param(_NOW, _NOW.date(), id="a mission set today uses today"),
-        pytest.param(
-            _NOW - timedelta(days=10),
-            (_NOW - timedelta(days=10)).date(),
-            id="within the archive, its own day",
-        ),
-        pytest.param(
-            datetime(2030, 6, 2, 9, 0),
-            (_NOW - timedelta(days=1)).date(),
-            id="a future campaign falls back to yesterday",
-        ),
-        pytest.param(
-            _NOW - timedelta(days=40),
-            (_NOW - timedelta(days=1)).date(),
-            id="older than the archive falls back to yesterday",
-        ),
-    ],
-)
-def test_observation_date(mission_time: datetime, expected: Any) -> None:
-    chosen = observation_date_for(mission_time, _NOW)
-    assert chosen is not None and chosen.date() == expected
-
-
 # --- the settings only appear when they can do something -------------------------
 
 
 def test_the_atmosx_settings_hide_unless_that_pack_is_selected() -> None:
-    """Four settings that quietly do nothing are worse than four settings not shown."""
+    """Settings that quietly do nothing are worse than settings not shown."""
     from game.settings import Settings
     from game.settings.settings import CloudPresetPack
 
@@ -227,7 +191,6 @@ def test_the_atmosx_settings_hide_unless_that_pack_is_selected() -> None:
     }
     assert set(guarded) == {
         "atmosx_live_weather",
-        "atmosx_live_weather_time",
         "atmosx_cli_path",
         "atmosx_metar_station",
     }
@@ -238,7 +201,6 @@ def test_the_atmosx_settings_hide_unless_that_pack_is_selected() -> None:
         predicates.append(description.visible_when)
 
     settings.cloud_preset_pack = CloudPresetPack.ATMOSX
-    settings.atmosx_live_weather = True  # the clock asks for this one too
     assert all(predicate(settings) for predicate in predicates)
 
     for pack in (
@@ -248,25 +210,3 @@ def test_the_atmosx_settings_hide_unless_that_pack_is_selected() -> None:
     ):
         settings.cloud_preset_pack = pack
         assert not any(predicate(settings) for predicate in predicates)
-
-
-def test_the_clock_choice_hides_until_live_weather_is_on() -> None:
-    """Choosing between two clocks for weather you are not fetching is noise."""
-    from game.settings import Settings
-    from game.settings.settings import CloudPresetPack
-
-    settings = Settings()
-    clock = dict(Settings.fields("Campaign Management", "General"))[
-        "atmosx_live_weather_time"
-    ]
-    assert clock.visible_when is not None
-
-    settings.cloud_preset_pack = CloudPresetPack.ATMOSX
-    settings.atmosx_live_weather = False
-    assert not clock.visible_when(settings)
-
-    settings.atmosx_live_weather = True
-    assert clock.visible_when(settings)
-
-    settings.cloud_preset_pack = CloudPresetPack.BANDIT
-    assert not clock.visible_when(settings)

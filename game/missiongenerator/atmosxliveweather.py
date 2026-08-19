@@ -5,7 +5,7 @@ a DCS weather preset. We use its read-only ``metar --save`` rather than its ``in
 command: ``inject`` always stamps the mission's date and time as well, and a campaign
 set in 2030 must be able to take today's weather without being dragged back to today's
 date. The saved preset keeps the two apart -- ``vdata`` is the weather, ``dtime`` is the
-clock -- so we apply one, the other, or both.
+clock -- and we take only ``vdata``.
 
 Nothing here is allowed to stop a mission being generated. Every failure (no CLI, no
 network, an ICAO with no observation, a malformed file) logs and returns, leaving the
@@ -22,7 +22,7 @@ import tempfile
 import unicodedata
 import winreg
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
 
@@ -31,12 +31,6 @@ from dcs.weather import Weather, Wind
 
 CLI_NAME = "atmosx-cli.exe"
 ICAO_CSV = "dcs_icao.csv"
-
-# The CLI only serves observations from the last 30 days; ask for anything older and it
-# has nothing to return. Campaigns are usually set decades away, so when the player
-# wants their campaign's clock we still fetch a RECENT observation -- yesterday's, at
-# the same point in the day -- and graft only the weather onto the mission.
-MAX_METAR_AGE_DAYS = 30
 
 _UNINSTALL_KEYS = (
     (winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall"),
@@ -279,15 +273,16 @@ def choose_station(
 # --- fetching and applying -------------------------------------------------------
 
 
-def fetch_preset(
-    cli: Path, icao: str, date: Optional[datetime] = None, timeout: int = 60
-) -> Optional[dict[str, Any]]:
-    """Run the CLI's read-only metar command and parse what it saves."""
+def fetch_preset(cli: Path, icao: str, timeout: int = 60) -> Optional[dict[str, Any]]:
+    """Run the CLI's read-only metar command and parse what it saves.
+
+    Always the current observation. The CLI's --date only reaches 30 days back, which
+    no campaign's own date can be counted on to fall inside, so the mission keeps its
+    own clock and takes today's real sky.
+    """
     with tempfile.TemporaryDirectory() as tmp:
         out = Path(tmp) / "atmosx_live.lua"
         command = [str(cli), "metar", icao, "--save", str(out)]
-        if date is not None:
-            command += ["--date", date.strftime("%Y%m%d")]
         try:
             result = subprocess.run(
                 command, capture_output=True, text=True, timeout=timeout
@@ -372,19 +367,6 @@ def apply_weather(weather: Weather, vdata: dict[str, Any]) -> None:
         weather.dust_density = int(round(float(vdata["dust_density"])))
 
 
-def clock_from(dtime: dict[str, Any]) -> Optional[datetime]:
-    date = dtime.get("date")
-    if not isinstance(date, dict):
-        return None
-    try:
-        start = int(dtime.get("start_time", 0))
-        return datetime(
-            int(date["Year"]), int(date["Month"]), int(date["Day"])
-        ) + timedelta(seconds=start)
-    except (KeyError, TypeError, ValueError):
-        return None
-
-
 def apply_live_weather(mission: Mission, game: Any, mission_time: datetime) -> bool:
     """Overwrite the mission's weather with a real observation. True if it happened.
 
@@ -392,7 +374,7 @@ def apply_live_weather(mission: Mission, game: Any, mission_time: datetime) -> b
     must still be flyable with the weather Retribution generated when ATMOS-X is absent,
     the network is down, or the station reported nothing.
     """
-    from game.settings.settings import AtmosxLiveWeatherTime, CloudPresetPack
+    from game.settings.settings import CloudPresetPack
 
     settings = game.settings
     if not settings.atmosx_live_weather:
@@ -433,33 +415,10 @@ def apply_live_weather(mission: Mission, game: Any, mission_time: datetime) -> b
             return False
         icao = station.icao
 
-    preset = fetch_preset(cli, icao, observation_date_for(mission_time, datetime.now()))
+    preset = fetch_preset(cli, icao)
     if preset is None or "vdata" not in preset:
         return False
 
     apply_weather(mission.weather, preset["vdata"])
-    used_clock = False
-    if settings.atmosx_live_weather_time is AtmosxLiveWeatherTime.OBSERVATION:
-        clock = clock_from(preset.get("dtime", {}))
-        if clock is not None:
-            mission.start_time = clock
-            used_clock = True
-    logging.info(
-        "ATMOS-X live weather: %s applied%s",
-        icao,
-        " with its own date and time" if used_clock else " (campaign clock kept)",
-    )
+    logging.info("ATMOS-X live weather: %s applied (campaign clock kept)", icao)
     return True
-
-
-def observation_date_for(mission_time: datetime, now: datetime) -> Optional[datetime]:
-    """Which day to ask for so the observation exists and is closest to the mission.
-
-    A campaign set in the future (or decades back) has no METAR of its own, so take the
-    most recent one instead: yesterday, which is always published in full, rather than
-    today, whose observations stop at the current hour.
-    """
-    oldest = now - timedelta(days=MAX_METAR_AGE_DAYS)
-    if oldest <= mission_time <= now:
-        return mission_time
-    return now - timedelta(days=1)
