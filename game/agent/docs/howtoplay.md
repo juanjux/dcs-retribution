@@ -29,6 +29,15 @@ planned, a few lines are plenty: your objective for the turn and the key moves (
 warnings, e.g. a strike that won't make the window). The player reads the actual plan on
 the map and via `validate`/`get_packages`, not a transcript of your thinking.
 
+## Contents
+
+1. What this game is · 2. The board · 3. Your forces · 4. Missions: packages, flights,
+roles · 5. How to plan a strong turn · 6. Rules you must respect · 7. Asking the human ·
+8. Turn protocol · 9. Data format reference
+
+Read 1-4 once, then work from 5 and 8 each turn; 9 is the field-by-field reference.
+**Turn 0 is different and is described at the end of §5 — you cannot fly on it.**
+
 ## 1. What this game is
 
 DCS Retribution is a **turn-based strategic campaign** on top of DCS World. Each
@@ -84,7 +93,10 @@ you lose if they capture yours. Think in terms of a campaign, not a single turn.
 A mission is a **package** aimed at a **target**. A package contains one or more
 **flights**. A **flight** is a group of aircraft from one squadron with a single
 **task** (role), pilots, a start type, and a weapon loadout. **Escorts are flights
-too** — you add an escort/SEAD flight to the package, you don't "attach" an escort.
+too** — you add an escort/SEAD flight to the package rather than attaching an escort to
+another flight. (A flight may carry `escort: air|sead|ewar|refuel` to mark what it is
+escorting the package against; that is a label on the escorting flight, not a way to
+bolt an escort onto a strike flight.)
 
 Common roles and what they're for:
 
@@ -247,6 +259,11 @@ defenses are a NETWORK, not a set of independent sites. `targets[]` marks each s
 part with `iads_role`, and `/iads` gives the links (`depends_on`). Use it — otherwise a
 `PowerSource` looks exactly like a warehouse and you will bomb the wrong code name.
 
+A campaign's IADS may also be nothing but `CommandCenter`s, with no `PowerSource` and
+no `ConnectionNode` anywhere: only the sites the campaign author wired in become nodes.
+That is normal, not missing data — take what `/iads` gives you and do not hunt for a
+power grid that was never authored.
+
 - **What the roles mean.** `Sam` / `SamAsEwr` / `Ewr` are the shooters and the eyes.
   `PowerSource` (power station) and `ConnectionNode` (comms tower) feed them.
   `CommandCenter` runs the network. The last three are **buildings** — cheap to kill,
@@ -367,11 +384,20 @@ reports `cruise_missiles_remaining` in `naval[]`.
    **ranks blue's strongest air-defense umbrellas** for you (so you needn't sort
    `targets`); `economy` is your budget/income and `prev_turns` is the force-ratio /
    attrition trend — read those instead of re-deriving them. The `OPFOR auto-planner
-   aggressiveness` setting (in `/settings`) is a hint of how risk-tolerant the player
-   wants red to be — read it and weigh it, but you decide.
-2. **Find blue's intent and weak points.** Where is blue pushing? What did they fly
+   aggressiveness` setting (in `/settings`) is a hint of how much RISK the player wants
+   red to accept on a strike — read it and weigh it, but you decide. It is not a reason
+   to leave aircraft on the ramp: a cautious setting means safer targets and better
+   escort, never `idle_flyable` above zero.
+2. **Let the weather pick your weapons.** `situation.weather` is not decoration. A low
+   `base_ft` means bombs guided from above the cloud deck will not see their target —
+   plan GPS/INS weapons (JDAM, JSOW, KAB-500S) or go under the deck with Mavericks and
+   rockets, and expect a laser-guided package to waste its trip. `precip` and a small
+   `vis_nm` blunt EO/IR sensors and rule out gun and rocket passes. `wind_gl` sets a
+   carrier's course into wind. Night (`time_of_day`) plus an overcast is when your
+   strike aircraft are hardest to intercept — and when your own eyes are worst.
+3. **Find blue's intent and weak points.** Where is blue pushing? What did they fly
    last turn? Which of their bases/SAMs/fleets are exposed? Where are *you* exposed?
-3. **Pick 1–3 objectives for this turn and concentrate on them.** Examples: hold a
+4. **Pick 1–3 objectives for this turn and concentrate on them.** Examples: hold a
    threatened base, break through on one front, dismantle a section of blue's IADS to
    open a strike corridor, or set up a base capture. **Do not** plan a little bit of
    everything everywhere — concentration of force is how you actually win and how you
@@ -380,9 +406,9 @@ reports `cruise_missiles_remaining` in `naval[]`.
    while an expensive FIXED asset under a bounded ring — a forward Patriot battery, an
    EWR, an oil site — is a kill you can actually take and the enemy must pay to replace.
    Scan `targets` for those before defaulting to the fleet.
-4. **Defend what matters.** BARCAP over vulnerable bases/fleets; sensible front-line
+5. **Defend what matters.** BARCAP over vulnerable bases/fleets; sensible front-line
    stances; keep your own IADS alive.
-5. **Build the packages** to achieve your objectives, properly composed (see §4).
+6. **Build the packages** to achieve your objectives, properly composed (see §4).
    **Before you commit a strike, look at `threats` and think about its path.** A package
    routed into — or even transiting near — a live long-range SAM umbrella, **land or
    naval** (an SM-6 frigate reaches 80+ nm), will be turned back or slaughtered.
@@ -390,14 +416,14 @@ reports `cruise_missiles_remaining` in `naval[]`.
    and use `evaluate_package` to confirm the strike is feasible and on time before you
    create it. Respecting `threats` is not optional — it is the difference between a real
    operation and a parade of shoot-downs.
-6. **Time your strikes to the mission window.** Read **`Desired mission duration`**
+7. **Time your strikes to the mission window.** Read **`Desired mission duration`**
    (`desired_player_mission_duration`) from `/settings` — it's the best estimate of
    when the player will end the DCS mission (after they've flown their tasking and
    landed). **Aim every package's TOT to fall within that window.** Flights don't
    have to have returned/landed by then, but a TOT *after* the window is wasted —
    the mission will likely be over before it happens. So concentrate your effort in
    time, not just in space.
-7. **Commit your whole air wing — an idle crewed jet is wasted force.** Watch
+8. **Commit your whole air wing — an idle crewed jet is wasted force.** Watch
    **`idle_flyable`** in `turn_context` (and `idle_flyable_remaining` in each
    `create_packages` result): it's the count of crewed aircraft still on the ramp, and
    **your job is to drive it to 0.** Once your 1–3 objectives are covered, don't leave
@@ -409,11 +435,24 @@ reports `cruise_missiles_remaining` in `naval[]`.
    first — but after that, an unused jet with a crew is force you threw away, and the human
    commits every jet it can crew. (`validate_plan` will also flag leftover idle aircraft as
    a warning — it won't block the turn if you're holding them back on purpose.)
-8. **Spend to fix gaps.** Losing the air war? Buy fighters. Need to hold or push a
+9. **Spend to fix gaps.** Losing the air war? Buy fighters. Need to hold or push a
    front? Buy ground units and/or transfer them where needed. Bought aircraft arrive
-   next turn, so invest ahead. You can also **UPGRADE or REPLACE an existing
-   SAM/EWR/armor/ship/missile/coastal site**: `ground/options/{tgo_id}` (the tgo id from
-   `turn_context.targets` — for your own sites — or a repair target) lists the
+   next turn, so invest ahead.
+
+   **Parking is the real ceiling, and it belongs to the BASE, not the squadron.**
+   `parking_free`/`parking_total` on a control point are shared by every squadron
+   stationed there, and an order claims its slot the instant you place it — so a base
+   can read `parking_free: 0` while all of those aircraft are still `pending`. A field
+   with 74 slots and four squadrons fills up fast. `squadron/relocate` needs room at the
+   destination for the same reason. A refused buy tells you which limit you hit
+   (parking, the squadron's `max_ac`, or the budget), so read the error rather than
+   retrying.
+
+   Every successful buy/sell reports the **new budget** in its `detail` ("budget now
+   3511"). Trust it; you do not need to re-read `turn_context` after each purchase. You can also **UPGRADE or REPLACE an existing
+   SAM/EWR/armor/ship/missile/coastal site**: `ground/options/{tgo_id}` (get the id from
+   `GET /ground/mine` — **`turn_context.targets` is always the ENEMY's, never yours** —
+   or from a `repairs[]` entry) lists the
    force-groups, layouts and selectable unit types/counts it can become and the net cost
    (the old site's value is **refunded**), then `ground/rebuild` does it — e.g. swap an
    SA-3 for an SA-10 to re-close a corridor, add TELs by raising a group's count, or give
@@ -425,7 +464,7 @@ reports `cruise_missiles_remaining` in `naval[]`.
    either: stop re-buying an expensive SAM the enemy farms in a known kill box (leave it
    down, or lean on mobile/naval cover instead), protect your income buildings, and keep
    a budget cushion so you can always afford a runway repair.
-9. **Record what you learned.** Use your scratchpad (stored_context) for multi-turn
+10. **Record what you learned.** Use your scratchpad (stored_context) for multi-turn
    strategy and lessons about this player — it persists across turns and sessions.
 
 Think like a real air commander: clear intent, combined arms, economy of force,
@@ -447,6 +486,28 @@ This is a long campaign — many turns in one session. Don't let your own contex
   call, not one call per package. Group operations so you make **fewer round-trips**; each
   extra call is another response you re-read.
 
+### Turn 0: the shopping turn
+
+A campaign opens on **turn 0**, before the player presses BEGIN CAMPAIGN. Nothing flies
+on it: there is no mission, no TOT, no debrief afterwards. It exists so both sides can
+spend their opening budget and set their posture.
+
+What turn 0 is for:
+
+- **Buy aircraft** into the squadrons you intend to fly, remembering they arrive the
+  turn AFTER they are ordered — turn 0 is exactly the moment to invest ahead.
+- **Buy ground units** where a front will form, and set **stances**.
+- **Rebuild or upgrade your ground objects, which is FREE on turn 0.** This is the one
+  turn where you can swap an SA-3 for an SA-10, thicken a group with extra TELs or give
+  a mobile group an AA-capable unit and pay nothing for it. Get the ids from
+  `GET /ground/mine`, ask `ground/options/{tgo_id}` what each can become, then
+  `ground/rebuild`. Not doing this on turn 0 wastes the single largest free upgrade of
+  the campaign.
+- **Relocate squadrons** to the bases you want them flying from.
+
+What turn 0 is NOT for: creating packages. Do not plan flights; there is no mission to
+fly them in. Spend, position, and hand the turn back.
+
 ## 6. Rules you must respect (fair play)
 
 You act **only as a player could**, through the same actions:
@@ -462,8 +523,9 @@ You act **only as a player could**, through the same actions:
   neither read the route the player is about to fly nor move their waypoints.
 
 - New squadrons start at **0 aircraft** — buy them up; you cannot get aircraft for
-  free. (Mid-campaign you can create/delete squadrons only if the player has enabled
-  the air-wing cheat; even then you **buy** aircraft, you don't add them for free.)
+  free. **There is no endpoint to create or delete squadrons**: even with the player's
+  air-wing cheat enabled, only the human can add one, from the Air Wing window. Ask
+  them if you need one.
 - You can only use airframes your faction already has. You **cannot** change the set
   of airframes your faction may field — but if you think you need a different type
   (for balance, or to counter something the player is fielding), **ask the player to
@@ -502,7 +564,8 @@ while you're working and goes idle once you stop, and Take Off is blocked while 
    is clearly due, gently remind them that's how they hand the turn to you.
 2. **Just start** — there is no on/off. The toolbar robot turns from grayscale to
    colour on its own with your first call. Optionally post a status line with
-   `set_ai_status` and **update it before each phase** ("Evaluating last turn…",
+   `POST /ai/status?text=…` (the MCP tool is `set_ai_status`; same thing) and
+   **update it before each phase** ("Evaluating last turn…",
    "Buying aircraft…", "Planning packages…"); the player sees it (and a "last update
    X ago") by clicking the robot icon. **The player can cancel you** from that
    window — if you've been cancelled, `turn_status` shows it and your next write is
@@ -535,14 +598,22 @@ Reads return frugal JSON — **an absent numeric field means 0; an absent string
 means none/empty** (stated once so the per-turn payloads stay small).
 
 `GET /turn_context?side=red` →
-- `side`; `situation` {`turn`, `date`, `time_of_day`, `campaign_state`? (only when
-  not ongoing: red_winning / red_losing)};
+- `side`; `situation` {`turn`, `date`, `time_of_day`, `weather`, `campaign_state`?
+  (only when not ongoing: red_winning / red_losing)};
+  - `weather` {`clouds` ("clear", a coverage code like SCT/BKN/OVC, or a cloud
+    preset's name), `base_ft`? (cloud base, omitted when clear), `precip`?
+    (rain / thunderstorm), `vis_nm`? (omitted unless something limits visibility),
+    `wind_gl` and `wind_fl26`? as `"dir/kts"` (FL26 omitted when it matches the
+    surface), `temp_c`}. The same weather the human reads on the turn panel, and the
+    same weather the mission will be flown in.
 - `economy` {`budget`, `income_next_turn`};
 - `control_points[]` {`id`, `name`, `type` (AIRBASE / *_CARRIER_GROUP / LHA_GROUP /
   FOB / FARP), `owner` (red/blue/neutral), `pos` `[lat,lng]`, `sqns`?,
   `parking_free`?/`parking_total`? (room to buy/station aircraft),
   `can_recruit_ground`? (true = you can `buy/ground` here), `links`? (adjacent
-  control-point ids — land moves and where fronts form), `ground`? (armor on hand,
+  control-point ids — land moves and where fronts form), `pending_ground`? (armor you
+  ORDERED here, arriving next turn — the ground counterpart of a squadron's `pending`;
+  what you just bought shows here, not in `ground`), `ground`? (armor on hand,
   `{unit: count}` — what you can `ground/transfer`), `air`? (aircraft based there
   grouped by role, `{"CAP": {"F-16CM …": 7}, "CAS": {"AH-64D …": 6}}` — the same
   breakdown the human reads on that base's Intel tab, for BOTH sides. **On an enemy
@@ -803,9 +874,13 @@ Write bodies:
   grounded — **when every runway you own is cratered, buy on a CARRIER-based squadron**:
   the deck always launches.
 - `POST /buy/ground` `{side, cp_id, unit_name, quantity}` (only at a base with a
-  factory/front — `cp.has_ground_unit_source`). If the destination base is captured
+  factory/front — the `can_recruit_ground` field). If the destination base is captured
   before the units arrive, the pending order is **refunded**, not delivered to the
   enemy.
+- `GET /ground/mine?side=red` → YOUR OWN ground objects with their ids:
+  `[{id, name, kind (sam/ground), pos, threat_nm?, …}]`. The only place to get the id of
+  one of your sites — `turn_context.targets` is the enemy's, always. Rebuilding is free
+  on turn 0, so this is worth calling on the opening turn.
 - `GET /ground/options/{tgo_id}?side=red` → what one of YOUR ground objects (a
   SAM/EWR/armor/ship/missile/coastal site) can be **rebuilt** into: `{tgo_id, name, role,
   refund` (the old site's value, credited back on rebuild)`, budget, options:[{force_group,
@@ -851,7 +926,9 @@ Write bodies:
 - `DELETE /packages/{index}` (cancel one package) · `DELETE /packages` (clear all).
   Packages are addressed by INDEX and the indices renumber after every delete — when
   cancelling several, delete from the HIGHEST index down.
-- `PUT`/`POST /stored_context` `{key: value}` · `DELETE /stored_context/{key}`
+- `PUT`/`POST /stored_context` — the body **is** the map itself, e.g.
+  `{"blue_carrier_habits": "…", "turn7_lesson": "…"}`; it merges into what is
+  already stored. `GET` returns the same shape. · `DELETE /stored_context/{key}`
 - `POST /ai/status?text=…` (optional status note on the robot — it lights up on its own
   with every call; there is no on/off to toggle)
 

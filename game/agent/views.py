@@ -14,19 +14,22 @@ means 0. The one-time docs (start/howtoplay) are exempt — only per-turn data i
 from __future__ import annotations
 
 import math
-from typing import TYPE_CHECKING
+from typing import Any, TYPE_CHECKING
 
 from dcs.mapping import Point as DcsPoint
+from dcs.weather import Weather as PydcsWeather, Wind
 from pydantic import BaseModel
 
 from game.income import Income
 from game.theater.player import Player
+from game.utils import meters, mps
 
 if TYPE_CHECKING:
     from game import Game
     from game.coalition import Coalition
     from game.squadrons.squadron import Squadron
     from game.theater import ControlPoint
+    from game.weather.clouds import Clouds
 
 
 _SIDE_TO_PLAYER = {"red": Player.RED, "blue": Player.BLUE}
@@ -67,10 +70,30 @@ def _enum_str(value: object) -> str | None:
 # --- DTOs (omitted-when-None fields carry their "boring" default implicitly) ---
 
 
+class WeatherView(BaseModel):
+    """The turn's weather, in the terms it changes decisions.
+
+    Kept to what alters a plan: a ceiling rules out laser guidance from altitude,
+    precipitation and low visibility blunt sensors, and wind sets the carrier's course.
+    QNH is deliberately absent -- it is a cockpit number, not a planning one.
+    """
+
+    # "clear", a coverage code ("SCT", "OVC"), or a preset's name when the campaign
+    # uses one ("Three Layer Overcast").
+    clouds: str
+    base_ft: int | None = None  # cloud base, omitted when clear
+    precip: str | None = None  # "rain" / "thunderstorm", omitted when none
+    vis_nm: int | None = None  # omitted unless something actually limits visibility
+    wind_gl: str  # "dir/kts" at ground level
+    wind_fl26: str | None = None  # omitted when it matches the surface wind
+    temp_c: int
+
+
 class SituationView(BaseModel):
     turn: int
     date: str
     time_of_day: str
+    weather: WeatherView
     campaign_state: str | None = None  # set only when not "ongoing"
 
 
@@ -91,6 +114,12 @@ class ControlPointView(BaseModel):
     can_recruit_ground: bool | None = None  # has a factory/front — buy ground here
     links: list[str] | None = None  # adjacent control-point ids (land moves / fronts)
     ground: dict[str, int] | None = None  # armor on hand here (unit name -> count)
+    pending_ground: dict[str, int] | None = (
+        None  # armor ORDERED here, arriving next turn (unit name -> count). Aircraft
+        # have `pending` on the squadron; ground had nothing, so a planner that bought
+        # armor saw no change anywhere and bought it again. YOUR bases only -- what the
+        # enemy ordered is not visible to the human either.
+    )
     air: dict[str, dict[str, int]] | None = (
         None  # aircraft based here, grouped by role: {"CAP": {"F-16CM …": 7}, …}. The
         # same breakdown the human reads on a base's Intel tab, for both sides — on an
@@ -434,12 +463,62 @@ class GroundObjectOptionsView(BaseModel):
 # --- builders ---
 
 
+_CLOUD_COVERAGE = ((1, "FEW"), (4, "SCT"), (7, "BKN"), (11, "OVC"))
+
+
+def _cloud_summary(clouds: Clouds) -> str:
+    """What the sky looks like, in a couple of words."""
+    if clouds.preset is not None:
+        # A preset's description is two lines: a name after "##", then a METAR-style
+        # layer breakdown. The name alone is what a planner needs.
+        return clouds.preset.description.splitlines()[0].split("##")[-1].strip()
+    for limit, name in _CLOUD_COVERAGE:
+        if clouds.density < limit:
+            return name
+    return "OVC"
+
+
+def _wind(wind: Wind) -> str:
+    return (
+        f"{str(wind.direction or 0).rjust(3, '0')}/{round(mps(wind.speed or 0).knots)}"
+    )
+
+
+def build_weather(game: Game) -> WeatherView:
+    weather = game.conditions.weather
+    clouds = weather.clouds
+
+    precip = None
+    if (
+        clouds is not None
+        and clouds.precipitation is not PydcsWeather.Preceptions.None_
+    ):
+        precip = clouds.precipitation.name.lower()
+
+    vis_nm = None
+    if weather.fog is not None:
+        vis_nm = round(weather.fog.visibility.nautical_miles)
+
+    surface = _wind(weather.wind.at_0m)
+    high = _wind(weather.wind.at_8000m)
+    return WeatherView(
+        clouds="clear" if clouds is None else _cloud_summary(clouds),
+        base_ft=None if clouds is None else round(meters(clouds.base).feet),
+        precip=precip,
+        vis_nm=vis_nm,
+        wind_gl=surface,
+        wind_fl26=None if high == surface else high,
+        temp_c=round(weather.atmospheric.temperature_celsius),
+    )
+
+
 def build_situation(game: Game) -> SituationView:
     state = _CAMPAIGN_STATE_FROM_RED.get(game.check_win_loss().name, "ongoing")
     return SituationView(
         turn=game.turn,
         date=game.current_day.isoformat(),
         time_of_day=game.current_turn_time_of_day.name,
+        weather=build_weather(game),
         campaign_state=None if state == "ongoing" else state,
     )
 
@@ -488,13 +567,27 @@ def _motorpool_exposed(game: Game, cp: ControlPoint) -> int | None:
         return None
 
 
-def build_control_point(game: Game, cp: ControlPoint) -> ControlPointView:
+def _pending_ground(cp: ControlPoint) -> dict[str, int]:
+    """Ground units ordered at this base and arriving next turn."""
+    try:
+        orders = cp.ground_unit_orders.units
+    except AttributeError:  # pragma: no cover - carriers and off-map points
+        return {}
+    return {ut.display_name: n for ut, n in orders.items() if n}
+
+
+def build_control_point(
+    game: Game, cp: ControlPoint, viewer: Player | None = None
+) -> ControlPointView:
     # Mirror game/server/leaflet.py: build a terrain-aware Point before converting.
     ll = DcsPoint(cp.position.x, cp.position.y, game.theater.terrain).latlng()
     sqns = sum(1 for _ in cp.squadrons)
     park = _parking(cp)
     armor = getattr(getattr(cp, "base", None), "armor", None)
     ground = {ut.display_name: n for ut, n in armor.items() if n} if armor else None
+    # Only for your OWN bases: what the enemy has ORDERED is not something the
+    # human can see either, and §6 is fair play.
+    pending_ground = _pending_ground(cp) if cp.captured == viewer else {}
     links = [str(n.id) for n in getattr(cp, "connected_points", [])] or None
     try:
         recruit = bool(cp.has_ground_unit_source(game)) or None
@@ -518,6 +611,7 @@ def build_control_point(game: Game, cp: ControlPoint) -> ControlPointView:
         can_recruit_ground=recruit,
         links=links,
         ground=ground or None,
+        pending_ground=pending_ground or None,
         air=_air_intel(cp),
         can_launch=(False if not operational else None),
         no_launch_reason=(None if operational else _no_launch_reason(cp)),
@@ -782,6 +876,39 @@ def build_targets(game: Game, side: str) -> list[TargetView]:
     return targets
 
 
+def build_own_ground_objects(game: Game, side: str) -> list[TargetView]:
+    """Your OWN ground objects, with their ids -- what ``ground/options`` needs.
+
+    ``targets`` is the enemy's, always: it comes from ObjectiveFinder, which only ever
+    yields what the other side owns. So there was no way to name one of your own sites
+    to upgrade it, even though rebuilding is free on turn 0 and the player can do it
+    from the map. Kept out of the per-turn payload (a dense campaign has hundreds of
+    these) and served on request instead.
+    """
+    from game.theater.theatergroundobject import (
+        IadsGroundObject,
+        MissileSiteGroundObject,
+        VehicleGroupGroundObject,
+    )
+
+    rebuildable = (IadsGroundObject, MissileSiteGroundObject, VehicleGroupGroundObject)
+    player = player_for_side(side)
+    out: list[TargetView] = []
+    for cp in game.theater.controlpoints:
+        if cp.captured != player:
+            continue
+        for go in cp.ground_objects:
+            if isinstance(go, rebuildable):
+                out.append(_build_target(game, go, _own_kind(go), "DEAD"))
+    return out
+
+
+def _own_kind(go: Any) -> str:
+    from game.theater.theatergroundobject import IadsGroundObject
+
+    return "sam" if isinstance(go, IadsGroundObject) else "ground"
+
+
 def build_own_sams(game: Game, side: str) -> list[TargetView]:
     """Your own live SAM sites (friendly IADS) — for drawing your air-defense
     umbrellas alongside the enemy's. Not part of the text turn_context."""
@@ -1041,7 +1168,8 @@ def build_turn_context(game: Game, side: str = "red") -> TurnContextView:
         situation=build_situation(game),
         economy=build_economy(game, side),
         control_points=[
-            build_control_point(game, cp) for cp in game.theater.controlpoints
+            build_control_point(game, cp, player_for_side(side))
+            for cp in game.theater.controlpoints
         ],
         air_wing=[
             build_squadron(sq, player_for_side(side))

@@ -953,6 +953,44 @@ def clear_packages(game: Game, side: str) -> schemas.OpResult:
     return schemas.OpResult(ok=True, detail=f"cleared {n} packages")
 
 
+def _purchase_limits(game: Game, side: str, squadron) -> str:
+    """Why a buy was refused: parking, the squadron cap, or the budget.
+
+    Parking is per BASE and shared by every squadron on it, and an order reserves its
+    slot the moment it is placed -- so a base can read full while its aircraft are all
+    still `pending`.
+    """
+    cp = squadron.location
+    parts = []
+    try:
+        from game.theater.controlpoint import ParkingType
+
+        parking_type = ParkingType().from_squadron(squadron)
+        free = cp.unclaimed_parking(parking_type)
+        total = cp.total_aircraft_parking(parking_type)
+        parts.append(
+            f"{cp.name} parking {free} free of {total} (shared by all its squadrons)"
+        )
+    except Exception:  # pragma: no cover - carriers count parking differently
+        pass
+    try:
+        cap = squadron.max_size
+        if cap:
+            parts.append(
+                f"squadron {squadron.owned_aircraft}+{squadron.pending_deliveries} of max {cap}"
+            )
+    except Exception:  # pragma: no cover
+        pass
+    try:
+        budget = round(views.coalition_for_side(game, side).budget)
+        parts.append(
+            f"budget {budget}, this airframe costs {round(squadron.aircraft.price)} each"
+        )
+    except Exception:  # pragma: no cover
+        pass
+    return "; ".join(parts) or "no further detail available"
+
+
 def buy_aircraft(
     game: Game, side: str, squadron_id: str, quantity: int = 1
 ) -> schemas.OpResult:
@@ -966,7 +1004,12 @@ def buy_aircraft(
                 f"can't reinforce {squadron} — its base {squadron.location.name} is "
                 f"enemy-held (you can only buy into squadrons at your own bases)"
             )
-        AircraftPurchaseAdapter(squadron.location).buy(squadron, quantity)
+        try:
+            AircraftPurchaseAdapter(squadron.location).buy(squadron, quantity)
+        except TransactionError as exc:
+            # The engine only says "Cannot buy more X". Which of the three limits was
+            # hit is the whole question, and the planner cannot see it from here.
+            raise TransactionError(f"{exc} — {_purchase_limits(game, side, squadron)}")
         budget = round(views.coalition_for_side(game, side).budget)
         return schemas.OpResult(
             ok=True,
