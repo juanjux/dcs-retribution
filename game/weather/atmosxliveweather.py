@@ -22,12 +22,20 @@ import tempfile
 import unicodedata
 import winreg
 from dataclasses import dataclass
-from datetime import datetime
+from math import ceil, floor
 from pathlib import Path
 from typing import Any, Optional
 
-from dcs.mission import Mission
-from dcs.weather import Weather, Wind
+from dcs.cloud_presets import CLOUD_PRESETS
+from dcs.weather import CloudPreset, Weather, Wind
+
+from game.utils import meters, mm_hg
+from game.weather.atmosphericconditions import AtmosphericConditions
+from game.weather.clouds import Clouds
+from game.weather.fog import Fog
+from game.weather.weather import Weather as GameWeather
+from game.weather.weatherarchetype import WeatherArchetype, WeatherArchetypes
+from game.weather.wind import WindConditions
 
 CLI_NAME = "atmosx-cli.exe"
 ICAO_CSV = "dcs_icao.csv"
@@ -310,6 +318,52 @@ def _wind(data: Any) -> Optional[Wind]:
     return Wind(int(round(float(data.get("dir", 0)))), float(data.get("speed", 0)))
 
 
+def _cloud_preset(key: Any) -> Optional[CloudPreset]:
+    """The pydcs preset the observation names, if this DCS install has it."""
+    if not isinstance(key, str) or not key or key == "none":
+        return None
+    entry = CLOUD_PRESETS.get(key)
+    if entry is None:
+        logging.warning("ATMOS-X live weather: unknown cloud preset %s", key)
+        return None
+    return entry.value
+
+
+def read_clouds(
+    vdata: dict[str, Any],
+) -> Optional[tuple[Optional[CloudPreset], int, int, int, int]]:
+    """The observation's cloud layer as (preset, base, thickness, density, iprecptns).
+
+    None when the sky is clear -- no preset and nothing to draw. The base is clamped to
+    the preset's own range: DCS refuses to save a mission whose base falls outside it,
+    and a METAR ceiling a few metres below a preset's minimum is not worth a crash.
+    """
+    clouds = vdata.get("clouds")
+    if not isinstance(clouds, dict):
+        return None
+    preset = _cloud_preset(clouds.get("preset"))
+    base = int(round(float(clouds.get("base", 0))))
+    thickness = int(round(float(clouds.get("thickness", 0))))
+    density = int(round(float(clouds.get("density", 0))))
+    if preset is None and not density and not thickness:
+        return None
+    if preset is not None:
+        clamped = min(max(base, ceil(preset.min_base)), floor(preset.max_base))
+        if clamped != base:
+            logging.info(
+                "ATMOS-X live weather: cloud base %dm clamped to %dm for %s",
+                base,
+                clamped,
+                preset.name,
+            )
+            base = clamped
+    try:
+        precipitation = int(round(float(clouds.get("iprecptns", 0))))
+    except (TypeError, ValueError):
+        precipitation = 0
+    return preset, base, thickness, density, precipitation
+
+
 def apply_weather(weather: Weather, vdata: dict[str, Any]) -> None:
     """Copy the observation onto the mission's weather, field by field.
 
@@ -328,27 +382,29 @@ def apply_weather(weather: Weather, vdata: dict[str, Any]) -> None:
     if isinstance(visibility, dict) and "distance" in visibility:
         weather.visibility_distance = int(round(float(visibility["distance"])))
 
-    clouds = vdata.get("clouds")
-    if isinstance(clouds, dict):
-        weather.clouds_base = int(round(float(clouds.get("base", weather.clouds_base))))
-        weather.clouds_thickness = int(
-            round(float(clouds.get("thickness", weather.clouds_thickness)))
-        )
-        weather.clouds_density = int(
-            round(float(clouds.get("density", weather.clouds_density)))
-        )
-        if "iprecptns" in clouds:
+    layer = read_clouds(vdata)
+    if layer is None:
+        # A clear METAR is a real answer, not "leave the campaign's clouds alone".
+        weather.clouds_preset = None
+        weather.clouds_base = 0
+        weather.clouds_thickness = 0
+        weather.clouds_density = 0
+        weather.clouds_iprecptns = Weather.Preceptions.None_
+    else:
+        preset, base, thickness, density, precipitation = layer
+        # clouds_preset must be the pydcs object: the mission writer reads .name off it
+        # and validates the base against it, so the preset key as a bare string would
+        # take mission generation down.
+        weather.clouds_preset = preset
+        weather.clouds_base = base
+        weather.clouds_thickness = thickness
+        weather.clouds_density = density
+        try:
             # DCS models precipitation as an enum, not a scale: anything the preset
             # reports that is not rain or thunderstorm is "none" rather than a guess.
-            try:
-                weather.clouds_iprecptns = Weather.Preceptions(
-                    int(round(float(clouds["iprecptns"])))
-                )
-            except ValueError:
-                weather.clouds_iprecptns = Weather.Preceptions.None_
-        # "none" is a real answer -- a METAR reporting no significant cloud -- so it is
-        # copied across as-is rather than treated as "leave the campaign's clouds".
-        weather.clouds_preset = clouds.get("preset") or None
+            weather.clouds_iprecptns = Weather.Preceptions(precipitation)
+        except ValueError:
+            weather.clouds_iprecptns = Weather.Preceptions.None_
 
     wind = vdata.get("wind")
     if isinstance(wind, dict):
@@ -367,25 +423,26 @@ def apply_weather(weather: Weather, vdata: dict[str, Any]) -> None:
         weather.dust_density = int(round(float(vdata["dust_density"])))
 
 
-def apply_live_weather(mission: Mission, game: Any, mission_time: datetime) -> bool:
-    """Overwrite the mission's weather with a real observation. True if it happened.
+def fetch_observation(
+    theater: Any, settings: Any
+) -> Optional[tuple[str, dict[str, Any]]]:
+    """The current observation for this campaign's terrain, or None with a reason logged.
 
-    Every way this can fail is a warning and a False, never an exception: the campaign
-    must still be flyable with the weather Retribution generated when ATMOS-X is absent,
-    the network is down, or the station reported nothing.
+    Every way this can fail returns None: the campaign must still be playable with the
+    weather Retribution generates when ATMOS-X is absent, the network is down, or the
+    station reported nothing.
     """
     from game.settings.settings import CloudPresetPack
 
-    settings = game.settings
     if not settings.atmosx_live_weather:
-        return False
+        return None
     if settings.cloud_preset_pack is not CloudPresetPack.ATMOSX:
         logging.warning(
             "ATMOS-X live weather is on but the cloud preset pack is %s; skipping. The "
             "observation's cloud preset only means what ATMOS-X says it means.",
             settings.cloud_preset_pack.value,
         )
-        return False
+        return None
 
     configured = (settings.atmosx_cli_path or "").strip()
     cli = Path(configured) if configured else detect_cli()
@@ -394,9 +451,8 @@ def apply_live_weather(mission: Mission, game: Any, mission_time: datetime) -> b
             "ATMOS-X live weather: %s not found; keeping the generated weather.",
             configured or CLI_NAME,
         )
-        return False
+        return None
 
-    theater = game.theater
     icao = (settings.atmosx_metar_station or "").strip().upper()
     if not icao:
         bases = [cp.name for cp in theater.player_points()]
@@ -412,13 +468,113 @@ def apply_live_weather(mission: Mission, game: Any, mission_time: datetime) -> b
                 "weather.",
                 theater.terrain.name,
             )
-            return False
+            return None
         icao = station.icao
 
     preset = fetch_preset(cli, icao)
     if preset is None or "vdata" not in preset:
-        return False
+        return None
+    return icao, preset["vdata"]
 
-    apply_weather(mission.weather, preset["vdata"])
-    logging.info("ATMOS-X live weather: %s applied (campaign clock kept)", icao)
-    return True
+
+# --- the observation as the game's own weather ------------------------------------
+
+
+class LiveWeather(GameWeather):
+    """A real observation, in the shape the rest of the game already understands.
+
+    Retribution decides a turn's weather when the turn begins, and the turn display,
+    the kneeboards, the active-runway choice and the carrier's course into wind all read
+    that decision -- so the observation has to *be* the turn's weather, not something
+    grafted onto the .miz at the end. What the model cannot hold (visibility distance,
+    dust) stays in ``vdata``, which the mission generator writes out as well.
+    """
+
+    def __init__(self, station: str, vdata: dict[str, Any]) -> None:
+        self.station = station
+        self.vdata = vdata
+        # Deliberately not calling super().__init__(): every field it would randomise
+        # is an observed fact here, and it wants seasonal data this does not need.
+        self.atmospheric = self._atmospheric()
+        self.clouds = self._clouds()
+        self.fog = self._fog()
+        self.wind = self._wind()
+
+    @property
+    def archetype(self) -> WeatherArchetype:
+        """Only used for random wind, which this never does -- but it must be sane."""
+        precipitation = 0
+        clouds = self.vdata.get("clouds")
+        if isinstance(clouds, dict):
+            precipitation = int(float(clouds.get("iprecptns", 0) or 0))
+        if precipitation >= 2:
+            return WeatherArchetypes.with_id("thunderstorm")
+        if precipitation == 1:
+            return WeatherArchetypes.with_id("raining")
+        if self.clouds is not None:
+            return WeatherArchetypes.with_id("cloudy")
+        return WeatherArchetypes.with_id("clear")
+
+    def _atmospheric(self) -> AtmosphericConditions:
+        season = self.vdata.get("season")
+        temperature = 20.0
+        if isinstance(season, dict) and "temperature" in season:
+            temperature = float(season["temperature"])
+        return AtmosphericConditions(
+            qnh=mm_hg(float(self.vdata.get("qnh", 760.0))),
+            temperature_celsius=temperature,
+            turbulence_per_10cm=float(self.vdata.get("groundTurbulence", 0.0)),
+        )
+
+    def _clouds(self) -> Optional[Clouds]:
+        layer = read_clouds(self.vdata)
+        if layer is None:
+            # A clear METAR: nothing to draw. "No clouds" is what the rest of the game
+            # reads as clear, and it is what the observation means.
+            return None
+        preset, base, thickness, density, precipitation = layer
+        try:
+            reported = Weather.Preceptions(precipitation)
+        except ValueError:
+            reported = Weather.Preceptions.None_
+        return Clouds(
+            base=base,
+            density=density,
+            thickness=thickness,
+            precipitation=reported,
+            preset=preset,
+        )
+
+    def _fog(self) -> Optional[Fog]:
+        """Only the legacy fog block maps onto the model; fog2 rides along in vdata."""
+        fog = self.vdata.get("fog")
+        if not isinstance(fog, dict) or not self.vdata.get("enable_fog"):
+            return None
+        return Fog(
+            visibility=meters(float(fog.get("visibility", 0))),
+            thickness=int(round(float(fog.get("thickness", 0)))),
+        )
+
+    def _wind(self) -> WindConditions:
+        wind = self.vdata.get("wind")
+        wind = wind if isinstance(wind, dict) else {}
+        return WindConditions(
+            at_0m=_wind(wind.get("atGround")) or Wind(),
+            at_2000m=_wind(wind.get("at2000")) or Wind(),
+            at_8000m=_wind(wind.get("at8000")) or Wind(),
+        )
+
+
+def live_weather_for(theater: Any, settings: Any) -> Optional[LiveWeather]:
+    """This turn's weather, taken from the sky rather than from the dice."""
+    observation = fetch_observation(theater, settings)
+    if observation is None:
+        return None
+    station, vdata = observation
+    try:
+        weather = LiveWeather(station, vdata)
+    except (KeyError, TypeError, ValueError):
+        logging.exception("ATMOS-X live weather: unusable observation for %s", station)
+        return None
+    logging.info("ATMOS-X live weather: %s applied (campaign clock kept)", station)
+    return weather

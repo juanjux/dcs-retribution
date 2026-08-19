@@ -16,7 +16,11 @@ from typing import Any
 import pytest
 from dcs.weather import Weather
 
-from game.missiongenerator.atmosxliveweather import (
+from dcs.cloud_presets import CLOUD_PRESETS
+from dcs.weather import Weather as PydcsWeather
+
+from game.weather.atmosxliveweather import (
+    LiveWeather,
     PresetParseError,
     Station,
     apply_weather,
@@ -95,10 +99,45 @@ def test_the_observation_lands_on_the_mission() -> None:
     assert weather.qnh == 758
     assert weather.season_temperature == 31.0
     assert weather.visibility_distance == 80000
-    assert weather.clouds_base == 764
-    assert weather.clouds_preset == "none"
     assert weather.wind_at_ground.speed == 3.6
     assert weather.wind_at_8000.direction == 350
+    # A clear METAR: preset "none" means no preset, not a preset called "none".
+    assert weather.clouds_preset is None
+    assert weather.clouds_base == 0
+
+
+def test_the_mission_can_still_be_written_out() -> None:
+    """The regression that matters: DCS reads .name off the preset and validates the
+    base against it, so a preset key left as a bare string kills mission generation."""
+    for key, base in (("none", 764), ("Preset10", 2000)):
+        vdata = parse_preset(PRESET)["vdata"]
+        vdata["clouds"] = {
+            "preset": key,
+            "base": base,
+            "thickness": 0,
+            "density": 0,
+            "iprecptns": 0,
+        }
+        weather = Weather("Syria")
+        apply_weather(weather, vdata)
+        assert isinstance(weather.dict(), dict)
+
+
+def test_a_ceiling_outside_the_presets_range_is_clamped_not_fatal() -> None:
+    """DCS refuses the mission outright; a METAR ceiling near the edge is common."""
+    preset = CLOUD_PRESETS["Preset10"].value
+    vdata = parse_preset(PRESET)["vdata"]
+    vdata["clouds"] = {
+        "preset": "Preset10",
+        "base": 1,
+        "thickness": 0,
+        "density": 0,
+        "iprecptns": 0,
+    }
+    weather = Weather("Syria")
+    apply_weather(weather, vdata)
+    assert weather.clouds_base >= preset.min_base
+    assert isinstance(weather.dict(), dict)
 
 
 def test_fields_a_metar_says_nothing_about_are_left_alone() -> None:
@@ -210,3 +249,77 @@ def test_the_atmosx_settings_hide_unless_that_pack_is_selected() -> None:
     ):
         settings.cloud_preset_pack = pack
         assert not any(predicate(settings) for predicate in predicates)
+
+
+# --- the observation as the turn's own weather -----------------------------------
+
+
+def test_the_observation_becomes_the_weather_the_game_reads() -> None:
+    """The kneeboard, the active runway and the carrier all read this, not the .miz."""
+    weather = LiveWeather("LCLK", parse_preset(PRESET)["vdata"])
+
+    assert round(weather.atmospheric.qnh.mm_hg) == 758
+    assert weather.atmospheric.temperature_celsius == 31.0
+    assert weather.atmospheric.turbulence_per_10cm == 0.0
+    assert weather.wind.at_0m.direction == 350
+    assert weather.wind.at_0m.speed == 3.6
+    assert weather.wind.at_8000m.speed == 5.4
+    # "none" with nothing to draw is a clear sky, which is what the rest of the game
+    # understands by no clouds.
+    assert weather.clouds is None
+    assert weather.fog is None
+    assert weather.archetype.id == "clear"
+
+
+def test_a_named_preset_survives_into_the_model() -> None:
+    vdata = parse_preset(PRESET)["vdata"]
+    vdata["clouds"] = {
+        "preset": "Preset10",
+        "base": 2000,
+        "thickness": 1200,
+        "density": 6,
+        "iprecptns": 1,
+    }
+    weather = LiveWeather("LCLK", vdata)
+    assert weather.clouds is not None
+    assert weather.clouds.preset is not None
+    assert weather.clouds.preset.name == CLOUD_PRESETS["Preset10"].value.name
+    assert weather.clouds.base == 2000
+    assert weather.clouds.precipitation is PydcsWeather.Preceptions.Rain
+    assert weather.archetype.id == "raining"
+
+
+def test_a_preset_this_dcs_does_not_have_is_not_fatal() -> None:
+    """A pack the player has not installed must not take the campaign down with it."""
+    vdata = parse_preset(PRESET)["vdata"]
+    vdata["clouds"] = {
+        "preset": "Preset9999",
+        "base": 900,
+        "thickness": 0,
+        "density": 4,
+    }
+    weather = LiveWeather("LCLK", vdata)
+    assert weather.clouds is not None and weather.clouds.preset is None
+    assert weather.clouds.base == 900
+
+
+def test_the_mission_still_gets_what_the_model_cannot_hold() -> None:
+    """visibility distance and dust have nowhere to live but the mission itself."""
+    vdata = parse_preset(PRESET)["vdata"]
+    vdata["visibility"] = {"distance": 4200}
+    vdata["enable_dust"] = True
+    vdata["dust_density"] = 3
+    mission_weather = Weather("Syria")
+    apply_weather(mission_weather, LiveWeather("LCLK", vdata).vdata)
+    assert mission_weather.visibility_distance == 4200
+    assert mission_weather.enable_dust is True
+    assert mission_weather.dust_density == 3
+
+
+def test_no_observation_leaves_the_turn_with_generated_weather(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import game.weather.atmosxliveweather as module
+
+    monkeypatch.setattr(module, "fetch_observation", lambda theater, settings: None)
+    assert module.live_weather_for(object(), object()) is None
