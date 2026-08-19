@@ -128,6 +128,14 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   installed in DCS (only one active at a time, since the packs reuse the same
   preset keys for different clouds).
   ([#53](https://github.com/juanjux/dcs-retribution/pull/53))
+- **ATMOS-X live weather** — with the ATMOS-X pack selected, the turn's weather can be
+  a real METAR observation fetched through the ATMOS-X CLI, for a station picked
+  automatically (the airfield you fly from if it reports, otherwise the nearest that
+  does) or set by ICAO. It is fetched when the turn is built, so the turn panel, the
+  kneeboards, the active runway and the carrier's course into wind all match the
+  mission. The campaign keeps its own date and time. The weather panel also gained a
+  full tooltip and a button to re-fetch the observation.
+  ([#101](https://github.com/juanjux/dcs-retribution/pull/101))
 - **IADS infrastructure can be rebuilt** — comms towers, power stations and command
   centres produce no income, so they had no repair price and stayed rubble for the rest
   of the campaign once bombed. A network you can only dismantle is not worth attacking
