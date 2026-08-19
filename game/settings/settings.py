@@ -11,6 +11,7 @@ from .boundedfloatoption import bounded_float_option
 from .boundedintoption import bounded_int_option
 from .choicesoption import choices_option
 from .minutesoption import minutes_option
+from .textoption import text_option
 from .optiondescription import OptionDescription, SETTING_DESCRIPTION_KEY
 from .skilloption import skill_option
 from ..ato.starttype import StartType
@@ -38,6 +39,7 @@ class CloudPresetPack(Enum):
     ATMOSX = "ATMOS-X"
 
 
+@unique
 @unique
 class NightMissions(Enum):
     DayAndNight = "nightmissions_nightandday"
@@ -99,6 +101,11 @@ KNEEBOARD_SECTION = "Kneeboard"
 # This section had the header: "Disabling settings below may improve performance, but
 # will impact the overall quality of the experience."
 PERFORMANCE_SECTION = "Performance"
+
+
+def _atmosx_pack_selected(settings: Any) -> bool:
+    """The ATMOS-X live-weather options only mean anything with that pack selected."""
+    return settings.cloud_preset_pack is CloudPresetPack.ATMOSX
 
 
 @dataclass
@@ -633,6 +640,46 @@ class Settings:
             "be active at a time, since the packs reuse the same preset keys for "
             "different clouds. 'None' uses the stock DCS presets."
         ),
+    )
+    atmosx_live_weather: bool = boolean_option(
+        "Use ATMOS-X live weather",
+        page=CAMPAIGN_MANAGEMENT_PAGE,
+        section=GENERAL_SECTION,
+        default=False,
+        detail=(
+            "Replace the generated weather with a real METAR observation, fetched by "
+            "the ATMOS-X CLI for a station on this terrain. If the observation cannot "
+            "be fetched -- no ATMOS-X, no network, nothing reported for that station "
+            "-- the mission keeps the "
+            "weather Retribution generated and says so in the log."
+        ),
+        visible_when=_atmosx_pack_selected,
+    )
+    atmosx_cli_path: str = text_option(
+        "ATMOS-X CLI path",
+        page=CAMPAIGN_MANAGEMENT_PAGE,
+        section=GENERAL_SECTION,
+        default="",
+        placeholder="Detected automatically",
+        detail=(
+            "Full path to atmosx-cli.exe. Leave blank to find it from the ATMOS-X "
+            "installation registered with Windows; set it only if ATMOS-X was not "
+            "installed by its installer or lives somewhere unusual."
+        ),
+        visible_when=_atmosx_pack_selected,
+    )
+    atmosx_metar_station: str = text_option(
+        "ATMOS-X METAR station (ICAO)",
+        page=CAMPAIGN_MANAGEMENT_PAGE,
+        section=GENERAL_SECTION,
+        default="",
+        placeholder="Nearest to your base",
+        detail=(
+            "Which station to read the weather from, e.g. LCLK. Leave blank and the "
+            "station is chosen from the airfields ATMOS-X knows on this terrain: the "
+            "one you are flying from if it reports, otherwise the closest that does."
+        ),
+        visible_when=_atmosx_pack_selected,
     )
 
     # Pilots and Squadrons
