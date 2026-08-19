@@ -11,6 +11,7 @@ from .boundedfloatoption import bounded_float_option
 from .boundedintoption import bounded_int_option
 from .choicesoption import choices_option
 from .minutesoption import minutes_option
+from .textoption import text_option
 from .optiondescription import OptionDescription, SETTING_DESCRIPTION_KEY
 from .skilloption import skill_option
 from ..ato.starttype import StartType
@@ -36,6 +37,14 @@ class CloudPresetPack(Enum):
     BANDIT = "Bandit's Cloud Presets"
     WEATHER2 = "Weather 2.0 (Bandit)"
     ATMOSX = "ATMOS-X"
+
+
+@unique
+class AtmosxLiveWeatherTime(Enum):
+    """Whether a fetched observation also sets the mission's date and time."""
+
+    CAMPAIGN = "Use campaign date and time"
+    OBSERVATION = "Use current date and time"
 
 
 @unique
@@ -645,6 +654,57 @@ class Settings:
             "mission generator. Pick the pack you have installed in DCS. Only one can "
             "be active at a time, since the packs reuse the same preset keys for "
             "different clouds. 'None' uses the stock DCS presets."
+        ),
+    )
+    atmosx_live_weather: bool = boolean_option(
+        "Use ATMOS-X live weather",
+        page=CAMPAIGN_MANAGEMENT_PAGE,
+        section=GENERAL_SECTION,
+        default=False,
+        detail=(
+            "Replace the generated weather with a real METAR observation, fetched by "
+            "the ATMOS-X CLI for a station on this terrain. Requires the ATMOS-X cloud "
+            "preset pack above. If the observation cannot be fetched -- no ATMOS-X, no "
+            "network, nothing reported for that station -- the mission keeps the "
+            "weather Retribution generated and says so in the log."
+        ),
+    )
+    atmosx_live_weather_time: AtmosxLiveWeatherTime = choices_option(
+        "ATMOS-X live weather clock",
+        page=CAMPAIGN_MANAGEMENT_PAGE,
+        section=GENERAL_SECTION,
+        default=AtmosxLiveWeatherTime.CAMPAIGN,
+        choices={v.value: v for v in AtmosxLiveWeatherTime},
+        detail=(
+            "Whether the observation brings its date and time with it. Keep the "
+            "campaign's clock and only the weather is taken, which is what a campaign "
+            "set in another era wants: real weather, its own year, its own time of "
+            "day. Use the observation's and the mission is moved to the real date and "
+            "time it was recorded."
+        ),
+    )
+    atmosx_cli_path: str = text_option(
+        "ATMOS-X CLI path",
+        page=CAMPAIGN_MANAGEMENT_PAGE,
+        section=GENERAL_SECTION,
+        default="",
+        placeholder="Detected automatically",
+        detail=(
+            "Full path to atmosx-cli.exe. Leave blank to find it from the ATMOS-X "
+            "installation registered with Windows; set it only if ATMOS-X was not "
+            "installed by its installer or lives somewhere unusual."
+        ),
+    )
+    atmosx_metar_station: str = text_option(
+        "ATMOS-X METAR station (ICAO)",
+        page=CAMPAIGN_MANAGEMENT_PAGE,
+        section=GENERAL_SECTION,
+        default="",
+        placeholder="Nearest to your base",
+        detail=(
+            "Which station to read the weather from, e.g. LCLK. Leave blank and the "
+            "station is chosen from the airfields ATMOS-X knows on this terrain: the "
+            "one you are flying from if it reports, otherwise the closest that does."
         ),
     )
 
