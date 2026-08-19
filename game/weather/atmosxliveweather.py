@@ -578,3 +578,26 @@ def live_weather_for(theater: Any, settings: Any) -> Optional[LiveWeather]:
         return None
     logging.info("ATMOS-X live weather: %s applied (campaign clock kept)", station)
     return weather
+
+
+def refresh_live_weather(game: Any) -> bool:
+    """Replace this turn's weather with a newly fetched observation.
+
+    For the player who planned at dawn and takes off at noon, or whose first attempt
+    found no network. Returns False and leaves the turn alone if nothing came back.
+    """
+    weather = live_weather_for(game.theater, game.settings)
+    if weather is None:
+        return False
+    game.conditions.weather = weather
+    return True
+
+
+def live_weather_enabled(settings: Any) -> bool:
+    """Whether asking for an observation is worth offering at all."""
+    from game.settings.settings import CloudPresetPack
+
+    return bool(
+        settings.atmosx_live_weather
+        and settings.cloud_preset_pack is CloudPresetPack.ATMOSX
+    )
