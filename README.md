@@ -206,9 +206,6 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   negative time. Seen on a DEAD package given TOT +5 min from a base 29 minutes away:
   four aircraft orbited instead of flying. The release is now clamped to mission start.
   ([#100](https://github.com/juanjux/dcs-retribution/pull/100))
-- **Take Off died with "Duplicate convoy unit", stranding the campaign** — the name
-  counter reset each turn onto a convoy still in transit. Same bug upstream.
-  ([#93](https://github.com/juanjux/dcs-retribution/pull/93))
 - **SA-10B/S-300PS sites never spawned and were immortal.** High Digit SAMs 2.1.0 no
   longer ships the S-300PS family, DCS silently drops unit types it cannot resolve, and
   Retribution kept the site alive and its threat ring up. Now the stock S-300PS.
