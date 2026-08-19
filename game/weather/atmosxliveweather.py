@@ -40,6 +40,9 @@ from game.weather.wind import WindConditions
 CLI_NAME = "atmosx-cli.exe"
 ICAO_CSV = "dcs_icao.csv"
 
+# An ICAO location indicator: exactly four letters, never digits or dashes.
+_ICAO = re.compile(r"[A-Za-z]{4}")
+
 _UNINSTALL_KEYS = (
     (winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall"),
     (
@@ -220,7 +223,14 @@ def stations_for_theater(cli: Path, theater_name: str) -> list[Station]:
                     continue
                 if _fold(row[0]) != wanted:
                     continue
-                out.append(Station(row[2].strip(), row[1].strip()))
+                icao = row[2].strip()
+                # A third of the Syria rows are DCS's own identifiers for airfields
+                # with no observing station -- OS57, SY-U-A, IQ-0018. An ICAO location
+                # indicator is four letters, and the CLI rejects anything else, so
+                # keeping them only risks the fallback picking one.
+                if not _ICAO.fullmatch(icao):
+                    continue
+                out.append(Station(icao.upper(), row[1].strip()))
     except OSError as exc:
         logging.warning("ATMOS-X live weather: cannot read %s: %s", csv_path, exc)
     return out
@@ -423,6 +433,20 @@ def apply_weather(weather: Weather, vdata: dict[str, Any]) -> None:
         weather.dust_density = int(round(float(vdata["dust_density"])))
 
 
+def player_base_names(theater: Any) -> list[str]:
+    """The player's airfields, when the theater is far enough along to know them.
+
+    The turn's weather is decided in ``Game.__init__``, which runs while a new campaign
+    is still being generated: the control points exist but have not been handed to a
+    coalition yet, and asking which are the player's raises. There is simply no "your
+    airfield" to favour at that moment, so fall back to picking a station by position.
+    """
+    try:
+        return [cp.name for cp in theater.player_points()]
+    except RuntimeError:
+        return []
+
+
 def fetch_observation(
     theater: Any, settings: Any
 ) -> Optional[tuple[str, dict[str, Any]]]:
@@ -455,7 +479,7 @@ def fetch_observation(
 
     icao = (settings.atmosx_metar_station or "").strip().upper()
     if not icao:
-        bases = [cp.name for cp in theater.player_points()]
+        bases = player_base_names(theater)
         positions = {}
         try:
             positions = {a.name: a.position for a in theater.terrain.airport_list()}

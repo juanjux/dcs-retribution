@@ -674,6 +674,32 @@ class Debriefing:
                     losses.enemy_airfields.append(airfield)
                 continue
 
+            # DCS appends " object" to static-object death names (e.g.
+            # "1749 | X object"), but the unit map keys building statics without
+            # it, so placed building statics (e.g. command centers) never matched
+            # and their kills were silently dropped. Retry with the suffix
+            # stripped so those objectives register.
+            if unit_name.endswith(" object"):
+                stripped = unit_name[: -len(" object")]
+                theater_units = self.unit_map.theater_units(stripped)
+                if theater_units is not None:
+                    if theater_units.theater_unit.ground_object.is_friendly(
+                        to_player=Player.BLUE
+                    ):
+                        losses.player_ground_objects.append(theater_units)
+                    else:
+                        losses.enemy_ground_objects.append(theater_units)
+                    continue
+                scenery_object = self.unit_map.scenery_object(stripped)
+                if scenery_object is not None:
+                    if scenery_object.ground_unit.ground_object.is_friendly(
+                        to_player=Player.BLUE
+                    ):
+                        losses.player_scenery.append(scenery_object)
+                    else:
+                        losses.enemy_scenery.append(scenery_object)
+                    continue
+
             # We don't track infantry or map/scenery objects, so a mission can
             # end with thousands of these unclaimed deaths. Collect them and log
             # one summary instead of a line each: per-unit logging here floods

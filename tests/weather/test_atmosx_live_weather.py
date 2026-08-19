@@ -21,6 +21,7 @@ from dcs.weather import Weather as PydcsWeather
 
 from game.weather.atmosxliveweather import (
     LiveWeather,
+    player_base_names,
     PresetParseError,
     Station,
     apply_weather,
@@ -323,3 +324,38 @@ def test_no_observation_leaves_the_turn_with_generated_weather(
 
     monkeypatch.setattr(module, "fetch_observation", lambda theater, settings: None)
     assert module.live_weather_for(object(), object()) is None
+
+
+def test_a_campaign_being_generated_has_no_player_airfields_yet(cli: Path) -> None:
+    """Regression: the turn's weather is decided inside Game.__init__, while a new
+    campaign's control points exist but have not been given a coalition. Asking which
+    are the player's raises there, and it used to take the whole campaign down."""
+
+    def not_yet() -> list[Any]:
+        raise RuntimeError("ControlPoint not fully initialized: coalition not set")
+
+    theater = SimpleNamespace(player_points=not_yet)
+    assert player_base_names(theater) == []
+    # and with nothing to prefer, a station is still chosen rather than nothing
+    assert choose_station(cli, "Syria", []) is not None
+
+
+def test_dcs_pseudo_codes_are_not_offered_as_stations(tmp_path: Path) -> None:
+    """A third of the real Syria table is DCS identifiers, not ICAO codes. The CLI
+    answers "Please provide a valid 4-letter ICAO code" and the turn loses its
+    weather, so they must never reach the fallback."""
+    rows = [
+        ["Map", "Airfield", "ICAO", ""],
+        ["Caucasus", "Nalchik", "OS57", ""],  # DCS's own identifier
+        ["Caucasus", "Somewhere", "SY-U-A", ""],
+        ["Caucasus", "Elsewhere", "IQ-0018", ""],
+        ["Caucasus", "Anapa-Vityazevo", "urka", ""],  # real, lowercase in the file
+    ]
+    with (tmp_path / "dcs_icao.csv").open("w", newline="", encoding="utf-8-sig") as f:
+        csv.writer(f).writerows(rows)
+    exe = tmp_path / "atmosx-cli.exe"
+    exe.write_text("", encoding="utf-8")
+
+    stations = stations_for_theater(exe, "Caucasus")
+    assert [s.icao for s in stations] == ["URKA"]
+    assert choose_station(exe, "Caucasus", []) == Station("URKA", "Anapa-Vityazevo")
