@@ -1415,7 +1415,7 @@ def rebuild_ground_object(
     """Replace/upgrade a ground object (SAM/EWR/armor/ship/missile/coastal) with a chosen
     force-group + layout, mirroring the player's Buy-ground-object dialog. Optional per-group
     overrides set the unit type and count. Refunds the old group's value, charges the net,
-    respects repair-delay. Free on turn 0."""
+    respects repair-delay."""
     coalition = views.coalition_for_side(game, side)
     player = views.player_for_side(side)
     try:
@@ -1497,7 +1497,7 @@ def rebuild_ground_object(
         price = sum(count * unit_price for *_, count, unit_price in selections)
         refund = int(tgo.value)
         cost = price - refund
-        if cost > coalition.budget and game.turn != 0:
+        if cost > coalition.budget:
             raise ValueError(
                 f"need {int(cost)}M, have {round(coalition.budget)}M "
                 f"(price {int(price)}M - refund {refund}M)"
@@ -1505,7 +1505,7 @@ def rebuild_ground_object(
 
         # Apply (mirror QGroundObjectTemplateLayout.buy_group).
         tgo.heading = game.theater.heading_to_conflict_from(tgo.position) or tgo.heading
-        coalition.budget -= cost if game.turn else 0
+        coalition.budget -= cost
         tgo.groups = []
         for unit_group, group_name, dcs_unit_type, count, _price in selections:
             fg.create_theater_group_for_tgo(

@@ -457,7 +457,7 @@ reports `cruise_missiles_remaining` in `naval[]`.
    (the old site's value is **refunded**), then `ground/rebuild` does it — e.g. swap an
    SA-3 for an SA-10 to re-close a corridor, add TELs by raising a group's count, or give
    a mobile group an AA-capable unit where the layout offers one. It respects the
-   repair-delay (rebuilt units arrive over the campaign's repair turns) and is **free on
+   repair-delay (rebuilt units arrive over the campaign's repair turns) and costs the
    turn 0**. **Attrition is a victory path of its own:** hitting what the enemy is FORCED
    to keep repairing (their priciest SAM, their oil/factories) bleeds their budget until
    the cascade starts — no runway repairs, no AWACS, gaps everywhere. Don't be the victim
@@ -497,12 +497,13 @@ What turn 0 is for:
 - **Buy aircraft** into the squadrons you intend to fly, remembering they arrive the
   turn AFTER they are ordered — turn 0 is exactly the moment to invest ahead.
 - **Buy ground units** where a front will form, and set **stances**.
-- **Rebuild or upgrade your ground objects, which is FREE on turn 0.** This is the one
-  turn where you can swap an SA-3 for an SA-10, thicken a group with extra TELs or give
-  a mobile group an AA-capable unit and pay nothing for it. Get the ids from
+- **Rebuild or upgrade your ground objects.** Turn 0 is the natural moment to shape
+  your air defenses before anything flies: swap an SA-3 for an SA-10, thicken a group
+  with extra TELs, give a mobile group an AA-capable unit. Get the ids from
   `GET /ground/mine`, ask `ground/options/{tgo_id}` what each can become, then
-  `ground/rebuild`. Not doing this on turn 0 wastes the single largest free upgrade of
-  the campaign.
+  `ground/rebuild`. **It costs money like everything else** — the old site's value is
+  refunded, so you pay the difference — and it competes with aircraft and armor for the
+  same opening budget.
 - **Relocate squadrons** to the bases you want them flying from.
 
 What turn 0 is NOT for: creating packages. Do not plan flights; there is no mission to
@@ -881,6 +882,10 @@ Write bodies:
   `[{id, name, kind (sam/ground), pos, threat_nm?, …}]`. The only place to get the id of
   one of your sites — `turn_context.targets` is the enemy's, always. Rebuilding is free
   on turn 0, so this is worth calling on the opening turn.
+  The `price` of each option is INDICATIVE: layouts whose groups declare a unit-count
+  range roll a size every time they are asked, so the rebuild can charge more or less
+  than the quote. Pin `groups[].count` in `ground/rebuild` to pay exactly what you
+  planned for, and read the net cost the rebuild reports back.
 - `GET /ground/options/{tgo_id}?side=red` → what one of YOUR ground objects (a
   SAM/EWR/armor/ship/missile/coastal site) can be **rebuilt** into: `{tgo_id, name, role,
   refund` (the old site's value, credited back on rebuild)`, budget, options:[{force_group,
@@ -890,7 +895,7 @@ Write bodies:
   that site with the chosen `force_group` + `layout` (names from `/ground/options`). Optional
   `groups` overrides each group: `[{group_name, unit_type?` (a `name` from the options),
   `count?, enabled?` (turn an optional group off)`]`. It **refunds** the old group's value and
-  charges the net (free on turn 0), and respects the repair-delay (rebuilt units arrive over
+  charges the net, and respects the repair-delay (rebuilt units arrive over
   the campaign's repair turns). Use it to swap a weak SAM for a stronger one, add TELs, or
   re-close a strike corridor.
 - `POST /stances` `{side, friendly_cp_id, enemy_cp_id, stance}`

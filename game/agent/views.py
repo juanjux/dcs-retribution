@@ -447,7 +447,10 @@ class GroupSlotView(BaseModel):
 class LayoutOption(BaseModel):
     force_group: str
     layout: str
-    price: int  # default price (all groups at default unit type + group_size)
+    price: int  # INDICATIVE: every group at its first unit type and its default count.
+    # A layout whose groups declare a unit-count RANGE rolls a size each time it is
+    # asked, so what ground/rebuild charges can differ from this quote. Pin
+    # `groups[].count` on the rebuild to pay exactly what you planned for.
     groups: list[GroupSlotView]
 
 
@@ -1406,9 +1409,12 @@ def _layout_option(force_group, layout) -> LayoutOption | None:
                     unit_types=unit_types,
                 )
             )
-            # Default price: non-optional (or would-be-enabled) groups at the first unit
-            # type * default count. Statics-only groups price at 0 (no unit types).
-            if not unit_group.optional and unit_types:
+            # Default price: EVERY group at the first unit type * default count, including
+            # optional ones. Optional groups default to enabled -- in the player's dialog
+            # (QTgoLayoutGroup.enabled = True) and in ground/rebuild alike -- so leaving
+            # them out quoted a price nobody would ever be charged: 305M against a real
+            # 397M on one S-300VM site. Statics-only groups price at 0 (no unit types).
+            if unit_types:
                 price += default_count * unit_types[0].price
     if not slots:
         return None

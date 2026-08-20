@@ -285,7 +285,9 @@ def test_rebuild_happy_path_charges_net_and_creates_group() -> None:
     assert tgo.groups == []  # cleared before create (fake create doesn't repopulate)
 
 
-def test_rebuild_free_on_turn_zero() -> None:
+def test_turn_zero_is_not_a_free_shopping_spree() -> None:
+    """Ground objects used to cost nothing on turn 0 while the dialog still quoted a
+    price, so a campaign could open with an S-300 belt bought for free."""
     ug = _unit_group(size=2)
     layout = _layout("Default", ug)
     ut = _FakeUnitType("S-300 LN", 999, object)
@@ -299,8 +301,9 @@ def test_rebuild_free_on_turn_zero() -> None:
     game.coalition_for = lambda player: coalition
 
     res = planner.rebuild_ground_object(game, "red", str(uuid4()), "SA-10", "Default")
-    assert res.ok is True, res.error
-    assert coalition.budget == 10.0  # turn 0 -> no charge even though price > budget
+    assert res.ok is False
+    assert "have 10" in (res.error or "")
+    assert coalition.budget == 10.0  # refused, so nothing was spent either
 
 
 def test_rebuild_unknown_force_group_reports_valid_names() -> None:

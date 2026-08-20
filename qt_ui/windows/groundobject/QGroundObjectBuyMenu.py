@@ -192,7 +192,7 @@ class QGroundObjectTemplateLayout(QGroupBox):
     @property
     def affordable(self) -> bool:
         coalition = self.ground_object.coalition
-        return self.cost <= coalition.budget or self.game.turn == 0
+        return self.cost <= coalition.budget
 
     def add_theater_group(
         self, group_name: str, force_group: ForceGroup, groups: list[TgoLayoutUnitGroup]
@@ -239,7 +239,7 @@ class QGroundObjectTemplateLayout(QGroupBox):
             or self.ground_object.heading
         )
         coalition = self.ground_object.coalition
-        coalition.budget -= self.cost if self.game.turn else 0
+        coalition.budget -= self.cost
         self.ground_object.groups = []
         repair_turns = self.game.settings.ground_object_repair_turns
         for group_name, groups in self.layout_model.groups.items():
