@@ -886,6 +886,12 @@ Write bodies:
   factory/front — the `can_recruit_ground` field). If the destination base is captured
   before the units arrive, the pending order is **refunded**, not delivered to the
   enemy.
+  Each flight also reports `startup_min`: minutes from MISSION START to its engine
+  start, the same clock you set `tot_minutes` on. It is the consequence of everything
+  else — TOT, the flight's offset, the route, taxi — so it is how you check your timing
+  actually works. **A negative `startup_min` means that flight would have to start
+  before the mission does and cannot make its TOT**: push the TOT later, fly it from a
+  closer base, or cut the offset.
 - `POST /flights/tot_offset` `{side, flight_id, minutes}` — move ONE flight's time
   over target off its package's. **Negative = ahead of the package.** This is how you
   get an escort or a TARCAP on station before the strikers roll in, or stagger two

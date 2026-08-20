@@ -203,6 +203,14 @@ class FlightView(BaseModel):
     weapons: dict[int, str] | None = (
         None  # pylon number -> weapon clsid — what this flight actually carries
     )
+    startup_min: int | None = (
+        None  # minutes from MISSION START to this flight's engine start -- the "Departing
+        # At" the player reads in Edit Flight, in the same unit the planner sets TOTs in.
+        # It is derived: TOT, minus the flight's own offset, minus the time to fly the
+        # route, minus startup and taxi. A NEGATIVE value means the flight would have had
+        # to start before the mission does, so it CANNOT make its TOT -- push the TOT
+        # later or fly it from a closer base.
+    )
     tot_offset_min: float | None = (
         None  # this flight's time over target relative to the PACKAGE's, in minutes.
         # NEGATIVE = ahead of the package (what escorts and SEAD want: be there before
@@ -1254,6 +1262,22 @@ def _flight_loadout(flight):
     return loadout.name, (weapons or None)
 
 
+def _startup_minutes(flight) -> int | None:
+    """Minutes from mission start to this flight's engine start.
+
+    Same clock the planner sets TOTs on, so it can be compared with tot_minutes without
+    knowing the wall time. Negative means the flight cannot make its TOT.
+    """
+    try:
+        startup = flight.flight_plan.startup_time()
+        mission_start = flight.coalition.game.conditions.start_time
+    except Exception:  # pragma: no cover - a flight without a plan or a live game
+        return None
+    if startup is None or mission_start is None:
+        return None
+    return round((startup - mission_start).total_seconds() / 60)
+
+
 def _tot_offset_minutes(flight) -> float | None:
     """The flight's offset from the package TOT, in minutes, or None when it is zero."""
     try:
@@ -1279,6 +1303,7 @@ def build_flight(flight) -> FlightView:
         uncrewed=missing_count or None,
         loadout=loadout_name,
         weapons=weapons,
+        startup_min=_startup_minutes(flight),
         tot_offset_min=_tot_offset_minutes(flight),
     )
 
