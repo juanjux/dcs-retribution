@@ -123,8 +123,7 @@ tool/resource of the same name.
 - `GET /turn_status` (also reports cancelled flag + session holder) — the player can
   cancel you; stop gracefully.
 - `GET /ground/mine` — your own ground objects and their ids (turn_context.targets
-  is the enemy's). Feeds `ground/options/{tgo_id}` and `ground/rebuild`, which are
-  FREE on turn 0.
+  is the enemy's). Feeds `ground/options/{tgo_id}` and `ground/rebuild`.
 - `POST /ai/status` — set the one-line note shown on the toolbar robot (the MCP tool
   is `set_ai_status`).
 - To drop a half-done turn, clear the packages with `DELETE /packages?side=red` and plan
