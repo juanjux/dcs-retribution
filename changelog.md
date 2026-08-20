@@ -1,6 +1,7 @@
 # Retribution v1.6.0
 
 ## Features/Improvements
+* **[FIX]** Su-57 payloads no longer lose stations. Every one of its seven presets asked an internal weapons bay for something it cannot carry — an R-73 on station 10 in all of them, plus rocket pods (CAS) and a BetAB-500 (OCA/Runway) on station 9 — and DCS empties such a station silently, so the Felons flew with one or two fewer weapons than planned.
 * **[FIX]** The F-117A and both Tu-160s no longer offer DEAD. Their DCS types only know Pinpoint Strike, and a DEAD ingress tasks the group with AttackGroup, which only SEAD/CAS/AFAC/Antiship aircraft can execute — so planning one raised at Take Off, after the whole turn was planned. Use Strike against SAM sites with these aircraft.
 * **[Balance]** Ground objects (SAM/EWR/armor/ship/coastal sites) now cost money on turn 0 like on any other turn. They were free before while the buy dialog still quoted a price, so a campaign could open with a belt of S-300s bought for nothing — by either side, or by the OPFOR AI.
 * **[Modding]** Update High Digit SAMs support to 2.1.0: adds the SAMP/T battery (Aster 30, Block 1/1NT/2 launchers up to 200 km, ARABEL and Ground Fire 300 radars) and the SA-7/SA-7b Strela-2 MANPADS, and retires the units the mod dropped.
