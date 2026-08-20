@@ -44,3 +44,32 @@ def test_setting_it_matches_the_dialog() -> None:
 
     planner.apply_tot_offset(flight, 4)
     assert flight.flight_plan.tot_offset == timedelta(minutes=4)
+
+
+# --- when the flight has to start engines --------------------------------------
+
+
+def _flight_with_startup(minutes_after_start: float) -> Any:
+    from datetime import datetime
+
+    start = datetime(2019, 12, 25, 11, 0)
+    plan = SimpleNamespace(
+        tot_offset=timedelta(0),
+        startup_time=lambda: start + timedelta(minutes=minutes_after_start),
+    )
+    game = SimpleNamespace(conditions=SimpleNamespace(start_time=start))
+    return SimpleNamespace(flight_plan=plan, coalition=SimpleNamespace(game=game))
+
+
+def test_startup_is_reported_on_the_clock_the_planner_uses() -> None:
+    """tot_minutes counts from mission start, so this must too."""
+    assert views._startup_minutes(_flight_with_startup(23.4)) == 23
+
+
+def test_a_flight_that_would_start_before_the_mission_reads_negative() -> None:
+    """The signal that a TOT is unreachable, in the planner's own units."""
+    assert views._startup_minutes(_flight_with_startup(-12)) == -12
+
+
+def test_no_plan_no_startup() -> None:
+    assert views._startup_minutes(SimpleNamespace()) is None
