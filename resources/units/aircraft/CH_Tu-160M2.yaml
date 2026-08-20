@@ -19,7 +19,4 @@ variants:
 tasks:
   Anti-ship: 100
   BAI: 370
-  DEAD: 210
   Strike: 680
-secondary_tasks:
-  - DEAD
