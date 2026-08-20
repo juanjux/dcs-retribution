@@ -69,6 +69,17 @@ def map_image(side: str = "red", bbox: str | None = None) -> Response:
     return Response(content=service.map_image(side, bbox), media_type="image/png")
 
 
+@router.post("/flights/tot_offset", operation_id="ai_set_flight_tot_offset")
+def set_flight_tot_offset(body: dict) -> schemas.OpResult:
+    """`{side, flight_id, minutes}` — move ONE flight's time over target relative to
+    its package's. Negative is ahead of the package, which is how an escort or a SEAD
+    flight gets over the target before the strikers arrive.
+    """
+    return service.set_flight_tot_offset(
+        body.get("side", "red"), body["flight_id"], float(body["minutes"])
+    )
+
+
 @router.get(
     "/ground/mine",
     operation_id="ai_my_ground_objects",

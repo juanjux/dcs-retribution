@@ -201,6 +201,22 @@ def _apply_loadouts(package, flight_specs) -> None:
             break
 
 
+def _apply_tot_offsets(package, flight_specs) -> None:
+    """Give each spec'd flight its own time over target relative to the package's."""
+    used: set[int] = set()
+    for flight_spec in flight_specs:
+        minutes = getattr(flight_spec, "tot_offset_min", None)
+        if minutes is None:
+            continue
+        task = _flight_type(flight_spec.task)
+        for flight in package.flights:
+            if id(flight) in used or flight.flight_type != task:
+                continue
+            apply_tot_offset(flight, minutes)
+            used.add(id(flight))
+            break
+
+
 def _apply_remain(package, flight_specs) -> None:
     """Flag matching helo AIR_ASSAULT flights to remain at the objective (land + stay,
     no return leg) and rebuild the plan so the return leg is dropped -- the player's
@@ -593,6 +609,7 @@ def create_packages(
                     continue
                 coalition.ato.add_package(package)
                 _apply_loadouts(package, keep)
+                _apply_tot_offsets(package, keep)
                 _apply_remain(package, keep)
                 _apply_tot(package, spec, now)
                 if spec.rationale:
@@ -1551,3 +1568,42 @@ def _rebuild_specs(groups):
             else schemas.RebuildGroupSpec(**g)
         )
     return out
+
+
+def apply_tot_offset(flight, minutes: float) -> None:
+    """Shift one flight's time over target relative to its package's.
+
+    Mirrors the Edit Flight dialog: negative is "ahead of package", which is how you
+    put the escort over the target before the strikers.
+    """
+    from datetime import timedelta
+
+    flight.flight_plan.tot_offset = timedelta(minutes=float(minutes))
+
+
+def set_flight_tot_offset(
+    game: Game, side: str, flight_id: str, minutes: float
+) -> schemas.OpResult:
+    """Set a flight's TOT offset from its package's TOT, in minutes (negative = ahead)."""
+    flight = flight_for_side(game, side, flight_id)
+    if flight is None:
+        return schemas.OpResult(ok=False, error=f"no flight with id {flight_id!r}")
+    try:
+        apply_tot_offset(flight, minutes)
+        package = package_of(game, side, flight)
+        if package is not None and getattr(package, "auto_asap", False):
+            package.set_tot_asap(game.conditions.start_time)
+    except Exception as exc:
+        return schemas.OpResult(ok=False, error=str(exc))
+    where = "ahead of" if minutes < 0 else "after"
+    return schemas.OpResult(
+        ok=True,
+        detail=f"{flight} now arrives {abs(minutes):g} min {where} its package TOT",
+    )
+
+
+def package_of(game: Game, side: str, flight):
+    for package in views.coalition_for_side(game, side).ato.packages:
+        if flight in package.flights:
+            return package
+    return None

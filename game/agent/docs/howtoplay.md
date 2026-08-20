@@ -158,6 +158,11 @@ Sequence and combined arms matter:
    `turn_context.threats` ranks these for you.
 2. **Win the air**: if blue has fighters/CAP over the target, add **ESCORT/TARCAP**.
 3. **Then strike**: STRIKE/OCA/BAI flights hit the actual objective.
+   - **Timing inside the package is yours to set.** Every flight has a `tot_offset_min`
+     relative to the package TOT, negative meaning ahead. An escort that arrives WITH
+     the strikers is an escort that arrives late; put it two or three minutes ahead.
+     Read it in `get_packages`, set it with `POST /flights/tot_offset`, or declare it
+     in the `FlightSpec` when you create the package.
 4. **Support**: add **AEW&C** and a **tanker** for range/awareness on deep or large
    operations.
 
@@ -881,6 +886,13 @@ Write bodies:
   factory/front — the `can_recruit_ground` field). If the destination base is captured
   before the units arrive, the pending order is **refunded**, not delivered to the
   enemy.
+- `POST /flights/tot_offset` `{side, flight_id, minutes}` — move ONE flight's time
+  over target off its package's. **Negative = ahead of the package.** This is how you
+  get an escort or a TARCAP on station before the strikers roll in, or stagger two
+  attack flights so the second arrives after the first has drawn the defences. The
+  same field is readable as `tot_offset_min` on every flight in `get_packages`, and
+  settable up front as `tot_offset_min` in a `FlightSpec`. SEAD and sweep tasks
+  already lead the package by default; leave theirs alone unless you have a reason.
 - `GET /ground/mine?side=red` → YOUR OWN ground objects with their ids:
   `[{id, name, kind (sam/ground), pos, threat_nm?, …}]`. The only place to get the id of
   one of your sites — `turn_context.targets` is the enemy's, always. Rebuilding is free

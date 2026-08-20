@@ -16,6 +16,12 @@ class FlightSpec(BaseModel):
     count: int = 2  # aircraft in this flight; CAPPED at the airframe's max_group_size
     # (usually 4), same as the player's flight creator — for a bigger raid add more flights
     escort: str | None = None  # air / sead / ewar / refuel — pruned if not needed
+    tot_offset_min: float | None = (
+        None  # arrive this many minutes off the PACKAGE's TOT. NEGATIVE = ahead of it,
+        # which is what an escort or a SEAD flight wants: on station before the strikers
+        # get there. Leave it out to keep the task's own default (SEAD and sweeps
+        # already lead by design).
+    )
     squadron_id: str | None = (
         None  # force this squadron/airframe (from turn_context.air_wing) instead of
         # letting the engine auto-pick; works even if the engine wouldn't auto-assign it
@@ -31,6 +37,13 @@ class FlightSpec(BaseModel):
         # home (one-way assault, uses full ferry range). At turn end the survivors
         # redeploy there if you capture the base, else they're lost. Mirrors the player's
         # "Remain at the assault destination" checkbox; ignored for other tasks/airframes.
+    )
+    tot_offset_minutes: float | None = (
+        None  # this flight's offset from the PACKAGE TOT, in minutes (negative =
+        # earlier). Same as the UI "TOT Offset" spinner. There is no per-flight TOT.
+        # Omit to keep the engine default (SEAD Sweep −2, SEAD −1, else 0). 0 is
+        # valid and means "on the package TOT" — it does NOT mean they take off
+        # with the rest of the package (an escort's TOT waypoint is HOLD).
     )
 
 
@@ -151,6 +164,11 @@ class FlightLoadoutRequest(BaseModel):
     side: str = "red"
     flight_id: str
     loadout: str | dict[int, str]  # a name from /aircraft/loadouts, or {pylon: clsid}
+
+
+class FlightTotOffsetRequest(BaseModel):
+    side: str = "red"
+    tot_offset_minutes: float  # minutes from package TOT; negative = earlier (ahead)
 
 
 class BuyAircraftRequest(BaseModel):

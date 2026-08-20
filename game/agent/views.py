@@ -204,6 +204,23 @@ class FlightView(BaseModel):
     weapons: dict[int, str] | None = (
         None  # pylon number -> weapon clsid — what this flight actually carries
     )
+    tot_offset_minutes: float | None = (
+        None  # offset from package TOT in minutes (negative = earlier). Always
+        # present, including 0 — 0 means on the package TOT, not "take off together".
+        # SEAD Sweep defaults to −2. Same as the UI "TOT Offset" spinner.
+    )
+    in_flight_at: str | None = (
+        None  # computed startup/takeoff time (HH:MM:SS) — the UI "Departing At".
+        # Driven by tot_waypoint travel + tot_offset, NOT by tot_offset alone.
+    )
+    tot_offset_min: float | None = (
+        None  # this flight's time over target relative to the PACKAGE's, in minutes.
+        # NEGATIVE = ahead of the package (what escorts and SEAD want: be there before
+        # the strikers arrive), positive = behind it. Omitted when the flight arrives
+        # with the package. Some tasks default to a non-zero offset -- SEAD leads,
+        # sweeps lead further -- so an absent value is a deliberate "on time", not
+        # "unset". Set it with POST /flights/tot_offset, or up front in a FlightSpec.
+    )
 
 
 class PackageView(BaseModel):
@@ -1235,6 +1252,15 @@ def _flight_loadout(flight):
     return loadout.name, (weapons or None)
 
 
+def _tot_offset_minutes(flight) -> float | None:
+    """The flight's offset from the package TOT, in minutes, or None when it is zero."""
+    try:
+        seconds = flight.flight_plan.tot_offset.total_seconds()
+    except AttributeError:  # pragma: no cover - a flight without a plan yet
+        return None
+    return round(seconds / 60, 1) or None
+
+
 def build_flight(flight) -> FlightView:
     missing = flight.missing_pilots
     missing_count = len(missing) if hasattr(missing, "__len__") else int(missing)
@@ -1251,6 +1277,7 @@ def build_flight(flight) -> FlightView:
         uncrewed=missing_count or None,
         loadout=loadout_name,
         weapons=weapons,
+        tot_offset_min=_tot_offset_minutes(flight),
     )
 
 
