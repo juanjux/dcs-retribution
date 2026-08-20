@@ -13,11 +13,11 @@ local unitPayloads = {
 					["num"] = 1,
 				},
 				[3] = {
-					["CLSID"] = "{0DA03783-61E4-40B2-8FAE-6AEE0A5C5AAE}",
+					["CLSID"] = "{IR}",
 					["num"] = 6,
 				},
 				[4] = {
-					["CLSID"] = "{0DA03783-61E4-40B2-8FAE-6AEE0A5C5AAE}",
+					["CLSID"] = "{IR}",
 					["num"] = 4,
 				},
 			},
@@ -37,15 +37,15 @@ local unitPayloads = {
 					["num"] = 1,
 				},
 				[3] = {
-					["CLSID"] = "{0DA03783-61E4-40B2-8FAE-6AEE0A5C5AAE}",
+					["CLSID"] = "{IR}",
 					["num"] = 6,
 				},
 				[4] = {
-					["CLSID"] = "{0DA03783-61E4-40B2-8FAE-6AEE0A5C5AAE}",
+					["CLSID"] = "{IR}",
 					["num"] = 4,
 				},
 				[5] = {
-					["CLSID"] = "{DAMOCLES}",
+					["CLSID"] = "{Talios_Thales_RBE2}",
 					["num"] = 7,
 				},
 				[6] = {
@@ -81,15 +81,15 @@ local unitPayloads = {
 					["num"] = 1,
 				},
 				[3] = {
-					["CLSID"] = "{0DA03783-61E4-40B2-8FAE-6AEE0A5C5AAE}",
+					["CLSID"] = "{IR}",
 					["num"] = 6,
 				},
 				[4] = {
-					["CLSID"] = "{0DA03783-61E4-40B2-8FAE-6AEE0A5C5AAE}",
+					["CLSID"] = "{IR}",
 					["num"] = 4,
 				},
 				[5] = {
-					["CLSID"] = "{DAMOCLES}",
+					["CLSID"] = "{Talios_Thales_RBE2}",
 					["num"] = 7,
 				},
 				[6] = {
@@ -129,15 +129,15 @@ local unitPayloads = {
 					["num"] = 1,
 				},
 				[3] = {
-					["CLSID"] = "{0DA03783-61E4-40B2-8FAE-6AEE0A5C5AAE}",
+					["CLSID"] = "{IR}",
 					["num"] = 6,
 				},
 				[4] = {
-					["CLSID"] = "{0DA03783-61E4-40B2-8FAE-6AEE0A5C5AAE}",
+					["CLSID"] = "{IR}",
 					["num"] = 4,
 				},
 				[5] = {
-					["CLSID"] = "{DAMOCLES}",
+					["CLSID"] = "{Talios_Thales_RBE2}",
 					["num"] = 7,
 				},
 				[6] = {
@@ -177,15 +177,15 @@ local unitPayloads = {
 					["num"] = 1,
 				},
 				[3] = {
-					["CLSID"] = "{0DA03783-61E4-40B2-8FAE-6AEE0A5C5AAE}",
+					["CLSID"] = "{IR}",
 					["num"] = 6,
 				},
 				[4] = {
-					["CLSID"] = "{0DA03783-61E4-40B2-8FAE-6AEE0A5C5AAE}",
+					["CLSID"] = "{IR}",
 					["num"] = 4,
 				},
 				[5] = {
-					["CLSID"] = "{DAMOCLES}",
+					["CLSID"] = "{Talios_Thales_RBE2}",
 					["num"] = 7,
 				},
 				[6] = {
@@ -221,15 +221,15 @@ local unitPayloads = {
 					["num"] = 1,
 				},
 				[3] = {
-					["CLSID"] = "{0DA03783-61E4-40B2-8FAE-6AEE0A5C5AAE}",
+					["CLSID"] = "{IR}",
 					["num"] = 6,
 				},
 				[4] = {
-					["CLSID"] = "{0DA03783-61E4-40B2-8FAE-6AEE0A5C5AAE}",
+					["CLSID"] = "{IR}",
 					["num"] = 4,
 				},
 				[5] = {
-					["CLSID"] = "{DAMOCLES}",
+					["CLSID"] = "{Talios_Thales_RBE2}",
 					["num"] = 7,
 				},
 				[6] = {
