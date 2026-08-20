@@ -122,6 +122,8 @@ tool/resource of the same name.
   optional one-line note shown on the robot.
 - `GET /turn_status` (also reports cancelled flag + session holder) — the player can
   cancel you; stop gracefully.
+- `POST /flights/tot_offset` — shift one flight's TOT off its package's (negative =
+  ahead), so escorts are over the target before the strikers.
 - `GET /ground/mine` — your own ground objects and their ids (turn_context.targets
   is the enemy's). Feeds `ground/options/{tgo_id}` and `ground/rebuild`.
 - `POST /ai/status` — set the one-line note shown on the toolbar robot (the MCP tool

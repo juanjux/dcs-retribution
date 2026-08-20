@@ -214,6 +214,7 @@ def capabilities() -> dict:
             "payload/validate (check a {pylon: clsid} loadout is valid for an airframe)",
             "waypoints/edit (move/adjust a flight waypoint — never deletes)",
             "flights/loadout (re-arm a flight that already exists — ferries launch empty)",
+            "flights/tot_offset (shift ONE flight's TOT off its package's — negative puts escorts over the target ahead of the strikers)",
             "packages/{index} (delete)",
             "packages/{index}/tot (set/clear a committed package's TOT — stagger multi-axis strikes)",
             "buy/aircraft",
@@ -393,6 +394,14 @@ def ground_object_options(side, tgo_id):
     from game.agent import views
 
     return views.build_ground_object_options(_require_game(), side, tgo_id)
+
+
+@opfor_only
+def set_flight_tot_offset(side, flight_id, minutes):
+    """Shift one flight's TOT relative to its package's (negative = ahead)."""
+    from game.agent import planner
+
+    return planner.set_flight_tot_offset(_require_game(), side, flight_id, minutes)
 
 
 @opfor_only

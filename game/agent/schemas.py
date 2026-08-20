@@ -16,6 +16,12 @@ class FlightSpec(BaseModel):
     count: int = 2  # aircraft in this flight; CAPPED at the airframe's max_group_size
     # (usually 4), same as the player's flight creator — for a bigger raid add more flights
     escort: str | None = None  # air / sead / ewar / refuel — pruned if not needed
+    tot_offset_min: float | None = (
+        None  # arrive this many minutes off the PACKAGE's TOT. NEGATIVE = ahead of it,
+        # which is what an escort or a SEAD flight wants: on station before the strikers
+        # get there. Leave it out to keep the task's own default (SEAD and sweeps
+        # already lead by design).
+    )
     squadron_id: str | None = (
         None  # force this squadron/airframe (from turn_context.air_wing) instead of
         # letting the engine auto-pick; works even if the engine wouldn't auto-assign it
