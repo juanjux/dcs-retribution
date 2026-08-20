@@ -457,7 +457,8 @@ reports `cruise_missiles_remaining` in `naval[]`.
    (the old site's value is **refunded**), then `ground/rebuild` does it — e.g. swap an
    SA-3 for an SA-10 to re-close a corridor, add TELs by raising a group's count, or give
    a mobile group an AA-capable unit where the layout offers one. It respects the
-   repair-delay (rebuilt units arrive over the campaign's repair turns) and costs the
+   repair-delay (rebuilt units arrive over the campaign's repair turns — except on turn
+   0, where they are in place immediately) and costs the
    turn 0**. **Attrition is a victory path of its own:** hitting what the enemy is FORCED
    to keep repairing (their priciest SAM, their oil/factories) bleeds their budget until
    the cascade starts — no runway repairs, no AWACS, gaps everywhere. Don't be the victim
@@ -503,7 +504,9 @@ What turn 0 is for:
   `GET /ground/mine`, ask `ground/options/{tgo_id}` what each can become, then
   `ground/rebuild`. **It costs money like everything else** — the old site's value is
   refunded, so you pay the difference — and it competes with aircraft and armor for the
-  same opening budget.
+  same opening budget. What turn 0 does give you for free is TIME: rebuilt units are in
+  place immediately, with none of the repair-turn delay they take from turn 1 onwards.
+  So a site you want fighting on turn 1 has to be bought now.
 - **Relocate squadrons** to the bases you want them flying from.
 
 What turn 0 is NOT for: creating packages. Do not plan flights; there is no mission to
