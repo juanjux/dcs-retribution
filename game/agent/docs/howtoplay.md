@@ -744,7 +744,12 @@ missile raid, spending your magazine without asking you)}. Settings the
 human changes mid-campaign apply from the NEXT turn, not the one being planned.
 
 `GET /packages?side=red` → `[{index, target, task, tot (HH:MM), desc?,
-flights:[{id, task, aircraft, count, squadron, start?, dep?, clients?, uncrewed?}]}]`.
+flights:[{id, task, aircraft, count, squadron, start?, dep?, clients?, uncrewed?,
+loadout?, weapons?, startup_min?, tot_offset_min?}]}]`.
+- `loadout?` the payload's name, `weapons?` the `{pylon: clsid}` it actually carries.
+- `startup_min?` minutes from MISSION START to engine start (negative = this flight
+  cannot make its TOT). `tot_offset_min?` its arrival relative to the PACKAGE TOT,
+  negative = ahead of it. Both are absent when zero.
 
 `GET /iads?side=red` → `{advanced, nodes:[{id, name, role, alive, depends_on?}]}` — the
 ENEMY air-defense network as a graph. `role` is `Sam` / `SamAsEwr` / `Ewr` /
