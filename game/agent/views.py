@@ -204,15 +204,6 @@ class FlightView(BaseModel):
     weapons: dict[int, str] | None = (
         None  # pylon number -> weapon clsid — what this flight actually carries
     )
-    tot_offset_minutes: float | None = (
-        None  # offset from package TOT in minutes (negative = earlier). Always
-        # present, including 0 — 0 means on the package TOT, not "take off together".
-        # SEAD Sweep defaults to −2. Same as the UI "TOT Offset" spinner.
-    )
-    in_flight_at: str | None = (
-        None  # computed startup/takeoff time (HH:MM:SS) — the UI "Departing At".
-        # Driven by tot_waypoint travel + tot_offset, NOT by tot_offset alone.
-    )
     tot_offset_min: float | None = (
         None  # this flight's time over target relative to the PACKAGE's, in minutes.
         # NEGATIVE = ahead of the package (what escorts and SEAD want: be there before
