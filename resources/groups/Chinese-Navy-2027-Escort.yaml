@@ -1,0 +1,25 @@
+# The PLAN's inshore escort group -- frigates only.
+#
+# `Chinese Navy 2027` is built on the Type 055 / Type 052D, whose HHQ-9 reaches
+# **250 km**. That is correct for a covering force standing off at 280 km+, but a group
+# of them anywhere in the Guam-Saipan corridor blankets Andersen: measured, five such
+# groups at 107-212 km put Guam inside a SAM envelope on turn 1.
+#
+# Groups that sit close to the occupied islands use this instead. Type 054A/054B carry
+# HHQ-16 (~45 km) -- enough to defend themselves and the lodgement, not enough to shut
+# down the airfield the player has to fly out of.
+name: Chinese Navy 2027 Escort
+tasks:
+  - Navy
+# The Destroyer slot MUST be filled here. A frigates-only preset leaves the Naval Group
+# layout's Destroyer x2 slot empty, `has_unit_for_layout_group` fills it from the faction
+# roster, and the roster's destroyers are the 250 km Type 055 / 052D -- so a "light"
+# escort group silently came back out at 250 km (measured). The Type 052B (30 km) is the
+# light destroyer that keeps the group inshore.
+# The Type 054B is NOT here: its HHQ-16 reaches 160 km, which from Rota (90 km off
+# Andersen) still covers Guam. It stays in `Chinese Navy 2027` for the stand-off groups.
+units:
+  - Type 054A Frigate
+  - Type 052B Destroyer
+layouts:
+  - Naval Group
