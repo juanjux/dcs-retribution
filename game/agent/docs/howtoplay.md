@@ -107,6 +107,9 @@ Common roles and what they're for:
   package can pass; **DEAD** — destroy specific SAM/EWR sites.
 - **STRIKE** — hit buildings/infrastructure (factories, depots, fuel, runways via OCA).
 - **OCA** — offensive counter-air: crater enemy runways or destroy parked aircraft.
+  (Cratering a runway needs HEAVY bombs — Mk-84 / GBU-31 class; 500-lb bombs won't do it, and
+  retarded/drag bombs scatter because the AI doesn't correct for wind drift. For a hardened or
+  bunkered aimpoint use a BLU-109 penetrator, not a standard blast bomb.)
 - **BAI / CAS** — hit enemy ground forces (interdiction behind the line / close
   support at the front). BAI is also what kills a **`kind:motorpool`** target — see
   "Motorpools: bomb the reserve before it reaches the front" below.
@@ -165,6 +168,16 @@ Sequence and combined arms matter:
      in the `FlightSpec` when you create the package.
 4. **Support**: add **AEW&C** and a **tanker** for range/awareness on deep or large
    operations.
+
+**Sequencing across packages — an early TOT never buys earlier arrival, and the launch base
+decides the order.** Plans build BACKWARD from the TOT, so a SEAD package lifting from 180 nm
+will not precede a strike from 40 nm no matter what TOT you set on either; asking for an
+impossible-early time just floors it at the earliest reachable minute (and can silently drop
+a push trigger into the past, so that flight never launches at all). Stagger from each
+package's FLOOR, not from zero: if the SEAD can make +29 and the strike +35, that gap is your
+6-minute lead — ask for +0 and +6 and you land BOTH at +29, the opposite of what you wanted.
+`evaluate_package` reports each package's transit before you commit; if you need the
+suppression to genuinely lead, base it CLOSE to the target.
 
 Let flight plans (routes/waypoints) build automatically — the engine routes around
 threats. Only hand-edit waypoints when you have a specific reason; hand-drawn routes
@@ -254,8 +267,9 @@ park you can bomb (`kind:motorpool` in `targets[]`, task **BAI**).
   its vehicles are repopulated from the *current* reserve at each mission generation. Judge
   it by whether the owner still has undeployed armor, not by the icon.
 - **Your own reserve is exposed the same way.** Armor you buy and leave sitting at a base
-  within blue's reach is a standing target — commit it to a front, or expect to pay for it
-  twice.
+  within blue's reach is a standing target — commit it to a front (`ground/transfer` moves it
+  one adjacent base per turn, so if the front is several hops back, start the relay early
+  rather than let a war-chest of iron sit in the rear), or expect to pay for it twice.
 
 ### Fighting the IADS, not just the launchers
 
@@ -289,6 +303,20 @@ power grid that was never authored.
   depending on it is already degraded. Spend the sortie elsewhere.
 - **Your own network works the same way**, so keep your power stations and comms towers
   defended: they are the cheapest way for blue to blind you too.
+
+### Close air support and the front-line sandwich
+
+- **Don't send CAS to a front whose area SAM is still alive.** A CAS jet gets caught in a
+  sandwich: it descends to acquire/lase and eats MANPADS (Stingers) down low, then climbs to
+  escape and enters the area-SAM ring up high — a band of death with no safe altitude. Kill
+  or suppress the SAM umbrella covering that front (DEAD) BEFORE you task CAS into it, exactly
+  as you would before a strike.
+- **If the front has MANPADS and its area SAM is still up, send helicopters instead.** A
+  stand-off ATGM (Hellfire-class, ~8 km) kills armor from outside every low-level cone. But
+  route the helos **over land, never across open water**: a nap-of-earth helicopter is nearly
+  invisible to radar (ground clutter / the Doppler notch masks it), while over open sea there
+  is no terrain to hide in and it is detected and engaged like any other contact. Route helos
+  over land as a general rule, not only near the enemy fleet (see Naval warfare).
 
 ### Naval warfare
 
@@ -373,6 +401,44 @@ reports `cruise_missiles_remaining` in `naval[]`.
 
 ## 5. How to plan a strong turn
 
+**The ten things that cost the most aircraft when forgotten.** Each is explained in full
+somewhere above; this is the list to re-read before you plan.
+
+1. **A TOT has a floor — stagger UP from each package's floor, not down from zero.** An
+   early TOT never makes a package arrive earlier, it just stops being the time you think.
+   The launch base decides the order: a SEAD lifting from 180 nm will never precede a CAS
+   from 40 nm. Use `packages/evaluate` to read the transit before committing.
+2. **Parked is dead.** Nothing on the ramp without a mission, nothing left in a rear-area
+   motorpool. Drive `idle_flyable` to 0 and empty `ground` toward the fronts.
+3. **Selling idle stock is routine income, not an emergency.** Your parked inventory is
+   budget.
+4. **A squadron stranded on a cratered runway is rescued by sell → relocate → rebuy**, not
+   by a direct `relocate`.
+5. **Suppress EVERY bubble covering the target, not just the one that hurt you** — and
+   saturate: four HARM do not beat a Patriot, eight do. You do not out-shoot a battery,
+   you exhaust it.
+6. **A `relocate` is a sortie like any other**: check its route against `threats` (naval
+   rings included) and the state of the destination's fronts. Arm the ferry with
+   `flights/loadout` AFTER the relocate.
+7. **An enemy ferry is a soft target, not a CAP** — intercept it and the aircraft it is
+   carrying die before they arrive.
+8. **Repairing cheap and often beats repairing expensive.** Comms/EWR/power nodes cost
+   5-20M and hold the network up; a big battery costs 250M and is flattened the same night.
+9. **Route helicopters over land, never over open water** — with no terrain to hide in,
+   the Doppler notch stops covering them.
+10. **Never send CAS to a front whose area SAM is still alive** — MANPADS below, SAM above,
+    a band of death in between.
+
+**Where each thing lives** (fields are easy to miss when you look for the wrong word):
+
+| What you want | Where it is |
+| --- | --- |
+| Enemy armor bought but not yet at the front | `control_points[].motorpool` (a *depot* by another name; kill with **BAI**, `kind:motorpool`) |
+| Iron sitting at one of your bases | `control_points[].ground` (move it with `ground/transfer`, one adjacent base per turn) |
+| Aircraft you can actually task | `air_wing[].flyable`/`untasked` — **`control_points[].air` is inventory**, already-tasked jets included |
+| Your movable ships | `turn_context.naval` (`naval/move`, ~80 nm a turn) |
+| Softer things to hit | `targets[]` also carries `kind: convoy` and `kind: cargo_ship` |
+
 0. **Reflect on last turn first.** Read `prev_turns`/the debrief and compare it to
    what you *intended* last turn (your saved notes + the package rationales you
    wrote). What worked, what didn't, why? **Route the lessons to the right memory:**
@@ -443,6 +509,14 @@ reports `cruise_missiles_remaining` in `naval[]`.
 9. **Spend to fix gaps.** Losing the air war? Buy fighters. Need to hold or push a
    front? Buy ground units and/or transfer them where needed. Bought aircraft arrive
    next turn, so invest ahead.
+
+   **Sell idle surplus — it is routine income, not a last resort.** Before you buy
+   anything, scan `air_wing` and **sell every aircraft that won't fly this turn or the
+   next** (`sell/aircraft` credits its value back to your budget). A wing of transports or
+   helicopters with nothing to carry is frozen budget — a dozen idle C-130s can be hundreds
+   of millions you could spend on fighters or repairs. Keep only the working minimum (a
+   couple of transports) and rebuy when a job appears. This is the money mirror of driving
+   `idle_flyable` to 0: an idle asset is force — or budget — thrown away.
 
    **Parking is the real ceiling, and it belongs to the BASE, not the squadron.**
    `parking_free`/`parking_total` on a control point are shared by every squadron
@@ -703,7 +777,10 @@ means none/empty** (stated once so the per-turn payloads stay small).
   stop at the twelve longest-ranged, which on a dense map hid dozens of live batteries
   and cut a tie in half. Anything with a live radar and launchers is here; a site that is
   absent is one with no reach left. `targets` carries the same sites with their full
-  composition and damage state if you need to judge one in detail.
+  composition and damage state if you need to judge one in detail. **Damage SHRINKS
+  `threat_nm`** — it is the reach the site has NOW, not its catalogue range — so judge a
+  DEAD by the number, never by the system's name: a battered SA-10 down to 4 nm is not
+  worth a sortie, while an intact Hawk at 24 nm with six live launchers is.
 - `naval[]` — **YOUR own movable naval groups** (not the enemy ships in `targets`) —
   combatant ship groups AND carriers/LHAs — {`id`, `name`, `kind` (ship/carrier), `pos`,
   `move_range_nm` (max reposition per turn, ~80 nm over water), `destination`? (a pending
@@ -865,7 +942,9 @@ Write bodies:
   `GET /aircraft/loadouts` or a custom `{pylon: clsid}` map. `POST /packages` already arms
   what it creates, so this is for flights the engine made for you — above all the ferry
   flights of a `squadron/relocate`, which launch **Empty**. Arm those before they cross
-  contested airspace: a ferry returns fire, but only with what it is carrying.
+  contested airspace: a ferry returns fire, but only with what it is carrying. **Re-arm AFTER
+  the relocate is final** — changing a squadron's destination rebuilds its ferry flights and
+  discards any loadout you had already applied.
 - `POST /packages/evaluate` `{side, package:{target_id, flights:[…]}}` → a DRY RUN:
   plans the package and returns its `package` (with `tot`), `tot_minutes_into_mission`,
   `mission_window_min` and `within_window` — WITHOUT committing it. Use it to check a
@@ -940,7 +1019,13 @@ Write bodies:
   win a fight it did not pick — escort it, or route the relocation clear of enemy CAP
   and SAM bubbles like any other sortie; (3) an ENEMY ferry is a soft target, not a
   hostile CAP — intercept it and the aircraft it is carrying are gone before they ever
-  reach their new base.
+  reach their new base. **When `relocate` is refused because the field is too cratered to
+  launch even a ferry** (a squadron stranded on a wrecked runway), use the player's extraction
+  trick: `sell/aircraft` ALL of its airframes first — the squadron survives empty, keeping its
+  pilots — then `relocate` the now-empty squadron and `buy/aircraft` at the destination next
+  turn. You also bank the sale value instead of losing the jets when the base is overrun, and
+  blue WILL come to OCA a trapped, grounded squadron over the several turns its runway takes to
+  repair.
 - `POST /ground/transfer` `{side, origin_cp_id, dest_cp_id, unit_name, quantity, by_air}`
   (move existing ground units between your bases; route pre-validated)
 - `POST /repair` `{side, id}` — pay to repair one of your damaged assets (an `id` from
