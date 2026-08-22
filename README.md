@@ -299,12 +299,9 @@ TIC script (MIT).
   player slots, real TOT, departure bases).
 - **Flight-creation context** — live explanatory text when picking task /
   aircraft / squadron, with informative squadron tooltips.
-- **Building-card cleanup** — drops the "Missing Recon Picture" placeholder for
-  tidier ground-object cards.
-- **Self-documenting plugin options** — per-plugin description text and cleaned
-  labels on the LUA plugins options page.
 - **CurrentHill Iran pack** — Shahed-136, IRGCN fast-attack craft and a
-  `[CH] Iran 2020` faction (upstream ships the UK CurrentHill pack, not Iran).
+  `[CH] Iran 2020` faction. Upstream now ships the Sweden, China, Russia, USA, UK
+  and Ukraine CurrentHill packs; Iran is the one it does not.
 - Selected crash fixes (flight-exit, AWACS/tanker orbit deconfliction, malformed
   mod payloads).
 - **Escorts can defend themselves before the JOIN point** — an escort was generated
