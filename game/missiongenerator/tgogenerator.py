@@ -483,6 +483,16 @@ class GroundObjectGenerator:
         # for a ship controller (DCS me_action_db offers ships only NoTask), and feeding
         # it to the naval AI crashed DCS (ACCESS_VIOLATION in AI::ControllerStack::start).
         # Upstream ships likewise engage on ROE/alarm alone.
+        #
+        # With the release stagger on, ships instead generate on ReturnFire and the
+        # navalmagazines plugin releases each group to weapons-free at its own moment
+        # inside a window: a modern anti-ship missile out-ranges the whole theatre, so
+        # "in range" is true at t=0 and an unstaggered fleet empties its tubes in the
+        # opening minute. ReturnFire and never WeaponHold -- the point is to delay who
+        # INITIATES, and a holding ship would be a defenceless one while it waits.
+        if getattr(self.game.settings, "naval_weapon_release_stagger", False):
+            group.points[0].tasks.append(OptROE(OptROE.Values.ReturnFire))
+            return
         group.points[0].tasks.append(OptROE(OptROE.Values.WeaponFree))
 
     def _register_theater_unit(
