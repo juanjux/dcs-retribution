@@ -729,6 +729,19 @@ class Settings:
         HQ_AUTOMATION_SECTION,
         default=False,
     )
+    weighted_ground_procurement: bool = boolean_option(
+        "AI buys its better ground units more often",
+        CAMPAIGN_MANAGEMENT_PAGE,
+        HQ_AUTOMATION_SECTION,
+        default=True,
+        detail=(
+            "The AI picks a ground unit uniformly at random from everything of the "
+            "right class it can afford, so a faction fielding both a modern MBT and a "
+            "gun truck buys as many of one as the other. With this enabled the roll is "
+            "weighted by price, which is the only capability measure the model has. It "
+            "is a weighting and not a maximum, so cheap units still appear."
+        ),
+    )
     automate_ground_object_repairs: bool = boolean_option(
         "Automate ground object repairs",
         CAMPAIGN_MANAGEMENT_PAGE,
