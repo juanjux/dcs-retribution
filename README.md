@@ -151,6 +151,7 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   the network becomes an attrition loop rather than a one-off: the SAMs behind a
   destroyed power station go dark, and the owner has to pay to bring them back. The AI
   ranks them alongside its ammo depots so it does not rebuild every oil derrick first.
+  ([#97](https://github.com/juanjux/dcs-retribution/pull/97))
 - **A destroyed IADS building now reads as destroyed, not as absent.** `skynet_nodes`
   dropped any node or connection whose units were all dead, and Skynet treats a missing
   dependency as satisfied — so bombing a power station switched its SAMs back on the
@@ -269,6 +270,12 @@ crediting the original 414Ret author (the recent additions land via attributed
 PRs on `juanjux-dev`, so any can be reverted cleanly). TIC vendors Grendel's
 TIC script (MIT).
 
+414Ret moves fast, so its feature list is re-reviewed periodically and only a
+part of it is taken: every feature carried here is one more thing to reconcile
+on each upstream sync, so the bar is "clearly worth the maintenance", not
+"interesting". The last review covered the 1087 commits between 2026-06-23 and
+2026-08-22.
+
 - **Troops In Contact (TIC)** — a dynamic frontline: ground forces actually fight
   along the FLOT (with ambient fire) instead of behaving as two static walls.
 - **Mission Impact debrief summary** — bases captured/lost, runway damage and a
@@ -315,6 +322,43 @@ TIC script (MIT).
 - **Player despawns aren't combat losses** — leaving an aircraft mid-mission no
   longer depletes your squadron in the debrief.
   ([#34](https://github.com/juanjux/dcs-retribution/pull/34), porting 414Ret #64)
+
+### Queued from the 2026-08 review
+
+Decided worth porting, not started yet. Each lands as its own attributed PR.
+
+- **Finite anti-ship magazines** — anti-ship missiles fired never come back, a
+  per-mission cap per group so a fleet fights a developing battle instead of
+  emptying every tube in the opening minute, and weapons-free released a group at
+  a time. A dry ship still defends itself. (Our cruise-missile magazines already
+  cover the land-attack half; this is the anti-ship half.)
+- **A front line that behaves like one** — five separate settings: bases only
+  rebuild strength if supply still reaches them (road or sea in full, air alone at
+  a quarter, cut off at nothing); winning on the offensive costs part of the ground
+  taken while winning dug in costs nothing; where the line sits accounts for the
+  armour actually there; bad going slows an advance so fronts stall at passes; and
+  the line bows into salients instead of running straight.
+- **Strikes timed behind their SEAD** — packages are scheduled independently
+  today, so nothing stops a strike entering a ring before the SEAD servicing it.
+- **Scheduled squadron arrivals** — campaigns can add new airframes on announced
+  turns, in air-campaign order (air superiority and SEAD first, deep strike once
+  the SAM belt is coming down).
+- **Sea shipments sail as convoys** — a shipment is spread across several hulls
+  and the hull is the loss unit, so sinking some denies only their share and the
+  survivors still deliver, instead of one ship carrying the whole transfer.
+- **Mixed-hull ship groups** — a group generates as a task group rather than N
+  copies of one hull, drawing from the lead's own class family and capped at three
+  types. Naval layouts only; the buy menu still gives exactly what was picked.
+- **Two guidance radars per SAM site** — one HARM on the single engagement radar
+  is a functional site kill today, which collapses SEAD into one shot per site.
+- **Dated mission archive** — every generated turn is also copied to
+  `Missions/Retribution Archive/` with the campaign, turn and timestamp in the
+  name, so `retribution_nextturn.miz` no longer silently overwrites the evidence
+  of the mission just flown. Self-pruning ring buffer.
+- **Second Island Chain** — the Marianas 2027 campaign: a PLA air-defence belt,
+  road-mobile PLARF launchers, three PLAN carrier groups, both fleets trading
+  cruise missiles from finite magazines, and no ground front (the islands aren't
+  connected, so they change hands by air assault and paradrop).
 
 ## Halted for Now
 
