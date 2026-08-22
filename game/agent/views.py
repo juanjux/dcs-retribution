@@ -296,6 +296,21 @@ class TurnForcesView(BaseModel):
     )
     blue_ground_lost: int | None = None
     red_ground_lost: int | None = None
+    #: What died, by airframe: {"Mi-24P": 8, "Su-25": 6}. A headline count does not
+    #: say whether a side lost its Hinds or its Frogfoots, and the two mean different
+    #: things for the next turn.
+    red_air_lost_by_type: dict[str, int] | None = None
+    blue_air_lost_by_type: dict[str, int] | None = None
+    #: What did the killing, by WEAPON alone: {"R-37M": 20}. Judge a loadout from this
+    #: rather than from *_air_killers below, which falls back from the shooter to the
+    #: weapon and so mixes airframes and missiles in one dict.
+    red_air_kills_by_weapon: dict[str, int] | None = None
+    blue_air_kills_by_weapon: dict[str, int] | None = None
+    #: Which airframe killed which: {"Su-57": {"F-16C_50": 9, "F15EX": 4}} reads "red's
+    #: Su-57s were shot down 9 times by F-16Cs and 4 by F-15EXs". One nesting deep, and
+    #: aggregated, so it grows with the number of TYPES in the fight, not with kills.
+    red_air_kills_by_victim: dict[str, dict[str, int]] | None = None
+    blue_air_kills_by_victim: dict[str, dict[str, int]] | None = None
     red_air_killers: dict[str, int] | None = None  # what killed red's aircraft
     blue_air_killers: dict[str, int] | None = None  # what killed blue's aircraft
     blue_air_combat: int | None = (
@@ -1046,6 +1061,12 @@ def build_prev_turns(game: Game, n: int = 3) -> list[TurnForcesView]:
                 red_air_crashed=loss.get("red_air_crashed") or None,
                 blue_ground_lost=loss.get("blue_ground_lost") or None,
                 red_ground_lost=loss.get("red_ground_lost") or None,
+                red_air_lost_by_type=loss.get("red_air_lost_by_type") or None,
+                blue_air_lost_by_type=loss.get("blue_air_lost_by_type") or None,
+                red_air_kills_by_weapon=loss.get("red_air_kills_by_weapon") or None,
+                blue_air_kills_by_weapon=loss.get("blue_air_kills_by_weapon") or None,
+                red_air_kills_by_victim=loss.get("red_air_kills_by_victim") or None,
+                blue_air_kills_by_victim=loss.get("blue_air_kills_by_victim") or None,
                 red_air_killers=loss.get("red_air_killers") or None,
                 blue_air_killers=loss.get("blue_air_killers") or None,
                 blue_air_combat=(

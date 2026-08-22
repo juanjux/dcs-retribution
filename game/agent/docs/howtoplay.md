@@ -661,7 +661,8 @@ guess endpoint names). Full prose is here in `/howtoplay`.
 `GET /prev_turns?n=` → `[{turn, blue_aircraft, blue_vehicles, red_aircraft,
 red_vehicles, blue_air_lost?, red_air_lost?, blue_air_crashed?, red_air_crashed?,
 blue_air_combat?, red_air_combat?, blue_ground_lost?, red_ground_lost?,
-blue_sites_lost?, red_sites_lost?, red_air_killers?, blue_air_killers?}]`.
+blue_sites_lost?, red_sites_lost?, red_air_killers?, blue_air_killers?,
+*_air_lost_by_type?, *_air_kills_by_weapon?, *_air_kills_by_victim?}]`.
 
 **Air losses (precomputed, no arithmetic needed).** `*_air_lost` is the total;
 `*_air_crashed` is the **non-combat subset** (crashes/collisions, no credited shooter);
@@ -670,6 +671,30 @@ directly); and `*_air_killers` (`{unit/weapon: count}`) breaks that combat count
 what killed them. If the `crashes_dont_count` setting (`/settings`) is ON, crashed
 aircraft do NOT deplete the squadron or kill the pilot, so weigh them lightly; if OFF, a
 crash costs the airframe and pilot like any loss.
+
+**Three breakdowns that let you judge an airframe and a loadout, not just a headline.**
+All three are aggregates keyed by TYPE, so they cost a few hundred tokens whatever
+happened in the mission:
+
+- `*_air_lost_by_type` (`{"Mi-24P": 8, "Su-25": 6}`) -- WHAT died. "Thirty aircraft
+  lost" does not tell you whether your gunships or your CAS went, and those two say
+  different things about what to fly next turn.
+- `*_air_kills_by_weapon` (`{"R-37M": 20}`) -- what did the KILLING, by weapon alone.
+  This is the one to judge a loadout by. Twenty kills all from the long-range missile
+  and none from the dogfight missile means the fight never got close, so more of the
+  short-range one buys nothing.
+- `*_air_kills_by_victim` (`{"Su-57": {"F-16C_50": 9, "F15EX": 4}}`) -- WHICH airframe
+  killed WHICH. Read that as "red's Su-57s were shot down nine times by F-16Cs and four
+  by F-15EXs". This is the matchup table: it tells you which of your types is losing to
+  which of theirs, which no total ever can.
+
+`*_air_killers` predates these three and is kept for compatibility, but it falls back
+from the shooter to the weapon and so mixes airframes and missiles in one dict. Prefer
+`*_air_kills_by_weapon` and `*_air_kills_by_victim`, which never mix the two.
+
+The per-event record -- every shot and hit with its time, ids and coalition -- is
+deliberately NOT here. It is a whole event log per turn, it costs far more than these
+aggregates, and nothing in it changes a plan that these do not already tell you.
 
 **Site/naval losses — the concrete result of the turn's strikes.** `*_sites_lost` is
 `{unit-type-id: count}` of the ground/naval **units destroyed that turn** — ships by hull
