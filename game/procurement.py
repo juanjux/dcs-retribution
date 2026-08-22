@@ -515,6 +515,12 @@ class ProcurementAi:
         affordable_units = [u for u in of_class if u.price <= budget]
         if not affordable_units:
             return None
+        if self.game.settings.weighted_ground_procurement:
+            # Price is the only capability proxy the model has, so weight the roll by
+            # it: the commander fields its modern armor more often than its gun trucks
+            # without ever being locked out of the cheap end.
+            weights = [max(u.price, 1) for u in affordable_units]
+            return random.choices(affordable_units, weights=weights, k=1)[0]
         return random.choice(affordable_units)
 
     def reinforce_front_line(self, budget: float) -> float:
