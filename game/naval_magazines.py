@@ -83,6 +83,30 @@ ASHM_MAGAZINE_BY_TYPE: dict[str, int] = {
     "CH_Type054B": 8,
     # Europe
     "La_Combattante_II": 4,  # Exocet
+    # --- mod hulls -------------------------------------------------------------
+    # Same curation as LACM_MAGAZINE_BY_TYPE in cruise_raids: hand-written from the
+    # real fit, balance numbers rather than TO&E. A hull that carries no anti-ship
+    # missile never fires one, so a row it does not need costs nothing.
+    # Spanish Navy Pack
+    "F100": 8,  # Alvaro de Bazan, 2x4 Harpoon canisters
+    "F105": 8,  # Cristobal Colon, same class
+    # CurrentHill USA
+    "CH_Arleigh_Burke_IIA": 8,
+    "CH_Arleigh_Burke_III": 8,
+    "CH_Ticonderoga": 8,
+    "CH_Ticonderoga_CMP": 8,
+    "CH_Constellation": 16,  # NSM
+    # CurrentHill Russia
+    "CH_Admiral_Gorshkov": 16,  # 2x8 UKSK, Oniks/Zircon
+    "CH_Gremyashchiy_AShM": 8,  # 1x8 UKSK
+    "CH_Grigorovich_AShM": 8,
+    "CH_Karakurt_AShM": 8,
+    "CH_Steregushchiy": 8,  # 2x4 Kh-35 Uran
+    # CurrentHill China
+    "CH_Type022": 8,  # Houbei, YJ-83
+    "CH_Type056A": 4,  # Jiangdao corvette
+    # CurrentHill UK
+    "CH_Type26": 8,  # NSM
 }
 DEFAULT_MAGAZINE_PER_SHIP = 8
 
