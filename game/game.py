@@ -194,6 +194,134 @@ class Game:
         # Regenerate any state that was not persisted.
         self.on_load()
 
+    def record_debrief(self, debriefing: Any) -> None:
+        """Capture a concise per-turn loss summary (counts + who-killed-what) for the
+        OPFOR-AI prev_turns after-action (best-effort; must never break the commit)."""
+        from collections import Counter
+        from game.theater.player import Player
+
+        if not hasattr(self, "debrief_history"):
+            self.debrief_history = []
+
+        def lost_by_type(player: Player) -> dict[str, int]:
+            """What died, by airframe. "30 aircraft" does not tell a planner whether it
+            lost its Hinds or its Frogfoots; this does, in about twenty keys."""
+            try:
+                return {
+                    unit_type.name: count
+                    for unit_type, count in debriefing.air_losses.by_type(
+                        player
+                    ).items()
+                }
+            except Exception:
+                return {}
+
+        def kills_by_weapon(losses: Any) -> dict[str, int]:
+            """What did the killing, by weapon. Deliberately the weapon alone, unlike
+            `killers` below, which falls back from the shooter to the weapon and so
+            mixes the two in one dict -- a loadout cannot be judged from a number that
+            might be an airframe."""
+            try:
+                index = getattr(debriefing, "kill_info_by_unit_id", {}) or {}
+                counts: Counter[str] = Counter()
+                for loss in losses:
+                    detail = index.get(id(loss))
+                    weapon = detail.get("weapon") if detail else None
+                    if weapon:
+                        counts[str(weapon)] += 1
+                return dict(counts)
+            except Exception:
+                return {}
+
+        def kills_by_victim(losses: Any) -> dict[str, dict[str, int]]:
+            """Which airframe killed which, one nesting deep: {victim: {killer: n}}.
+            Aggregated, so it grows with the number of TYPES in the fight rather than
+            with the number of kills."""
+            try:
+                index = getattr(debriefing, "kill_info_by_unit_id", {}) or {}
+                out: dict[str, Counter[str]] = {}
+                for loss in losses:
+                    detail = index.get(id(loss))
+                    killer = detail.get("initiator_type") if detail else None
+                    if not killer:
+                        continue
+                    victim = getattr(
+                        getattr(getattr(loss, "flight", None), "unit_type", None),
+                        "name",
+                        None,
+                    )
+                    if not victim:
+                        continue
+                    out.setdefault(str(victim), Counter())[str(killer)] += 1
+                return {victim: dict(c) for victim, c in out.items()}
+            except Exception:
+                return {}
+
+        def killers(losses: Any) -> dict[str, int]:
+            try:
+                index = getattr(debriefing, "kill_info_by_unit_id", {}) or {}
+                counts: Counter[str] = Counter()
+                for loss in losses:
+                    detail = index.get(id(loss))
+                    if detail:
+                        who = detail.get("initiator_type") or detail.get("weapon")
+                        if who:
+                            counts[str(who)] += 1
+                return dict(counts)
+            except Exception:
+                return {}
+
+        try:
+            summary = {
+                "turn": self.turn,
+                "blue_air_lost": len(debriefing.air_losses.player),
+                "red_air_lost": len(debriefing.air_losses.enemy),
+                "blue_air_crashed": sum(
+                    debriefing.is_non_combat_loss(u)
+                    for u in debriefing.air_losses.player
+                ),
+                "red_air_crashed": sum(
+                    debriefing.is_non_combat_loss(u)
+                    for u in debriefing.air_losses.enemy
+                ),
+                "blue_ground_lost": sum(
+                    debriefing.front_line_losses_by_type(Player.BLUE).values()
+                ),
+                "red_ground_lost": sum(
+                    debriefing.front_line_losses_by_type(Player.RED).values()
+                ),
+                "red_air_killers": killers(debriefing.air_losses.enemy),
+                "blue_air_killers": killers(debriefing.air_losses.player),
+                # The three that let a planner judge an airframe and a loadout rather
+                # than a headline number. All aggregates, so they scale with the number
+                # of types in the fight, not with the number of events.
+                "red_air_lost_by_type": lost_by_type(Player.RED),
+                "blue_air_lost_by_type": lost_by_type(Player.BLUE),
+                "red_air_kills_by_weapon": kills_by_weapon(debriefing.air_losses.enemy),
+                "blue_air_kills_by_weapon": kills_by_weapon(
+                    debriefing.air_losses.player
+                ),
+                "red_air_kills_by_victim": kills_by_victim(debriefing.air_losses.enemy),
+                "blue_air_kills_by_victim": kills_by_victim(
+                    debriefing.air_losses.player
+                ),
+                # Per-type site/naval unit losses this turn (ships by class, SAM
+                # launchers/radars, etc.) — the concrete result of each side's strikes:
+                # what actually died, not just "target damaged". e.g. {"Type_052C": 1}.
+                "blue_sites_lost": dict(
+                    debriefing.ground_object_losses_by_type(Player.BLUE)
+                ),
+                "red_sites_lost": dict(
+                    debriefing.ground_object_losses_by_type(Player.RED)
+                ),
+            }
+        except Exception:
+            logging.exception("OPFOR-AI: failed to record debrief summary")
+            return
+        self.debrief_history.append(summary)
+        if len(self.debrief_history) > 20:
+            self.debrief_history = self.debrief_history[-20:]
+
     @property
     def coalitions(self) -> Iterator[Coalition]:
         yield self.blue
