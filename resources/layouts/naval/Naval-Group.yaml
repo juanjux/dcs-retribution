@@ -2,17 +2,26 @@ name: Naval Group
 tasks:
   - Navy
 groups:
+  # Each slot keeps its own role in the task group; the hulls inside a slot are
+  # mixed when the faction fields more than one of the class. The fallbacks let
+  # a navy that is missing a class still put the layout to sea.
   - Naval Group:
     - name: Naval Group 0
       unit_count:
         - 2
       unit_classes:
         - Frigate
+      fallback_classes:
+        - Destroyer
+        - Boat
     - name: Naval Group 1
       unit_count:
         - 2
       unit_classes:
         - Destroyer
+      fallback_classes:
+        - Cruiser
+        - Frigate
     - name: Naval Group 2
       optional: true
       unit_count:
