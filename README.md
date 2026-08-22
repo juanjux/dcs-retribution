@@ -32,6 +32,14 @@ Each item links to the fork PR that implements it. The authoritative, up-to-date
 list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=is%3Apr).
 
 ### Map & UI
+- **Your payload library is backed up on startup.** DCS keeps your custom
+  loadouts as one `.lua` per airframe under `MissionEditor/UnitPayloads`, and
+  nothing else holds a copy — not the campaign save, not the generated `.miz`.
+  That folder is also the one people are told to delete when the Mission Editor
+  misbehaves, so Retribution now snapshots it before anything can write to it
+  and keeps the last ten under `Retribution/PayloadBackups`. Recovering is
+  copying a folder back.
+  ([#102](https://github.com/juanjux/dcs-retribution/pull/102))
 - **Mission dashboard** — an embedded in-progress panel (live clocks, weather,
   per-flight status and a kill feed, with accept / submit-manually / abort)
   that replaces the old modal "waiting for mission result" dialog.
