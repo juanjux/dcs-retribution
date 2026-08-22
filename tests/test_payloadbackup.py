@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import itertools
 import os
 from pathlib import Path
 
@@ -16,15 +17,21 @@ def _library(root: Path, **files: str) -> Path:
     return payloads
 
 
+_STAMP = itertools.count(1)
+
+
 def _touch(path: Path, text: str) -> None:
     """Rewrite a payload file so its fingerprint really changes.
 
     Size alone is not enough -- a same-length edit has to be caught too -- and the
-    filesystem's mtime granularity can be coarser than a test's runtime, so stamp it.
+    filesystem's mtime granularity is coarser than a test's runtime, so stamp it
+    explicitly. The stamp has to be MONOTONIC rather than "now + 1s": two writes
+    inside one clock tick would otherwise land on the same mtime, the fingerprint
+    would not change, and the snapshot under test would be skipped as a no-op.
     """
     path.write_text(text, encoding="utf-8")
     stat = path.stat()
-    os.utime(path, ns=(stat.st_atime_ns, stat.st_mtime_ns + 1_000_000_000))
+    os.utime(path, ns=(stat.st_atime_ns, next(_STAMP) * 1_000_000_000))
 
 
 def test_snapshots_the_whole_directory(tmp_path: Path) -> None:
@@ -96,9 +103,13 @@ def test_only_the_newest_snapshots_are_kept(tmp_path: Path) -> None:
         _touch(payloads / "FA-18C_hornet.lua", str(generation))
         backup_payloads(payloads, backups, keep=2)
 
-    kept = sorted(backups.iterdir())
-    assert len(kept) == 2
-    assert (kept[-1] / "FA-18C_hornet.lua").read_text(encoding="utf-8") == "4"
+    # By content, not by directory name: the module orders snapshots by the sequence
+    # they record, and two taken in the same microsecond do not sort by name.
+    kept = [
+        (path / "FA-18C_hornet.lua").read_text(encoding="utf-8")
+        for path in backups.iterdir()
+    ]
+    assert sorted(kept) == ["3", "4"]
 
 
 def test_rotation_never_evicts_a_newer_snapshot_for_an_older_one(
