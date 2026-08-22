@@ -434,17 +434,24 @@ def apply_weather(weather: Weather, vdata: dict[str, Any]) -> None:
 
 
 def player_base_names(theater: Any) -> list[str]:
-    """The player's airfields, when the theater is far enough along to know them.
+    """The player's airfields, to favour a station they will actually fly from.
 
-    The turn's weather is decided in ``Game.__init__``, which runs while a new campaign
-    is still being generated: the control points exist but have not been handed to a
-    coalition yet, and asking which are the player's raises. There is simply no "your
-    airfield" to favour at that moment, so fall back to picking a station by position.
+    Deliberately the STARTING coalition rather than the current owner. The turn's
+    weather is decided in ``Game.__init__``, which runs while a new campaign is still
+    being generated: the control points exist but have not been handed to a coalition
+    yet, so asking which are the player's raises there -- and a new campaign would then
+    have no airfield to prefer at all and fall back to picking a station by position.
+    Starting ownership is known from the moment the theater is loaded.
+
+    It is also the steadier input: the observing station should not move to another
+    airfield mid-campaign because a base changed hands.
     """
-    try:
-        return [cp.name for cp in theater.player_points()]
-    except RuntimeError:
-        return []
+    names = []
+    for control_point in getattr(theater, "controlpoints", []):
+        coalition = getattr(control_point, "starting_coalition", None)
+        if coalition is not None and coalition.is_blue:
+            names.append(control_point.name)
+    return names
 
 
 def fetch_observation(

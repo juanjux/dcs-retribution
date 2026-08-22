@@ -19,6 +19,7 @@ from dcs.weather import Weather
 from dcs.cloud_presets import CLOUD_PRESETS
 from dcs.weather import Weather as PydcsWeather
 
+from game.theater.player import Player
 from game.weather.atmosxliveweather import (
     LiveWeather,
     player_base_names,
@@ -326,16 +327,30 @@ def test_no_observation_leaves_the_turn_with_generated_weather(
     assert module.live_weather_for(object(), object()) is None
 
 
-def test_a_campaign_being_generated_has_no_player_airfields_yet(cli: Path) -> None:
+def _raises_not_initialized() -> list[Any]:
+    """What ControlPoint.captured does before the coalitions are wired."""
+    raise RuntimeError("ControlPoint not fully initialized: coalition not set")
+
+
+def test_a_campaign_being_generated_still_knows_its_player_airfields(cli: Path) -> None:
     """Regression: the turn's weather is decided inside Game.__init__, while a new
-    campaign's control points exist but have not been given a coalition. Asking which
-    are the player's raises there, and it used to take the whole campaign down."""
+    campaign's control points exist but have not been given a coalition yet. Asking
+    which are the player's raises there and used to take the whole campaign down, then
+    left a new campaign with no airfield to prefer. Starting ownership is known from
+    the moment the theater loads, so a new campaign gets the same station as turn 2."""
+    theater = SimpleNamespace(
+        controlpoints=[
+            SimpleNamespace(name="Incirlik", starting_coalition=Player.BLUE),
+            SimpleNamespace(name="Damascus", starting_coalition=Player.RED),
+        ],
+        player_points=_raises_not_initialized,
+    )
+    assert player_base_names(theater) == ["Incirlik"]
 
-    def not_yet() -> list[Any]:
-        raise RuntimeError("ControlPoint not fully initialized: coalition not set")
 
-    theater = SimpleNamespace(player_points=not_yet)
-    assert player_base_names(theater) == []
+def test_a_theater_without_control_points_prefers_nothing(cli: Path) -> None:
+    """Test doubles and half-built theaters must not break the weather."""
+    assert player_base_names(SimpleNamespace()) == []
     # and with nothing to prefer, a station is still chosen rather than nothing
     assert choose_station(cli, "Syria", []) is not None
 
