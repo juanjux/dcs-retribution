@@ -139,6 +139,13 @@ class Game:
         # the rest from their living hulls. Written solely at the turn boundary, so
         # regenerating a mission can never charge for the same salvo twice.
         self.cruise_missile_magazines: dict[str, int] = {}
+        # Each naval group's remaining ANTI-SHIP missile stock, keyed by the same
+        # stable group name. Seeded on first sight and debited only at the turn
+        # boundary from what the plugin reports fired, never at generation, so
+        # re-generating a mission cannot charge for the same salvo twice. A disjoint
+        # weapon set from the cruise-missile magazine above, so the two never
+        # double-charge the same shot. There is no rearm.
+        self.naval_magazines: dict[str, int] = {}
         self.ground_planners: dict[UUID, GroundPlanner] = {}
         self.informations: list[Information] = []
         self.message("Game Start", "-" * 40)
@@ -209,6 +216,8 @@ class Game:
             self.client_map_layers = None
         if not hasattr(self, "cruise_missile_magazines"):
             self.cruise_missile_magazines = {}
+        if not hasattr(self, "naval_magazines"):
+            self.naval_magazines = {}
         if not getattr(self, "opfor_ai_token", None):
             # Pre-feature save: mint a token now; it sticks once this save is written.
             self.opfor_ai_token = secrets.token_urlsafe()

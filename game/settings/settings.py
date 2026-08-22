@@ -1537,6 +1537,38 @@ class Settings:
         GAMEPLAY_SECTION,
         default=True,
     )
+    naval_weapon_release_stagger: bool = boolean_option(
+        "Stagger naval weapons release",
+        page=MISSION_GENERATOR_PAGE,
+        section=GAMEPLAY_SECTION,
+        default=False,
+        detail=(
+            "Warships start the mission on return-fire and are released to "
+            "weapons-free one group at a time across a window, instead of every hull "
+            "opening up at once. A modern anti-ship missile out-ranges the whole "
+            "theatre, so without this both fleets are in range from the moment the "
+            "mission loads and the entire naval battle happens in the first five "
+            "minutes. They still defend themselves while they wait -- this delays who "
+            "shoots first, it does not disarm anyone. Symmetric. Needs the naval "
+            "magazines LUA plugin enabled or it does nothing."
+        ),
+    )
+    naval_magazines: bool = boolean_option(
+        "Cross-turn naval magazines (anti-ship missiles do not rearm)",
+        page=MISSION_GENERATOR_PAGE,
+        section=GAMEPLAY_SECTION,
+        default=False,
+        detail=(
+            "Every warship group carries a finite campaign stock of anti-ship "
+            "missiles. A mission is a fresh spawn, so without this a fleet reloads for "
+            "free every turn and empties its tubes again and again; with it, what a "
+            "group fires this mission is gone for the rest of the war. A group that "
+            "runs dry drops back to return-fire -- winchester, not disarmed. "
+            "Land-attack cruise missiles are counted by their own setting, so nothing "
+            "is charged twice. Symmetric. Needs the naval magazines LUA plugin "
+            "enabled or it does nothing."
+        ),
+    )
     cruise_missile_strikes: bool = boolean_option(
         "Ship-launched cruise missile strikes",
         page=MISSION_GENERATOR_PAGE,
