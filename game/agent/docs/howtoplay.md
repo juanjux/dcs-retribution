@@ -273,6 +273,16 @@ park you can bomb (`kind:motorpool` in `targets[]`, task **BAI**).
 
 ### Fighting the IADS, not just the launchers
 
+**A site has TWO guidance radars, so one anti-radiation missile never kills it.** A SAM
+whose guidance radar dies cannot engage at all -- the launchers live but are blind --
+which used to make one HARM a whole-site kill. Every site now fields a second guidance
+radar, placed far enough from the first that one warhead cannot take both. So a DEAD
+package sized to "one HARM per site" achieves nothing: it blinds half a fire channel and
+the site keeps shooting. Bring enough shooters to service **both** radars, and read
+`composition` in `targets[]` afterwards -- a site with a radar still alive is a live
+site, whatever fraction of its launchers you killed.
+
+
 When the campaign runs an advanced IADS (`GET /iads` → `advanced:true`), the enemy air
 defenses are a NETWORK, not a set of independent sites. `targets[]` marks each site's
 part with `iads_role`, and `/iads` gives the links (`depends_on`). Use it — otherwise a
@@ -365,6 +375,12 @@ power grid that was never authored.
   still floats — a crippled ship inside the formation soaks the wave for the healthy ones,
   and "six hits" on one dying hull usually means the rest of your salvo was wasted. Spread
   aimpoints across the group and judge results by `composition`, not by hit counts.
+- **A ship group is a MIX of hull classes, not N copies of one ship.** A carrier screen
+  can hold destroyers, frigates and a cruiser together, so `composition` in `targets[]`
+  is the thing to read before committing: the group's air-defense reach is set by its
+  BEST hull, not by its average or its most numerous one. One cruiser in a screen of
+  frigates makes the whole group a long-range threat, and sinking the frigates does not
+  bring the ring in. Kill the class that owns the ring first.
 - **Helicopters give enemy ships a WIDE berth.** Edit assault/transport helo routes to stay
   well clear (>25 nm) of any enemy naval group — naval SAMs kill helos even at wave-top
   height, and a helo that pops up to designate is most vulnerable right then.

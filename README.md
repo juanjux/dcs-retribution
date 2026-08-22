@@ -348,6 +348,25 @@ and it is longer than this section.
   DCS patch. (porting 414Ret #826)
 - **The early F-14A flew unarmed** — its payload was bound to the wrong `unitType`,
   so DCS silently dropped every store. (porting 414Ret #889)
+- **Ship groups generate as task groups** — a group was N copies of one hull, so a
+  carrier screen was four identical destroyers whatever the navy actually fielded.
+  A slot now takes one type per position, drawn from the lead's own class family
+  and capped at three types, so a screen mixes destroyers, frigates and a cruiser
+  while a patrol boat never lands in a cruiser's slot. Naval layouts only; the buy
+  menu still gives exactly the hull that was picked.
+  ([#104](https://github.com/juanjux/dcs-retribution/pull/104), porting 414Ret #764)
+- **Every generated mission is archived** — each turn wrote to one fixed path, so
+  every Take off silently overwrote the mission just flown, and with it the evidence
+  for anything that went wrong in it. Each mission is additionally copied to
+  `Missions/Retribution Archive/<campaign>_turn<NN>_<timestamp>.miz`, self-pruning,
+  with the fixed output path unchanged.
+  ([#103](https://github.com/juanjux/dcs-retribution/pull/103), porting 414Ret #615)
+- **The AI buys its better ground units more often** — the ground buy rolled
+  uniformly over everything affordable of the right class, so a faction fielding a
+  modern MBT and a gun truck bought as many of one as the other. The roll is
+  weighted by price; a weighting, not a maximum, so the cheap end still appears.
+  ([#105](https://github.com/juanjux/dcs-retribution/pull/105), porting the
+  capability-weighted half of 414Ret #68)
 
 ### Queued from the 2026-08 review
 
@@ -366,19 +385,9 @@ Decided worth porting, not started yet. Each lands as its own attributed PR.
   the line bows into salients instead of running straight.
 - **Strikes timed behind their SEAD** — packages are scheduled independently
   today, so nothing stops a strike entering a ring before the SEAD servicing it.
-- **Scheduled squadron arrivals** — campaigns can add new airframes on announced
-  turns, in air-campaign order (air superiority and SEAD first, deep strike once
-  the SAM belt is coming down).
 - **Sea shipments sail as convoys** — a shipment is spread across several hulls
   and the hull is the loss unit, so sinking some denies only their share and the
   survivors still deliver, instead of one ship carrying the whole transfer.
-- **Mixed-hull ship groups** — a group generates as a task group rather than N
-  copies of one hull, drawing from the lead's own class family and capped at three
-  types. Naval layouts only; the buy menu still gives exactly what was picked.
-- **Dated mission archive** — every generated turn is also copied to
-  `Missions/Retribution Archive/` with the campaign, turn and timestamp in the
-  name, so `retribution_nextturn.miz` no longer silently overwrites the evidence
-  of the mission just flown. Self-pruning ring buffer.
 - **Second Island Chain** — the Marianas 2027 campaign: a PLA air-defence belt,
   road-mobile PLARF launchers, three PLAN carrier groups, both fleets trading
   cruise missiles from finite magazines, and no ground front (the islands aren't
