@@ -274,7 +274,9 @@ TIC script (MIT).
 part of it is taken: every feature carried here is one more thing to reconcile
 on each upstream sync, so the bar is "clearly worth the maintenance", not
 "interesting". The last review covered the 1087 commits between 2026-06-23 and
-2026-08-22.
+2026-08-22. Ports are cherry-picked with the original author preserved —
+`git log --author=bradyccox` is the authoritative list of what has been taken,
+and it is longer than this section.
 
 - **Troops In Contact (TIC)** — a dynamic frontline: ground forces actually fight
   along the FLOT (with ambient fire) instead of behaving as two static walls.
@@ -322,6 +324,30 @@ on each upstream sync, so the bar is "clearly worth the maintenance", not
 - **Player despawns aren't combat losses** — leaving an aircraft mid-mission no
   longer depletes your squadron in the debrief.
   ([#34](https://github.com/juanjux/dcs-retribution/pull/34), porting 414Ret #64)
+- **Two guidance radars per SAM site** — every layout fielded exactly one
+  engagement radar, so a single anti-radiation missile on it was a functional site
+  kill (launchers alive but blind) and SEAD collapsed into one shot per site. The
+  Track Radar slot doubles across the generic 2/4/6-launcher layouts, SA-2, SA-3,
+  SA-5, S-300, HQ-22, S-350, the mixed SA-2/SA-3 site, the reinforced SA-6, NASAMS-3
+  and Sky Sabre, with the second position 45-121 m from the first so one blast
+  cannot take both. The Patriot family already fielded two and is now test-locked.
+  (porting 414Ret #582)
+- **More SAM site layouts, tighter EWR radar pool** — dedicated battery layouts
+  instead of every site reusing the same handful of shapes.
+- **Bulk flight altitude** — "apply to all" for en-route waypoint altitude, and the
+  per-waypoint arrows step 1000 ft instead of 1 ft. (porting 414Ret #805)
+- **Era-gated cockpit options** — the payload editor stops offering a JHMCS on an
+  airframe and date that never had one. (porting 414Ret #843)
+- **Targeting-pod era data** — introduction years and the CLSIDs that were missing.
+  (porting 414Ret #871)
+- **Self-documenting plugin options** — per-plugin description text with cleaned-up
+  labels and units. (porting 414Ret #841)
+- **The OPFOR aggressiveness roll was inverted** — a cautious setting made red
+  bolder and vice versa. (porting 414Ret #789)
+- **Weapon CLSID repairs** — broken ids fixed and coverage brought up to the current
+  DCS patch. (porting 414Ret #826)
+- **The early F-14A flew unarmed** — its payload was bound to the wrong `unitType`,
+  so DCS silently dropped every store. (porting 414Ret #889)
 
 ### Queued from the 2026-08 review
 
@@ -349,8 +375,6 @@ Decided worth porting, not started yet. Each lands as its own attributed PR.
 - **Mixed-hull ship groups** — a group generates as a task group rather than N
   copies of one hull, drawing from the lead's own class family and capped at three
   types. Naval layouts only; the buy menu still gives exactly what was picked.
-- **Two guidance radars per SAM site** — one HARM on the single engagement radar
-  is a functional site kill today, which collapses SEAD into one shot per site.
 - **Dated mission archive** — every generated turn is also copied to
   `Missions/Retribution Archive/` with the campaign, turn and timestamp in the
   name, so `retribution_nextturn.miz` no longer silently overwrites the evidence
