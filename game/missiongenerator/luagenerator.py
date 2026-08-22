@@ -20,6 +20,7 @@ from game.theater import TheaterGroundObject
 from game.theater.iadsnetwork.iadsrole import IadsRole
 from game.utils import escape_string_for_lua
 from .cruisemissileluadata import populate_cruise_missiles_lua
+from .navalmagazineluadata import populate_naval_magazines_lua
 from .missiondata import MissionData
 
 if TYPE_CHECKING:
@@ -351,6 +352,13 @@ class LuaGenerator:
         # fires the auto raids plus the F10 call-for-fire and mirrors what it spent
         # back for the turn-boundary magazine debit.
         populate_cruise_missiles_lua(lua_data, self.game)
+        # Cross-turn anti-ship magazines: emits the naval-magazine block only when the
+        # feature is on and a live naval group exists. The plugin releases ships to
+        # weapons-free across a window and counts real anti-ship shots against the
+        # campaign stock, mirroring the expenditure back for the turn-boundary debit.
+        # Its weapon set is disjoint from the cruise-missile one above, so a shot is
+        # never charged to both magazines.
+        populate_naval_magazines_lua(lua_data, self.game, self.mission_data)
 
         trigger = TriggerStart(comment="Set DCS Retribution data")
         trigger.add_action(DoScript(String(lua_data.create_operations_lua())))
