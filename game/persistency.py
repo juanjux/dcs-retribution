@@ -407,6 +407,10 @@ def tile_cache_dir() -> Path:
     return _create_dir_if_needed(path)
 
 
+def payload_backups_dir() -> Path:
+    return _create_dir_if_needed(base_path() / "Retribution" / "PayloadBackups")
+
+
 def payloads_dir(backup: bool = False) -> Path:
     payloads = base_path() / "MissionEditor" / "UnitPayloads"
     if backup:
