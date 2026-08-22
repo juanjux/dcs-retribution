@@ -1,6 +1,0 @@
-name: AGM-88G AARGM-ER
-type: ARM
-year: 2024
-fallback: AGM-88C HARM
-clsids:
-  - "{PPC_AGM-88G}"   # AGM-88G AARGM-ER (SYNTAX / Pixel Pilot Club F/A-18C mod)

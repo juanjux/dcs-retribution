@@ -36,14 +36,13 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   per-flight status and a kill feed, with accept / submit-manually / abort)
   that replaces the old modal "waiting for mission result" dialog.
   ([#27](https://github.com/juanjux/dcs-retribution/pull/27))
-- **SAM ring tooltips + click-to-select** — hover a threat/detection ring to
-  see the site name and its emitters; **left-click** a ring to open the site,
-  **right-click** to start a package against it (so you can reach a site whose
-  icon is buried under another marker). Package route lines show flight/package
-  info on hover. (Route-line click-to-select made it upstream as #761.)
+- **SAM ring tooltips** — hover a threat/detection ring to see the site name and
+  its emitters; package route lines show flight/package info on hover. (The
+  click-to-select half of this made it upstream as #761.)
   ([#8](https://github.com/juanjux/dcs-retribution/pull/8))
-- **IADS network link colouring** by kind and state (comms / power), with an
-  easier tooltip hover margin.
+- **IADS network links coloured by STATE** — upstream already tints them by kind
+  (comms / power); this adds active vs inactive on top, plus an easier tooltip
+  hover margin.
   ([#10](https://github.com/juanjux/dcs-retribution/pull/10))
 - **Finances dialog** showing income, automated HQ spending and net per turn.
   ([#7](https://github.com/juanjux/dcs-retribution/pull/7))
@@ -174,24 +173,6 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   ([#31](https://github.com/juanjux/dcs-retribution/pull/31),
   [#32](https://github.com/juanjux/dcs-retribution/pull/32),
   [#33](https://github.com/juanjux/dcs-retribution/pull/33))
-- **F/A-18C AGM-88G AARGM-ER (by SYNTAX)** — optional-mod toggle in the New Game
-  wizard; when enabled, the F/A-18 family carries the AGM-88G AARGM-ER from the
-  [SYNTAX mod](https://files.digitalcombatsimulator.com/en/files/3350041/) in
-  place of the stock AGM-88C HARM in its SEAD loadouts. A second, mutually
-  exclusive "Realistic mode" toggle scopes it to the Super Hornets (F/A-18E/F,
-  EA-18G) only — without the legacy F/A-18C, which never carried the AARGM-ER.
-  ([#65](https://github.com/juanjux/dcs-retribution/pull/65))
-- **F/A-18C AGM-158C LRASM (by SYNTAX)** — optional-mod toggle; when enabled, the
-  F/A-18C's anti-ship loadout is labelled as the AGM-158C LRASM from the
-  [SYNTAX mod](https://files.digitalcombatsimulator.com/en/files/3349943/), which
-  replaces the stock Harpoon in place with a 370 km LRASM.
-  ([#66](https://github.com/juanjux/dcs-retribution/pull/66))
-- **F/A-18C AGM-158B JASSM-ER (by SYNTAX)** — optional-mod toggle; when enabled,
-  the JSOW-A (`{AGM-154A}`) is labelled as the AGM-158B JASSM-ER from the
-  [SYNTAX mod](https://files.digitalcombatsimulator.com/en/files/3349938/), which
-  replaces the stock JSOW-A in place with a 925 km stealthy cruise missile on
-  every carrier of that slot (F/A-18C, F-15E, F-16).
-  ([#67](https://github.com/juanjux/dcs-retribution/pull/67))
 - **High Digit SAMs updated to 1.4.0 → 2.1.0** — the New Game wizard still offered
   v1.4.0 while the mod had moved on in both directions. Adds the **SAMP/T battery**
   (Aster 30 — Block 1/1NT/2 launchers at 120/150/200 km, ARABEL fire control, Ground
@@ -199,7 +180,10 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   six 1970s-80s factions that fielded no MANPADS at all. Retires what the mod dropped.
   A unit type DCS cannot resolve is discarded in silence, so a stale preset costs you a
   site that never spawns while Retribution still counts it: a new test walks every
-  preset and fails on anything that does not exist.
+  preset and fails on anything that does not exist. The same change fixes **SA-10B/
+  S-300PS sites that never spawned and were immortal**: 2.1.0 dropped the S-300PS
+  family, DCS discards unit types it cannot resolve, and Retribution kept the empty
+  site alive with its threat ring up. They now use the stock S-300PS.
   ([#96](https://github.com/juanjux/dcs-retribution/pull/96))
 - **CurrentHill China pack synced to 1.1.6** — the New Game wizard label and unit
   data track the latest CH China Military Asset Pack. 1.1.4→1.1.6 added/removed no
@@ -214,22 +198,11 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   negative time. Seen on a DEAD package given TOT +5 min from a base 29 minutes away:
   four aircraft orbited instead of flying. The release is now clamped to mission start.
   ([#100](https://github.com/juanjux/dcs-retribution/pull/100))
-- **SA-10B/S-300PS sites never spawned and were immortal.** High Digit SAMs 2.1.0 no
-  longer ships the S-300PS family, DCS silently drops unit types it cannot resolve, and
-  Retribution kept the site alive and its threat ring up. Now the stock S-300PS.
-  ([#96](https://github.com/juanjux/dcs-retribution/pull/96))
 - **Spanish AAA sites were empty, and then wrong.** The faction listed the WWII 2 cm
   Flak 38, which needs the WWII Assets Pack; without it DCS discards every gun and the
-  site defends nothing. Spain fields no AAA and no SHORAD, so the Soviet ZU-23 and the
-  US Avenger went too — its point defence is the Stinger standing in for Mistral teams.
+  site defends nothing. It now fields the Flakpanzer Gepard, the gun Spain actually
+  bought from Germany, alongside its Roland, Avenger and Stinger short-range cover.
   ([#95](https://github.com/juanjux/dcs-retribution/pull/95))
-- **A refused purchase now says why.** "Cannot buy more X" was the same message
-  whether you were short of money, out of parking, or at the squadron's aircraft
-  cap — three problems with three different answers. It now names the one that
-  applied ("costs 20M, budget is 16.2M", "no free parking at Beirut-Rafic Hariri",
-  "squadron is at its cap of 24"). The LLM planner reads the same string over the
-  API, where an opaque refusal is worse still.
-  ([#87](https://github.com/juanjux/dcs-retribution/pull/87))
 - **Air-assault troops stood still instead of taking the base.** Capturing needs
   every enemy ground unit out of a 3 km radius, but CTLD walked unloaded troops to
   their waypoint and left them there, so one surviving vehicle a kilometre away
@@ -273,11 +246,11 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
 - Escorts of an AWACS/tanker hold on the protected flight's racetrack instead of a
   far-away point, so they actually protect it.
   ([#42](https://github.com/juanjux/dcs-retribution/pull/42))
-- **Anubis C-130 Hercules** — air-assault zig-zag ingress fix (C-130 and helos).
-  Its `suppress_ballute` weapon strip turned out to break the paradrop and was
-  superseded by [#81](https://github.com/juanjux/dcs-retribution/pull/81) plus the
-  mod-side patch.
-  ([#9](https://github.com/juanjux/dcs-retribution/pull/9))
+- **Air-assault ingress no longer zig-zags.** The join leg is anchored to the
+  package's ingress point rather than the initial point, so helicopters (and the
+  C-130) fly a straight run-in instead of doubling back five miles.
+  ([#9](https://github.com/juanjux/dcs-retribution/pull/9), upstream
+  [#804](https://github.com/dcs-retribution/dcs-retribution/pull/804))
 
 ## From the 414Ret fork
 
@@ -340,6 +313,17 @@ TIC script (MIT).
 Work that was built and soak-tested but **parked** — pulled out of `master` and
 `juanjux-dev` to keep them clean, with every branch preserved here so it can be
 revived later.
+
+### SYNTAX weapon mods (AARGM-ER, LRASM, JASSM-ER)
+
+Optional-mod toggles in the New Game wizard that swapped a stock weapon for a
+SYNTAX one: the AGM-88G AARGM-ER in place of the HARM in SEAD loadouts
+([#65](https://github.com/juanjux/dcs-retribution/pull/65)), the AGM-158C LRASM
+in place of the Harpoon ([#66](https://github.com/juanjux/dcs-retribution/pull/66)),
+and the AGM-158B JASSM-ER in place of the JSOW-A
+([#67](https://github.com/juanjux/dcs-retribution/pull/67)).
+**Parked because the mods are not reliable enough** to build campaign balance on.
+Removed from `master` and `juanjux-dev`; the branches are preserved.
 
 ### Electronic Warfare (EWAR "Jamming")
 
