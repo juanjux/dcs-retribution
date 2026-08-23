@@ -291,7 +291,7 @@ class AirWingTabs(QTabWidget):
             show_jtac=True,
             show_doctrine=True,
         )
-        qfu_ownfor.preset_groups_changed.connect(self.preset_group_updated_ownfor)
+        qfu_ownfor.faction_changed.connect(self.faction_updated_ownfor)
         self.addTab(
             qfu_ownfor,
             "Faction OWNFOR",
@@ -302,7 +302,7 @@ class AirWingTabs(QTabWidget):
             show_jtac=True,
             show_doctrine=True,
         )
-        qfu_opfor.preset_groups_changed.connect(self.preset_group_updated_opfor)
+        qfu_opfor.faction_changed.connect(self.faction_updated_opfor)
         self.addTab(
             qfu_opfor,
             "Faction OPFOR",
@@ -314,13 +314,22 @@ class AirWingTabs(QTabWidget):
         EventStream.put_nowait(events)
         self.game_model.ato_model.on_sim_update(events)
 
-    def preset_group_updated_ownfor(self, f: Faction) -> None:
-        self.preset_group_updated(f, player=Player.BLUE)
+    def faction_updated_ownfor(self, f: Faction) -> None:
+        self.faction_updated(f, player=Player.BLUE)
 
-    def preset_group_updated_opfor(self, f: Faction) -> None:
-        self.preset_group_updated(f, player=Player.RED)
+    def faction_updated_opfor(self, f: Faction) -> None:
+        self.faction_updated(f, player=Player.RED)
 
-    def preset_group_updated(self, f: Faction, player: Player) -> None:
+    def faction_updated(self, f: Faction, player: Player) -> None:
+        """Rebuild the coalition's forces from the faction as it now stands.
+
+        ArmedForces is built from the faction once, in Coalition.__init__, and each
+        ForceGroup freezes the unit list it could reach at that moment. So editing the
+        faction mid-campaign changed nothing that the buy menus could see: adding an
+        early-warning radar left the EWR site still offering the SAM search radars it
+        had fallen back to, and adding a second one after a rebuild never appeared at
+        all. Rebuilding here costs a moment on a dialog the player already stopped at.
+        """
         self.game_model.game.coalition_for(player).armed_forces = ArmedForces(f)
 
 
