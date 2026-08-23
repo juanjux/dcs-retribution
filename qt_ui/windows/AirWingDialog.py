@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Iterator, Optional
+from typing import Any, Iterator, Optional
 
 from PySide6.QtCore import QItemSelectionModel, QModelIndex, QSize
 from PySide6.QtWidgets import (
@@ -291,6 +291,7 @@ class AirWingTabs(QTabWidget):
             show_jtac=True,
             show_doctrine=True,
             editable=True,
+            in_use=lambda unit: self._in_use_by(unit, Player.BLUE),
         )
         qfu_ownfor.faction_changed.connect(self.faction_updated_ownfor)
         self.addTab(
@@ -303,6 +304,7 @@ class AirWingTabs(QTabWidget):
             show_jtac=True,
             show_doctrine=True,
             editable=True,
+            in_use=lambda unit: self._in_use_by(unit, Player.RED),
         )
         qfu_opfor.faction_changed.connect(self.faction_updated_opfor)
         self.addTab(
@@ -315,6 +317,32 @@ class AirWingTabs(QTabWidget):
         events = GameUpdateEvents().begin_new_turn()
         EventStream.put_nowait(events)
         self.game_model.ato_model.on_sim_update(events)
+
+    def _in_use_by(self, unit: Any, player: Player) -> Optional[str]:
+        """Why this side cannot give up ``unit`` yet, or None if it can.
+
+        Deliberately counts what is ON THE MAP rather than what the faction lists:
+        the point is to keep the campaign consistent, not the paperwork.
+        """
+        coalition = self.game_model.game.coalition_for(player)
+        squadrons = [
+            s for s in coalition.air_wing.iter_squadrons() if s.aircraft == unit
+        ]
+        if squadrons:
+            names = ", ".join(sorted(str(s.name) for s in squadrons)[:3])
+            more = " and others" if len(squadrons) > 3 else ""
+            return f"{len(squadrons)} squadron(s) fly it ({names}{more})"
+        deployed = 0
+        for cp in self.game_model.game.theater.controlpoints:
+            if cp.captured != player:
+                continue
+            for tgo in cp.ground_objects:
+                for theater_unit in getattr(tgo, "units", []):
+                    if getattr(theater_unit, "unit_type", None) == unit:
+                        deployed += 1
+        if deployed:
+            return f"{deployed} of them are deployed on the map"
+        return None
 
     def faction_updated_ownfor(self, f: Faction) -> None:
         self.faction_updated(f, player=Player.BLUE)

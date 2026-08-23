@@ -2,7 +2,7 @@
 
 ## Features/Improvements
 * **[FIX]** Faction edits from the Air Wing dialog now take effect in the running campaign.
-* **[FIX]** The faction editor's tick boxes never removed anything; entries have a remove button now, and both its lists are sorted by the name you read.
+* **[FIX]** The faction editor's tick boxes never removed anything; entries have a remove button now, which refuses a unit the campaign still has deployed, and its lists are sorted by the name you read.
 * **[Mission Generation]** New option "GPS jamming" (off by default): a JDAM, JSOW, JASSM or SLAM-ER released against a target inside an enemy jamming bubble flies its normal profile and lands off the aimpoint, further off the deeper in. Laser, TV and anti-radiation weapons are unaffected, and killing the jammer restores accuracy on the next weapon in the same mission. A jammer is an ordinary bombable ground unit -- any type whose data file carries a `gps_jamming` block, shipped on DCS's own GPS spoofer vehicles (adapted from the 414Ret fork).
 * **[OPFOR AI]**  now breaks air losses down by type: what died by airframe, what did the killing by weapon alone, and which airframe killed which. All aggregates keyed by type, so they cost the same few hundred tokens whatever happened in the mission.
 * **[Campaign]** New campaign "Marianas - Second Island Chain (2027)": a Taiwan crisis gone kinetic, with Guam cratered and Rota, Tinian and Saipan taken. A modern PLA air-defence belt, three PLAN carrier groups, and no ground front -- the islands are not connected, so they change hands by air assault and paradrop. Brings the China 2027 faction with it (adapted from the 414Ret fork).
