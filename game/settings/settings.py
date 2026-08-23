@@ -1537,6 +1537,52 @@ class Settings:
         GAMEPLAY_SECTION,
         default=True,
     )
+    gps_jamming: bool = boolean_option(
+        "GPS jamming (satellite-guided weapons go long)",
+        page=MISSION_GENERATOR_PAGE,
+        section=GAMEPLAY_SECTION,
+        default=False,
+        detail=(
+            "A JDAM, JSOW, JASSM or SLAM-ER released against a target inside an "
+            "enemy jamming bubble flies its normal profile and lands off the "
+            "aimpoint -- further off the deeper inside the bubble the target sits. "
+            "Laser, TV and anti-radiation weapons are unaffected, and killing the "
+            "jammer restores accuracy on the very next weapon, in the same mission. "
+            "A jammer is an ordinary bombable ground unit: any unit type whose data "
+            "file carries a `gps_jamming` block. Symmetric -- red eats its own "
+            "medicine wherever blue fields one. Needs the GPS jamming LUA plugin "
+            "enabled or it does nothing."
+        ),
+    )
+    gps_jamming_default_reach_nm: float = bounded_float_option(
+        "GPS jamming: default reach (nm)",
+        page=MISSION_GENERATOR_PAGE,
+        section=GAMEPLAY_SECTION,
+        default=30.0,
+        min=5.0,
+        max=150.0,
+        divisor=1,
+        detail=(
+            "Used by a jammer whose unit definition names no radius. This is the "
+            "size of the GPS-denied TARGET area, not a denied release area: a weapon "
+            "aimed at anything inside the bubble flies through it whatever range it "
+            "was released from, so standing off does not help a covered target."
+        ),
+    )
+    gps_jamming_miss_radius_m: float = bounded_float_option(
+        "GPS jamming: miss distance at full strength (m)",
+        page=MISSION_GENERATOR_PAGE,
+        section=GAMEPLAY_SECTION,
+        default=200.0,
+        min=25.0,
+        max=1000.0,
+        divisor=1,
+        detail=(
+            "How far off the aimpoint a degraded weapon lands when released over the "
+            "emitter. It scales down to zero at the bubble's edge, so a store "
+            "clipping the fringe is nudged and one released overhead is thrown clear."
+        ),
+    )
     naval_weapon_release_stagger: bool = boolean_option(
         "Stagger naval weapons release",
         page=MISSION_GENERATOR_PAGE,

@@ -271,6 +271,29 @@ park you can bomb (`kind:motorpool` in `targets[]`, task **BAI**).
   one adjacent base per turn, so if the front is several hops back, start the relay early
   rather than let a war-chest of iron sit in the rear), or expect to pay for it twice.
 
+### GPS jamming: where your satellite-guided weapons stop working
+
+Some campaigns field **GPS jammers** -- an ordinary ground unit, bombable like any
+other, that denies satellite guidance over an area around itself (typically ~15 nm).
+Inside that area a **JDAM, JSOW, JASSM or SLAM-ER lands off the aimpoint**, further off
+the deeper in the target sits. The weapon still flies its whole normal profile, so
+nothing warns you: the pass simply misses.
+
+What that means for planning:
+
+- **The bubble is a denied TARGET area, not a denied release area.** A weapon aimed at
+  something inside it flies through it whatever range you released from, so standing off
+  buys nothing. Moving the AIMPOINT out is the only thing that helps.
+- **Laser, TV, IR and anti-radiation weapons are unaffected.** Against a target inside a
+  bubble, task an airframe carrying those instead -- a laser-guided bomb or a Maverick
+  hits normally where a JDAM will not.
+- **Killing the jammer restores accuracy immediately**, on the very next weapon in the
+  same mission. So a strike package with a jammer inside its target area should service
+  the jammer first and then bomb, in that order, rather than accept the miss.
+- **It is symmetric.** Your own jammers do the same to blue's GPS weapons, so a jammer
+  sitting over what you most need to protect is worth more than one in open country.
+  They are bought and repaired like any ground unit.
+
 ### Fighting the IADS, not just the launchers
 
 **A site has TWO guidance radars, so one anti-radiation missile never kills it.** A SAM
