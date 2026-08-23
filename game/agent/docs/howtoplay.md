@@ -807,6 +807,11 @@ means none/empty** (stated once so the per-turn payloads stay small).
   still up — not just alive/dead, so you can tell a lightly-scratched SA-10 from a
   nearly-dead one and not over-commit a DEAD package),
   `damage`? (a damaged target — don't waste sorties finishing it)};
+  `rebuild`? ({`force_group`, `turns_remaining`} -- the site is UNDER CONSTRUCTION,
+  not destroyed: all its units are dead but on a countdown, and they come alive in
+  `turns_remaining` turns. Read it both ways: an enemy SAM two turns from coming back
+  is not a free corridor to route through, and one of your own sites under
+  construction is not somewhere to send a repair),
   **aim a package at the `id`**;
 - `threats[]` — **every** blue air-defense umbrella (radar SAMs + SAM-armed ships)
   **ranked by reach** (largest first), so you needn't sort them — {`id` (same id as the
