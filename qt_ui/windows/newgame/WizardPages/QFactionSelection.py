@@ -291,7 +291,8 @@ class QFactionUnits(QScrollArea):
     def _create_aircraft_combobox(
         self, cb: QComboBox, callback: Callable, predicate: Callable
     ):
-        for ac_dcs in sorted(AircraftType.each_dcs_type(), key=lambda x: x.id):
+        offered = []
+        for ac_dcs in AircraftType.each_dcs_type():
             for ac in AircraftType.for_dcs_type(ac_dcs):
                 if (
                     ac in self.faction.aircraft
@@ -299,7 +300,9 @@ class QFactionUnits(QScrollArea):
                     or ac in self.faction.tankers
                 ):
                     continue
-                predicate(ac)
+                offered.append(ac)
+        for ac in sorted(offered, key=lambda a: str(a.variant_id).lower()):
+            predicate(ac)
         hbox = self._format(cb, callback)
         return hbox
 
@@ -323,18 +326,21 @@ class QFactionUnits(QScrollArea):
         return hbox
 
     def _create_naval_combobox(self, cb: QComboBox, callback: Callable):
-        for ship_dcs in sorted(ShipUnitType.each_dcs_type(), key=lambda x: x.id):
+        offered = []
+        for ship_dcs in ShipUnitType.each_dcs_type():
             for ship in ShipUnitType.for_dcs_type(ship_dcs):
                 if ship in self.faction.naval_units:
                     continue
-                cb.addItem(ship.variant_id, ship)
+                offered.append(ship)
+        for ship in sorted(offered, key=lambda s: str(s.variant_id).lower()):
+            cb.addItem(ship.variant_id, ship)
         hbox = self._format(cb, callback)
         return hbox
 
     def _create_preset_group_combobox(self, cb: QComboBox, callback: Callable):
         ForceGroup._load_all()
         preset_group_names = {pg.name for pg in self.faction.preset_groups}
-        for preset_group in ForceGroup._by_name:
+        for preset_group in sorted(ForceGroup._by_name, key=str.lower):
             if preset_group in preset_group_names:
                 continue
             cb.addItem(preset_group, ForceGroup._by_name[preset_group])
