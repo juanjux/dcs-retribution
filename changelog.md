@@ -1,7 +1,8 @@
 ﻿# Retribution v1.6.3 (414th)
 
 ## Features/Improvements
-* **[FIX]** Editing a faction from the Air Wing dialog (Faction OWNFOR / OPFOR) now rebuilds that side's forces, so the change reaches the buy menus in the campaign you are playing. Only preset-group changes did before: adding a unit -- an early-warning radar, say -- left every site still offering whatever it had fallen back to at campaign start.
+* **[FIX]** Faction edits from the Air Wing dialog now take effect in the running campaign.
+* **[FIX]** The faction editor's tick boxes never removed anything; they are buttons now.
 * **[Mission Generation]** New option "GPS jamming" (off by default): a JDAM, JSOW, JASSM or SLAM-ER released against a target inside an enemy jamming bubble flies its normal profile and lands off the aimpoint, further off the deeper in. Laser, TV and anti-radiation weapons are unaffected, and killing the jammer restores accuracy on the next weapon in the same mission. A jammer is an ordinary bombable ground unit -- any type whose data file carries a `gps_jamming` block, shipped on DCS's own GPS spoofer vehicles (adapted from the 414Ret fork).
 * **[OPFOR AI]**  now breaks air losses down by type: what died by airframe, what did the killing by weapon alone, and which airframe killed which. All aggregates keyed by type, so they cost the same few hundred tokens whatever happened in the mission.
 * **[Campaign]** New campaign "Marianas - Second Island Chain (2027)": a Taiwan crisis gone kinetic, with Guam cratered and Rota, Tinian and Saipan taken. A modern PLA air-defence belt, three PLAN carrier groups, and no ground front -- the islands are not connected, so they change hands by air assault and paradrop. Brings the China 2027 faction with it (adapted from the 414Ret fork).
