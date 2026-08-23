@@ -1543,7 +1543,7 @@ class Settings:
         section=GAMEPLAY_SECTION,
         default=False,
         detail=(
-            "A JDAM, JSOW, JASSM or SLAM-ER released against a target inside an "
+            "A JDAM, JSOW or JASSM released against a target inside an "
             "enemy jamming bubble flies its normal profile and lands off the "
             "aimpoint -- further off the deeper inside the bubble the target sits. "
             "Laser, TV and anti-radiation weapons are unaffected, and killing the "
