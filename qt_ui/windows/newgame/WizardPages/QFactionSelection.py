@@ -49,6 +49,7 @@ class QFactionUnits(QScrollArea):
         parent=None,
         show_jtac: bool = False,
         show_doctrine: bool = False,
+        editable: bool = False,
     ):
         super().__init__()
         self.setWidgetResizable(True)
@@ -57,6 +58,11 @@ class QFactionUnits(QScrollArea):
         self.parent = parent
         self.faction = faction
         self.doctrine_combo: Optional[QComboBox] = None
+        # In the New Game wizard the tick boxes ARE the mechanism: unticking one drops
+        # the unit from the faction the campaign is built with, and non-destructively,
+        # since the faction here is the shared one loaded from disk. In a running
+        # campaign nothing reads them, so there the entry gets a remove button instead.
+        self.editable = editable
         self._create_checkboxes(show_jtac, show_doctrine)
         self.show_jtac = show_jtac
         self.show_doctrine = show_doctrine
@@ -69,16 +75,23 @@ class QFactionUnits(QScrollArea):
         combo_layout: Optional[QHBoxLayout] = None,
     ) -> int:
         counter += 1
-        for i, v in enumerate(sorted(units, key=lambda x: str(x)), counter):
+        for i, v in enumerate(sorted(units, key=lambda x: str(x).lower()), counter):
             # A checkbox promised a removal it never performed: unticking one and
             # closing the dialog left the entry in place, because the ticks are only
             # read by the New Game wizard's save path. A button removes it here and
             # now, and the entry reappears in the combo box above.
+            # Always built and registered: the wizard's save path reads every entry,
+            # and one left unshown reads as checked, i.e. kept.
             cb = QCheckBox(str(v))
             cb.setCheckState(Qt.CheckState.Checked)
             self.checkboxes[str(v)] = cb
+            if not self.editable:
+                grid.addWidget(cb, i, 1)
+                counter += 1
+                continue
             row = QHBoxLayout()
-            row.addWidget(cb)
+            row.addWidget(QLabel(str(v)))
+            row.addStretch()
             remove = QPushButton("✕")
             remove.setToolTip(f"Remove {v}")
             remove.setFixedWidth(28)
@@ -293,18 +306,19 @@ class QFactionUnits(QScrollArea):
     def _create_unit_combobox(
         self, cb: QComboBox, callback: Callable, units: Set[GroundUnitType], type: list
     ):
-        for dcs_unit in sorted(GroundUnitType.each_dcs_type(), key=lambda x: x.id):
+        # Sorted by the name the player reads, not by the internal DCS id: the two
+        # orders are unrelated, so the list looked shuffled.
+        offered = []
+        for dcs_unit in GroundUnitType.each_dcs_type():
             if dcs_unit not in self.faction.country.vehicles:
                 continue
             for unit in GroundUnitType.for_dcs_type(dcs_unit):
                 if unit in units:
                     continue
-                if "Frontline vehicles" in type:
-                    cb.addItem(unit.variant_id, unit)
-                elif unit.unit_class.value in type:
-                    cb.addItem(unit.variant_id, unit)
-                else:
-                    continue
+                if "Frontline vehicles" in type or unit.unit_class.value in type:
+                    offered.append(unit)
+        for unit in sorted(offered, key=lambda u: str(u.variant_id).lower()):
+            cb.addItem(unit.variant_id, unit)
         hbox = self._format(cb, callback)
         return hbox
 
