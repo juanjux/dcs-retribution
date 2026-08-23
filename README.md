@@ -200,6 +200,13 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   (branch [`juanjux/ch_china_1.1.6`](https://github.com/juanjux/dcs-retribution/tree/juanjux/ch_china_1.1.6))
 
 ### Fixes
+- **A faction edited mid-campaign now reaches the buy menus.** A coalition's forces
+  are built from its faction once, at campaign start, and each force group freezes
+  the units it could reach then. The Air Wing dialog lets you edit a running
+  campaign's faction, but only a preset-group change triggered a rebuild — adding a
+  unit changed nothing you could buy. Adding an early-warning radar left every EWR
+  site still offering the SAM search radars it had fallen back to.
+  ([#110](https://github.com/juanjux/dcs-retribution/pull/110))
 - **A package with an impossible TOT could hold for the whole mission** — flight plans
   are built backwards from the time on target, so a TOT the flights cannot physically
   reach puts the push time before the mission even starts. The hold point emitted that
@@ -361,6 +368,24 @@ and it is longer than this section.
   `Missions/Retribution Archive/<campaign>_turn<NN>_<timestamp>.miz`, self-pruning,
   with the fixed output path unchanged.
   ([#103](https://github.com/juanjux/dcs-retribution/pull/103), porting 414Ret #615)
+- **GPS jamming** — a JDAM, JSOW, JASSM or SLAM-ER released against a target
+  inside an enemy jamming bubble flies its normal profile and lands off the
+  aimpoint, further off the deeper in. Laser, TV and anti-radiation weapons are
+  unaffected, and killing the jammer restores accuracy on the next weapon in the
+  same mission. The jammer is an ordinary bombable ground unit — any type whose
+  data file carries a `gps_jamming` block — so it is bought and repaired like any
+  other, and it is not a SEAD target: a real GPS jammer is L-band, invisible to
+  RWR and un-homeable by a HARM. Off by default.
+  ([#109](https://github.com/juanjux/dcs-retribution/pull/109), porting 414Ret #778)
+- **Finite anti-ship magazines, and a staggered weapons release** — a fleet
+  reloaded for free every turn, so sinking hulls was the only thing that reduced
+  the volume. A warship group now carries a campaign stock of anti-ship missiles
+  that never rearms, and a group that runs dry drops to return-fire rather than
+  being disarmed. Optionally, ships spawn on return-fire and are released to
+  weapons-free one group at a time, because a modern anti-ship missile out-ranges
+  the theatre and an unstaggered fleet empties its tubes in the opening minute.
+  Both off by default.
+  ([#106](https://github.com/juanjux/dcs-retribution/pull/106), porting 414Ret #766)
 - **The AI buys its better ground units more often** — the ground buy rolled
   uniformly over everything affordable of the right class, so a faction fielding a
   modern MBT and a gun truck bought as many of one as the other. The roll is
