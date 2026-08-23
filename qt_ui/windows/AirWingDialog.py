@@ -290,6 +290,7 @@ class AirWingTabs(QTabWidget):
             self,
             show_jtac=True,
             show_doctrine=True,
+            editable=True,
         )
         qfu_ownfor.faction_changed.connect(self.faction_updated_ownfor)
         self.addTab(
@@ -301,6 +302,7 @@ class AirWingTabs(QTabWidget):
             self,
             show_jtac=True,
             show_doctrine=True,
+            editable=True,
         )
         qfu_opfor.faction_changed.connect(self.faction_updated_opfor)
         self.addTab(
