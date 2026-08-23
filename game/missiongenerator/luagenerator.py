@@ -20,6 +20,7 @@ from game.theater import TheaterGroundObject
 from game.theater.iadsnetwork.iadsrole import IadsRole
 from game.utils import escape_string_for_lua
 from .cruisemissileluadata import populate_cruise_missiles_lua
+from .gpsjammingluadata import populate_gps_jamming_lua
 from .navalmagazineluadata import populate_naval_magazines_lua
 from .missiondata import MissionData
 
@@ -359,6 +360,11 @@ class LuaGenerator:
         # Its weapon set is disjoint from the cruise-missile one above, so a shot is
         # never charged to both magazines.
         populate_naval_magazines_lua(lua_data, self.game, self.mission_data)
+        # GPS jamming: hands the plugin every live jammer's position, reach and miss
+        # radius, plus the curated satellite-guided weapon patterns. Emits nothing
+        # unless the setting is on and a live jammer exists, so an ordinary mission
+        # carries no gpsJamming node at all and the plugin no-ops.
+        populate_gps_jamming_lua(lua_data, self.game, self.mission_data)
 
         trigger = TriggerStart(comment="Set DCS Retribution data")
         trigger.add_action(DoScript(String(lua_data.create_operations_lua())))
