@@ -51,6 +51,11 @@ if TYPE_CHECKING:
 #: it only becomes a laser weapon when someone is lasing, which the runtime
 #: cannot see. ``KAB-500S``/``KAB-1500S`` are the GLONASS Russian equivalents, so
 #: red eats its own medicine wherever blue fields a jammer.
+#: The SLAM/SLAM-ER family is deliberately ABSENT. Its GPS/INS leg is only the
+#: midcourse: the imaging seeker can be brought up far outside a jammer's reach --
+#: bubbles are around 15 nm -- so by the time the weapon is over denied ground it is
+#: already looking at the target and no longer navigating by satellite. Degrading it
+#: would punish a weapon that, flown properly, does not depend on GPS where it counts.
 GPS_GUIDED_WEAPON_PATTERNS: tuple[str, ...] = (
     "GBU-31",  # JDAM, 2000 lb
     "GBU-32",  # JDAM, 1000 lb
@@ -61,9 +66,6 @@ GPS_GUIDED_WEAPON_PATTERNS: tuple[str, ...] = (
     "JSOW",
     "AGM-158",  # JASSM / JASSM-ER
     "JASSM",
-    "AGM-84H",  # SLAM-ER
-    "AGM-84K",
-    "SLAM",
     "CBU-103",  # WCMD -- inertial/GPS-corrected dispensers
     "CBU-105",
     "CBU-97_",  # the WCMD variant names; the plain CBU-97 is unguided

@@ -242,7 +242,7 @@ park you can bomb (`kind:motorpool` in `targets[]`, task **BAI**).
 
 Some campaigns field **GPS jammers** -- an ordinary ground unit, bombable like any
 other, that denies satellite guidance over an area around itself (typically ~15 nm).
-Inside that area a **JDAM, JSOW, JASSM or SLAM-ER lands off the aimpoint**, further off
+Inside that area a **JDAM, JSOW or JASSM lands off the aimpoint**, further off
 the deeper in the target sits. The weapon still flies its whole normal profile, so
 nothing warns you: the pass simply misses.
 
@@ -251,7 +251,7 @@ What that means for planning:
 - **The bubble is a denied TARGET area, not a denied release area.** A weapon aimed at
   something inside it flies through it whatever range you released from, so standing off
   buys nothing. Moving the AIMPOINT out is the only thing that helps.
-- **Laser, TV, IR and anti-radiation weapons are unaffected.** Against a target inside a
+- **Laser, TV, IR, anti-radiation weapons and the SLAM-ER are unaffected.** Against a target inside a
   bubble, task an airframe carrying those instead -- a laser-guided bomb or a Maverick
   hits normally where a JDAM will not.
 - **Killing the jammer restores accuracy immediately**, on the very next weapon in the
