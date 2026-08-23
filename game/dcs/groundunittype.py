@@ -51,6 +51,44 @@ class SkynetProperties:
 
 
 @dataclass(frozen=True)
+class GpsJammingProperties:
+    """How far this unit type denies GPS, from its ``gps_jamming`` yaml block.
+
+    The block's *presence* is what makes a ground unit a jammer; both fields are
+    optional tuning that falls back to the campaign setting::
+
+        gps_jamming:
+          radius_nm: 45
+          miss_radius_m: 250
+
+    Keeping the reach in the unit's own data file means adding a jammer is a data
+    edit -- register the vehicle, write its yaml, add the block. No id list in
+    Python needs touching, so a unit author never has to land alongside this
+    feature.
+    """
+
+    radius_nm: Optional[float] = None
+    miss_radius_m: Optional[float] = None
+
+    @classmethod
+    def from_data(cls, data: Any) -> Optional[GpsJammingProperties]:
+        """The block, or None when the unit declares none -- the common case. A
+        bare ``true`` is a jammer on the campaign defaults."""
+        if data is None or data is False:
+            return None
+        if data is True:
+            return cls()
+        if not isinstance(data, dict):
+            return None
+
+        def number(key: str) -> Optional[float]:
+            value = data.get(key)
+            return float(value) if isinstance(value, (int, float)) else None
+
+        return cls(radius_nm=number("radius_nm"), miss_radius_m=number("miss_radius_m"))
+
+
+@dataclass(frozen=True)
 class GroundUnitType(UnitType[Type[VehicleType]]):
     spawn_weight: int
     skynet_properties: SkynetProperties
@@ -58,6 +96,9 @@ class GroundUnitType(UnitType[Type[VehicleType]]):
     # Defines if we should place the ground unit with an inverted heading.
     # Some units like few Launchers have to be placed backwards to be able to fire.
     reversed_heading: bool = False
+
+    #: Set only on the handful of unit types that deny GPS. None everywhere else.
+    gps_jamming: Optional[GpsJammingProperties] = None
 
     _by_name: ClassVar[dict[str, GroundUnitType]] = {}
     _by_unit_type: ClassVar[dict[type[VehicleType], list[GroundUnitType]]] = (
@@ -172,4 +213,5 @@ class GroundUnitType(UnitType[Type[VehicleType]]):
                 data.get("skynet_properties", {})
             ),
             reversed_heading=data.get("reversed_heading", False),
+            gps_jamming=GpsJammingProperties.from_data(data.get("gps_jamming")),
         )
