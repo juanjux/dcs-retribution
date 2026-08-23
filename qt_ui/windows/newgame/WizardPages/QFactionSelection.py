@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
     QCheckBox,
     QLabel,
     QTextBrowser,
+    QMessageBox,
     QPushButton,
     QComboBox,
     QHBoxLayout,
@@ -50,6 +51,7 @@ class QFactionUnits(QScrollArea):
         show_jtac: bool = False,
         show_doctrine: bool = False,
         editable: bool = False,
+        in_use: Optional[Callable[[Any], Optional[str]]] = None,
     ):
         super().__init__()
         self.setWidgetResizable(True)
@@ -63,6 +65,10 @@ class QFactionUnits(QScrollArea):
         # since the faction here is the shared one loaded from disk. In a running
         # campaign nothing reads them, so there the entry gets a remove button instead.
         self.editable = editable
+        # Asked, before removing anything, whether the campaign is already using it.
+        # Returns a reason to refuse, or None to allow. The wizard passes nothing:
+        # there is no campaign yet, so nothing can be in use.
+        self.in_use = in_use
         self._create_checkboxes(show_jtac, show_doctrine)
         self.show_jtac = show_jtac
         self.show_doctrine = show_doctrine
@@ -372,7 +378,21 @@ class QFactionUnits(QScrollArea):
         self.faction_changed.emit(self.faction)
 
     def _on_remove_unit(self, unit: Any, units: Union[set, list]) -> None:
-        """Drop a unit from the faction and tell anyone who cares."""
+        """Drop a unit from the faction and tell anyone who cares.
+
+        Refused while the campaign is still using it: removing a unit the map already
+        has deployed leaves the game holding materiel its own faction no longer
+        admits, and nothing downstream expects that.
+        """
+        reason = self.in_use(unit) if self.in_use else None
+        if reason:
+            QMessageBox.information(
+                self,
+                "Still in use",
+                f"{unit} cannot be removed: {reason}. Remove or replace it in "
+                f"the campaign first.",
+            )
+            return
         if unit in units:
             units.remove(unit)
         for cached in ("accessible_units", "all_aircrafts"):

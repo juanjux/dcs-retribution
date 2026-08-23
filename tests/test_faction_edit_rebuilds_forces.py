@@ -98,6 +98,21 @@ def test_removing_a_unit_actually_removes_it() -> None:
     assert "faction_changed.emit" in body, "a removal must rebuild the forces too"
 
 
+def test_a_unit_in_use_is_refused() -> None:
+    """Removing a unit the map has deployed would leave the campaign holding materiel
+    its own faction no longer admits."""
+    import inspect
+
+    from qt_ui.windows.newgame.WizardPages import QFactionSelection
+
+    source = inspect.getsource(QFactionSelection.QFactionUnits)
+    start = source.index("def _on_remove_unit(")
+    body = source[start : source.index(chr(10) + "    def ", start + 1)]
+    guard = body.index("self.in_use(unit)")
+    assert guard < body.index("units.remove(unit)"), "check before removing"
+    assert "return" in body[guard : body.index("units.remove(unit)")]
+
+
 def test_the_dialog_rebuilds_on_that_signal() -> None:
     import inspect
 
