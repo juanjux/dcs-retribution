@@ -159,6 +159,13 @@ class PackageView(BaseModel):
     flights: list[FlightView]
 
 
+class RebuildView(BaseModel):
+    """A site that is being rebuilt: what it will become, and when."""
+
+    force_group: str  # what it is being rebuilt into
+    turns_remaining: int  # turns until its units come alive
+
+
 class TargetView(BaseModel):
     id: str
     name: str
@@ -174,6 +181,10 @@ class TargetView(BaseModel):
     group_id: str | None = (
         None  # ships: their naval-group control-point id (concentrate)
     )
+    #: Set only while the site is being rebuilt: what it will become and how many
+    #: turns until its units come alive. Without it a site under construction is
+    #: indistinguishable from a destroyed one -- the player sees the works on the map.
+    rebuild: RebuildView | None = None
     iads_role: str | None = (
         None  # what this site is to the enemy IADS, when it is part of one: PowerSource /
         # ConnectionNode / CommandCenter / Ewr / Sam / SamAsEwr. Tells a code-named
@@ -623,7 +634,36 @@ def _build_target(game: Game, tgo, kind: str, task: str) -> TargetView:
         composition=composition,
         damage=_damage_word(tgo),
         iads_role=_iads_role(tgo),
+        rebuild=_rebuild_state(tgo),
     )
+
+
+def _rebuild_state(tgo: object) -> RebuildView | None:
+    """Whether this site is under construction, and what it will be.
+
+    A rebuilt site spends the repair delay with all of its units dead but with a
+    countdown on them, which reads exactly like a destroyed site: no composition, and
+    for an enemy site, dropped from the target list entirely. The player sees the works
+    on the map, so a planner that cannot is being asked to plan against a different
+    board -- and it matters both ways round. An enemy SAM coming back in two turns is
+    not a free corridor, and your own rebuilt site is not somewhere to send a repair.
+    """
+    turns = None
+    for unit in getattr(tgo, "units", []):
+        if getattr(unit, "alive", True):
+            return None  # something is already up: this is damage, not construction
+        remaining = getattr(unit, "repair_turns_remaining", None)
+        if remaining is not None:
+            turns = remaining if turns is None else max(turns, remaining)
+    if turns is None:
+        return None
+    name = None
+    for group in getattr(tgo, "groups", []):
+        name = getattr(group, "name", None)
+        if name:
+            break
+    fallback = getattr(tgo, "name", "")
+    return RebuildView(force_group=str(name or fallback), turns_remaining=int(turns))
 
 
 def _iads_role(tgo) -> str | None:
