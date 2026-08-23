@@ -83,6 +83,21 @@ def test_every_faction_edit_announces_itself() -> None:
         assert "faction_changed.emit" in body, f"{handler} must announce the change"
 
 
+def test_removing_a_unit_actually_removes_it() -> None:
+    """The tick box promised a removal it never performed: it is only read by the New
+    Game wizard's save path, so unticking one in a running campaign did nothing."""
+    import inspect
+
+    from qt_ui.windows.newgame.WizardPages import QFactionSelection
+
+    source = inspect.getsource(QFactionSelection.QFactionUnits)
+    assert "_on_remove_unit" in source, "the list needs a real remove, not a tick box"
+    start = source.index("def _on_remove_unit(")
+    body = source[start : source.index(chr(10) + "    def ", start + 1)]
+    assert "units.remove(unit)" in body
+    assert "faction_changed.emit" in body, "a removal must rebuild the forces too"
+
+
 def test_the_dialog_rebuilds_on_that_signal() -> None:
     import inspect
 

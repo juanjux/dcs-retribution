@@ -2,7 +2,7 @@ from __future__ import unicode_literals
 
 import json
 from copy import deepcopy
-from typing import Union, Callable, Set, Optional, List
+from typing import Any, Union, Callable, Set, Optional, List
 
 from PySide6 import QtWidgets, QtGui
 from PySide6.QtCore import Qt, Signal
@@ -70,10 +70,23 @@ class QFactionUnits(QScrollArea):
     ) -> int:
         counter += 1
         for i, v in enumerate(sorted(units, key=lambda x: str(x)), counter):
+            # A checkbox promised a removal it never performed: unticking one and
+            # closing the dialog left the entry in place, because the ticks are only
+            # read by the New Game wizard's save path. A button removes it here and
+            # now, and the entry reappears in the combo box above.
             cb = QCheckBox(str(v))
             cb.setCheckState(Qt.CheckState.Checked)
             self.checkboxes[str(v)] = cb
-            grid.addWidget(cb, i, 1)
+            row = QHBoxLayout()
+            row.addWidget(cb)
+            remove = QPushButton("✕")
+            remove.setToolTip(f"Remove {v}")
+            remove.setFixedWidth(28)
+            remove.clicked.connect(
+                lambda _=False, unit=v, group=units: self._on_remove_unit(unit, group)
+            )
+            row.addWidget(remove)
+            grid.addLayout(row, i, 1)
             counter += 1
         if combo_layout:
             counter += 1
@@ -335,6 +348,15 @@ class QFactionUnits(QScrollArea):
         if self.faction.__dict__.get("accessible_units"):
             # invalidate the cached property
             del self.faction.__dict__["accessible_units"]
+        self.updateFaction(self.faction)
+        self.faction_changed.emit(self.faction)
+
+    def _on_remove_unit(self, unit: Any, units: Union[set, list]) -> None:
+        """Drop a unit from the faction and tell anyone who cares."""
+        if unit in units:
+            units.remove(unit)
+        for cached in ("accessible_units", "all_aircrafts"):
+            self.faction.__dict__.pop(cached, None)
         self.updateFaction(self.faction)
         self.faction_changed.emit(self.faction)
 
