@@ -518,6 +518,15 @@ somewhere above; this is the list to re-read before you plan.
    Scan `targets` for those before defaulting to the fleet.
 5. **Defend what matters.** BARCAP over vulnerable bases/fleets; sensible front-line
    stances; keep your own IADS alive.
+
+   **On a BARCAP racetrack, reverse START and END on every other flight.** The
+   generator gives every flight on a station the same RACETRACK START and END, and the
+   AI always flies to START first. So if START is the north pin, the whole stack goes
+   north together and the south end of the track sits empty for the opening minutes --
+   they only spread out once the first lap desynchronises them. Swapping START and END
+   on alternate flights uses the same two points in the opposite initial direction, so
+   half the CAP covers each end from the start. Do it **per flight, not per package**:
+   two four-ships on the same station with identical START still launch as one clump.
 6. **Build the packages** to achieve your objectives, properly composed (see §4).
    **Before you commit a strike, look at `threats` and think about its path.** A package
    routed into — or even transiting near — a live long-range SAM umbrella, **land or
