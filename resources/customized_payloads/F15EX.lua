@@ -51,7 +51,7 @@ local unitPayloads = {
 			["displayName"] = "Retribution Fighter sweep",
 			["pylons"] = {
 				[1] = {
-					["CLSID"] = "{F-15EX_MAKO_A2G_C}",
+					["CLSID"] = "{F15EX_2xAIM-260A}",
 					["num"] = 11,
 				},
 				[2] = {
@@ -87,7 +87,7 @@ local unitPayloads = {
 					["num"] = 3,
 				},
 				[10] = {
-					["CLSID"] = "{F-15EX_MAKO_A2G_C}",
+					["CLSID"] = "{F15EX_2xAIM-260A}",
 					["num"] = 1,
 				},
 				[11] = {
@@ -157,7 +157,7 @@ local unitPayloads = {
 			["displayName"] = "Retribution TARCAP",
 			["pylons"] = {
 				[1] = {
-					["CLSID"] = "{F-15EX_MAKO_A2G_C}",
+					["CLSID"] = "{F15EX_2xAIM-260A}",
 					["num"] = 11,
 				},
 				[2] = {
@@ -193,7 +193,7 @@ local unitPayloads = {
 					["num"] = 3,
 				},
 				[10] = {
-					["CLSID"] = "{F-15EX_MAKO_A2G_C}",
+					["CLSID"] = "{F15EX_2xAIM-260A}",
 					["num"] = 1,
 				},
 				[11] = {
@@ -210,7 +210,7 @@ local unitPayloads = {
 			["displayName"] = "Retribution Escort",
 			["pylons"] = {
 				[1] = {
-					["CLSID"] = "{F-15EX_MAKO_A2G_C}",
+					["CLSID"] = "{F15EX_2xAIM-260A}",
 					["num"] = 11,
 				},
 				[2] = {
@@ -246,7 +246,7 @@ local unitPayloads = {
 					["num"] = 3,
 				},
 				[10] = {
-					["CLSID"] = "{F-15EX_MAKO_A2G_C}",
+					["CLSID"] = "{F15EX_2xAIM-260A}",
 					["num"] = 1,
 				},
 				[11] = {
@@ -422,7 +422,7 @@ local unitPayloads = {
 			["displayName"] = "Retribution DEAD",
 			["pylons"] = {
 				[1] = {
-					["CLSID"] = "{F-15EX_MAKO_A2G_C}",
+					["CLSID"] = "{F15EX_2xAIM-260A}",
 					["num"] = 1,
 				},
 				[2] = {
@@ -462,7 +462,7 @@ local unitPayloads = {
 					["num"] = 10,
 				},
 				[11] = {
-					["CLSID"] = "{F-15EX_MAKO_A2G_C}",
+					["CLSID"] = "{F15EX_2xAIM-260A}",
 					["num"] = 11,
 				},
 			},
@@ -540,11 +540,11 @@ local unitPayloads = {
 					["num"] = 3,
 				},
 				[4] = {
-					["CLSID"] = "{MAKO_A2G_C}",
+					["CLSID"] = "{MiG-29MU2_ADM-160B}",
 					["num"] = 4,
 				},
 				[5] = {
-					["CLSID"] = "{MAKO_A2G_C}",
+					["CLSID"] = "{MiG-29MU2_ADM-160B}",
 					["num"] = 5,
 				},
 				[6] = {
@@ -552,11 +552,11 @@ local unitPayloads = {
 					["num"] = 6,
 				},
 				[7] = {
-					["CLSID"] = "{MAKO_A2G_C}",
+					["CLSID"] = "{MiG-29MU2_ADM-160B}",
 					["num"] = 7,
 				},
 				[8] = {
-					["CLSID"] = "{MAKO_A2G_C}",
+					["CLSID"] = "{MiG-29MU2_ADM-160B}",
 					["num"] = 8,
 				},
 				[9] = {
@@ -752,11 +752,11 @@ local unitPayloads = {
 					["num"] = 3,
 				},
 				[4] = {
-					["CLSID"] = "{MAKO_A2G_C}",
+					["CLSID"] = "{MiG-29MU2_ADM-160B}",
 					["num"] = 4,
 				},
 				[5] = {
-					["CLSID"] = "{MAKO_A2G_C}",
+					["CLSID"] = "{MiG-29MU2_ADM-160B}",
 					["num"] = 5,
 				},
 				[6] = {
@@ -764,11 +764,11 @@ local unitPayloads = {
 					["num"] = 6,
 				},
 				[7] = {
-					["CLSID"] = "{MAKO_A2G_C}",
+					["CLSID"] = "{MiG-29MU2_ADM-160B}",
 					["num"] = 7,
 				},
 				[8] = {
-					["CLSID"] = "{MAKO_A2G_C}",
+					["CLSID"] = "{MiG-29MU2_ADM-160B}",
 					["num"] = 8,
 				},
 				[9] = {
