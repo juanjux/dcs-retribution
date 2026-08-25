@@ -475,7 +475,7 @@ local unitPayloads = {
 			["displayName"] = "Retribution SEAD",
 			["pylons"] = {
 				[1] = {
-					["CLSID"] = "{AGM88G_F-15EX}",
+					["CLSID"] = "{F15EX_2xAIM-260A}",
 					["num"] = 1,
 				},
 				[2] = {
@@ -515,7 +515,7 @@ local unitPayloads = {
 					["num"] = 10,
 				},
 				[11] = {
-					["CLSID"] = "{AGM88G_F-15EX}",
+					["CLSID"] = "{F15EX_2xAIM-260A}",
 					["num"] = 11,
 				},
 			},
@@ -528,7 +528,7 @@ local unitPayloads = {
 			["displayName"] = "Retribution SEAD Escort",
 			["pylons"] = {
 				[1] = {
-					["CLSID"] = "{AGM88G_F-15EX}",
+					["CLSID"] = "{F15EX_2xAIM-260A}",
 					["num"] = 1,
 				},
 				[2] = {
@@ -568,7 +568,7 @@ local unitPayloads = {
 					["num"] = 10,
 				},
 				[11] = {
-					["CLSID"] = "{AGM88G_F-15EX}",
+					["CLSID"] = "{F15EX_2xAIM-260A}",
 					["num"] = 11,
 				},
 			},
@@ -634,11 +634,11 @@ local unitPayloads = {
 			["displayName"] = "Retribution BAI",
 			["pylons"] = {
 				[1] = {
-					["CLSID"] = "{AGM88G_F-15EX}",
+					["CLSID"] = "{F15EX_2xAIM-260A}",
 					["num"] = 11,
 				},
 				[2] = {
-					["CLSID"] = "{AGM88G_F-15EX}",
+					["CLSID"] = "{F15EX_2xAIM-260A}",
 					["num"] = 1,
 				},
 				[3] = {
@@ -687,11 +687,11 @@ local unitPayloads = {
 			["displayName"] = "Retribution CAS",
 			["pylons"] = {
 				[1] = {
-					["CLSID"] = "{AGM88G_F-15EX}",
+					["CLSID"] = "{F15EX_2xAIM-260A}",
 					["num"] = 11,
 				},
 				[2] = {
-					["CLSID"] = "{AGM88G_F-15EX}",
+					["CLSID"] = "{F15EX_2xAIM-260A}",
 					["num"] = 1,
 				},
 				[3] = {
@@ -740,7 +740,7 @@ local unitPayloads = {
 			["displayName"] = "Retribution SEAD Sweep",
 			["pylons"] = {
 				[1] = {
-					["CLSID"] = "{AGM88G_F-15EX}",
+					["CLSID"] = "{F15EX_2xAIM-260A}",
 					["num"] = 1,
 				},
 				[2] = {
@@ -780,7 +780,7 @@ local unitPayloads = {
 					["num"] = 10,
 				},
 				[11] = {
-					["CLSID"] = "{AGM88G_F-15EX}",
+					["CLSID"] = "{F15EX_2xAIM-260A}",
 					["num"] = 11,
 				},
 			},
