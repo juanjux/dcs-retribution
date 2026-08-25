@@ -38,6 +38,11 @@ from game.weather.weatherarchetype import WeatherArchetype, WeatherArchetypes
 from game.weather.wind import WindConditions
 
 CLI_NAME = "atmosx-cli.exe"
+
+#: How many stations to ask before giving up. Each attempt is a subprocess
+#: that talks to the network, so this trades a few seconds for not losing live
+#: weather to one quiet airfield.
+STATION_ATTEMPTS = 4
 ICAO_CSV = "dcs_icao.csv"
 
 # An ICAO location indicator: exactly four letters, never digits or dashes.
@@ -97,6 +102,17 @@ _TOKEN = re.compile(
     """,
     re.VERBOSE,
 )
+
+
+class LiveWeatherUnavailable(Exception):
+    """Why no observation could be had, phrased for the player rather than the log.
+
+    Every way the fetch can come back empty is ordinary -- a station that reports
+    nothing right now, no network, the CLI not installed -- so this is not an error to
+    propagate: ``live_weather_for`` swallows it and the turn keeps generated weather.
+    It exists so the one caller that asked for an observation *on purpose*, the
+    refresh button, can say what happened instead of sending the player to the log.
+    """
 
 
 class PresetParseError(RuntimeError):
@@ -254,15 +270,45 @@ def choose_station(
     ``positions`` maps airfield name to a point with ``x``/``y``, normally the terrain's
     airports. Without it the fallback is simply the first station listed.
     """
+    ranked = rank_stations(cli, theater_name, preferred_airfields, positions)
+    return ranked[0] if ranked else None
+
+
+def rank_stations(
+    cli: Path,
+    theater_name: str,
+    preferred_airfields: list[str],
+    positions: Optional[dict[str, Any]] = None,
+) -> list[Station]:
+    """Every station on this terrain, best first, so a caller can try the next one.
+
+    Being listed is not the same as reporting: ATMOS-X lists Senaki and Sukhumi on the
+    Caucasus, and neither answers with a METAR. A single choice therefore loses live
+    weather for a whole campaign whenever the best station happens to be a quiet one,
+    which is why this ranks rather than picks.
+    """
     stations = stations_for_theater(cli, theater_name)
     if not stations:
-        return None
+        return []
+
+    ranked: list[Station] = []
+    seen: set[str] = set()
+
+    def add(station: Station) -> None:
+        if station.icao not in seen:
+            seen.add(station.icao)
+            ranked.append(station)
+
+    # An airfield the player actually flies from, in the order they were given.
     by_name = {_fold(s.airfield): s for s in stations}
     for airfield in preferred_airfields:
         station = by_name.get(_fold(airfield))
         if station is not None:
-            return station
+            add(station)
 
+    # Then the rest by distance from the first player airfield whose position is known:
+    # on the same map, an observation a hundred kilometres away still describes the
+    # weather far better than no observation at all.
     if positions:
         folded_positions = {_fold(name): p for name, p in positions.items()}
         origin = next(
@@ -279,13 +325,17 @@ def choose_station(
                 for s in stations
                 if _fold(s.airfield) in folded_positions
             ]
-            if located:
-                return min(
-                    located,
-                    key=lambda pair: (pair[1].x - origin.x) ** 2
-                    + (pair[1].y - origin.y) ** 2,
-                )[0]
-    return stations[0]
+            for station, _ in sorted(
+                located,
+                key=lambda pair: (pair[1].x - origin.x) ** 2
+                + (pair[1].y - origin.y) ** 2,
+            ):
+                add(station)
+
+    # Anything left keeps its listed order, so there is always something to try.
+    for station in stations:
+        add(station)
+    return ranked
 
 
 # --- fetching and applying -------------------------------------------------------
@@ -306,20 +356,20 @@ def fetch_preset(cli: Path, icao: str, timeout: int = 60) -> Optional[dict[str, 
                 command, capture_output=True, text=True, timeout=timeout
             )
         except (OSError, subprocess.SubprocessError) as exc:
-            logging.warning("ATMOS-X live weather: %s failed: %s", CLI_NAME, exc)
-            return None
+            raise LiveWeatherUnavailable(f"{CLI_NAME} could not be run: {exc}") from exc
         if result.returncode != 0 or not out.is_file():
-            logging.warning(
-                "ATMOS-X live weather: no observation for %s (%s)",
-                icao,
-                (result.stdout or result.stderr or "").strip()[:200],
-            )
-            return None
+            # The CLI says why in plain words ("No METAR data available for UGKS."),
+            # and exits 0 while writing nothing when a station simply has no report,
+            # so the message matters more than the return code.
+            said = (result.stdout or result.stderr or "").strip().splitlines()
+            detail = said[-1] if said else "the CLI reported nothing"
+            raise LiveWeatherUnavailable(f"{icao}: {detail}")
         try:
             return parse_preset(out.read_text(encoding="utf-8", errors="replace"))
         except (OSError, PresetParseError) as exc:
-            logging.warning("ATMOS-X live weather: unreadable preset: %s", exc)
-            return None
+            raise LiveWeatherUnavailable(
+                f"{icao} answered with a preset that could not be read: {exc}"
+            ) from exc
 
 
 def _wind(data: Any) -> Optional[Wind]:
@@ -485,27 +535,48 @@ def fetch_observation(
         return None
 
     icao = (settings.atmosx_metar_station or "").strip().upper()
-    if not icao:
+    if icao:
+        # An explicit choice is honoured as given: silently reading a different
+        # airfield's sky would be worse than saying that one had nothing.
+        candidates = [icao]
+    else:
         bases = player_base_names(theater)
         positions = {}
         try:
             positions = {a.name: a.position for a in theater.terrain.airport_list()}
         except Exception:  # pragma: no cover - terrain data is not worth failing over
             pass
-        station = choose_station(cli, theater.terrain.name, bases, positions)
-        if station is None:
-            logging.warning(
-                "ATMOS-X live weather: no station known for %s; keeping the generated "
-                "weather.",
-                theater.terrain.name,
+        ranked = rank_stations(cli, theater.terrain.name, bases, positions)
+        if not ranked:
+            raise LiveWeatherUnavailable(
+                f"ATMOS-X lists no observing station on {theater.terrain.name}."
             )
-            return None
-        icao = station.icao
+        candidates = [station.icao for station in ranked[:STATION_ATTEMPTS]]
+        if len(ranked) > len(candidates):
+            logging.info(
+                "ATMOS-X live weather: will try %s; %d further station(s) left untried.",
+                ", ".join(candidates),
+                len(ranked) - len(candidates),
+            )
 
-    preset = fetch_preset(cli, icao)
-    if preset is None or "vdata" not in preset:
-        return None
-    return icao, preset["vdata"]
+    refused = []
+    for candidate in candidates:
+        try:
+            preset = fetch_preset(cli, candidate)
+        except LiveWeatherUnavailable as exc:
+            refused.append(str(exc))
+            continue
+        if preset is None or "vdata" not in preset:
+            refused.append(f"{candidate}: the preset carried no weather data")
+            continue
+        if candidate != candidates[0]:
+            logging.info(
+                "ATMOS-X live weather: %s had nothing, using %s instead.",
+                candidates[0],
+                candidate,
+            )
+        return candidate, preset["vdata"]
+    raise LiveWeatherUnavailable("; ".join(refused))
 
 
 # --- the observation as the game's own weather ------------------------------------
@@ -596,32 +667,52 @@ class LiveWeather(GameWeather):
         )
 
 
-def live_weather_for(theater: Any, settings: Any) -> Optional[LiveWeather]:
-    """This turn's weather, taken from the sky rather than from the dice."""
-    observation = fetch_observation(theater, settings)
-    if observation is None:
-        return None
-    station, vdata = observation
+def _weather_from(station: str, vdata: dict[str, Any]) -> LiveWeather:
     try:
-        weather = LiveWeather(station, vdata)
-    except (KeyError, TypeError, ValueError):
-        logging.exception("ATMOS-X live weather: unusable observation for %s", station)
+        return LiveWeather(station, vdata)
+    except (KeyError, TypeError, ValueError) as exc:
+        raise LiveWeatherUnavailable(
+            f"{station} answered with an observation the game could not use: {exc}"
+        ) from exc
+
+
+def live_weather_for(theater: Any, settings: Any) -> Optional[LiveWeather]:
+    """This turn's weather, taken from the sky rather than from the dice.
+
+    Never raises: a turn that cannot have a real sky gets a generated one.
+    """
+    try:
+        observation = fetch_observation(theater, settings)
+        if observation is None:
+            return None
+        weather = _weather_from(*observation)
+    except LiveWeatherUnavailable as exc:
+        logging.warning("ATMOS-X live weather: %s; keeping the generated weather.", exc)
         return None
-    logging.info("ATMOS-X live weather: %s applied (campaign clock kept)", station)
+    logging.info(
+        "ATMOS-X live weather: %s applied (campaign clock kept)", weather.station
+    )
     return weather
 
 
-def refresh_live_weather(game: Any) -> bool:
+def refresh_live_weather(game: Any) -> Optional[str]:
     """Replace this turn's weather with a newly fetched observation.
 
     For the player who planned at dawn and takes off at noon, or whose first attempt
-    found no network. Returns False and leaves the turn alone if nothing came back.
+    found no network. Returns None once the turn has the new weather, or why it does
+    not -- the player asked for this one, so they get told rather than sent to the log.
     """
-    weather = live_weather_for(game.theater, game.settings)
-    if weather is None:
-        return False
+    try:
+        observation = fetch_observation(game.theater, game.settings)
+        if observation is None:
+            return "Live weather is not enabled for this campaign."
+        weather = _weather_from(*observation)
+    except LiveWeatherUnavailable as exc:
+        logging.warning("ATMOS-X live weather: refresh failed: %s", exc)
+        return str(exc)
     game.conditions.weather = weather
-    return True
+    logging.info("ATMOS-X live weather: %s applied on refresh", weather.station)
+    return None
 
 
 def live_weather_enabled(settings: Any) -> bool:
