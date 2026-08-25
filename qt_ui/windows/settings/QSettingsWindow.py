@@ -42,9 +42,8 @@ from game.settings import (
     TextOption,
 )
 from game.settings.ISettingsContainer import SettingsContainer
-from game.settings.settings import CloudPresetPack
+from game.weather.cloudpresetpacks import apply_cloud_preset_pack
 from game.sim import GameUpdateEvents
-from pydcs_extensions import AtmosXClouds, BanditClouds, Weather2Clouds
 from qt_ui.widgets.QLabeledWidget import QLabeledWidget
 from qt_ui.widgets.spinsliders import FloatSpinSlider, TimeInputs
 from qt_ui.windows.GameUpdateSignal import GameUpdateSignal
@@ -402,22 +401,9 @@ class QSettingsWindow(QDialog):
         super().closeEvent(event)
 
     def _handle_mod_settings(self) -> None:
-        # Only one cloud-preset pack may be injected at a time — the packs reuse the
-        # same Preset keys for different clouds, so activate the chosen one and eject
-        # the others.
-        packs = {
-            CloudPresetPack.BANDIT: BanditClouds,
-            CloudPresetPack.WEATHER2: Weather2Clouds,
-            CloudPresetPack.ATMOSX: AtmosXClouds,
-        }
-        chosen = self.game.settings.cloud_preset_pack
-        # Eject every pack first, then inject the chosen one: the packs share Preset
-        # keys, so ejecting after injecting would undo the chosen pack's own presets.
-        for pack, mod in packs.items():
-            if pack is not chosen:
-                mod.deactivate()
-        if chosen in packs:
-            packs[chosen].activate()
+        # Applied again on every weather generation, so this is only about the choice
+        # taking effect the moment the dialog is closed rather than a turn later.
+        apply_cloud_preset_pack(self.game.settings)
 
 
 class QSettingsWidget(QtWidgets.QWizardPage, SettingsContainer):
