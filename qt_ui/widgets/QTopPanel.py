@@ -137,13 +137,19 @@ class QTopPanel(QFrame):
             refreshed = refresh_live_weather(game)
         finally:
             QApplication.restoreOverrideCursor()
-        if not refreshed:
-            QMessageBox.warning(
-                self,
-                "No observation",
-                "Could not fetch a METAR observation. The turn keeps the weather it "
-                "already had; the log says why.",
+        if refreshed is not None:
+            # The reason comes from the CLI itself ("No METAR data available for
+            # UGKS."), so show it: the player asked for this fetch and can act on it,
+            # by picking a station or waiting, without opening the log.
+            box = QMessageBox(self)
+            box.setIcon(QMessageBox.Icon.Warning)
+            box.setWindowTitle("No observation")
+            box.setText(
+                "Could not fetch a METAR observation, so the turn keeps the "
+                "weather it already had."
             )
+            box.setInformativeText(refreshed)
+            box.exec()
             return
         GameUpdateSignal.get_instance().updateGame(game)
 

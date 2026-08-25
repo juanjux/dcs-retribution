@@ -19,6 +19,7 @@ from dcs.weather import Weather
 from dcs.cloud_presets import CLOUD_PRESETS
 from dcs.weather import Weather as PydcsWeather
 
+from game.settings.settings import CloudPresetPack
 from game.weather.atmosxliveweather import (
     LiveWeather,
     player_base_names,
@@ -359,3 +360,68 @@ def test_dcs_pseudo_codes_are_not_offered_as_stations(tmp_path: Path) -> None:
     stations = stations_for_theater(exe, "Caucasus")
     assert [s.icao for s in stations] == ["URKA"]
     assert choose_station(exe, "Caucasus", []) == Station("URKA", "Anapa-Vityazevo")
+
+
+# --- a listed station is not always a reporting one -------------------------------
+
+
+def test_ranking_puts_a_player_airfield_first_but_keeps_the_rest(cli: Path) -> None:
+    from game.weather.atmosxliveweather import rank_stations
+
+    ranked = rank_stations(cli, "Syria", ["Rayak Air Base"])
+    assert [s.icao for s in ranked] == ["OLRA", "LCLK", "LTAF"]
+
+
+def test_a_station_with_no_report_falls_through_to_the_next(
+    monkeypatch: pytest.MonkeyPatch, cli: Path
+) -> None:
+    """ATMOS-X lists Senaki and Sukhumi on the Caucasus and neither answers with a
+    METAR, so stopping at the first choice loses live weather for a whole campaign."""
+    import game.weather.atmosxliveweather as module
+
+    asked = []
+
+    def only_olra_reports(_: Path, icao: str, timeout: int = 60) -> dict[str, Any]:
+        asked.append(icao)
+        if icao != "OLRA":
+            raise module.LiveWeatherUnavailable(
+                f"{icao}: No METAR data available for {icao}."
+            )
+        return {"vdata": {"clouds": {"preset": "none"}}}
+
+    monkeypatch.setattr(module, "fetch_preset", only_olra_reports)
+    monkeypatch.setattr(module, "detect_cli", lambda: cli)
+
+    settings = SimpleNamespace(
+        atmosx_live_weather=True,
+        cloud_preset_pack=CloudPresetPack.ATMOSX,
+        atmosx_cli_path="",
+        atmosx_metar_station="",
+    )
+    theater = SimpleNamespace(
+        player_points=list,
+        terrain=SimpleNamespace(name="Syria", airport_list=list),
+    )
+
+    observation = module.fetch_observation(theater, settings)
+    assert observation is not None
+    station, vdata = observation
+    assert station == "OLRA"
+    assert asked == ["LCLK", "LTAF", "OLRA"], "the quiet stations must be tried first"
+    assert vdata == {"clouds": {"preset": "none"}}
+
+
+def test_the_reason_reaches_the_caller_that_asked(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The refresh button is a deliberate request, so it gets told what happened
+    rather than a bare failure and a pointer at the log."""
+    import game.weather.atmosxliveweather as module
+
+    def nothing_anywhere(theater: Any, settings: Any) -> None:
+        raise module.LiveWeatherUnavailable("UGKS: No METAR data available for UGKS.")
+
+    monkeypatch.setattr(module, "fetch_observation", nothing_anywhere)
+    reason = module.refresh_live_weather(SimpleNamespace(theater=None, settings=None))
+    assert reason is not None
+    assert "No METAR data available for UGKS." in reason
