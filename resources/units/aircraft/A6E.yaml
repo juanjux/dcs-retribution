@@ -14,6 +14,9 @@ price: 10
 role: Carrier-based Attack
 variants:
   A-6E Intruder: {}
+# TRAM: internal FLIR turret with laser designator, fitted from 1979. The A-6A
+# has no equivalent, so the flag stays off there.
+has_built_in_target_pod: true
 tasks:
   Anti-ship: 140
   BAI: 650
