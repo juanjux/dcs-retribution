@@ -56,7 +56,7 @@ def poly_contains(x: float, y: float, poly: Union[MultiPolygon, Polygon]) -> boo
     # shapely.contains_xy skips constructing a Point object (and shapely's per-call
     # decorator / inspect.signature overhead) — ~5x faster than poly.contains(Point(x, y)).
     # is_on_land / is_in_sea call this thousands of times during FLOT + ground-object
-    # generation, where it was the top hotspot in a Take-Off (mission generation) profile.
+    # generation, where it was the top hotspot in a mission-generation profile.
     return bool(shp.contains_xy(poly, x, y))
 
 

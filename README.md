@@ -166,6 +166,19 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   still a transit that will not go hunting, but no longer defenceless.
   ([#99](https://github.com/juanjux/dcs-retribution/pull/99))
 
+### Campaigns
+- **Syria — Invasion of the Canary Islands 2030**, with the **Spain 2030** and
+  **Morocco 2030** factions. A rework of NoGoodNews' original: both sides fly what they
+  are expected to field by 2030 (Spain on Eurofighters plus one Hornet wing, Morocco on
+  F-16s, JF-17s and F-35s), each Spanish wing carries its own livery, and both navies are
+  built from real hulls with pinned compositions -- the Juan Carlos I as an LHA, Castilla
+  and Galicia as L-52 landing docks, and a Moroccan surface group south of the islands.
+  Air defences are roughly a third lighter than the original, mostly duplicates removed
+  from the same field, which shortens the DEAD grind and helps the frame rate. The IADS
+  is fully wired: every command centre, comms tower and power station feeds something
+  local, so striking the network actually degrades it, and every base on a front has a
+  motorpool holding its undeployed armour as a bombable target.
+  ([#98](https://github.com/juanjux/dcs-retribution/pull/98))
 ### LLM-controlled OPFOR (REST API + MCP)
 - **An external LLM can play the enemy commander.** A REST API and an MCP server
   expose a token-frugal turn context (forces, targets, threats, economy, naval,
@@ -182,6 +195,24 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   ([#31](https://github.com/juanjux/dcs-retribution/pull/31),
   [#32](https://github.com/juanjux/dcs-retribution/pull/32),
   [#33](https://github.com/juanjux/dcs-retribution/pull/33))
+- **F/A-18C AGM-88G AARGM-ER (by SYNTAX)** — optional-mod toggle in the New Game
+  wizard; when enabled, the F/A-18 family carries the AGM-88G AARGM-ER from the
+  [SYNTAX mod](https://files.digitalcombatsimulator.com/en/files/3350041/) in
+  place of the stock AGM-88C HARM in its SEAD loadouts. A second, mutually
+  exclusive "Realistic mode" toggle scopes it to the Super Hornets (F/A-18E/F,
+  EA-18G) only — without the legacy F/A-18C, which never carried the AARGM-ER.
+  ([#65](https://github.com/juanjux/dcs-retribution/pull/65))
+- **F/A-18C AGM-158C LRASM (by SYNTAX)** — optional-mod toggle; when enabled, the
+  F/A-18C's anti-ship loadout is labelled as the AGM-158C LRASM from the
+  [SYNTAX mod](https://files.digitalcombatsimulator.com/en/files/3349943/), which
+  replaces the stock Harpoon in place with a 370 km LRASM.
+  ([#66](https://github.com/juanjux/dcs-retribution/pull/66))
+- **F/A-18C AGM-158B JASSM-ER (by SYNTAX)** — optional-mod toggle; when enabled,
+  the JSOW-A (`{AGM-154A}`) is labelled as the AGM-158B JASSM-ER from the
+  [SYNTAX mod](https://files.digitalcombatsimulator.com/en/files/3349938/), which
+  replaces the stock JSOW-A in place with a 925 km stealthy cruise missile on
+  every carrier of that slot (F/A-18C, F-15E, F-16).
+  ([#67](https://github.com/juanjux/dcs-retribution/pull/67))
 - **High Digit SAMs updated to 1.4.0 → 2.1.0** — the New Game wizard still offered
   v1.4.0 while the mod had moved on in both directions. Adds the **SAMP/T battery**
   (Aster 30 — Block 1/1NT/2 launchers at 120/150/200 km, ARABEL fire control, Ground
@@ -189,6 +220,7 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   six 1970s-80s factions that fielded no MANPADS at all. Retires what the mod dropped.
   A unit type DCS cannot resolve is discarded in silence, so a stale preset costs you a
   site that never spawns while Retribution still counts it: a new test walks every
+  preset and fails on anything that does not exist.
   preset and fails on anything that does not exist. The same change fixes **SA-10B/
   S-300PS sites that never spawned and were immortal**: 2.1.0 dropped the S-300PS
   family, DCS discards unit types it cannot resolve, and Retribution kept the empty
@@ -200,6 +232,20 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   (branch [`juanjux/ch_china_1.1.6`](https://github.com/juanjux/dcs-retribution/tree/juanjux/ch_china_1.1.6))
 
 ### Fixes
+- **Take Off died with "Duplicate convoy unit", stranding the campaign** — the name
+  counter reset each turn onto a convoy still in transit. Same bug upstream.
+  ([#93](https://github.com/juanjux/dcs-retribution/pull/93))
+- **SA-10B/S-300PS sites never spawned and were immortal.** High Digit SAMs 2.1.0 no
+  longer ships the S-300PS family, DCS silently drops unit types it cannot resolve, and
+  Retribution kept the site alive and its threat ring up. Now the stock S-300PS.
+  ([#96](https://github.com/juanjux/dcs-retribution/pull/96))
+- **A refused purchase now says why.** "Cannot buy more X" was the same message
+  whether you were short of money, out of parking, or at the squadron's aircraft
+  cap — three problems with three different answers. It now names the one that
+  applied ("costs 20M, budget is 16.2M", "no free parking at Beirut-Rafic Hariri",
+  "squadron is at its cap of 24"). The LLM planner reads the same string over the
+  API, where an opaque refusal is worse still.
+  ([#87](https://github.com/juanjux/dcs-retribution/pull/87))
 - **A faction edited mid-campaign now reaches the buy menus.** A coalition's forces
   are built from its faction once, at campaign start, and each force group freezes
   the units it could reach then. The Air Wing dialog lets you edit a running

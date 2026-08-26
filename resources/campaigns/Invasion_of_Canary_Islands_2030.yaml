@@ -825,11 +825,6 @@ squadrons:
     name: Medium Transport Squadron 1
     size: 12
   7:
-  - primary: AEW&C
-    aircraft:
-    - E-3A
-    name: AEW Squadron 1
-    size: 1
   - primary: BARCAP
     secondary:
     - Escort
