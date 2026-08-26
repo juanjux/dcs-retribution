@@ -1,0 +1,8 @@
+name: AN/ALQ-167 Buccaneer ECM
+type: JAMMER
+# Evolved from the DLQ-3 around the ULQ-21 set in the late 70s; photographed in
+# service and under test by 1982, which is the earliest date that can be
+# documented rather than guessed.
+year: 1982
+clsids:
+  - "{F14-ALQ167-POD}"
