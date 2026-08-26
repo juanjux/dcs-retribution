@@ -104,3 +104,22 @@ def test_generating_conditions_applies_the_pack(monkeypatch: Any) -> None:
     assert seen, "the weather generator was never reached"
     assert seen[0] is not None
     assert seen[0] != bandit, "generation ran with the previously loaded pack"
+
+
+@pytest.mark.parametrize(
+    "ui_name, expected",
+    [
+        # Stock names end in a variant number...
+        ("Scattered 5", "Scattered"),
+        ("Light Rain 4", "Light Rain"),
+        # ...and the packs add their own tag after it, which used to be chopped in
+        # half: the kneeboard read "Low level stratus 3 [ATMOS-".
+        ("Low level stratus 3 [ATMOS-X]", "Low level stratus"),
+        ("Scattered Showers 1 [Bandit648]", "Scattered Showers"),
+        ("Cirrus", "Cirrus"),
+    ],
+)
+def test_the_kneeboard_names_the_cloud_type(ui_name: str, expected: str) -> None:
+    from game.missiongenerator.kneeboard import cloud_type_name
+
+    assert cloud_type_name(ui_name) == expected
