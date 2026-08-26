@@ -398,6 +398,15 @@ power grid that was never authored.
   other sites; and because it goes live instead of lying dark waiting for a cue, it is
   emitting — easier to find and a much better anti-radiation target. Un-networking a
   belt first and then rolling it up with DEAD is cheaper than DEAD alone.
+- **The network has eyes that are not ground radars, and this decides whether a SEAD
+  campaign has worked.** With the advanced IADS running, an **AWACS** joins the network
+  as an early-warning radar, and so does a **naval group** -- warships and carriers alike.
+  So flattening every ground EWR does **not** blind the enemy while an AWACS is airborne
+  or a fleet is within reach: the sites keep getting cued and stay dark until they shoot.
+  Before you call a belt blinded, ask what else is feeding it; then kill the AWACS, push
+  it back, or drive the fleet off. It works for you the same way -- your own AWACS or a
+  task group covers the gap where a bombed EWR used to be, which is the cheapest way to
+  keep a belt seeing after you have lost its radars.
 - **Do not re-strike a dead node.** `alive:false` means it is already down and everything
   depending on it is already degraded. Spend the sortie elsewhere.
 - **Your own network works the same way**, so keep your power stations and comms towers
