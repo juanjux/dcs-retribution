@@ -327,13 +327,21 @@ class Game:
                 # of types in the fight, not with the number of events.
                 "red_air_lost_by_type": lost_by_type(Player.RED),
                 "blue_air_lost_by_type": lost_by_type(Player.BLUE),
-                "red_air_kills_by_weapon": kills_by_weapon(debriefing.air_losses.enemy),
-                "blue_air_kills_by_weapon": kills_by_weapon(
+                # A side's KILLS come from the OTHER side's losses. air_losses.player is
+                # blue and .enemy is red, so red's kills are read off blue's losses --
+                # getting this backwards hands a planner the enemy's weapons when it asks
+                # which of its own are working.
+                "red_air_kills_by_weapon": kills_by_weapon(
                     debriefing.air_losses.player
                 ),
-                "red_air_kills_by_victim": kills_by_victim(debriefing.air_losses.enemy),
-                "blue_air_kills_by_victim": kills_by_victim(
+                "blue_air_kills_by_weapon": kills_by_weapon(
+                    debriefing.air_losses.enemy
+                ),
+                "red_air_kills_by_victim": kills_by_victim(
                     debriefing.air_losses.player
+                ),
+                "blue_air_kills_by_victim": kills_by_victim(
+                    debriefing.air_losses.enemy
                 ),
                 # Per-type site/naval unit losses this turn (ships by class, SAM
                 # launchers/radars, etc.) — the concrete result of each side's strikes:

@@ -70,14 +70,18 @@ def test_kills_by_weapon_never_falls_back_to_the_shooter(debriefing: Any) -> Non
     from a dict whose values might be airframes."""
     game = SimpleNamespace(turn=4, debrief_history=[])
     summary = _summary(game, debriefing)
-    assert summary["red_air_kills_by_weapon"] == {"AIM-120C": 1, "AIM-260": 1}
-    assert summary["blue_air_kills_by_weapon"] == {"R-37M": 1}
+    # A side's kills are read off the OTHER side's losses, so red's are red's own
+    # missiles. Reversed, a planner asking which of its weapons work is handed the
+    # enemy's -- which is what happened, and what a live OPFOR run reported.
+    assert summary["red_air_kills_by_weapon"] == {"R-37M": 1}
+    assert summary["blue_air_kills_by_weapon"] == {"AIM-120C": 1, "AIM-260": 1}
 
 
 def test_the_matchup_table_nests_victim_then_killer(debriefing: Any) -> None:
     game = SimpleNamespace(turn=4, debrief_history=[])
     summary = _summary(game, debriefing)
-    assert summary["red_air_kills_by_victim"] == {"Su-57": {"F-16C_50": 1, "F15EX": 1}}
+    # Red killed a blue F-16C with a MiG-31: victim first, then who killed it.
+    assert summary["red_air_kills_by_victim"] == {"F-16C_50": {"MiG-31": 1}}
 
 
 def test_a_loss_with_no_credited_shooter_is_left_out_of_the_matchup() -> None:
@@ -107,10 +111,10 @@ def test_the_dto_carries_all_three(debriefing: Any) -> None:
         red_aircraft=30,
         red_vehicles=40,
         red_air_lost_by_type={"Su-57": 2},
-        red_air_kills_by_weapon={"AIM-120C": 1},
-        red_air_kills_by_victim={"Su-57": {"F-16C_50": 1}},
+        red_air_kills_by_weapon={"R-37M": 1},
+        red_air_kills_by_victim={"F-16C_50": {"MiG-31": 1}},
     )
     dumped = view.model_dump(exclude_none=True)
     assert dumped["red_air_lost_by_type"] == {"Su-57": 2}
-    assert dumped["red_air_kills_by_weapon"] == {"AIM-120C": 1}
-    assert dumped["red_air_kills_by_victim"] == {"Su-57": {"F-16C_50": 1}}
+    assert dumped["red_air_kills_by_weapon"] == {"R-37M": 1}
+    assert dumped["red_air_kills_by_victim"] == {"F-16C_50": {"MiG-31": 1}}

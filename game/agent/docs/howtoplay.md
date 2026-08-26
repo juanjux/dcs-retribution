@@ -231,6 +231,18 @@ The DCS AI that actually flies these missions is limited. Plan robustly around i
     same move used for a jamming/EWAR escort.
   Read `GET /waypoints/{flight_id}` and reposition these with `/waypoints/edit` (move, never
   delete), exactly like the strike ingress above.
+
+  **Moving the INGRESS alone is not enough, and this is the single most repeated planning
+  miss.** After every DEAD/SEAD package, walk the whole list per flight:
+
+  1. `INGRESS_*` on every flight that shoots.
+  2. `ESCORT HOLD` (type `CUSTOM`) — the planner parks it a few miles off the target, so
+     the escort orbits inside the ring while the strikers stand off.
+  3. The escort's `TARGET_GROUP_LOC` — it points at the SAM itself.
+  4. `NAV/SEAD Sweep` on the sweep flight.
+
+  `JOIN` can stay where it is. If you moved the ingress to 90 nm and left HOLD at 7 nm,
+  you have not moved the package: you have split it.
 - **Don't mix short-legged flights into a stand-off bomber package.** The package
   synchronises on its shortest-ranged member: a short-range SEAD/strike flight in the same
   package drags the bombers to ITS attack distance — into the SAM ring, abort included.
@@ -243,6 +255,43 @@ The DCS AI that actually flies these missions is limited. Plan robustly around i
   (`/waypoints/edit` `alt_m`) on the shared leg rather than fanning them sideways (lateral
   spread desynchronises a saturation). For a true simultaneous multi-axis arrival give
   several small packages the SAME `tot_minutes`; stagger the TOTs when you want waves.
+- **It does not fire everything you hang on the jet.** The AI has favourites and leaves
+  the rest on the rail: an Su-25 sent to CAS will shoot its rockets and Vikhrs and bring
+  the cluster bombs and the laser Kh-25 home. So do not build a plan whose whole effect
+  depends on one weapon the AI may ignore — check what actually came off in
+  `prev_turns`, and if a loadout keeps coming back full, change the loadout.
+- **Head-on gun passes against an attack helicopter lose.** A Ka-50-class gunship out-guns
+  a fighter in that geometry and has killed Felons and Su-30s doing it. Kill helicopters
+  with radar missiles from an angle, never by merging at the same altitude.
+
+### BARCAP racetracks: check the geometry, always
+
+The planner picks the station; it does **not** guarantee the racetrack covers it. When the
+defended point is a FOB it often does not: pins have been generated 30-50 nm away, over
+empty theater or at the map edge, so a CAP "defending" a base never overflies it.
+
+Every BARCAP, after `POST /packages`, per **flight** (not per package):
+
+1. `GET /waypoints/{flight_id}` and look at both racetrack pins.
+2. **Does the track actually sit over what it defends?** If a pin is tens of miles off in
+   empty theater, drag it back. A racetrack that covers nothing is a wasted squadron.
+3. **Is it clear of enemy SAM umbrellas?** DCS AI does not respect a ring: if the track
+   starts inside one, or the AI chases a fleeing striker into one, you lose the flight.
+   Keep the track far enough out that it cannot drift in.
+4. **Does the leg from the runway to START cross the front line at low level?** The AI
+   flies that leg low and dies to SHORAD/MANPADS. Put START over your own ground.
+5. **Swap START and END on every other flight.** The whole stack is given the same first
+   pin, so for the first minutes everyone is at one end and the other is uncovered. Same
+   two points, opposite order, and half the stack covers each end.
+
+The exception to 5: if you want **numbers over one point** rather than coverage of both,
+do not alternate — put those flights in the **same package** so they arrive together.
+
+**AEW&C and tankers get the same treatment.** Their racetrack defaults to a quiet corner
+of the map, and a BARCAP parked over your airfields is not covering it. Drag the AWACS
+and the tanker onto the **same station as a BARCAP**, or the enemy will find them alone
+and unescorted — losing the AWACS costs you the whole picture, and losing the tanker
+shortens every flight that was counting on it.
 
 ### Motorpools: bomb the reserve before it reaches the front
 
@@ -290,6 +339,13 @@ What that means for planning:
 - **Killing the jammer restores accuracy immediately**, on the very next weapon in the
   same mission. So a strike package with a jammer inside its target area should service
   the jammer first and then bomb, in that order, rather than accept the miss.
+- **A jammer is a ground unit, not a SEAD target.** It does not radiate anything an
+  anti-radiation missile can home on, so do not frag a HARM at it — bomb it, strafe it,
+  or hit it with a TV/laser weapon like any other vehicle. And do not read its site's
+  `threat_nm` as a measure of it: a jammer site often reports **1**, which says it cannot
+  shoot back, not that it is harmless.
+- **Two jammers side by side do not double the area.** The bubbles overlap into one, and
+  only spreading them apart covers more ground.
 - **It is symmetric.** Your own jammers do the same to blue's GPS weapons, so a jammer
   sitting over what you most need to protect is worth more than one in open country.
   They are bought and repaired like any ground unit.
@@ -323,10 +379,20 @@ power grid that was never authored.
 - **A site needs BOTH power and comms to stay in the network.** Cut either one and it
   drops out. One strike on a power station can drop every node listing it in
   `depends_on` — check that list before spending a DEAD package on each launcher.
-- **But cutting the network does NOT switch the SAM off.** A site that loses power or
-  comms goes AUTONOMOUS, and in this campaign autonomous means it reverts to plain DCS
-  AI: it turns its own radar ON and keeps shooting at whatever it sees by itself. What
-  you have taken away is the network, not the missiles.
+  **Only what is in `depends_on` counts.** A site wired to nothing is treated as fully
+  powered and connected forever, so bombing a power station that site does not list
+  changes nothing at all.
+- **Power and comms do NOT do the same thing, and the difference decides your plan.**
+  - **Comms cut** (`ConnectionNode`): the site goes AUTONOMOUS and reverts to plain DCS
+    AI — radar **ON**, shooting at whatever it sees by itself. You took away the network,
+    not the missiles. It is now emitting, so it is a better ARM target; it is also dumb,
+    and a dumb Patriot empties its magazine into decoys.
+  - **Power cut** (`PowerSource`): the site goes **DARK** — radar off. Stronger than a
+    comms cut, and the only one of the two that actually silences a battery.
+  - An **EWR** left autonomous goes dark by default rather than staying up.
+  - **A SAM's own generator vehicle does not count.** Only static buildings are wired as
+    power sources, so a Patriot with its power truck intact still goes dark when the grid
+    station feeding it dies. Do not go hunting the generator; find the building.
 - **So what do you actually gain?** Three things: it can no longer be CUED by a distant
   EWR, so it only sees what its own radar sees; it no longer engages in concert with the
   other sites; and because it goes live instead of lying dark waiting for a cue, it is
@@ -336,6 +402,22 @@ power grid that was never authored.
   depending on it is already degraded. Spend the sortie elsewhere.
 - **Your own network works the same way**, so keep your power stations and comms towers
   defended: they are the cheapest way for blue to blind you too.
+
+### Decoys: make the battery shoot at nothing
+
+If your air wing has air-launched decoys — ADM-160/MALD, ADM-141/TALD and their
+equivalents — they are not chaff. They fly a route to an aimpoint you choose and fall on
+it, and a SAM battery cannot tell them from strikers: it engages them and spends real
+missiles. An autonomous site, cut off from its network and running on dumb DCS AI, is
+greedier still.
+
+Use them to **empty the magazines before the shooters arrive**: decoys and the real
+strike in the **same package**, decoys first. Once the battery is dry, the JSOW or the
+HARM flies in against a site that has nothing left to answer with. Aimed after the
+strike they are wasted.
+
+Check whether your faction actually has any before planning around them; not every one
+does.
 
 ### Close air support and the front-line sandwich
 
@@ -463,6 +545,10 @@ somewhere above; this is the list to re-read before you plan.
    carrying die before they arrive.
 8. **Repairing cheap and often beats repairing expensive.** Comms/EWR/power nodes cost
    5-20M and hold the network up; a big battery costs 250M and is flattened the same night.
+   A **cratered runway** is the case money cannot solve: every squadron at that base is
+   grounded until it is repaired, and the repair takes several turns whatever you spend.
+   Plan the turns you will spend without that base rather than trying to buy your way out
+   of them, and read `runway_repair_turns_remaining` to know how many are left.
 9. **Route helicopters over land, never over open water** — with no terrain to hide in,
    the Doppler notch stops covering them.
 10. **Never send CAS to a front whose area SAM is still alive** — MANPADS below, SAM above,
@@ -497,7 +583,9 @@ somewhere above; this is the list to re-read before you plan.
    aggressiveness` setting (in `/settings`) is a hint of how much RISK the player wants
    red to accept on a strike — read it and weigh it, but you decide. It is not a reason
    to leave aircraft on the ramp: a cautious setting means safer targets and better
-   escort, never `idle_flyable` above zero.
+   escort, never `idle_flyable` above zero. **This includes aircraft you were saving for
+   a later strike**: parked on a base the enemy can reach, they are an OCA target, and
+   they have been destroyed on the ground more than once. Fly them or move them.
 2. **Let the weather pick your weapons.** `situation.weather` is not decoration. A low
    `base_ft` means bombs guided from above the cloud deck will not see their target —
    plan GPS/INS weapons (JDAM, JSOW, KAB-500S) or go under the deck with Mavericks and
@@ -565,6 +653,10 @@ somewhere above; this is the list to re-read before you plan.
    of millions you could spend on fighters or repairs. Keep only the working minimum (a
    couple of transports) and rebuy when a job appears. This is the money mirror of driving
    `idle_flyable` to 0: an idle asset is force — or budget — thrown away.
+   **And a stockpile on a front-line ramp is worse than idle: it is a target.** Aircraft
+   held back "for a later strike" have been destroyed on the ground by one OCA package,
+   runway cratered on top. Either fly them this turn or **relocate** them to a base the
+   enemy cannot reach. Saving them is how you lose them.
 
    **Parking is the real ceiling, and it belongs to the BASE, not the squadron.**
    `parking_free`/`parking_total` on a control point are shared by every squadron
@@ -588,7 +680,17 @@ somewhere above; this is the list to re-read before you plan.
    0, where they are in place immediately) and costs the
    turn 0**. **Attrition is a victory path of its own:** hitting what the enemy is FORCED
    to keep repairing (their priciest SAM, their oil/factories) bleeds their budget until
-   the cascade starts — no runway repairs, no AWACS, gaps everywhere. Don't be the victim
+   the cascade starts — no runway repairs, no AWACS, gaps everywhere.
+   **Do the arithmetic, because the sticker price hides most of the damage.** A producer
+   is not worth its income for one turn, it is worth its income for every turn it stays
+   down, plus what they pay to raise it again: a building earning 10 a turn that takes 4
+   turns to rebuild costs them 40 in lost income and the rebuild bill on top — call it 50
+   for one strike on a target that looked like a rounding error. And it is not only about
+   producers. A Patriot battery runs to the high hundreds; make them replace dead units in
+   it every single turn and you drain them even though the site keeps firing. That is the
+   whole method: hit the one expensive thing again and again, and keep nibbling the cheap
+   producers while you do it. Neither alone wins; together they end the campaign.
+   Campaigns have been lost to exactly this while winning the air battle on kills. Don't be the victim
    either: stop re-buying an expensive SAM the enemy farms in a known kill box (leave it
    down, or lean on mobile/naval cover instead), protect your income buildings, and keep
    a budget cushion so you can always afford a runway repair.
@@ -941,10 +1043,17 @@ happened in the mission:
   This is the one to judge a loadout by. Twenty kills all from the long-range missile
   and none from the dogfight missile means the fight never got close, so more of the
   short-range one buys nothing.
-- `*_air_kills_by_victim` (`{"Su-57": {"F-16C_50": 9, "F15EX": 4}}`) -- WHICH airframe
-  killed WHICH. Read that as "red's Su-57s were shot down nine times by F-16Cs and four
-  by F-15EXs". This is the matchup table: it tells you which of your types is losing to
-  which of theirs, which no total ever can.
+- `*_air_kills_by_victim` (`{"F-16C_50": {"Su-57": 9, "MiG-31": 4}}`) -- WHICH of your
+  airframes killed WHICH of theirs. In `red_air_kills_by_victim`, read that as "blue's
+  F-16Cs were shot down nine times by Su-57s and four times by MiG-31s". This is the
+  matchup table: it tells you which of your types beats which of theirs, which no total
+  ever can. **Both `kills` maps belong to the side in the name**, the mirror of the
+  `lost` maps: `red_air_kills_*` is what red shot down, `red_air_lost_*` is what red
+  lost.
+
+  All of these are **counts by type, not a log of events**. They will not add up to what
+  a mission log shows, and a lower number here is not a missing kill -- an aggregate can
+  only credit what the engine attributed.
 
 `*_air_killers` predates these three and is kept for compatibility, but it falls back
 from the shooter to the weapon and so mixes airframes and missiles in one dict. Prefer
