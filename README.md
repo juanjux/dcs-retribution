@@ -232,11 +232,28 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   (branch [`juanjux/ch_china_1.1.6`](https://github.com/juanjux/dcs-retribution/tree/juanjux/ch_china_1.1.6))
 
 ### Fixes
+- **The A-6E dropped iron instead of its laser-guided bombs, always.** Its TRAM turret
+  is an internal designator, but nothing declared it, so the planner saw a loadout with
+  no targeting pod and swapped every GBU out — at every date, in every campaign. Strike
+  flew Mk 83 instead of GBU-16, OCA/Runway Mk 84 instead of GBU-10.
+  ([`5545351`](https://github.com/juanjux/dcs-retribution/commit/55453512e))
+- **The naval magazines plugin never loaded.** Plugin options were written into the
+  mission unquoted and lowercased, which is fine for `true`/`false` and numbers but not
+  for a string: the anti-ship weapon patterns contain `3M24`, and an unquoted `3M24` is a
+  malformed Lua number, so DCS threw a syntax error over the whole configuration block.
+  No staggered weapons release and no cross-turn magazine, in every mission.
+  ([`5b73214`](https://github.com/juanjux/dcs-retribution/commit/5b73214e7))
+- **Blufor Late Cold War (80s) had no beyond-visual-range fighter.** Its only Viper was
+  the Block 50, a 1991 jet that DCS gives no Sparrow on any pylon, so before the AMRAAM's
+  1994 it degraded to four AIM-9M. The faction now also fields the F-16A, which is
+  period-correct and does carry the AIM-7M. The Block 50 stays for the player to fly.
+  ([`a603bfd`](https://github.com/juanjux/dcs-retribution/commit/a603bfd86))
 - **The AH-1W had no anti-armour weapon in a 1983 campaign.** DCS models only the
   BGM-71D, whose IOC is 1985, so the Cobra degraded to rocket pods and the faction
   had nothing guided against armour — the AH-1 has carried TOW since 1973. Blufor
   Late Cold War (80s) now overrides the weapon's year, which the weapon file itself
   suggests as the stand-in for the variants DCS does not model.
+  ([`8ea3214`](https://github.com/juanjux/dcs-retribution/commit/8ea3214c7))
 - **Take Off died with "Duplicate convoy unit", stranding the campaign** — the name
   counter reset each turn onto a convoy still in transit. Same bug upstream.
   ([#93](https://github.com/juanjux/dcs-retribution/pull/93))
