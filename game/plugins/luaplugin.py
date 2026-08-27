@@ -175,14 +175,34 @@ class LuaPlugin(PluginSettings):
         for work_order in self.definition.work_orders:
             work_order.work(lua_generator)
 
+    @staticmethod
+    def _lua_literal(value: Any) -> str:
+        """Render a plugin option as Lua source.
+
+        Booleans and numbers go out bare; anything else is a string and has to be
+        quoted with its case intact. The previous blanket ``str(value).lower()``
+        broke both ways at once: an unquoted ``3M24`` in the naval magazines' weapon
+        patterns is a malformed Lua number, which killed the whole configuration
+        block and left that plugin unloaded -- and the lowercasing would have stopped
+        those patterns matching DCS's upper-case weapon type names even once quoted.
+        """
+        if isinstance(value, bool):
+            return "true" if value else "false"
+        if isinstance(value, (int, float)):
+            return str(value)
+        escaped = str(value).replace("\\", "\\\\").replace('"', '\\"')
+        return f'"{escaped}"'
+
     def inject_configuration(self, lua_generator: LuaGenerator) -> None:
         # inject the plugin options
         if self.options:
             option_decls = []
             for option in self.options:
-                value = str(option.get_value).lower()
                 name = option.identifier
-                option_decls.append(f"    dcsRetribution.plugins.{name} = {value}")
+                option_decls.append(
+                    f"    dcsRetribution.plugins.{name} = "
+                    f"{self._lua_literal(option.get_value)}"
+                )
 
             joined_options = "\n".join(option_decls)
 
