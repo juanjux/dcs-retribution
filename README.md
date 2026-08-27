@@ -458,26 +458,30 @@ and it is longer than this section.
   ([#105](https://github.com/juanjux/dcs-retribution/pull/105), porting the
   capability-weighted half of 414Ret #68)
 
-### Queued from the 2026-08 review
+## Queued
 
-Decided worth porting, not started yet. Each lands as its own attributed PR.
+Planned, not started. Enough detail here to pick each one up cold.
 
-- **Finite anti-ship magazines** — anti-ship missiles fired never come back, a
-  per-mission cap per group so a fleet fights a developing battle instead of
-  emptying every tube in the opening minute, and weapons-free released a group at
-  a time. A dry ship still defends itself. (Our cruise-missile magazines already
-  cover the land-attack half; this is the anti-ship half.)
-- **A front line that behaves like one** — five separate settings: bases only
-  rebuild strength if supply still reaches them (road or sea in full, air alone at
-  a quarter, cut off at nothing); winning on the offensive costs part of the ground
-  taken while winning dug in costs nothing; where the line sits accounts for the
-  armour actually there; bad going slows an advance so fronts stall at passes; and
-  the line bows into salients instead of running straight.
-- **Strikes timed behind their SEAD** — packages are scheduled independently
-  today, so nothing stops a strike entering a ring before the SEAD servicing it.
-- **Sea shipments sail as convoys** — a shipment is spread across several hulls
-  and the hull is the loss unit, so sinking some denies only their share and the
-  survivors still deliver, instead of one ship carrying the whole transfer.
+- **IADS: a power generator keeps its own battery alive.** A SAM whose power line is cut
+  goes dark. A battery that carries its own generator should stay up regardless, and only
+  go dark when that generator is destroyed — it powers itself, it does not feed the
+  neighbour. Five `class: Power` units are already modelled (Patriot EPP, two CurrentHill,
+  LvS-103, the SAMP/T MGE) and all of them already live inside their own SAM's group, so
+  the data is there. The catch is that this is not a Python-only change:
+  `skynetiads-config.lua` resolves power sources with `StaticObject.getByName`, which
+  returns nil for a vehicle, so the generators need their own array on the Lua side.
+  Apply it only to sites already wired to a substation — otherwise a Patriot goes from
+  "always powered" to "switched off by killing one truck", which is worse than today.
+  `game/agent/docs/howtoplay.md` currently states the opposite and has to be corrected in
+  the same change.
+- **IADS: network state on the map.** Show which sites are autonomous or dark, on the
+  health bar and the threat ring, instead of leaving the player to guess. The state is
+  never persisted and never comes back from DCS, so it has to be derived from which nodes
+  are still alive — which is exactly what Skynet itself looks at. Suppressing the ring is
+  free. The trap: without also pushing the TGO when a power station dies, the map keeps
+  drawing the stale ring until the campaign is reloaded.
+- **[from 414Ret] Strikes timed behind their SEAD.** Packages are scheduled independently
+  today, so nothing stops a strike entering a threat ring before the SEAD servicing it.
 
 ## Halted for Now
 
