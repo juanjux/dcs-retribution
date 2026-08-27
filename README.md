@@ -232,6 +232,11 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   (branch [`juanjux/ch_china_1.1.6`](https://github.com/juanjux/dcs-retribution/tree/juanjux/ch_china_1.1.6))
 
 ### Fixes
+- **The AH-1W had no anti-armour weapon in a 1983 campaign.** DCS models only the
+  BGM-71D, whose IOC is 1985, so the Cobra degraded to rocket pods and the faction
+  had nothing guided against armour — the AH-1 has carried TOW since 1973. Blufor
+  Late Cold War (80s) now overrides the weapon's year, which the weapon file itself
+  suggests as the stand-in for the variants DCS does not model.
 - **Take Off died with "Duplicate convoy unit", stranding the campaign** — the name
   counter reset each turn onto a convoy still in transit. Same bug upstream.
   ([#93](https://github.com/juanjux/dcs-retribution/pull/93))
