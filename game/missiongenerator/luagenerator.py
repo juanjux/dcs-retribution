@@ -530,6 +530,13 @@ class LuaData(LuaItem):
         if self.objects:
             # nested objects
             serialized_objects = [o.serialize(level + 1) for o in self.objects]
+            # A node's own key/value pairs used to be dropped whenever it also had
+            # children, because this branch emitted the children alone. They are
+            # entries of the same table, so emit them alongside -- pairs first. The
+            # naval magazines node lost its `stagger` and `metered` flags this way,
+            # which left the plugin reading nil and both features silently off.
+            pairs = self.value if isinstance(self.value, list) else [self.value]
+            serialized_objects = [v.serialize() for v in pairs] + serialized_objects
             if self.name:
                 if self.name is not self.base_name:
                     serialized_name += self.name + " = "
