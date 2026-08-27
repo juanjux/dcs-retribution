@@ -232,6 +232,14 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   (branch [`juanjux/ch_china_1.1.6`](https://github.com/juanjux/dcs-retribution/tree/juanjux/ch_china_1.1.6))
 
 ### Fixes
+- **Stores that no weapon file claimed slipped past their own introduction date.**
+  The A-6E carries the TALD on four MER clsids that `ADM-141A.yaml` did not list, so
+  they read as unknown stores: no DECOY type for SEAD planning, and no year, which armed
+  a 1983 campaign with a 1987 decoy. The AN/ALQ-167 had no weapon file at all and so
+  never counted as a jammer; it is dated 1982 now. Same class of hole on the Hornet's
+  LAU-115 rails, where only three of the AIM-7P's four clsids were declared and the
+  fourth flew a 1987 Sparrow in any campaign.
+  ([`309b39c`](https://github.com/juanjux/dcs-retribution/commit/309b39c24), [`06b7955`](https://github.com/juanjux/dcs-retribution/commit/06b7955e1))
 - **The A-6E dropped iron instead of its laser-guided bombs, always.** Its TRAM turret
   is an internal designator, but nothing declared it, so the planner saw a loadout with
   no targeting pod and swapped every GBU out — at every date, in every campaign. Strike
