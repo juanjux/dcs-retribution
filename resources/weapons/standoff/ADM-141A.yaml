@@ -10,3 +10,7 @@ clsids:
   - "{BRU_42A_x1_ADM_141A}"
   - "{BRU_42A_x2_ADM_141A}"
   - "{BRU_42A_x3_ADM_141A}"
+  - "{HB_A6E_TALD_MER_4x}"   # A-6E, MER x4
+  - "{HB_A6E_TALD_MER_2x}"   # A-6E, MER x2
+  - "{HB_A6E_TALD_MER_2x_LEFT}"   # A-6E, MER x2 outboard
+  - "{HB_A6E_TALD_MER_2x_RIGHT}"   # A-6E, MER x2 outboard
