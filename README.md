@@ -478,10 +478,6 @@ Decided worth porting, not started yet. Each lands as its own attributed PR.
 - **Sea shipments sail as convoys** — a shipment is spread across several hulls
   and the hull is the loss unit, so sinking some denies only their share and the
   survivors still deliver, instead of one ship carrying the whole transfer.
-- **Second Island Chain** — the Marianas 2027 campaign: a PLA air-defence belt,
-  road-mobile PLARF launchers, three PLAN carrier groups, both fleets trading
-  cruise missiles from finite magazines, and no ground front (the islands aren't
-  connected, so they change hands by air assault and paradrop).
 
 ## Halted for Now
 
