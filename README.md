@@ -195,24 +195,6 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   ([#31](https://github.com/juanjux/dcs-retribution/pull/31),
   [#32](https://github.com/juanjux/dcs-retribution/pull/32),
   [#33](https://github.com/juanjux/dcs-retribution/pull/33))
-- **F/A-18C AGM-88G AARGM-ER (by SYNTAX)** — optional-mod toggle in the New Game
-  wizard; when enabled, the F/A-18 family carries the AGM-88G AARGM-ER from the
-  [SYNTAX mod](https://files.digitalcombatsimulator.com/en/files/3350041/) in
-  place of the stock AGM-88C HARM in its SEAD loadouts. A second, mutually
-  exclusive "Realistic mode" toggle scopes it to the Super Hornets (F/A-18E/F,
-  EA-18G) only — without the legacy F/A-18C, which never carried the AARGM-ER.
-  ([#65](https://github.com/juanjux/dcs-retribution/pull/65))
-- **F/A-18C AGM-158C LRASM (by SYNTAX)** — optional-mod toggle; when enabled, the
-  F/A-18C's anti-ship loadout is labelled as the AGM-158C LRASM from the
-  [SYNTAX mod](https://files.digitalcombatsimulator.com/en/files/3349943/), which
-  replaces the stock Harpoon in place with a 370 km LRASM.
-  ([#66](https://github.com/juanjux/dcs-retribution/pull/66))
-- **F/A-18C AGM-158B JASSM-ER (by SYNTAX)** — optional-mod toggle; when enabled,
-  the JSOW-A (`{AGM-154A}`) is labelled as the AGM-158B JASSM-ER from the
-  [SYNTAX mod](https://files.digitalcombatsimulator.com/en/files/3349938/), which
-  replaces the stock JSOW-A in place with a 925 km stealthy cruise missile on
-  every carrier of that slot (F/A-18C, F-15E, F-16).
-  ([#67](https://github.com/juanjux/dcs-retribution/pull/67))
 - **High Digit SAMs updated to 1.4.0 → 2.1.0** — the New Game wizard still offered
   v1.4.0 while the mod had moved on in both directions. Adds the **SAMP/T battery**
   (Aster 30 — Block 1/1NT/2 launchers at 120/150/200 km, ARABEL fire control, Ground
@@ -220,12 +202,19 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   six 1970s-80s factions that fielded no MANPADS at all. Retires what the mod dropped.
   A unit type DCS cannot resolve is discarded in silence, so a stale preset costs you a
   site that never spawns while Retribution still counts it: a new test walks every
-  preset and fails on anything that does not exist.
   preset and fails on anything that does not exist. The same change fixes **SA-10B/
   S-300PS sites that never spawned and were immortal**: 2.1.0 dropped the S-300PS
   family, DCS discards unit types it cannot resolve, and Retribution kept the empty
   site alive with its threat ring up. They now use the stock S-300PS.
   ([#96](https://github.com/juanjux/dcs-retribution/pull/96))
+- **High Digit SAMs Ultimate Compilation, as a second selectable build.** The two HDS
+  builds are separate mods that cannot both be installed, so the New Game wizard now
+  offers them as mutually exclusive choices instead of assuming the classic one. The
+  Ultimate adds its own sites on top of 2.1.0's, and a faction only sees the presets its
+  chosen build actually ships. Campaign authors have to wire the new sites in themselves;
+  nothing is enabled by default.
+  (branch [`juanjux/hds_2_1_0_and_ultimate`](https://github.com/juanjux/dcs-retribution/tree/juanjux/hds_2_1_0_and_ultimate),
+  upstream [#956](https://github.com/dcs-retribution/dcs-retribution/pull/956))
 - **CurrentHill China pack synced to 1.1.6** — the New Game wizard label and unit
   data track the latest CH China Military Asset Pack. 1.1.4→1.1.6 added/removed no
   units (only upstream fixes), so this is a version-note sync, not a data migration.
