@@ -221,6 +221,18 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   (branch [`juanjux/ch_china_1.1.6`](https://github.com/juanjux/dcs-retribution/tree/juanjux/ch_china_1.1.6))
 
 ### Fixes
+- **A Strike put every iron bomb on a single aimpoint, so repeat raids re-cratered
+  the same rubble.** The planner spreads a Strike across one waypoint per target, but
+  the dumb-bomb task ignored that and aimed at the centroid of the whole objective. Two
+  causes: the bombing carpet was sized from the *mean* distance to the targets rather
+  than their spread, which is about a third of what it must cover — 65 m over a camp
+  several hundred metres across — and the carpet was chosen by the group's DCS task
+  instead of by airframe, so tactical aircraft carpet bombed as well. Heavy bombers now
+  lay a carpet over the real extent in one pass; everything else re-attacks with one
+  aimpoint per target and the load split between them, exactly as guided bombs and ASMs
+  already did. A B-52 could fly two raids of thirty-odd Mk 82 at a ten-building camp and
+  leave eight of them untouched.
+  ([`1209839`](https://github.com/juanjux/dcs-retribution/commit/120983924))
 - **Stores that no weapon file claimed slipped past their own introduction date.**
   The A-6E carries the TALD on four MER clsids that `ADM-141A.yaml` did not list, so
   they read as unknown stores: no DECOY type for SEAD planning, and no year, which armed
