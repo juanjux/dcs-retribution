@@ -752,6 +752,13 @@ class MotorpoolGroundObject(TheaterGroundObject):
         return False
 
     @property
+    def repairable(self) -> bool:
+        # The base default ties this to purchasable, which is wrong here: the
+        # motorpool is a view of the reserve, so buying ground units refills it.
+        # A flattened one is never a permanent loss.
+        return True
+
+    @property
     def should_head_to_conflict(self) -> bool:
         # Parked/unmanned: never advances to the front.
         return False

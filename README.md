@@ -221,6 +221,11 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   (branch [`juanjux/ch_china_1.1.6`](https://github.com/juanjux/dcs-retribution/tree/juanjux/ch_china_1.1.6))
 
 ### Fixes
+- **A bombed-out motorpool showed on the map as a permanent loss.** `repairable` falls
+  back to `purchasable`, which is `False` for a motorpool because it is never bought as a
+  group — but the motorpool is only a view of the base's undeployed armor, so procuring
+  ground units refills it. There is nothing to repair and nothing permanently lost.
+  ([`81fb0d4`](https://github.com/juanjux/dcs-retribution/commit/81fb0d4d8))
 - **Stores that no weapon file claimed slipped past their own introduction date.**
   The A-6E carries the TALD on four MER clsids that `ADM-141A.yaml` did not list, so
   they read as unknown stores: no DECOY type for SEAD planning, and no year, which armed
