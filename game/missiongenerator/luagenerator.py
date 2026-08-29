@@ -9,7 +9,6 @@ from typing import TYPE_CHECKING, Optional
 
 from dcs import Mission
 from dcs.action import DoScript, DoScriptFile
-from dcs.condition import MapObjectIsDead
 from dcs.translation import String
 from dcs.triggers import TriggerStart
 
@@ -18,6 +17,7 @@ from game.data.units import UnitClass
 from game.dcs.aircrafttype import AircraftType
 from game.plugins import LuaPluginManager
 from game.theater import TheaterGroundObject
+from game.theater.theatergroup import SceneryUnit
 from game.theater.iadsnetwork.iadsrole import IadsRole
 from game.utils import escape_string_for_lua
 from .cruisemissileluadata import populate_cruise_missiles_lua
@@ -61,32 +61,24 @@ class LuaGenerator:
         building. It resolves that by position instead, which needs the list of
         objectives and where they stand -- this is that list.
 
-        The objectives are the zones carrying a MapObjectIsDead condition, which
-        is exactly the set the TGO generator marked as a live building target,
-        so the two can never drift apart.
+        Objectives already destroyed are seeded too, marked dead. They are not
+        there to be scored again -- the base script pre-counts them so they never
+        are -- but to own the deaths around them: the destruction zone that
+        replays their rubble at mission start kills their scenery, and without
+        them in the list those deaths would be credited to whichever live
+        objective happened to be nearest.
         """
-        watched: set[int] = set()
-        for trigger in self.mission.triggerrules.triggers:
-            # pydcs keeps a rule's conditions in `rules`, not `conditions`.
-            for rule in trigger.rules:
-                if isinstance(rule, MapObjectIsDead):
-                    watched.add(rule.zone)
-        if not watched:
-            return
-
-        zones_by_id = {zone.id: zone for zone in self.mission.triggers.zones()}
         rows = []
-        for zone_id in sorted(watched):
-            zone = zones_by_id.get(zone_id)
-            if zone is None:
-                logging.warning(
-                    "Scenery objective zone %s is watched but not defined", zone_id
+        for tgo in self.game.theater.ground_objects:
+            for unit in tgo.units:
+                if not isinstance(unit, SceneryUnit):
+                    continue
+                name = escape_string_for_lua(unit.name)
+                dead = "false" if unit.alive else "true"
+                rows.append(
+                    f'  {{ name = "{name}", x = {unit.position.x}, '
+                    f"y = {unit.position.y}, dead = {dead} }},"
                 )
-                continue
-            name = escape_string_for_lua(zone.name)
-            rows.append(
-                f'  {{ name = "{name}", x = {zone.position.x}, y = {zone.position.y} }},'
-            )
         if not rows:
             return
 

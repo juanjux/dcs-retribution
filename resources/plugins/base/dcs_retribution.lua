@@ -41,6 +41,29 @@ dirty_state = false -- Track if state has changed and needs writing
 -- credit; nearest-wins is the best available answer there.
 SCENERY_MATCH_RADIUS = 30
 scenery_zone_reported = {} -- zone name -> true, so a building is only counted once
+scenery_zones_primed = false
+
+-- Objectives that were already destroyed on previous turns count as reported, so
+-- they are never scored twice. They stay in the list all the same: the
+-- destruction zone that replays their rubble at mission start kills their
+-- scenery, and those deaths have to land on them rather than on a live
+-- neighbour.
+local function prime_scenery_zones()
+    if scenery_zones_primed or type(RETRIBUTION_SCENERY_ZONES) ~= "table" then
+        return
+    end
+    scenery_zones_primed = true
+    local dead = 0
+    for _, zone in ipairs(RETRIBUTION_SCENERY_ZONES) do
+        if zone.dead then
+            scenery_zone_reported[zone.name] = true
+            dead = dead + 1
+        end
+    end
+    logger:info(string.format(
+        "Scenery objectives: %d known, %d already destroyed, match radius %d m",
+        #RETRIBUTION_SCENERY_ZONES, dead, SCENERY_MATCH_RADIUS))
+end
 
 -- Nearest objective zone to a dead scenery object, or nil if none is close
 -- enough. Reads RETRIBUTION_SCENERY_ZONES lazily so it does not care whether the
@@ -49,6 +72,7 @@ function scenery_zone_for(obj)
     if type(RETRIBUTION_SCENERY_ZONES) ~= "table" then
         return nil, nil
     end
+    prime_scenery_zones()
     local point
     if not pcall(function() point = obj:getPoint() end) or point == nil then
         return nil, nil
@@ -427,32 +451,17 @@ local function onEvent(event)
         if not is_player_despawn(name) then
             if type(name) == "number" then
                 -- Scenery. The id is meaningless downstream, so credit the
-                -- objective standing on that spot instead, or drop it.
+                -- objective standing on that spot instead, or drop it. Only the
+                -- credit is logged: a mission destroys hundreds of unrelated
+                -- buildings and logging the misses drowns the log.
                 local zone, distance = scenery_zone_for(event.initiator)
-                local kind = "?"
-                pcall(function() kind = event.initiator:getTypeName() end)
-                if zone == nil then
-                    logger:info(string.format(
-                        "SCENERY %s (%s): no objectives seeded, ignored",
-                        tostring(name), tostring(kind)))
-                elseif distance > SCENERY_MATCH_RADIUS then
-                    logger:info(string.format(
-                        "SCENERY %s (%s): nearest objective '%s' is %.0f m away " ..
-                        "(limit %d m), ignored as collateral",
-                        tostring(name), tostring(kind), zone.name, distance,
-                        SCENERY_MATCH_RADIUS))
-                elseif scenery_zone_reported[zone.name] then
-                    logger:info(string.format(
-                        "SCENERY %s (%s): objective '%s' already counted (%.0f m), ignored",
-                        tostring(name), tostring(kind), zone.name, distance))
-                else
+                if zone ~= nil and distance <= SCENERY_MATCH_RADIUS
+                        and not scenery_zone_reported[zone.name] then
                     scenery_zone_reported[zone.name] = true
                     dead_events[#dead_events + 1] = zone.name
                     logger:info(string.format(
-                        "SCENERY %s (%s) DESTROYED objective '%s' at %.0f m  " ..
-                        "[objectives counted so far: %d]",
-                        tostring(name), tostring(kind), zone.name, distance,
-                        #dead_events))
+                        "Objective destroyed: '%s' (%.0f m from the hit)",
+                        zone.name, distance))
                 end
             else
                 dead_events[#dead_events + 1] = name
