@@ -392,6 +392,11 @@ worth killing:**
 - **1L13** — 162 nm
 - **Roland EWR**, Dog Ear — 19 nm; these are a battery's own search radar, not area cover
 - **AWACS E-3A** and **A-50** — about 400 nm; **E-2C** — about 300 nm
+- AEW&C that come from mods are not stated anywhere, so plan them off their real
+  aircraft: **KJ-2000** about 250 nm, **EC-121 Warning Star** up to 250 nm but roughly
+  half that against anything low, **Tu-126 Moss** about 215 nm and considerably worse
+  over land than over water, **E-7A Wedgetail** about 200 nm against fighter-sized
+  targets and further against big ones
 
 So an airborne AEW&C outreaches every ground radar in the game by a wide margin **and it
 can be moved**. That cuts both ways: it is the cheapest way to restore cover over a
@@ -400,9 +405,7 @@ offer the enemy. Losing one costs your whole side its picture over that sector; 
 theirs does the same to them.
 
 Note that **the map draws no ring for an AEW&C**, so unlike a ground radar you cannot
-check its reach in game — the figures above are all you have. Aircraft that come from
-mods are not listed because nothing states their range; assume at least the cover of a
-good ground EWR and no more until the mission shows you otherwise.
+check its reach in game — the figures above are all you have.
 
 ### Fighting the IADS, not just the launchers
 
