@@ -1,7 +1,7 @@
 ﻿# Retribution v1.6.3 (414th)
 
 ## Features/Improvements
-* **[FIX]** Destroying a building objective now actually counts. DCS reports a scenery death by numeric id rather than by name, so the debriefing discarded every one and factories, camps and depots read as intact however often you flattened them. Deaths are matched to the objective by position instead.
+* **[FIX]** Building objectives that could never be recorded as destroyed. An objective is only credited once *every* map object inside its trigger zone is dead, and many of those zones hold scenery that cannot be destroyed at all, so those factories, camps and depots read as intact however often you flattened them, while others in the same mission scored normally. Deaths are matched to the objective by position instead.
 * **[OPFOR AI]** A ground object being rebuilt now reports `rebuild: {force_group, turns_remaining}` instead of reading as destroyed, so an external planner sees the works on the map the same way the player does.
 * **[FIX]** Faction edits from the Air Wing dialog now take effect in the running campaign.
 * **[FIX]** The faction editor's tick boxes never removed anything; entries have a remove button now, which refuses a unit the campaign still has deployed, and its lists are sorted by the name you read.
