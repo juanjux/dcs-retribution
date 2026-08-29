@@ -250,6 +250,43 @@ local function expireAssignments()
     end
 end
 
+-- DEBUG heartbeat. Watching from the outside it is genuinely hard to tell an
+-- intercept from a racetrack leg that happens to point at the contact -- the flight
+-- looks committed, then turns back on its orbit. This states outright, every cycle,
+-- what the plugin believes each eligible flight is doing.
+local function statusReport()
+    local lines = {}
+    for _, side in ipairs(SIDES) do
+        local okg, groups = pcall(coalition.getGroups, side.id, Group.Category.AIRPLANE)
+        if okg and groups then
+            for _, group in ipairs(groups) do
+                if group and group:isExist() and isInterceptorName(group:getName()) then
+                    local name = group:getName()
+                    local airborne = false
+                    for _, u in ipairs(group:getUnits() or {}) do
+                        if u and u:isExist() and u:inAir() then airborne = true break end
+                    end
+                    local a = assigned[name]
+                    if a then
+                        table.insert(lines, string.format("%s: INTERCEPTING %s (%ds left)",
+                            name, a.target,
+                            math.max(0, math.floor(a.expires - timer.getTime()))))
+                    elseif not airborne then
+                        table.insert(lines, name .. ": on the ground")
+                    else
+                        table.insert(lines, name .. ": holding, no cue")
+                    end
+                end
+            end
+        end
+    end
+    if #lines > 0 then
+        env.info("GCI| status: " .. table.concat(lines, " | "))
+        trigger.action.outText("GCI status\n" .. table.concat(lines, "\n"),
+            math.max(5, UPDATE_INTERVAL - 1))
+    end
+end
+
 local function runCycle()
     expireAssignments()
 
@@ -278,6 +315,7 @@ local function runCycle()
             end
         end
     end
+    if DEBUG then statusReport() end
     return timer.getTime() + UPDATE_INTERVAL
 end
 
