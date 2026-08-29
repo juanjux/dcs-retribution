@@ -9,6 +9,11 @@
             "defaultValue": true
         },
         {
+            "nameInUI": "Observe only (report what it would do, never task anything)",
+            "mnemonic": "observeOnly",
+            "defaultValue": false
+        },
+        {
             "nameInUI": "Extra cap on EWR detection range (NM; 0 = use the radar's own range and terrain masking)",
             "mnemonic": "extraRangeCapNM",
             "minimumValue": 0,
