@@ -345,6 +345,69 @@ local function ownContact(group, sideId, pos)
     return rNM, rName, aNM, aName
 end
 
+-- What each radar itself is holding, straight from the source.
+--
+-- Everything above infers the picture from the fighters' end, which invites exactly
+-- the wrong conclusions: a contact can outlive the radar that found it, so a site
+-- that is already destroyed still appears to be feeding the coalition. Reporting each
+-- EWR's own contacts separates "this radar sees it" from "somebody saw it once".
+local function radarReport()
+    local lines = {}
+    for _, side in ipairs(SIDES) do
+        for _, gname in ipairs(ewrGroupNames(side.key)) do
+            local okg, group = pcall(Group.getByName, gname)
+            if not (okg and group and group:isExist()) then
+                table.insert(lines, string.format("%s [%s]: DESTROYED", gname, side.key))
+            else
+                local pos
+                for _, u in ipairs(group:getUnits() or {}) do
+                    if u and u:isExist() then pos = u:getPoint() break end
+                end
+                local held = {}
+                local okc, controller = pcall(function() return group:getController() end)
+                if okc and controller and pos then
+                    local okd, targets = pcall(function()
+                        return controller:getDetectedTargets(Controller.Detection.RADAR)
+                    end)
+                    for _, det in ipairs((okd and targets) or {}) do
+                        local obj = det.object
+                        if obj and obj:isExist()
+                                and Object.getCategory(obj) == Object.Category.UNIT
+                                and obj:getCoalition() ~= side.id then
+                            local okt, tg = pcall(function() return obj:getGroup() end)
+                            local n = (okt and tg and tg:getName()) or "?"
+                            local seen = false
+                            for _, e in ipairs(held) do
+                                if e.n == n then seen = true break end
+                            end
+                            if not seen then
+                                table.insert(held,
+                                    { n = n, d = dist3(pos, obj:getPoint()) })
+                            end
+                        end
+                    end
+                end
+                if #held == 0 then
+                    table.insert(lines, string.format("%s [%s]: alive, holds nothing",
+                        gname, side.key))
+                else
+                    local parts = {}
+                    for _, e in ipairs(held) do
+                        table.insert(parts, e.n .. " at " .. nmText(e.d) .. " NM")
+                    end
+                    table.insert(lines, string.format("%s [%s]: holds %s",
+                        gname, side.key, table.concat(parts, ", ")))
+                end
+            end
+        end
+    end
+    if #lines > 0 then
+        env.info("GCI| radars: " .. table.concat(lines, " | "))
+        trigger.action.outText("GCI radars\n" .. table.concat(lines, "\n"),
+            math.max(5, UPDATE_INTERVAL - 1))
+    end
+end
+
 local function statusReport()
     local lines = {}
     for _, side in ipairs(SIDES) do
@@ -424,7 +487,7 @@ local function runCycle()
             end
         end
     end
-    if DEBUG then statusReport() end
+    if DEBUG then radarReport() statusReport() end
     return timer.getTime() + UPDATE_INTERVAL
 end
 
