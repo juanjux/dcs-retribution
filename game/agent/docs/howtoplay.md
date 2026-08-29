@@ -313,18 +313,18 @@ worth killing:**
 - **1L13** — 162 nm
 - **Roland EWR**, Dog Ear — 19 nm; these are a battery's own search radar, not area cover
 - **AWACS E-3A** and **A-50** — about 400 nm; **E-2C** — about 300 nm
-- AEW&C that come from mods are not stated anywhere, so plan them off their real
-  aircraft: **KJ-2000** about 250 nm, **EC-121 Warning Star** up to 250 nm but roughly
-  half that against anything low, **Tu-126 Moss** about 215 nm and considerably worse
-  over land than over water, **E-7A Wedgetail** about 200 nm against a fighter and
-  about 325 nm against something large or high
+- AEW&C that come from mods are not stated anywhere. Plan them off the **upper**
+  published figure for the real aircraft, because that is the end the game appears to
+  use: **E-7A Wedgetail** about 325 nm, **KJ-2000** about 250 nm, **EC-121 Warning
+  Star** about 250 nm, **Tu-126 Moss** about 215 nm
 
-**An AEW&C figure is a best case, and the difference is bigger than you think.** Those
-headline numbers are look-up performance against a big, high target. Against a fighter
-down low the same radar sees roughly half as far — the Wedgetail is quoted at both 325
-and 200 nm for exactly that reason, and the others behave the same way even where only
-the optimistic figure is published. So a strike package flown low and lean is not merely
-harder to catch on a ground radar; it shortens the AWACS too.
+**The game looks like it takes the optimistic end of a radar's published range and
+applies it flat.** A real radar quotes two figures — looking up at something large, and
+roughly half that looking down at a fighter. DCS does not appear to split them: the E-3A
+and the A-50 both sit at the 400 nm optimistic number, and in mission an A-50 held **two
+A-10s at 360 nm** — small aircraft, near full range. So assume the headline figure is
+what you face whatever you send. Terrain and altitude still shorten it, as above; target
+size apparently does not.
 
 So an airborne AEW&C outreaches every ground radar in the game by a wide margin **and it
 can be moved**. That cuts both ways: it is the cheapest way to restore cover over a
