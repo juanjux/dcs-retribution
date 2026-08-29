@@ -282,27 +282,39 @@ local function nearestHostileNM(sideId, pos)
     return best
 end
 
--- What the FLIGHT itself holds, by any means: its own radar, its RWR picking up an
--- emitting bandit, or the Mk.1 eyeball. Deliberately unfiltered, because the question
--- here is not how it found the contact but whether it has one at all -- an un-cued
--- flight that is nonetheless turning and burning is prosecuting its own contact, not
--- obeying GCI, and without this the two are indistinguishable in the log.
-local function ownContactNM(group, sideId, pos)
+-- What the FLIGHT itself holds, split by how it holds it.
+--
+-- Reporting this unfiltered was misleading: the range it returned matched the plain
+-- geometric range to the nearest bandit exactly, at 105 and 147 NM, which no MiG-23
+-- radar can do. Unfiltered getDetectedTargets() evidently includes the coalition's
+-- shared picture, so the flight merely KNEW about the contact rather than having
+-- found it -- and calling that "prosecuting its own contact" claimed more than the
+-- data supports. Only the RADAR-filtered figure is genuine own-sensor detection, so
+-- the two are returned separately and labelled for what they are.
+local function ownContact(group, sideId, pos)
     local okc, controller = pcall(function() return group:getController() end)
-    if not okc or not controller then return nil end
-    local okd, targets = pcall(function() return controller:getDetectedTargets() end)
-    if not okd or not targets then return nil end
-    local best
-    for _, det in ipairs(targets) do
-        local obj = det.object
-        if obj and obj:isExist()
-                and Object.getCategory(obj) == Object.Category.UNIT
-                and obj:getCoalition() ~= sideId then
-            local d = dist3(pos, obj:getPoint())
-            if not best or d < best then best = d end
+    if not okc or not controller then return nil, nil end
+
+    local function nearest(filter)
+        local okd, targets = pcall(function()
+            if filter then return controller:getDetectedTargets(filter) end
+            return controller:getDetectedTargets()
+        end)
+        if not okd or not targets then return nil end
+        local best
+        for _, det in ipairs(targets) do
+            local obj = det.object
+            if obj and obj:isExist()
+                    and Object.getCategory(obj) == Object.Category.UNIT
+                    and obj:getCoalition() ~= sideId then
+                local d = dist3(pos, obj:getPoint())
+                if not best or d < best then best = d end
+            end
         end
+        return best
     end
-    return best
+
+    return nearest(Controller.Detection.RADAR), nearest(nil)
 end
 
 local function statusReport()
@@ -325,11 +337,15 @@ local function statusReport()
                     elseif not lead then
                         state = "on the ground"
                     else
-                        local own = ownContactNM(group, side.id, lead:getPoint())
-                        if own then
+                        local byRadar, byAny = ownContact(group, side.id, lead:getPoint())
+                        if byRadar then
                             state = string.format(
-                                "NO CUE but prosecuting its OWN contact at %s NM",
-                                nmText(own))
+                                "no cue, but has its OWN RADAR contact at %s NM",
+                                nmText(byRadar))
+                        elseif byAny then
+                            state = string.format(
+                                "no cue, no radar contact, only shared awareness at %s NM",
+                                nmText(byAny))
                         else
                             state = "holding, no cue, sees nothing"
                         end
