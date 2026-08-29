@@ -221,6 +221,26 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   (branch [`juanjux/ch_china_1.1.6`](https://github.com/juanjux/dcs-retribution/tree/juanjux/ch_china_1.1.6))
 
 ### Fixes
+- **Some building objectives could never be recorded as destroyed, however often you
+  levelled them.** An objective is credited by a `MapObjectIsDead` trigger on its zone,
+  which is only true once *every* map object inside the polygon is dead — and many of
+  those polygons hold scenery that cannot be destroyed at all (`WOODPILE_01` and friends
+  report a life of 1e38), so those objectives survive their own destruction indefinitely.
+  Nothing else catches them: DCS does report the death, but `getName()` on scenery
+  returns the object's numeric id rather than a name, so the id went into `dead_events`
+  and the debriefing, which resolves scenery by trigger-zone name, discarded it. It reads
+  as flaky rather than broken because the objectives whose zones happen to be clean do
+  score. Over one Kola mission: **978 scenery deaths, 15 of them direct hits on named
+  objectives; two objectives credited normally while CAPYBARA, CICADA and IBIS recorded
+  nothing at all across three turns, being levelled each time.** Deaths are now matched
+  to the nearest objective by position, with a radius measured rather than guessed: hits
+  that destroyed the objective landed within 29 m of its zone and collateral died from
+  31 m out, so 30 m keeps the first and rejects the second. The `MapObjectIsDead`
+  triggers go with it — 342 of them in one mission. Verified in game: those same three
+  came back **4/4, 6/6 and 9/10** destroyed, matching the log building by building and
+  the save afterwards, against 667 pieces of collateral rejected and no false positives.
+  ([`b7cbd73`](https://github.com/juanjux/dcs-retribution/commit/b7cbd73df),
+  [`afff790`](https://github.com/juanjux/dcs-retribution/commit/afff790e0))
 - **A bombed-out motorpool showed on the map as a permanent loss.** `repairable` falls
   back to `purchasable`, which is `False` for a motorpool because it is never bought as a
   group — but the motorpool is only a view of the base's undeployed armor, so procuring

@@ -17,6 +17,7 @@ from game.data.units import UnitClass
 from game.dcs.aircrafttype import AircraftType
 from game.plugins import LuaPluginManager
 from game.theater import TheaterGroundObject
+from game.theater.theatergroup import SceneryUnit
 from game.theater.iadsnetwork.iadsrole import IadsRole
 from game.utils import escape_string_for_lua
 from .cruisemissileluadata import populate_cruise_missiles_lua
@@ -46,10 +47,46 @@ class LuaGenerator:
         ]
         self.generate_plugin_data()
         self.inject_plugins()
+        self._seed_scenery_objectives()
         self._inject_tic_script()
         for t in ewrj_triggers:
             self.mission.triggerrules.triggers.remove(t)
             self.mission.triggerrules.triggers.append(t)
+
+    def _seed_scenery_objectives(self) -> None:
+        """Hand the base script the position of every building objective.
+
+        DCS reports a scenery death with the object's numeric id rather than a
+        name, so the base script cannot tell which objective just lost a
+        building. It resolves that by position instead, which needs the list of
+        objectives and where they stand -- this is that list.
+
+        Objectives already destroyed are seeded too, marked dead. They are not
+        there to be scored again -- the base script pre-counts them so they never
+        are -- but to own the deaths around them: the destruction zone that
+        replays their rubble at mission start kills their scenery, and without
+        them in the list those deaths would be credited to whichever live
+        objective happened to be nearest.
+        """
+        rows = []
+        for tgo in self.game.theater.ground_objects:
+            for unit in tgo.units:
+                if not isinstance(unit, SceneryUnit):
+                    continue
+                name = escape_string_for_lua(unit.name)
+                dead = "false" if unit.alive else "true"
+                rows.append(
+                    f'  {{ name = "{name}", x = {unit.position.x}, '
+                    f"y = {unit.position.y}, dead = {dead} }},"
+                )
+        if not rows:
+            return
+
+        preamble = "RETRIBUTION_SCENERY_ZONES = {\n" + "\n".join(rows) + "\n}\n"
+        trigger = TriggerStart(comment="Building objectives (positions)")
+        trigger.add_action(DoScript(String(preamble)))
+        self.mission.triggerrules.triggers.append(trigger)
+        logging.info("Seeded %d building objectives for scenery matching", len(rows))
 
     def _inject_tic_script(self) -> None:
         """Inject TIC_v1.1.lua (Troops In Contact, by Grendel) as a core script.

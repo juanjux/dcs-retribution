@@ -18,6 +18,66 @@ naval_magazines_state = {} -- navalmagazines plugin appends/updates {group=, fir
 mission_ended = false
 dirty_state = false -- Track if state has changed and needs writing
 
+-- Scenery objectives: credit a map-object death to the building it belongs to.
+--
+-- DCS reports a scenery death with the object's numeric id rather than a name,
+-- so the debriefing, which resolves scenery by trigger-zone name, discarded
+-- every one. The MapObjectIsDead trigger meant to catch this cannot fire: it
+-- needs EVERY map object in the zone dead, and those polygons hold scenery that
+-- cannot be destroyed (WOODPILE_01 reports a life of 1e38).
+--
+-- Deaths are matched to the nearest objective instead. The radius is measured:
+-- hits that destroyed the objective landed within 29 m of its zone, collateral
+-- from 31 m out.
+SCENERY_MATCH_RADIUS = 30
+scenery_zone_reported = {} -- zone name -> true, so a building is only counted once
+scenery_zones_primed = false
+
+-- Objectives that were already destroyed on previous turns count as reported, so
+-- they are never scored twice. They stay in the list all the same: the
+-- destruction zone that replays their rubble at mission start kills their
+-- scenery, and those deaths have to land on them rather than on a live
+-- neighbour.
+local function prime_scenery_zones()
+    if scenery_zones_primed or type(RETRIBUTION_SCENERY_ZONES) ~= "table" then
+        return
+    end
+    scenery_zones_primed = true
+    local dead = 0
+    for _, zone in ipairs(RETRIBUTION_SCENERY_ZONES) do
+        if zone.dead then
+            scenery_zone_reported[zone.name] = true
+            dead = dead + 1
+        end
+    end
+    logger:info(string.format(
+        "Scenery objectives: %d known, %d already destroyed, match radius %d m",
+        #RETRIBUTION_SCENERY_ZONES, dead, SCENERY_MATCH_RADIUS))
+end
+
+-- Nearest objective zone to a dead scenery object, or nil if none is close
+-- enough. Reads RETRIBUTION_SCENERY_ZONES lazily so it does not care whether the
+-- generator seeded it before or after this script loaded.
+function scenery_zone_for(obj)
+    if type(RETRIBUTION_SCENERY_ZONES) ~= "table" then
+        return nil, nil
+    end
+    prime_scenery_zones()
+    local point
+    if not pcall(function() point = obj:getPoint() end) or point == nil then
+        return nil, nil
+    end
+    local best, best_distance = nil, nil
+    for _, zone in ipairs(RETRIBUTION_SCENERY_ZONES) do
+        local dx, dy = point.x - zone.x, point.z - zone.y
+        local distance = math.sqrt(dx * dx + dy * dy)
+        if best_distance == nil or distance < best_distance then
+            best, best_distance = zone, distance
+        end
+    end
+    return best, best_distance
+end
+
 -- Player-despawn loss guard (414th): a player dropping to spectator — or the
 -- mission ending with players still airborne — makes DCS fire S_EVENT_CRASH/DEAD
 -- for that aircraft, which would otherwise be counted as a combat loss and attrit
@@ -379,7 +439,23 @@ local function onEvent(event)
     if event.id == world.event.S_EVENT_DEAD and event.initiator and event.initiator.getName then
         local name = event.initiator.getName(event.initiator)
         if not is_player_despawn(name) then
-            dead_events[#dead_events + 1] = name
+            if type(name) == "number" then
+                -- Scenery. The id is meaningless downstream, so credit the
+                -- objective standing on that spot instead, or drop it. Only the
+                -- credit is logged: a mission destroys hundreds of unrelated
+                -- buildings and logging the misses drowns the log.
+                local zone, distance = scenery_zone_for(event.initiator)
+                if zone ~= nil and distance <= SCENERY_MATCH_RADIUS
+                        and not scenery_zone_reported[zone.name] then
+                    scenery_zone_reported[zone.name] = true
+                    dead_events[#dead_events + 1] = zone.name
+                    logger:info(string.format(
+                        "Objective destroyed: '%s' (%.0f m from the hit)",
+                        zone.name, distance))
+                end
+            else
+                dead_events[#dead_events + 1] = name
+            end
             local position = event.initiator.getPosition(event.initiator)
             local destruction = {}
             destruction.x = position.p.x
