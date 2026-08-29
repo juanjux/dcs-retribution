@@ -234,8 +234,13 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   single objective recorded as even damaged.** Scenery deaths are now matched to the
   nearest objective by position, with a radius measured rather than guessed: hits that
   destroyed the objective landed 0–25 m from its zone and collateral died from 26 m out,
-  so 30 m keeps the first and rejects the second.
-  ([`b7cbd73`](https://github.com/juanjux/dcs-retribution/commit/b7cbd73df))
+  so 30 m keeps the first and rejects the second. The `MapObjectIsDead` triggers go with
+  it — 342 of them in one Kola mission, none of which could ever fire. Verified in game:
+  the same three objectives that recorded **nothing** across three turns came back
+  **4/4, 6/6 and 9/10** destroyed, matching the log building by building, against 667
+  pieces of collateral correctly rejected and no false positives.
+  ([`b7cbd73`](https://github.com/juanjux/dcs-retribution/commit/b7cbd73df),
+  [`afff790`](https://github.com/juanjux/dcs-retribution/commit/afff790e0))
 - **A bombed-out motorpool showed on the map as a permanent loss.** `repairable` falls
   back to `purchasable`, which is `False` for a motorpool because it is never bought as a
   group — but the motorpool is only a view of the base's undeployed armor, so procuring
