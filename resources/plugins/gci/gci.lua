@@ -254,6 +254,34 @@ end
 -- intercept from a racetrack leg that happens to point at the contact -- the flight
 -- looks committed, then turns back on its orbit. This states outright, every cycle,
 -- what the plugin believes each eligible flight is doing.
+-- Straight-line range to the closest airborne enemy, whether or not anyone has
+-- detected it. This is the discriminator the status line needs: a cue and an
+-- unaided radar contact both end with fighters going afterburner, and the only way
+-- to tell them apart from the outside is the RANGE at which the flight commits. GCI
+-- reaches far past a fighter's own radar, so "INTERCEPTING at 110 NM" and "holding,
+-- no cue" until 30 NM are different mechanisms, not different luck.
+local function nearestHostileNM(sideId, pos)
+    local other = (sideId == coalition.side.RED) and coalition.side.BLUE
+                                                 or coalition.side.RED
+    local best
+    for _, cat in ipairs({ Group.Category.AIRPLANE, Group.Category.HELICOPTER }) do
+        local okg, groups = pcall(coalition.getGroups, other, cat)
+        if okg and groups then
+            for _, g in ipairs(groups) do
+                if g and g:isExist() then
+                    for _, u in ipairs(g:getUnits() or {}) do
+                        if u and u:isExist() and u:inAir() then
+                            local d = dist3(pos, u:getPoint())
+                            if not best or d < best then best = d end
+                        end
+                    end
+                end
+            end
+        end
+    end
+    return best
+end
+
 local function statusReport()
     local lines = {}
     for _, side in ipairs(SIDES) do
@@ -262,20 +290,26 @@ local function statusReport()
             for _, group in ipairs(groups) do
                 if group and group:isExist() and isInterceptorName(group:getName()) then
                     local name = group:getName()
-                    local airborne = false
+                    local lead
                     for _, u in ipairs(group:getUnits() or {}) do
-                        if u and u:isExist() and u:inAir() then airborne = true break end
+                        if u and u:isExist() and u:inAir() then lead = u break end
                     end
+                    local state
                     local a = assigned[name]
                     if a then
-                        table.insert(lines, string.format("%s: INTERCEPTING %s (%ds left)",
-                            name, a.target,
-                            math.max(0, math.floor(a.expires - timer.getTime()))))
-                    elseif not airborne then
-                        table.insert(lines, name .. ": on the ground")
+                        state = string.format("INTERCEPTING %s (%ds left)", a.target,
+                            math.max(0, math.floor(a.expires - timer.getTime())))
+                    elseif not lead then
+                        state = "on the ground"
                     else
-                        table.insert(lines, name .. ": holding, no cue")
+                        state = "holding, no cue"
                     end
+                    if lead then
+                        local d = nearestHostileNM(side.id, lead:getPoint())
+                        state = state .. (d and (", nearest bandit " .. nmText(d) .. " NM")
+                                            or ", no bandits airborne")
+                    end
+                    table.insert(lines, name .. ": " .. state)
                 end
             end
         end
