@@ -1,7 +1,7 @@
 # Retribution v1.6.0
 
 ## Features/Improvements
-* **[FIX]** Destroying a building objective now actually counts. DCS reports a scenery death by numeric id rather than by name, so the debriefing discarded every one and factories, camps and depots read as intact however often you flattened them. Deaths are matched to the objective by position instead.
+* **[FIX]** Building objectives that could never be recorded as destroyed. An objective is only credited once *every* map object inside its trigger zone is dead, and many of those zones hold scenery that cannot be destroyed at all, so those factories, camps and depots read as intact however often you flattened them, while others in the same mission scored normally. Deaths are matched to the objective by position instead.
 * **[Modding]** Added support for the CurrentHill Iran Military Assets pack: the Shahed-136 launcher, two IRGCN fast-attack craft, and a new `[CH] Iran 2020` faction, behind a New Game mods checkbox. (#886)
 * **[Kneeboard]** Use a light-grey daytime kneeboard background instead of near-white, to avoid glare under HDR / Auto-HDR while staying readable in daylight.
 * **[UX]** Hovering a friendly flight's route line on the map highlights it in yellow, and clicking it selects that flight's package (and the flight) in the ATO sidebar.
