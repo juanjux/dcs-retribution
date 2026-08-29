@@ -395,8 +395,15 @@ worth killing:**
 - AEW&C that come from mods are not stated anywhere, so plan them off their real
   aircraft: **KJ-2000** about 250 nm, **EC-121 Warning Star** up to 250 nm but roughly
   half that against anything low, **Tu-126 Moss** about 215 nm and considerably worse
-  over land than over water, **E-7A Wedgetail** about 200 nm against fighter-sized
-  targets and further against big ones
+  over land than over water, **E-7A Wedgetail** about 200 nm against a fighter and
+  about 325 nm against something large or high
+
+**An AEW&C figure is a best case, and the difference is bigger than you think.** Those
+headline numbers are look-up performance against a big, high target. Against a fighter
+down low the same radar sees roughly half as far — the Wedgetail is quoted at both 325
+and 200 nm for exactly that reason, and the others behave the same way even where only
+the optimistic figure is published. So a strike package flown low and lean is not merely
+harder to catch on a ground radar; it shortens the AWACS too.
 
 So an airborne AEW&C outreaches every ground radar in the game by a wide margin **and it
 can be moved**. That cuts both ways: it is the cheapest way to restore cover over a
