@@ -271,6 +271,56 @@ park you can bomb (`kind:motorpool` in `targets[]`, task **BAI**).
   one adjacent base per turn, so if the front is several hops back, start the relay early
   rather than let a war-chest of iron sit in the rear), or expect to pay for it twice.
 
+### Radars, AWACS and shared awareness
+
+**Every EWR and every airborne AWACS feeds one picture shared by your whole side —
+"shared awareness".** A flight two hundred miles away knows about a contact that only
+that one radar holds, and it knows it without ever pointing a radar at it. This is the
+engine doing it, not the campaign: kill the radar and the same flights no longer know
+the contact exists until their own sensors find it. An AWACS does exactly what a ground
+EWR does here, with the coverage of an aircraft at altitude.
+
+**But knowing is not acting, and this is the part that decides your plan.** Only flights
+already close to a contact will go after it. A CAP that knows an intruder is inbound
+200 nm away keeps flying its racetrack. So an EWR buys you **awareness, not
+interception** — it will not scramble anyone, and it will not turn a distant CAP toward
+a raid. If you want a raid met, you have to put a flight where it will arrive.
+
+**Without an advanced IADS that is all your radars do.** Every SAM site is on its own,
+plain DCS AI, shooting at what its own radar sees. The EWRs still feed the shared
+picture, but they do not touch the batteries.
+
+**What the network adds is a switch on your SAMs.** With the advanced IADS running, those
+same detections turn sites **on and off**: a battery lies dark until the network cues it,
+so it is not emitting for an anti-radiation missile to home on and not visible until it
+is already shooting. That is what a belt buys you over the same launchers standing alone
+— and it is what you take away from blue by cutting their power and comms.
+
+**Detection ranges are nominal, not a fence.** The figure on a site is its database
+range. What it actually detects is decided per unit, per moment, by terrain, the radar
+horizon and the target's altitude. It is usually **shorter** — a contact down in a valley
+may never appear at all, which is why flying low works. But it can also be **longer**: in
+testing an EWR held a target several miles beyond its nominal range. Plan low routes to
+shrink it, and never treat "a few miles outside the ring" as safe ground.
+
+**The nominal figures, because they decide which radar is worth buying and which is
+worth killing:**
+
+- **55G6U Nebo-U** — 270 nm
+- **AN/FPS-117** — 250 nm
+- **55G6**, **1L119 Nebo-SVU**, **AN/FPS-117 (domed)** — 216 nm
+- **P-37 Bar Lock**, generic radar tower — 189 nm
+- **1L13** — 162 nm
+- **Roland EWR**, Dog Ear — 19 nm; these are a battery's own search radar, not area cover
+- **AWACS E-3A** and **A-50** — about 400 nm; **E-2C** — about 300 nm
+
+So an airborne AEW&C outreaches every ground radar in the game by a wide margin **and it
+can be moved**. That cuts both ways: it is the cheapest way to restore cover over a
+sector whose EWRs you have lost, and it is the single highest-value air target you can
+offer the enemy. Losing one costs your whole side its picture over that sector; killing
+theirs does the same to them. AEW&C aircraft that come from mods vary — read the range
+off the map rather than assuming these figures.
+
 ### Fighting the IADS, not just the launchers
 
 When the campaign runs an advanced IADS (`GET /iads` → `advanced:true`), the enemy air
