@@ -18,6 +18,52 @@ naval_magazines_state = {} -- navalmagazines plugin appends/updates {group=, fir
 mission_ended = false
 dirty_state = false -- Track if state has changed and needs writing
 
+-- Scenery objectives: resolve a map-object death to the building it belongs to.
+--
+-- A building objective is a named map object (a factory, a barracks, a fuel
+-- tank) that the campaign marks with a trigger zone. DCS reports its death like
+-- any other, except that getName() on a scenery object returns the object's
+-- numeric id, not a name -- so the id landed in dead_events and the debriefing,
+-- which resolves scenery by trigger-zone name, discarded every one of them.
+-- Measured over one mission: 978 scenery deaths, 15 of them direct hits on named
+-- objectives, and not a single objective recorded as damaged.
+--
+-- The MapObjectIsDead trigger that was supposed to catch this cannot: it is true
+-- only when EVERY map object inside the zone is dead, and those polygons hold
+-- scenery that cannot be destroyed at all (WOODPILE_01 and friends report a life
+-- of 1e38). So the objective survives its own destruction, indefinitely.
+--
+-- Instead we match the death to the nearest objective by position. The radius is
+-- measured, not guessed: in that mission, hits that destroyed the objective
+-- itself landed 0-25 m from the zone, while collateral scenery died from 26 m
+-- out. 30 m keeps the former and rejects the latter. Buildings sitting closer
+-- together than that (the ZEVS transformers are 9 m apart) can take each other's
+-- credit; nearest-wins is the best available answer there.
+SCENERY_MATCH_RADIUS = 30
+scenery_zone_reported = {} -- zone name -> true, so a building is only counted once
+
+-- Nearest objective zone to a dead scenery object, or nil if none is close
+-- enough. Reads RETRIBUTION_SCENERY_ZONES lazily so it does not care whether the
+-- generator seeded it before or after this script loaded.
+function scenery_zone_for(obj)
+    if type(RETRIBUTION_SCENERY_ZONES) ~= "table" then
+        return nil, nil
+    end
+    local point
+    if not pcall(function() point = obj:getPoint() end) or point == nil then
+        return nil, nil
+    end
+    local best, best_distance = nil, nil
+    for _, zone in ipairs(RETRIBUTION_SCENERY_ZONES) do
+        local dx, dy = point.x - zone.x, point.z - zone.y
+        local distance = math.sqrt(dx * dx + dy * dy)
+        if best_distance == nil or distance < best_distance then
+            best, best_distance = zone, distance
+        end
+    end
+    return best, best_distance
+end
+
 -- Player-despawn loss guard (414th): a player dropping to spectator — or the
 -- mission ending with players still airborne — makes DCS fire S_EVENT_CRASH/DEAD
 -- for that aircraft, which would otherwise be counted as a combat loss and attrit
@@ -379,7 +425,38 @@ local function onEvent(event)
     if event.id == world.event.S_EVENT_DEAD and event.initiator and event.initiator.getName then
         local name = event.initiator.getName(event.initiator)
         if not is_player_despawn(name) then
-            dead_events[#dead_events + 1] = name
+            if type(name) == "number" then
+                -- Scenery. The id is meaningless downstream, so credit the
+                -- objective standing on that spot instead, or drop it.
+                local zone, distance = scenery_zone_for(event.initiator)
+                local kind = "?"
+                pcall(function() kind = event.initiator:getTypeName() end)
+                if zone == nil then
+                    logger:info(string.format(
+                        "SCENERY %s (%s): no objectives seeded, ignored",
+                        tostring(name), tostring(kind)))
+                elseif distance > SCENERY_MATCH_RADIUS then
+                    logger:info(string.format(
+                        "SCENERY %s (%s): nearest objective '%s' is %.0f m away " ..
+                        "(limit %d m), ignored as collateral",
+                        tostring(name), tostring(kind), zone.name, distance,
+                        SCENERY_MATCH_RADIUS))
+                elseif scenery_zone_reported[zone.name] then
+                    logger:info(string.format(
+                        "SCENERY %s (%s): objective '%s' already counted (%.0f m), ignored",
+                        tostring(name), tostring(kind), zone.name, distance))
+                else
+                    scenery_zone_reported[zone.name] = true
+                    dead_events[#dead_events + 1] = zone.name
+                    logger:info(string.format(
+                        "SCENERY %s (%s) DESTROYED objective '%s' at %.0f m  " ..
+                        "[objectives counted so far: %d]",
+                        tostring(name), tostring(kind), zone.name, distance,
+                        #dead_events))
+                end
+            else
+                dead_events[#dead_events + 1] = name
+            end
             local position = event.initiator.getPosition(event.initiator)
             local destruction = {}
             destruction.x = position.p.x
