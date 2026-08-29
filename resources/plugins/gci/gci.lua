@@ -33,6 +33,7 @@
 -----------------------------------------------------------------------------------
 
 local DEBUG              = true
+local OBSERVE_ONLY       = false  -- watch and report, never task anything
 local EXTRA_RANGE_CAP_NM = 0     -- 0 = trust the radar's own envelope, see below
 local DIVERT_RANGE_NM    = 60
 local INTERCEPT_DURATION = 300
@@ -41,6 +42,7 @@ local UPDATE_INTERVAL    = 15
 if dcsRetribution and dcsRetribution.plugins and dcsRetribution.plugins.gci then
     local o = dcsRetribution.plugins.gci
     if o.DEBUG ~= nil then DEBUG = o.DEBUG == true end
+    if o.observeOnly ~= nil then OBSERVE_ONLY = o.observeOnly == true end
     EXTRA_RANGE_CAP_NM = tonumber(o.extraRangeCapNM)   or EXTRA_RANGE_CAP_NM
     DIVERT_RANGE_NM    = tonumber(o.divertRangeNM)     or DIVERT_RANGE_NM
     INTERCEPT_DURATION = tonumber(o.interceptDuration) or INTERCEPT_DURATION
@@ -65,6 +67,9 @@ local SIDES = {
 
 -- [groupName] = { target = <name>, expires = <time> }
 local assigned = {}
+-- observe-only: [groupName] = last target announced, so the same intent is not
+-- re-announced every cycle
+local wouldCue = {}
 
 local function log(msg)
     env.info("GCI| " .. msg)
@@ -208,6 +213,21 @@ local function availableInterceptors(sideId)
 end
 
 local function vector(flight, contact, contactName)
+    -- Observe-only exists to answer "what would happen without this plugin?". DCS AI
+    -- reacts to the coalition's shared picture on its own, so a flight breaking off
+    -- proves nothing unless you know whether anything actually tasked it. This mode
+    -- keeps the reporting and issues no task at all, giving a clean baseline of
+    -- native behaviour to diff against.
+    if OBSERVE_ONLY then
+        if wouldCue[flight.name] ~= contactName then
+            wouldCue[flight.name] = contactName
+            announce(string.format(
+                "[OBSERVE-ONLY, no task issued] would cue %s via EWR %s -> %s (%s NM)",
+                flight.name, contact.ewr, contactName,
+                nmText(dist3(flight.pos, contact.pos))))
+        end
+        return
+    end
     local okc, controller = pcall(function() return flight.group:getController() end)
     if not okc or not controller then
         log("could not get controller for " .. flight.name)
@@ -409,7 +429,8 @@ local function runCycle()
 end
 
 log(string.format(
-    "started | radar range: %s | divert %d NM | intercept %ds | tick %ds | DEBUG=%s",
+    "started%s | radar range: %s | divert %d NM | intercept %ds | tick %ds | DEBUG=%s",
+    OBSERVE_ONLY and " in OBSERVE-ONLY mode (no tasks will be issued)" or "",
     EXTRA_RANGE_CAP_NM > 0 and (EXTRA_RANGE_CAP_NM .. " NM cap")
         or "per-unit (engine radar model + terrain masking)",
     DIVERT_RANGE_NM, INTERCEPT_DURATION, UPDATE_INTERVAL, tostring(DEBUG)))
