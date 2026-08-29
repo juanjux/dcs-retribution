@@ -382,6 +382,24 @@ may never appear at all, which is why flying low works. But it can also be **lon
 testing an EWR held a target several miles beyond its nominal range. Plan low routes to
 shrink it, and never treat "a few miles outside the ring" as safe ground.
 
+**The nominal figures, because they decide which radar is worth buying and which is
+worth killing:**
+
+- **55G6U Nebo-U** — 270 nm
+- **AN/FPS-117** — 250 nm
+- **55G6**, **1L119 Nebo-SVU**, **AN/FPS-117 (domed)** — 216 nm
+- **P-37 Bar Lock**, generic radar tower — 189 nm
+- **1L13** — 162 nm
+- **Roland EWR**, Dog Ear — 19 nm; these are a battery's own search radar, not area cover
+- **AWACS E-3A** and **A-50** — about 400 nm; **E-2C** — about 300 nm
+
+So an airborne AEW&C outreaches every ground radar in the game by a wide margin **and it
+can be moved**. That cuts both ways: it is the cheapest way to restore cover over a
+sector whose EWRs you have lost, and it is the single highest-value air target you can
+offer the enemy. Losing one costs your whole side its picture over that sector; killing
+theirs does the same to them. AEW&C aircraft that come from mods vary — read the range
+off the map rather than assuming these figures.
+
 ### Fighting the IADS, not just the launchers
 
 **A site has TWO guidance radars, so one anti-radiation missile never kills it.** A SAM
