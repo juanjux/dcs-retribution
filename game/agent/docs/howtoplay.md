@@ -397,8 +397,12 @@ So an airborne AEW&C outreaches every ground radar in the game by a wide margin 
 can be moved**. That cuts both ways: it is the cheapest way to restore cover over a
 sector whose EWRs you have lost, and it is the single highest-value air target you can
 offer the enemy. Losing one costs your whole side its picture over that sector; killing
-theirs does the same to them. AEW&C aircraft that come from mods vary — read the range
-off the map rather than assuming these figures.
+theirs does the same to them.
+
+Note that **the map draws no ring for an AEW&C**, so unlike a ground radar you cannot
+check its reach in game — the figures above are all you have. Aircraft that come from
+mods are not listed because nothing states their range; assume at least the cover of a
+good ground EWR and no more until the mission shows you otherwise.
 
 ### Fighting the IADS, not just the launchers
 
