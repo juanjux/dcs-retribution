@@ -350,6 +350,38 @@ What that means for planning:
   sitting over what you most need to protect is worth more than one in open country.
   They are bought and repaired like any ground unit.
 
+### Radars, AWACS and shared awareness
+
+**Every EWR and every airborne AWACS feeds one picture shared by your whole side —
+"shared awareness".** A flight two hundred miles away knows about a contact that only
+that one radar holds, and it knows it without ever pointing a radar at it. This is the
+engine doing it, not the campaign: kill the radar and the same flights no longer know
+the contact exists until their own sensors find it. An AWACS does exactly what a ground
+EWR does here, with the coverage of an aircraft at altitude.
+
+**But knowing is not acting, and this is the part that decides your plan.** Only flights
+already close to a contact will go after it. A CAP that knows an intruder is inbound
+200 nm away keeps flying its racetrack. So an EWR buys you **awareness, not
+interception** — it will not scramble anyone, and it will not turn a distant CAP toward
+a raid. If you want a raid met, you have to put a flight where it will arrive.
+
+**Without an advanced IADS that is all your radars do.** Every SAM site is on its own,
+plain DCS AI, shooting at what its own radar sees. The EWRs still feed the shared
+picture, but they do not touch the batteries.
+
+**What the network adds is a switch on your SAMs.** With the advanced IADS running, those
+same detections turn sites **on and off**: a battery lies dark until the network cues it,
+so it is not emitting for an anti-radiation missile to home on and not visible until it
+is already shooting. That is what a belt buys you over the same launchers standing alone
+— and it is what you take away from blue by cutting their power and comms.
+
+**Detection ranges are nominal, not a fence.** The figure on a site is its database
+range. What it actually detects is decided per unit, per moment, by terrain, the radar
+horizon and the target's altitude. It is usually **shorter** — a contact down in a valley
+may never appear at all, which is why flying low works. But it can also be **longer**: in
+testing an EWR held a target several miles beyond its nominal range. Plan low routes to
+shrink it, and never treat "a few miles outside the ring" as safe ground.
+
 ### Fighting the IADS, not just the launchers
 
 **A site has TWO guidance radars, so one anti-radiation missile never kills it.** A SAM
