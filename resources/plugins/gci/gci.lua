@@ -282,6 +282,29 @@ local function nearestHostileNM(sideId, pos)
     return best
 end
 
+-- What the FLIGHT itself holds, by any means: its own radar, its RWR picking up an
+-- emitting bandit, or the Mk.1 eyeball. Deliberately unfiltered, because the question
+-- here is not how it found the contact but whether it has one at all -- an un-cued
+-- flight that is nonetheless turning and burning is prosecuting its own contact, not
+-- obeying GCI, and without this the two are indistinguishable in the log.
+local function ownContactNM(group, sideId, pos)
+    local okc, controller = pcall(function() return group:getController() end)
+    if not okc or not controller then return nil end
+    local okd, targets = pcall(function() return controller:getDetectedTargets() end)
+    if not okd or not targets then return nil end
+    local best
+    for _, det in ipairs(targets) do
+        local obj = det.object
+        if obj and obj:isExist()
+                and Object.getCategory(obj) == Object.Category.UNIT
+                and obj:getCoalition() ~= sideId then
+            local d = dist3(pos, obj:getPoint())
+            if not best or d < best then best = d end
+        end
+    end
+    return best
+end
+
 local function statusReport()
     local lines = {}
     for _, side in ipairs(SIDES) do
@@ -302,7 +325,14 @@ local function statusReport()
                     elseif not lead then
                         state = "on the ground"
                     else
-                        state = "holding, no cue"
+                        local own = ownContactNM(group, side.id, lead:getPoint())
+                        if own then
+                            state = string.format(
+                                "NO CUE but prosecuting its OWN contact at %s NM",
+                                nmText(own))
+                        else
+                            state = "holding, no cue, sees nothing"
+                        end
                     end
                     if lead then
                         local d = nearestHostileNM(side.id, lead:getPoint())
