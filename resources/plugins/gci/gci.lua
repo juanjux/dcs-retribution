@@ -263,7 +263,7 @@ end
 local function nearestHostileNM(sideId, pos)
     local other = (sideId == coalition.side.RED) and coalition.side.BLUE
                                                  or coalition.side.RED
-    local best
+    local best, bestName
     for _, cat in ipairs({ Group.Category.AIRPLANE, Group.Category.HELICOPTER }) do
         local okg, groups = pcall(coalition.getGroups, other, cat)
         if okg and groups then
@@ -272,14 +272,16 @@ local function nearestHostileNM(sideId, pos)
                     for _, u in ipairs(g:getUnits() or {}) do
                         if u and u:isExist() and u:inAir() then
                             local d = dist3(pos, u:getPoint())
-                            if not best or d < best then best = d end
+                            if not best or d < best then
+                                best, bestName = d, g:getName()
+                            end
                         end
                     end
                 end
             end
         end
     end
-    return best
+    return best, bestName
 end
 
 -- What the FLIGHT itself holds, split by how it holds it.
@@ -301,20 +303,26 @@ local function ownContact(group, sideId, pos)
             return controller:getDetectedTargets()
         end)
         if not okd or not targets then return nil end
-        local best
+        local best, bestName
         for _, det in ipairs(targets) do
             local obj = det.object
             if obj and obj:isExist()
                     and Object.getCategory(obj) == Object.Category.UNIT
                     and obj:getCoalition() ~= sideId then
                 local d = dist3(pos, obj:getPoint())
-                if not best or d < best then best = d end
+                if not best or d < best then
+                    best = d
+                    local okg, g = pcall(function() return obj:getGroup() end)
+                    bestName = (okg and g and g:getName()) or "?"
+                end
             end
         end
-        return best
+        return best, bestName
     end
 
-    return nearest(Controller.Detection.RADAR), nearest(nil)
+    local rNM, rName = nearest(Controller.Detection.RADAR)
+    local aNM, aName = nearest(nil)
+    return rNM, rName, aNM, aName
 end
 
 local function statusReport()
@@ -337,23 +345,24 @@ local function statusReport()
                     elseif not lead then
                         state = "on the ground"
                     else
-                        local byRadar, byAny = ownContact(group, side.id, lead:getPoint())
-                        if byRadar then
+                        local rNM, rName, aNM, aName =
+                            ownContact(group, side.id, lead:getPoint())
+                        if rNM then
                             state = string.format(
-                                "no cue, but has its OWN RADAR contact at %s NM",
-                                nmText(byRadar))
-                        elseif byAny then
+                                "no cue, OWN RADAR holds %s at %s NM", rName, nmText(rNM))
+                        elseif aNM then
                             state = string.format(
-                                "no cue, no radar contact, only shared awareness at %s NM",
-                                nmText(byAny))
+                                "no cue, no radar contact, only shared awareness of %s at %s NM",
+                                aName, nmText(aNM))
                         else
                             state = "holding, no cue, sees nothing"
                         end
                     end
                     if lead then
-                        local d = nearestHostileNM(side.id, lead:getPoint())
-                        state = state .. (d and (", nearest bandit " .. nmText(d) .. " NM")
-                                            or ", no bandits airborne")
+                        local d, dName = nearestHostileNM(side.id, lead:getPoint())
+                        state = state .. (d and string.format(
+                            "; nearest bandit is %s at %s NM", dName, nmText(d))
+                            or "; no bandits airborne")
                     end
                     table.insert(lines, name .. ": " .. state)
                 end
