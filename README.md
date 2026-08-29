@@ -221,6 +221,21 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   (branch [`juanjux/ch_china_1.1.6`](https://github.com/juanjux/dcs-retribution/tree/juanjux/ch_china_1.1.6))
 
 ### Fixes
+- **Destroying a building objective did nothing — for as long as the campaign lasted.**
+  A building objective is a named map object marked with a trigger zone. DCS reports its
+  death like any other, except that `getName()` on scenery returns the object's numeric
+  id, not a name, so the id went into `dead_events` and the debriefing — which resolves
+  scenery by trigger-zone name — discarded every one. The `MapObjectIsDead` trigger meant
+  to catch this cannot: it is only true once *every* map object inside the zone is dead,
+  and those polygons contain scenery that cannot be destroyed at all (`WOODPILE_01` and
+  friends report a life of 1e38), so an objective survives its own destruction
+  indefinitely. Measured over one mission on Kola: **978 scenery deaths, 15 of them direct
+  hits on named objectives — all four buildings of one, all six of another — and not a
+  single objective recorded as even damaged.** Scenery deaths are now matched to the
+  nearest objective by position, with a radius measured rather than guessed: hits that
+  destroyed the objective landed 0–25 m from its zone and collateral died from 26 m out,
+  so 30 m keeps the first and rejects the second.
+  ([`b7cbd73`](https://github.com/juanjux/dcs-retribution/commit/b7cbd73df))
 - **A bombed-out motorpool showed on the map as a permanent loss.** `repairable` falls
   back to `purchasable`, which is `False` for a motorpool because it is never bought as a
   group — but the motorpool is only a view of the base's undeployed armor, so procuring
