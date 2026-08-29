@@ -1,6 +1,6 @@
 {
     "nameInUI": "GCI - Ground Controlled Intercept (prototype)",
-    "descriptionInUI": "EWR sites cue nearby fighter flights (BARCAP, TARCAP, Fighter sweep) onto air contacts they detect. Runs for BOTH coalitions, so it does not favour one side. Cued flights are given a bounded intercept task and return to their planned route when it expires. Prototype.",
+    "descriptionInUI": "EWR sites cue nearby fighter flights (BARCAP, TARCAP, Fighter sweep) onto air contacts they hold on radar. Detection range, terrain masking and the radar horizon come from the engine's own radar model, so a contact hidden by terrain or flying low is not reported. Runs for BOTH coalitions, so it does not favour one side. Cued flights are given a bounded intercept task and return to their planned route when it expires. Prototype.",
     "defaultValue": false,
     "specificOptions": [
         {
@@ -9,11 +9,11 @@
             "defaultValue": true
         },
         {
-            "nameInUI": "Max EWR-to-contact detection range (NM)",
-            "mnemonic": "detectionRangeNM",
-            "minimumValue": 10,
+            "nameInUI": "Extra cap on EWR detection range (NM; 0 = use the radar's own range and terrain masking)",
+            "mnemonic": "extraRangeCapNM",
+            "minimumValue": 0,
             "maximumValue": 400,
-            "defaultValue": 150
+            "defaultValue": 0
         },
         {
             "nameInUI": "Max distance a flight will divert to intercept (NM)",

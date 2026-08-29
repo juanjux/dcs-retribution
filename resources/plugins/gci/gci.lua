@@ -33,7 +33,7 @@
 -----------------------------------------------------------------------------------
 
 local DEBUG              = true
-local DETECTION_RANGE_NM = 150
+local EXTRA_RANGE_CAP_NM = 0     -- 0 = trust the radar's own envelope, see below
 local DIVERT_RANGE_NM    = 60
 local INTERCEPT_DURATION = 300
 local UPDATE_INTERVAL    = 15
@@ -41,14 +41,14 @@ local UPDATE_INTERVAL    = 15
 if dcsRetribution and dcsRetribution.plugins and dcsRetribution.plugins.gci then
     local o = dcsRetribution.plugins.gci
     if o.DEBUG ~= nil then DEBUG = o.DEBUG == true end
-    DETECTION_RANGE_NM = tonumber(o.detectionRangeNM)  or DETECTION_RANGE_NM
+    EXTRA_RANGE_CAP_NM = tonumber(o.extraRangeCapNM)   or EXTRA_RANGE_CAP_NM
     DIVERT_RANGE_NM    = tonumber(o.divertRangeNM)     or DIVERT_RANGE_NM
     INTERCEPT_DURATION = tonumber(o.interceptDuration) or INTERCEPT_DURATION
     UPDATE_INTERVAL    = tonumber(o.updateInterval)    or UPDATE_INTERVAL
 end
 
 local NM = 1852
-local DETECTION_RANGE = DETECTION_RANGE_NM * NM
+local EXTRA_RANGE_CAP = EXTRA_RANGE_CAP_NM * NM
 local DIVERT_RANGE    = DIVERT_RANGE_NM * NM
 
 -- Flight types allowed to be vectored. These strings come from Retribution's group
@@ -113,21 +113,39 @@ local function ewrGroupNames(sideKey)
     return names
 end
 
--- Every air contact this side's EWRs can currently see, keyed by target group name
--- so several radars painting the same formation collapse into one entry.
+-- Every air contact this side's EWRs currently hold, keyed by target group name so
+-- several radars painting the same formation collapse into one entry.
+--
+-- Range and terrain are the ENGINE's answer, not ours. Asking the radar's own
+-- controller what it holds means the unit's real detection envelope, terrain masking,
+-- the radar horizon and low-level beaming have already been applied: a 1L13 and a
+-- 55G6 differ because DCS says they differ, and a contact down in a fjord is absent
+-- because DCS says it is. This is the same property the bundled EWRS script
+-- advertises, and the reason neither script does line-of-sight maths of its own.
+--
+-- Detection is filtered to RADAR on purpose. An unfiltered getDetectedTargets() also
+-- returns VISUAL, OPTIC, IRST, RWR and DLINK contacts, so a radar site would inherit
+-- tracks datalinked from elsewhere and cue fighters onto aircraft it never actually
+-- saw, bypassing exactly the terrain masking that makes flying low worth doing.
+--
+-- EXTRA_RANGE_CAP is only an optional hard clip on top, off by default, because
+-- clipping every radar to one flat number is precisely the crude model the engine
+-- already does better.
 local function detectedContacts(sideKey, sideId)
     local contacts = {}
     for _, gname in ipairs(ewrGroupNames(sideKey)) do
         local okg, group = pcall(Group.getByName, gname)
         if okg and group and group:isExist() then
             local ewrPos
-            for _, unit in ipairs(group:getUnits() or {}) do
-                if unit and unit:isExist() then
-                    ewrPos = ewrPos or unit:getPoint()
-                    local okc, controller = pcall(function() return unit:getController() end)
+            for _, u in ipairs(group:getUnits() or {}) do
+                if u and u:isExist() then ewrPos = u:getPoint() break end
+            end
+            if ewrPos then
+                do
+                    local okc, controller = pcall(function() return group:getController() end)
                     if okc and controller then
                         local okd, targets = pcall(function()
-                            return controller:getDetectedTargets()
+                            return controller:getDetectedTargets(Controller.Detection.RADAR)
                         end)
                         if okd and targets then
                             for _, det in ipairs(targets) do
@@ -142,8 +160,9 @@ local function detectedContacts(sideKey, sideId)
                                                 or cat == Group.Category.HELICOPTER then
                                             local tname = tgroup:getName()
                                             local tpos = obj:getPoint()
-                                            if not contacts[tname] and ewrPos
-                                                    and dist3(ewrPos, tpos) <= DETECTION_RANGE then
+                                            if not contacts[tname]
+                                                    and (EXTRA_RANGE_CAP <= 0
+                                                         or dist3(ewrPos, tpos) <= EXTRA_RANGE_CAP) then
                                                 contacts[tname] = {
                                                     id = tgroup:getID(),
                                                     pos = tpos,
@@ -263,9 +282,10 @@ local function runCycle()
 end
 
 log(string.format(
-    "started | detection %d NM | divert %d NM | intercept %ds | tick %ds | DEBUG=%s",
-    DETECTION_RANGE_NM, DIVERT_RANGE_NM, INTERCEPT_DURATION, UPDATE_INTERVAL,
-    tostring(DEBUG)))
+    "started | radar range: %s | divert %d NM | intercept %ds | tick %ds | DEBUG=%s",
+    EXTRA_RANGE_CAP_NM > 0 and (EXTRA_RANGE_CAP_NM .. " NM cap")
+        or "per-unit (engine radar model + terrain masking)",
+    DIVERT_RANGE_NM, INTERCEPT_DURATION, UPDATE_INTERVAL, tostring(DEBUG)))
 
 for _, side in ipairs(SIDES) do
     log(string.format("%s EWR sites known: %d", side.key, #ewrGroupNames(side.key)))

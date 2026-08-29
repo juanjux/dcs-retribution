@@ -21,6 +21,8 @@ timer = {
 Group = { Category = { AIRPLANE = 0, HELICOPTER = 1, GROUND = 2, SHIP = 3 } }
 Object = { Category = { UNIT = 1 }, getCategory = function(o) return o._cat or 1 end }
 coalition = { side = { RED = 1, BLUE = 2 } }
+Controller = { Detection = { VISUAL = 1, OPTIC = 2, RADAR = 4, IRST = 8,
+                             RWR = 16, DLINK = 32 } }
 
 local byName, allGroups = {}, {}
 
@@ -37,7 +39,8 @@ local function mkGroup(name, cat, coalitionId, id)
     local g = { name = name, cat = cat, coalitionId = coalitionId, id = id,
                 units = {}, pushed = {}, detected = {} }
     g.controller = {
-        getDetectedTargets = function() return g.detected end,
+        -- Records the filter so the harness can prove the plugin asks for RADAR only.
+        getDetectedTargets = function(_, filter) g.lastFilter = filter; return g.detected end,
         pushTask = function(_, t) table.insert(g.pushed, t) end,
     }
     g.isExist = function() return true end
@@ -84,7 +87,7 @@ local blueUnit = addUnit(blue, 80 * NM, true, nil)
 ewr.detected = { { object = blueUnit, visible = true } }
 
 dcsRetribution = {
-    plugins = { gci = { DEBUG = true, detectionRangeNM = 90, divertRangeNM = 90,
+    plugins = { gci = { DEBUG = true, extraRangeCapNM = 0, divertRangeNM = 90,
                         interceptDuration = 600, updateInterval = 10 } },
     IADS = { RED = { Ewr = { { dcsGroupName = "Zone A EWR" } } }, BLUE = {} },
 }
@@ -105,6 +108,8 @@ end
 
 print("--- results ---")
 local allOk = true
+allOk = check("EWR was polled with the RADAR detection filter",
+    ewr.lastFilter == Controller.Detection.RADAR) and allOk
 allOk = check("CAP A (has EWR cover) was vectored", #capA.pushed == 1) and allOk
 allOk = check("CAP B (no EWR, 228 NM) was NOT vectored", #capB.pushed == 0) and allOk
 allOk = check("STRIKE flight was NOT diverted", #strike.pushed == 0) and allOk
