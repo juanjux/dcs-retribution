@@ -125,6 +125,9 @@
   "doctrine": "coldwar",
   "weapons_introduction_year_overrides": {
     "4 x BGM-71D TOW ATGM": 1970,
-    "AGM-84D": 1979
+    "AGM-84D": 1979,
+    "AGM-65D": 1975,
+    "2xAGM-65D": 1975,
+    "3xAGM-65D": 1975
   }
 }
