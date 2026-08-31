@@ -9,7 +9,12 @@ from __future__ import annotations
 
 from typing import Any
 
-from PySide6.QtCore import QModelIndex, QSortFilterProxyModel, Qt
+from PySide6.QtCore import (
+    QAbstractListModel,
+    QModelIndex,
+    QSortFilterProxyModel,
+    Qt,
+)
 from PySide6.QtGui import QColor, QFont, QPainter, QPaintEvent
 from PySide6.QtWidgets import (
     QComboBox,
@@ -22,6 +27,7 @@ from PySide6.QtWidgets import (
 
 from game.squadrons import Squadron
 from qt_ui.models import AirWingModel
+from qt_ui.widgets.squadrondelegate import GroupHeaderRole
 
 TOOLBAR_HEIGHT = 54
 FIELD_HEIGHT = 30
@@ -35,6 +41,12 @@ RIGHT_MARGIN = 14
 
 HEADER_FILL = QColor("#26343F")
 HEADER_TEXT = QColor("#6B7A87")
+
+GROUPINGS = [
+    ("No grouping", None),
+    ("Aircraft type", "type"),
+    ("Base", "base"),
+]
 
 SORT_ORDERS = [
     ("Aircraft type", "type"),
@@ -103,6 +115,93 @@ class SquadronFilterProxy(QSortFilterProxyModel):
         return self._key(first) < self._key(second)
 
 
+class GroupedSquadronModel(QAbstractListModel):
+    """Flattens the filtered list into group headers followed by their members.
+
+    A QSortFilterProxyModel cannot add rows, so grouping needs a model of its
+    own. It rebuilds from scratch whenever the proxy changes, which at forty
+    rows costs nothing and keeps the two in step without bookkeeping.
+    """
+
+    def __init__(self, proxy: SquadronFilterProxy) -> None:
+        super().__init__()
+        self.proxy = proxy
+        self.grouping: str | None = None
+        #: ("header", label, count, first proxy row) or ("squadron", proxy row).
+        self.entries: list[tuple[Any, ...]] = []
+        for signal in (
+            proxy.modelReset,
+            proxy.layoutChanged,
+            proxy.rowsInserted,
+            proxy.rowsRemoved,
+            proxy.dataChanged,
+        ):
+            signal.connect(self.rebuild)
+        self.rebuild()
+
+    def set_grouping(self, grouping: str | None) -> None:
+        self.grouping = grouping
+        self.rebuild()
+
+    def _key(self, squadron: Squadron) -> str:
+        if self.grouping == "base":
+            return squadron.location.name
+        return squadron.aircraft.display_name
+
+    def rebuild(self, *_args: Any) -> None:
+        self.beginResetModel()
+        self.entries = []
+        rows = range(self.proxy.rowCount())
+        if self.grouping is None:
+            self.entries = [("squadron", row) for row in rows]
+        else:
+            # Groups appear in the order their first member does, so the sort
+            # order still decides what you see first.
+            members: dict[str, list[int]] = {}
+            for row in rows:
+                squadron = self.proxy.index(row, 0).data(AirWingModel.SquadronRole)
+                if not isinstance(squadron, Squadron):
+                    continue
+                members.setdefault(self._key(squadron), []).append(row)
+            for label, group in members.items():
+                self.entries.append(("header", label, len(group), group[0]))
+                self.entries.extend(("squadron", row) for row in group)
+        self.endResetModel()
+
+    def rowCount(self, parent: QModelIndex = QModelIndex()) -> int:
+        return len(self.entries)
+
+    def proxy_index(self, index: QModelIndex) -> QModelIndex:
+        entry = self.entries[index.row()]
+        if entry[0] != "squadron":
+            return QModelIndex()
+        return self.proxy.index(entry[1], 0)
+
+    def flags(self, index: QModelIndex) -> Qt.ItemFlag:
+        if not index.isValid() or self.entries[index.row()][0] == "header":
+            # A header is a label, not something you can select or open.
+            return Qt.ItemFlag.NoItemFlags
+        return Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable
+
+    def data(self, index: QModelIndex, role: int = Qt.ItemDataRole.DisplayRole) -> Any:
+        if not index.isValid():
+            return None
+        entry = self.entries[index.row()]
+        if entry[0] == "header":
+            if role == GroupHeaderRole:
+                return entry[1], entry[2]
+            if role == Qt.ItemDataRole.DecorationRole and self.grouping == "type":
+                # The silhouette of the group's first member names it faster
+                # than the text does.
+                return self.proxy.index(entry[3], 0).data(
+                    Qt.ItemDataRole.DecorationRole
+                )
+            return None
+        if role == GroupHeaderRole:
+            return None
+        return self.proxy.index(entry[1], 0).data(role)
+
+
 class ColumnHeader(QWidget):
     """Four labels painted at the delegate's own column offsets."""
 
@@ -134,9 +233,15 @@ class ColumnHeader(QWidget):
 class SquadronPanel(QWidget):
     """The squadron list with its filter, sort order and totals."""
 
-    def __init__(self, squadron_list: QWidget, proxy: SquadronFilterProxy) -> None:
+    def __init__(
+        self,
+        squadron_list: QWidget,
+        proxy: SquadronFilterProxy,
+        grouped: GroupedSquadronModel,
+    ) -> None:
         super().__init__()
         self.proxy = proxy
+        self.grouped = grouped
 
         self.filter_field = QLineEdit()
         self.filter_field.setPlaceholderText("Filter by type, squadron or base...")
@@ -150,6 +255,12 @@ class SquadronPanel(QWidget):
             self.sort_combo.addItem(f"Sort: {label}", key)
         self.sort_combo.currentIndexChanged.connect(self.on_sort_changed)
 
+        self.group_combo = QComboBox()
+        self.group_combo.setFixedHeight(FIELD_HEIGHT)
+        for label, key in GROUPINGS:
+            self.group_combo.addItem(f"Group: {label}", key)
+        self.group_combo.currentIndexChanged.connect(self.on_group_changed)
+
         self.totals = QLabel()
         self.totals.setAlignment(
             Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
@@ -160,6 +271,7 @@ class SquadronPanel(QWidget):
         toolbar.setSpacing(12)
         toolbar.addWidget(self.filter_field)
         toolbar.addWidget(self.sort_combo)
+        toolbar.addWidget(self.group_combo)
         toolbar.addStretch()
         toolbar.addWidget(self.totals)
 
@@ -171,6 +283,7 @@ class SquadronPanel(QWidget):
         layout.addWidget(squadron_list)
         self.setLayout(layout)
 
+        self.delegate = squadron_list.itemDelegate()
         self.proxy.set_order("type")
         self.update_totals()
 
@@ -180,6 +293,12 @@ class SquadronPanel(QWidget):
 
     def on_sort_changed(self, _index: int) -> None:
         self.proxy.set_order(self.sort_combo.currentData())
+
+    def on_group_changed(self, _index: int) -> None:
+        grouping = self.group_combo.currentData()
+        self.grouped.set_grouping(grouping)
+        # The delegate leaves out whichever column the header now names.
+        self.delegate.grouping = grouping
 
     def update_totals(self) -> None:
         shown = self.proxy.rowCount()

@@ -44,8 +44,9 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   and the strength line leads with the aircraft count, greys the pilots and shows
   "n ready" in green only when there is something to fly. A squadron with no aircraft
   dims instead of shouting. Above the list: a **live filter** over type, squadron or
-  base, a **sort order** (type / squadron / base / aircraft count) and a running count
-  of what is on screen. Design by Claude Design.
+  base, a **sort order** (type / squadron / base / aircraft count), **grouping** by
+  aircraft type or by base — the grouped column moves to a section header and the rows
+  lose it — and a running count of what is on screen. Design by Claude Design.
   (branch [`juanjux/airwing-redesign`](https://github.com/juanjux/dcs-retribution/tree/juanjux/airwing-redesign))
 - **Mission dashboard** — an embedded in-progress panel (live clocks, weather,
   per-flight status and a kill feed, with accept / submit-manually / abort)
