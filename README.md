@@ -32,23 +32,13 @@ Each item links to the fork PR that implements it. The authoritative, up-to-date
 list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=is%3Apr).
 
 ### Map & UI
-- **Air Wing squadron list, redesigned** — the list painted four blocks of identical
-  12pt text, with the aircraft type right-aligned on the far side of a 1200px row, so
-  finding an airframe meant reading every line. The type is now the only large, bold
-  text and sits on a fixed rail beside the silhouette, with the variant ("Block 135-GR
-  Late") demoted beside it; squadron and nickname drop to a quiet second line. Four
-  fixed columns replace the two ragged edges: type/squadron, base, role and strength.
-  The **primary task** appears for the first time as a colour-coded chip (air-to-air,
-  air-to-ground, support), a **6px diamond** marks carrier-based squadrons, pending
-  transfers get their own amber line instead of doubling the longest string in the row,
-  and the strength line leads with the aircraft count, greys the pilots and shows
-  "n ready" in green only when there is something to fly. A squadron with no aircraft
-  dims instead of shouting. Above the list: a **live filter** over type, squadron or
-  base, a **sort order** (type / squadron / base / aircraft count), **grouping** by
-  aircraft type or by base — the grouped column moves to a section header and the rows
-  lose it, and the choice is remembered next time you open the dialog — and a running
-  count of what is on screen. Design by Claude Design.
+- **Air Wing squadron list, redesigned** — the aircraft type leads the row so the list
+  can be scanned, the primary task shows as a role chip, and the list gained a filter, a
+  sort order and grouping by type or base, both remembered between openings.
   (branch [`juanjux/airwing-redesign`](https://github.com/juanjux/dcs-retribution/tree/juanjux/airwing-redesign))
+
+  <img src="https://raw.githubusercontent.com/juanjux/dcs-retribution/juanjux/screenshots/airwing-redesign.png" width="760">
+
 - **"All >>" and "None <<" in the unit transfer dialog** — a base can hold two dozen
   unit types, and queueing a whole garrison meant clicking every row up to its count.
   The two buttons sit above the list and move everything at once, or clear it.

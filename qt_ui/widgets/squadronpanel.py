@@ -53,6 +53,7 @@ GROUPINGS = [
 SETTINGS_ORGANISATION = "DCS Retribution"
 SETTINGS_APPLICATION = "Qt UI"
 GROUPING_KEY = "airwing/grouping"
+SORT_KEY = "airwing/sort"
 
 SORT_ORDERS = [
     ("Aircraft type", "type"),
@@ -290,32 +291,43 @@ class SquadronPanel(QWidget):
         self.setLayout(layout)
 
         self.delegate = squadron_list.itemDelegate()
-        self.proxy.set_order("type")
         self.update_totals()
+        self.restore_sort()
         self.restore_grouping()
+
+    @staticmethod
+    def _settings() -> QSettings:
+        return QSettings(SETTINGS_ORGANISATION, SETTINGS_APPLICATION)
 
     def on_filter_changed(self, needle: str) -> None:
         self.proxy.set_needle(needle)
         self.update_totals()
 
     def on_sort_changed(self, _index: int) -> None:
-        self.proxy.set_order(self.sort_combo.currentData())
+        order = self.sort_combo.currentData()
+        self.proxy.set_order(order)
+        self._settings().setValue(SORT_KEY, order)
+
+    def restore_sort(self) -> None:
+        saved = self._settings().value(SORT_KEY)
+        index = self.sort_combo.findData(saved) if saved else -1
+        if index < 0 or index == self.sort_combo.currentIndex():
+            # Either nothing was saved or the combo already shows it, and
+            # setCurrentIndex emits nothing when the index does not change.
+            self.on_sort_changed(self.sort_combo.currentIndex())
+            return
+        self.sort_combo.setCurrentIndex(index)
 
     def on_group_changed(self, _index: int) -> None:
         grouping = self.group_combo.currentData()
         self.grouped.set_grouping(grouping)
         # The delegate leaves out whichever column the header now names.
         self.delegate.grouping = grouping
-        QSettings(SETTINGS_ORGANISATION, SETTINGS_APPLICATION).setValue(
-            GROUPING_KEY, "" if grouping is None else grouping
-        )
+        self._settings().setValue(GROUPING_KEY, "" if grouping is None else grouping)
 
     def restore_grouping(self) -> None:
         """Reopen the dialog the way it was left."""
-        saved = QSettings(SETTINGS_ORGANISATION, SETTINGS_APPLICATION).value(
-            GROUPING_KEY
-        )
-        grouping = saved or None
+        grouping = self._settings().value(GROUPING_KEY) or None
         index = self.group_combo.findData(grouping)
         if index < 0:
             return
