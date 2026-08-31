@@ -32,6 +32,10 @@ Each item links to the fork PR that implements it. The authoritative, up-to-date
 list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=is%3Apr).
 
 ### Map & UI
+- **"All >>" and "None <<" in the unit transfer dialog** — a base can hold two dozen
+  unit types, and queueing a whole garrison meant clicking every row up to its count.
+  The two buttons sit above the list and move everything at once, or clear it.
+  (branch [`juanjux/transfer-all-none`](https://github.com/juanjux/dcs-retribution/tree/juanjux/transfer-all-none))
 - **Your payload library is backed up on startup.** DCS keeps your custom
   loadouts as one `.lua` per airframe under `MissionEditor/UnitPayloads`, and
   nothing else holds a copy — not the campaign save, not the generated `.miz`.
