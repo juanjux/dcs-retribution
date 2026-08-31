@@ -1,6 +1,7 @@
 ﻿# Retribution v1.6.3 (414th)
 
 ## Features/Improvements
+* **[FIX]** A payload with an empty pylon was thrown away whole and the aircraft was planned carrying nothing at all: the Tornado IDS strike fit leaves four stations free, so a Tornado sent on a strike flew with no bombs.
 * **[OPFOR AI]** A ground object being rebuilt now reports `rebuild: {force_group, turns_remaining}` instead of reading as destroyed, so an external planner sees the works on the map the same way the player does.
 * **[FIX]** Editing a faction from the Air Wing dialog (Faction OWNFOR / OPFOR) now rebuilds that side's forces, so the change reaches the buy menus in the campaign you are playing. Only preset-group changes did before: adding a unit -- an early-warning radar, say -- left every site still offering whatever it had fallen back to at campaign start.
 * **[Mission Generation]** New option "GPS jamming" (off by default): a JDAM, JSOW, JASSM or SLAM-ER released against a target inside an enemy jamming bubble flies its normal profile and lands off the aimpoint, further off the deeper in. Laser, TV and anti-radiation weapons are unaffected, and killing the jammer restores accuracy on the next weapon in the same mission. A jammer is an ordinary bombable ground unit -- any type whose data file carries a `gps_jamming` block, shipped on DCS's own GPS spoofer vehicles (adapted from the 414Ret fork).
