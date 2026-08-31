@@ -92,6 +92,16 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   [#20](https://github.com/juanjux/dcs-retribution/pull/20))
 
 ### Missions, AI & tasking
+- **Turn times from the sun** — the four turn slots are derived from the
+  theater's latitude and the campaign date instead of one fixed window per map.
+  Kola's shipped table gives `dawn: [3, 9]` and `day: [9, 18]` all year, so a
+  December dawn turn started at 03:00 in the pitch dark and a day turn could
+  begin after sunset; now dawn sits an hour after sunrise, day at solar noon,
+  dusk an hour before sunset and night two hours after it, each with an hour of
+  slack either side. North of the arctic circle there is no sunrise to anchor to,
+  so the slots hang off solar noon and stay dark — if it is night, it is night.
+  A theater keeps its old table with `daytime_mode: table` in
+  `resources/theaters/<map>/info.yaml`; campaigns saved before this keep theirs.
 - **Campaign Doctrine: "non-combat (crash) air losses don't count"** — AI
   crashes/collisions DCS not credited to a weapon or SAM (which happen a lot because DCS AI is stupid) no longer deplete a
   squadron or kill the pilot; backed by per-loss kill attribution and shown in
