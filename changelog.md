@@ -1,6 +1,7 @@
 ﻿# Retribution v1.6.3 (414th)
 
 ## Features/Improvements
+* **[FIX]** Every orbit in a package ended at the same time, whichever flight's time was generated first, so an AWACS or a tanker packaged with a shorter-lived BARCAP left station early — up to two hours in one case.
 * **[FIX]** A payload with an empty pylon was thrown away whole and the aircraft was planned carrying nothing at all: the Tornado IDS strike fit leaves four stations free, so a Tornado sent on a strike flew with no bombs.
 * **[Mission Generation]** Turn times now come from the theater's latitude and the campaign date instead of one fixed window per map.
 * **[FIX]** Some building objectives would never be recorded as destroyed. An objective was only credited once every map object inside its trigger zone was dead, and many of those zones hold scenery that cannot be destroyed at all, so those objectives read as intact however often you flattened them, while others scored normally. 
