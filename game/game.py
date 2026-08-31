@@ -166,7 +166,9 @@ class Game:
             )
         else:
             self.time_of_day_offset_for_start_time = list(TimeOfDay).index(
-                self.theater.daytime_map.best_guess_time_of_day_at(start_time)
+                self.theater.daytime_map_for(
+                    start_time.date()
+                ).best_guess_time_of_day_at(start_time)
             )
         self.conditions = self.generate_conditions(forced_time=start_time)
 
