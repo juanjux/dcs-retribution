@@ -74,6 +74,9 @@ def _build(push_offset_minutes: float, emitted: dict[str, Any]) -> dict[str, Any
     dummy: Any = object()
     builder.package = dummy
     builder.mission = dummy
+    # The stop-orbit flag is keyed by group id, so the builder needs a group.
+    group: Any = SimpleNamespace(id=1)
+    builder.group = group
     waypoint: Any = SimpleNamespace(alt=6400, tasks=[], add_task=lambda t: None)
     builder.waypoint = waypoint
     builder.add_tasks(waypoint)
