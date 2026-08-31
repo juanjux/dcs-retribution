@@ -12,6 +12,7 @@ from typing import Any
 from PySide6.QtCore import (
     QAbstractListModel,
     QModelIndex,
+    QSettings,
     QSortFilterProxyModel,
     Qt,
 )
@@ -47,6 +48,11 @@ GROUPINGS = [
     ("Aircraft type", "type"),
     ("Base", "base"),
 ]
+
+#: Same store as the main window's geometry, so the choice outlives the app.
+SETTINGS_ORGANISATION = "DCS Retribution"
+SETTINGS_APPLICATION = "Qt UI"
+GROUPING_KEY = "airwing/grouping"
 
 SORT_ORDERS = [
     ("Aircraft type", "type"),
@@ -286,6 +292,7 @@ class SquadronPanel(QWidget):
         self.delegate = squadron_list.itemDelegate()
         self.proxy.set_order("type")
         self.update_totals()
+        self.restore_grouping()
 
     def on_filter_changed(self, needle: str) -> None:
         self.proxy.set_needle(needle)
@@ -299,6 +306,25 @@ class SquadronPanel(QWidget):
         self.grouped.set_grouping(grouping)
         # The delegate leaves out whichever column the header now names.
         self.delegate.grouping = grouping
+        QSettings(SETTINGS_ORGANISATION, SETTINGS_APPLICATION).setValue(
+            GROUPING_KEY, "" if grouping is None else grouping
+        )
+
+    def restore_grouping(self) -> None:
+        """Reopen the dialog the way it was left."""
+        saved = QSettings(SETTINGS_ORGANISATION, SETTINGS_APPLICATION).value(
+            GROUPING_KEY
+        )
+        grouping = saved or None
+        index = self.group_combo.findData(grouping)
+        if index < 0:
+            return
+        if index == self.group_combo.currentIndex():
+            # setCurrentIndex emits nothing when the index does not change, so
+            # apply it by hand rather than trusting the signal.
+            self.on_group_changed(index)
+            return
+        self.group_combo.setCurrentIndex(index)
 
     def update_totals(self) -> None:
         shown = self.proxy.rowCount()
