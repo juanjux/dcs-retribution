@@ -197,12 +197,6 @@ class GroupedSquadronModel(QAbstractListModel):
         if entry[0] == "header":
             if role == GroupHeaderRole:
                 return entry[1], entry[2]
-            if role == Qt.ItemDataRole.DecorationRole and self.grouping == "type":
-                # The silhouette of the group's first member names it faster
-                # than the text does.
-                return self.proxy.index(entry[3], 0).data(
-                    Qt.ItemDataRole.DecorationRole
-                )
             return None
         if role == GroupHeaderRole:
             return None
