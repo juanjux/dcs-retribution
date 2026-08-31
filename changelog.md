@@ -1,6 +1,7 @@
 ﻿# Retribution v1.6.3 (414th)
 
 ## Features/Improvements
+* **[FIX]** A payload with an empty pylon was thrown away whole and the aircraft was planned carrying nothing at all: the Tornado IDS strike fit leaves four stations free, so a Tornado sent on a strike flew with no bombs.
 * **[Mission Generation]** Turn times now come from the theater's latitude and the campaign date instead of one fixed window per map.
 * **[FIX]** Some building objectives would never be recorded as destroyed. An objective was only credited once every map object inside its trigger zone was dead, and many of those zones hold scenery that cannot be destroyed at all, so those objectives read as intact however often you flattened them, while others scored normally. 
 * **[OPFOR AI]** A ground object being rebuilt now reports `rebuild: {force_group, turns_remaining}` instead of reading as destroyed, so an external planner sees the works on the map the same way the player does.
