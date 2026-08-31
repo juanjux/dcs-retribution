@@ -26,7 +26,7 @@ SEPARATOR_Y = 47
 
 #: A grouped row loses the column its group already names, so it can be shorter.
 GROUPED_ROW_HEIGHT = 44
-GROUP_HEADER_HEIGHT = 26
+GROUP_HEADER_HEIGHT = 28
 
 #: Set by the model on its group-header rows: (label, member count).
 GroupHeaderRole = Qt.ItemDataRole.UserRole + 1
@@ -179,7 +179,7 @@ class SquadronDelegate(QStyledItemDelegate):
     ) -> None:
         header = index.data(GroupHeaderRole)
         if header is not None:
-            self._paint_group_header(painter, option, index, header)
+            self._paint_group_header(painter, option, header)
             return
 
         squadron = self.squadron(index)
@@ -452,7 +452,6 @@ class SquadronDelegate(QStyledItemDelegate):
         self,
         painter: QPainter,
         option: QStyleOptionViewItem,
-        index: QModelIndex,
         header: tuple[str, int],
     ) -> None:
         label, count = header
@@ -461,27 +460,22 @@ class SquadronDelegate(QStyledItemDelegate):
         width = option.rect.width()
         painter.fillRect(QRect(0, 0, width, GROUP_HEADER_HEIGHT), GROUP_HEADER_FILL)
 
-        icon: Optional[QIcon] = index.data(Qt.ItemDataRole.DecorationRole)
-        if icon is not None:
-            # A squashed silhouette, so a group is recognisable before it is read.
-            painter.setOpacity(0.55)
-            icon.paint(
-                painter,
-                QRect(ICON_X, 9, 60, 8),
-                Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
-            )
-            painter.setOpacity(1.0)
-
-        font = self._font(option, 11.5, QFont.Weight.Bold)
+        # No silhouette here: the rows underneath already carry it, larger.
+        # Grouped by type, the header *is* the thing being scanned for, so it
+        # gets the size the type has when the list is ungrouped.
+        font = self._font(option, 15, QFont.Weight.Bold)
+        metrics = QFontMetrics(font)
         painter.setFont(font)
         painter.setPen(GROUP_HEADER_TEXT)
-        painter.drawText(COL_TYPE_X, 18, label)
+        painter.drawText(COL_TYPE_X, 19, label)
 
         count_font = self._font(option, 11, QFont.Weight.Normal)
         painter.setFont(count_font)
         painter.setPen(TEXT_MUTED)
         painter.drawText(
-            COL_TYPE_X + 200, 18, f"{count} squadron" + ("" if count == 1 else "s")
+            COL_TYPE_X + metrics.horizontalAdvance(label) + 16,
+            19,
+            f"{count} squadron" + ("" if count == 1 else "s"),
         )
         painter.restore()
 
