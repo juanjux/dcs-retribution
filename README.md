@@ -231,6 +231,19 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   (branch [`juanjux/ch_china_1.1.6`](https://github.com/juanjux/dcs-retribution/tree/juanjux/ch_china_1.1.6))
 
 ### Fixes
+- **A CAP guarding its own base could vanish the instant the mission started.** DCS
+  deletes an air-started flight on spawn if its route is short enough, without it flying
+  a metre: the engine runs the last waypoint's tasks straight away, and for an
+  air-started AI flight that waypoint carries the script that despawns it over its base.
+  No event, nothing in the debriefing — the flight simply never existed. Measured by
+  editing only the patrol coordinates of one generated mission and flying each: total
+  routes of 35.8 and 42.6 nm died, 46 nm and up flew, whatever the shape. It is the
+  total and not any single leg (a triangle of three 20 nm legs flies). The cold war
+  doctrine can put the end of the track 8 nm from the field with a 12 nm track — a 24 nm
+  round trip — and Retribution's own planner produced a 4.4 nm track start for a BARCAP
+  over Banak. Patrol routes are now lengthened **away from the enemy** until they reach
+  60 nm, so the threat-facing end and the station stay where the planner put them.
+  (branch [`juanjux/min-patrol-route`](https://github.com/juanjux/dcs-retribution/tree/juanjux/min-patrol-route))
 - **Some building objectives could never be recorded as destroyed, however often you
   levelled them.** An objective is credited by a `MapObjectIsDead` trigger on its zone,
   which is only true once *every* map object inside the polygon is dead — and many of
