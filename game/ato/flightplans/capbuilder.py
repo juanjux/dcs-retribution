@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import random
 from abc import ABC
 from typing import Any, TYPE_CHECKING, TypeVar
@@ -19,6 +20,13 @@ if TYPE_CHECKING:
 
 FlightPlanT = TypeVar("FlightPlanT", bound=FlightPlan[Any])
 LayoutT = TypeVar("LayoutT", bound=PatrollingLayout)
+
+#: Shortest patrol route DCS will fly instead of deleting the flight on spawn.
+#: The measured cliff is between 43 and 46 nm; this keeps a margin over it.
+MIN_PATROL_ROUTE_LENGTH = nautical_miles(60)
+
+#: Each step is exact unless moving the start also shortens the leg out to it.
+_MAX_LENGTHENING_STEPS = 8
 
 
 class CapBuilder(IBuilder[FlightPlanT, LayoutT], ABC):
@@ -97,4 +105,51 @@ class CapBuilder(IBuilder[FlightPlanT, LayoutT], ABC):
             int(max_track_length.meters),
         )
         start = end.point_from_heading(heading.opposite.degrees, track_length)
+        return self._lengthened_to_minimum(start, end, heading)
+
+    def _lengthened_to_minimum(
+        self, start: Point, end: Point, heading: Heading
+    ) -> tuple[Point, Point]:
+        """Push the far end of the track back until the route is long enough.
+
+        DCS deletes an air-started flight the instant it spawns if its route is
+        short enough, without flying a metre of it: the engine runs the last
+        waypoint's tasks straight away, which for an air-started AI flight is the
+        script that despawns it over its base. Measured on Kola by editing only
+        the patrol coordinates of one generated mission, a total route of 35.8 or
+        42.6 nm died and 46 nm and up flew normally, whatever the shape -- a
+        triangle of three 20 nm legs was fine, and a route with the same short
+        first leg as a dying one was fine once the rest was longer.
+
+        A CAP guarding its own base is the easy way to hit this: the cold war
+        doctrine can put the end of the track 8 nm from the field with a 12 nm
+        track, for a 24 nm round trip, and the WWII doctrine is shorter still.
+
+        The track is lengthened away from the enemy -- `end` is the threat-facing
+        end, so the station itself does not move closer to them.
+        """
+        departure = self.flight.departure.position
+        arrival = self.flight.arrival.position
+
+        def route_length(track_start: Point) -> float:
+            return (
+                departure.distance_to_point(track_start)
+                + track_start.distance_to_point(end)
+                + end.distance_to_point(arrival)
+            )
+
+        # Moving the start back lengthens the track by the same amount, but it can
+        # also shorten the leg out to it, so converge rather than assuming one step
+        # is enough.
+        for _ in range(_MAX_LENGTHENING_STEPS):
+            shortfall = MIN_PATROL_ROUTE_LENGTH.meters - route_length(start)
+            if shortfall <= 0:
+                return start, end
+            start = start.point_from_heading(heading.opposite.degrees, shortfall)
+        logging.warning(
+            "Could not lengthen the patrol route for %s past %.0f nm; DCS may "
+            "delete the flight as it spawns.",
+            self.flight,
+            meters(route_length(start)).nautical_miles,
+        )
         return start, end
