@@ -26,7 +26,11 @@ from game.sim import GameUpdateEvents
 from game.squadrons import Squadron
 from game.theater import ConflictTheater, Player
 from qt_ui.widgets.squadrondelegate import SquadronDelegate
-from qt_ui.widgets.squadronpanel import SquadronFilterProxy, SquadronPanel
+from qt_ui.widgets.squadronpanel import (
+    GroupedSquadronModel,
+    SquadronFilterProxy,
+    SquadronPanel,
+)
 from qt_ui.models import AirWingModel, AtoModel, GameModel, SquadronModel
 from qt_ui.simcontroller import SimController
 from qt_ui.windows.AirWingConfigurationDialog import AirWingConfigurationDialog
@@ -59,9 +63,12 @@ class SquadronList(QListView):
         self.setItemDelegate(SquadronDelegate(self.air_wing_model))
         self.proxy = SquadronFilterProxy(self)
         self.proxy.setSourceModel(self.air_wing_model)
-        self.setModel(self.proxy)
+        # Rows vary in height once the list is grouped.
+        self.setUniformItemSizes(False)
+        self.grouped = GroupedSquadronModel(self.proxy)
+        self.setModel(self.grouped)
         self.selectionModel().setCurrentIndex(
-            self.proxy.index(0, 0, QModelIndex()),
+            self.grouped.index(0, 0, QModelIndex()),
             QItemSelectionModel.SelectionFlag.Select,
         )
 
@@ -70,12 +77,14 @@ class SquadronList(QListView):
         self.doubleClicked.connect(self.on_double_click)
 
     def on_double_click(self, index: QModelIndex) -> None:
-        if not index.isValid():
+        if not index.isValid() or not self.grouped.proxy_index(index).isValid():
             return
         self.dialog = SquadronDialog(
             self.ato_model,
             SquadronModel(
-                self.air_wing_model.squadron_at_index(self.proxy.mapToSource(index))
+                self.air_wing_model.squadron_at_index(
+                    self.proxy.mapToSource(self.grouped.proxy_index(index))
+                )
             ),
             self.theater,
             self.sim_controller,
@@ -240,7 +249,9 @@ class AirWingTabs(QTabWidget):
                 game_model.game.theater,
                 game_model.sim_controller,
             )
-            self.addTab(SquadronPanel(squadrons, squadrons.proxy), label)
+            self.addTab(
+                SquadronPanel(squadrons, squadrons.proxy, squadrons.grouped), label
+            )
         self.addTab(AirInventoryView(game_model), "Inventory")
 
         if game_model.game.settings.enable_air_wing_adjustments:
@@ -337,7 +348,9 @@ class AirWingDialog(QDialog):
         super().__init__(parent)
         self.air_wing_model = game_model.blue_air_wing_model
 
-        self.setMinimumSize(1000, 440)
+        # 440 fitted nine of the old 40px rows; the taller rows plus the
+        # toolbar and column header need the room back.
+        self.setMinimumSize(1000, 700)
         self.setWindowTitle(f"Air Wing")
         # TODO: self.setWindowIcon()
 

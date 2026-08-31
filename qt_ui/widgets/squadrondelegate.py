@@ -24,6 +24,13 @@ from qt_ui.models import AirWingModel
 ROW_HEIGHT = 48
 SEPARATOR_Y = 47
 
+#: A grouped row loses the column its group already names, so it can be shorter.
+GROUPED_ROW_HEIGHT = 44
+GROUP_HEADER_HEIGHT = 26
+
+#: Set by the model on its group-header rows: (label, member count).
+GroupHeaderRole = Qt.ItemDataRole.UserRole + 1
+
 ICON_X = 14
 ICON_Y = 12
 ICON_SIZE = QSize(91, 24)
@@ -60,6 +67,9 @@ TEXT_BASE = QColor("#D3DFE8")
 TEXT_SECONDARY = QColor("#B7C6D2")
 TEXT_TERTIARY = QColor("#8E9DAA")
 TEXT_LABEL = QColor("#7C8B99")
+TEXT_MUTED = QColor("#6B7A87")
+GROUP_HEADER_FILL = QColor("#182734")
+GROUP_HEADER_TEXT = QColor("#BEDCF6")
 
 CHIP_ON_SELECTED = QColor("#2B4A66")
 
@@ -131,6 +141,13 @@ class SquadronDelegate(QStyledItemDelegate):
     def __init__(self, air_wing_model: AirWingModel) -> None:
         super().__init__()
         self.air_wing_model = air_wing_model
+        #: None, "type" or "base". A grouped column is left to the header.
+        self.grouping: Optional[str] = None
+        # Row geometry for the frame being painted. Rows vary in height once
+        # grouping is on, and painting is synchronous, so the baselines live
+        # here rather than being threaded through every paint helper.
+        self._line_1 = LINE_1
+        self._line_2 = LINE_2
 
     @staticmethod
     def squadron(index: QModelIndex) -> Optional[Squadron]:
@@ -147,16 +164,33 @@ class SquadronDelegate(QStyledItemDelegate):
         font.setWeight(weight)
         return font
 
+    def row_height(self, index: QModelIndex) -> int:
+        if index.data(GroupHeaderRole) is not None:
+            return GROUP_HEADER_HEIGHT
+        if self.grouping is not None:
+            return GROUPED_ROW_HEIGHT
+        return ROW_HEIGHT
+
     def sizeHint(self, option: QStyleOptionViewItem, index: QModelIndex) -> QSize:
-        return QSize(option.rect.width(), ROW_HEIGHT)
+        return QSize(option.rect.width(), self.row_height(index))
 
     def paint(
         self, painter: QPainter, option: QStyleOptionViewItem, index: QModelIndex
     ) -> None:
+        header = index.data(GroupHeaderRole)
+        if header is not None:
+            self._paint_group_header(painter, option, index, header)
+            return
+
         squadron = self.squadron(index)
         if squadron is None:
             super().paint(painter, option, index)
             return
+
+        height = self.row_height(index)
+        # Both baselines shift up together on the shorter grouped row.
+        self._line_1 = LINE_1 - (ROW_HEIGHT - height) // 2
+        self._line_2 = LINE_2 - (ROW_HEIGHT - height)
 
         selected = bool(option.state & QStyle.StateFlag.State_Selected)
         hovered = bool(option.state & QStyle.StateFlag.State_MouseOver)
@@ -168,16 +202,16 @@ class SquadronDelegate(QStyledItemDelegate):
         width = option.rect.width()
 
         if selected:
-            painter.fillRect(QRect(0, 0, width, ROW_HEIGHT), SELECTED_FILL)
-            painter.fillRect(SELECTION_BAR, ACCENT)
+            painter.fillRect(QRect(0, 0, width, height), SELECTED_FILL)
+            painter.fillRect(QRect(0, 0, 3, height), ACCENT)
         elif hovered:
-            painter.fillRect(QRect(0, 0, width, ROW_HEIGHT), HOVER_FILL)
-            painter.fillRect(SELECTION_BAR, HOVER_BAR)
-        painter.fillRect(QRect(0, SEPARATOR_Y, width, 1), SEPARATOR)
+            painter.fillRect(QRect(0, 0, width, height), HOVER_FILL)
+            painter.fillRect(QRect(0, 0, 3, height), HOVER_BAR)
+        painter.fillRect(QRect(0, height - 1, width, 1), SEPARATOR)
 
         self._paint_icon(painter, index, depleted)
         self._paint_type(painter, option, squadron, selected, depleted)
-        self._paint_base(painter, option, squadron, selected)
+        self._paint_base(painter, option, squadron, selected, depleted)
         self._paint_task_chip(painter, option, squadron, selected, depleted)
         self._paint_strength(painter, option, squadron, width, selected, depleted)
 
@@ -192,10 +226,15 @@ class SquadronDelegate(QStyledItemDelegate):
         painter.save()
         if depleted:
             # A squadron with no aircraft recedes rather than shouting.
-            painter.setOpacity(0.4)
+            painter.setOpacity(0.22)
         icon.paint(
             painter,
-            QRect(ICON_X, ICON_Y, ICON_SIZE.width(), ICON_SIZE.height()),
+            QRect(
+                ICON_X,
+                self._line_1 - ICON_SIZE.height() // 2 - 3,
+                ICON_SIZE.width(),
+                ICON_SIZE.height(),
+            ),
             Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
         )
         painter.restore()
@@ -208,6 +247,39 @@ class SquadronDelegate(QStyledItemDelegate):
         selected: bool,
         depleted: bool,
     ) -> None:
+        if self.grouping == "type":
+            # The header already names the airframe, so the rail is free for the
+            # identifier you actually double-click.
+            font = self._font(option, 14, QFont.Weight.DemiBold)
+            metrics = QFontMetrics(font)
+            painter.setFont(font)
+            if selected:
+                painter.setPen(TEXT_SELECTED)
+            else:
+                painter.setPen(TEXT_TERTIARY if depleted else TEXT_PRIMARY)
+            name = metrics.elidedText(
+                squadron.name, Qt.TextElideMode.ElideRight, COL_TYPE_WIDTH
+            )
+            painter.drawText(COL_TYPE_X, self._line_1, name)
+            if squadron.nickname:
+                advance = metrics.horizontalAdvance(name)
+                remaining = COL_TYPE_WIDTH - advance - 8
+                if remaining > 24:
+                    nick_font = self._font(option, 12.5, QFont.Weight.Normal)
+                    nick_metrics = QFontMetrics(nick_font)
+                    painter.setFont(nick_font)
+                    painter.setPen(TEXT_LABEL)
+                    painter.drawText(
+                        COL_TYPE_X + advance + 8,
+                        self._line_1,
+                        nick_metrics.elidedText(
+                            f'"{squadron.nickname}"',
+                            Qt.TextElideMode.ElideRight,
+                            remaining,
+                        ),
+                    )
+            return
+
         base_name, variant = split_aircraft_name(squadron.aircraft.display_name)
 
         name_font = self._font(option, 15, QFont.Weight.DemiBold)
@@ -216,7 +288,7 @@ class SquadronDelegate(QStyledItemDelegate):
 
         colour = TEXT_SELECTED if selected else TEXT_PRIMARY
         if depleted and not selected:
-            colour = TEXT_SECONDARY
+            colour = TEXT_TERTIARY
 
         # The variant elides first: a long block designation must not push the
         # name off the rail the whole column is built on.
@@ -225,7 +297,7 @@ class SquadronDelegate(QStyledItemDelegate):
         painter.setPen(colour)
         painter.drawText(
             COL_TYPE_X,
-            LINE_1,
+            self._line_1,
             metrics.elidedText(base_name, Qt.TextElideMode.ElideRight, COL_TYPE_WIDTH),
         )
 
@@ -237,7 +309,7 @@ class SquadronDelegate(QStyledItemDelegate):
                 painter.setPen(TEXT_LABEL)
                 painter.drawText(
                     COL_TYPE_X + name_width + 8,
-                    LINE_1,
+                    self._line_1,
                     variant_metrics.elidedText(
                         variant, Qt.TextElideMode.ElideRight, remaining
                     ),
@@ -246,12 +318,15 @@ class SquadronDelegate(QStyledItemDelegate):
         squadron_font = self._font(option, 12.5, QFont.Weight.Normal)
         squadron_metrics = QFontMetrics(squadron_font)
         painter.setFont(squadron_font)
-        painter.setPen(TEXT_SELECTED if selected else TEXT_SECONDARY)
+        if selected:
+            painter.setPen(TEXT_SELECTED)
+        else:
+            painter.setPen(TEXT_MUTED if depleted else TEXT_SECONDARY)
         name = squadron.name
         name_advance = min(squadron_metrics.horizontalAdvance(name), COL_TYPE_WIDTH)
         painter.drawText(
             COL_TYPE_X,
-            LINE_2,
+            self._line_2,
             squadron_metrics.elidedText(
                 name, Qt.TextElideMode.ElideRight, COL_TYPE_WIDTH
             ),
@@ -262,7 +337,7 @@ class SquadronDelegate(QStyledItemDelegate):
                 painter.setPen(TEXT_LABEL)
                 painter.drawText(
                     COL_TYPE_X + name_advance + 6,
-                    LINE_2,
+                    self._line_2,
                     squadron_metrics.elidedText(
                         f'"{squadron.nickname}"',
                         Qt.TextElideMode.ElideRight,
@@ -276,8 +351,12 @@ class SquadronDelegate(QStyledItemDelegate):
         option: QStyleOptionViewItem,
         squadron: Squadron,
         selected: bool,
+        depleted: bool,
     ) -> None:
         x = COL_BASE_X
+        if self.grouping == "base":
+            self._paint_transfer(painter, option, squadron)
+            return
         if squadron.location.is_fleet:
             # A 6px diamond beats the word "carrier": cheap to paint, groupable
             # by eye, and it survives a long ship name.
@@ -293,16 +372,27 @@ class SquadronDelegate(QStyledItemDelegate):
         font = self._font(option, 13, QFont.Weight.Medium)
         metrics = QFontMetrics(font)
         painter.setFont(font)
-        painter.setPen(TEXT_SELECTED if selected else TEXT_BASE)
+        if selected:
+            painter.setPen(TEXT_SELECTED)
+        else:
+            painter.setPen(TEXT_MUTED if depleted else TEXT_BASE)
         width = COL_BASE_WIDTH - (x - COL_BASE_X)
         painter.drawText(
             x,
-            LINE_1,
+            self._line_1,
             metrics.elidedText(
                 squadron.location.name, Qt.TextElideMode.ElideRight, width
             ),
         )
 
+        self._paint_transfer(painter, option, squadron)
+
+    def _paint_transfer(
+        self,
+        painter: QPainter,
+        option: QStyleOptionViewItem,
+        squadron: Squadron,
+    ) -> None:
         if squadron.destination is not None:
             # Amber is the only warm colour in the list, so pending moves are
             # countable at a glance, and the row height never changes.
@@ -312,7 +402,7 @@ class SquadronDelegate(QStyledItemDelegate):
             painter.setPen(AMBER)
             painter.drawText(
                 COL_BASE_X,
-                LINE_2,
+                self._line_2,
                 transfer_metrics.elidedText(
                     f"→ transfer to {squadron.destination.name}",
                     Qt.TextElideMode.ElideRight,
@@ -333,6 +423,7 @@ class SquadronDelegate(QStyledItemDelegate):
         font.setLetterSpacing(QFont.SpacingType.AbsoluteSpacing, 0.8)
         metrics = QFontMetrics(font)
         width = metrics.horizontalAdvance(label) + 16
+        chip_y = self._line_1 - CHIP_HEIGHT + 3
 
         if depleted:
             fill, text = CHIP_DEPLETED
@@ -345,17 +436,54 @@ class SquadronDelegate(QStyledItemDelegate):
         painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(fill)
         painter.drawRoundedRect(
-            COL_CHIP_X, CHIP_Y, width, CHIP_HEIGHT, CHIP_RADIUS, CHIP_RADIUS
+            COL_CHIP_X, chip_y, width, CHIP_HEIGHT, CHIP_RADIUS, CHIP_RADIUS
         )
         painter.restore()
 
         painter.setFont(font)
         painter.setPen(text)
         painter.drawText(
-            QRect(COL_CHIP_X, CHIP_Y, width, CHIP_HEIGHT),
+            QRect(COL_CHIP_X, chip_y, width, CHIP_HEIGHT),
             Qt.AlignmentFlag.AlignCenter,
             label,
         )
+
+    def _paint_group_header(
+        self,
+        painter: QPainter,
+        option: QStyleOptionViewItem,
+        index: QModelIndex,
+        header: tuple[str, int],
+    ) -> None:
+        label, count = header
+        painter.save()
+        painter.translate(option.rect.topLeft())
+        width = option.rect.width()
+        painter.fillRect(QRect(0, 0, width, GROUP_HEADER_HEIGHT), GROUP_HEADER_FILL)
+
+        icon: Optional[QIcon] = index.data(Qt.ItemDataRole.DecorationRole)
+        if icon is not None:
+            # A squashed silhouette, so a group is recognisable before it is read.
+            painter.setOpacity(0.55)
+            icon.paint(
+                painter,
+                QRect(ICON_X, 9, 60, 8),
+                Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
+            )
+            painter.setOpacity(1.0)
+
+        font = self._font(option, 11.5, QFont.Weight.Bold)
+        painter.setFont(font)
+        painter.setPen(GROUP_HEADER_TEXT)
+        painter.drawText(COL_TYPE_X, 18, label)
+
+        count_font = self._font(option, 11, QFont.Weight.Normal)
+        painter.setFont(count_font)
+        painter.setPen(TEXT_MUTED)
+        painter.drawText(
+            COL_TYPE_X + 200, 18, f"{count} squadron" + ("" if count == 1 else "s")
+        )
+        painter.restore()
 
     def _paint_strength(
         self,
@@ -373,7 +501,7 @@ class SquadronDelegate(QStyledItemDelegate):
         painter.setFont(label_font)
         painter.setPen(TEXT_LABEL)
         label_width = label_metrics.horizontalAdvance("aircraft")
-        painter.drawText(right - label_width, LINE_1, "aircraft")
+        painter.drawText(right - label_width, self._line_1, "aircraft")
 
         # The aircraft count is the scarce number, so it leads at 15px.
         count_font = self._font(option, 15, QFont.Weight.DemiBold)
@@ -386,7 +514,7 @@ class SquadronDelegate(QStyledItemDelegate):
         painter.setPen(count_colour)
         painter.drawText(
             right - label_width - 5 - count_metrics.horizontalAdvance(count),
-            LINE_1,
+            self._line_1,
             count,
         )
 
@@ -396,7 +524,7 @@ class SquadronDelegate(QStyledItemDelegate):
         painter.setFont(pilots_font)
         painter.setPen(TEXT_TERTIARY)
         pilots_width = pilots_metrics.horizontalAdvance(pilots)
-        painter.drawText(right - pilots_width, LINE_2, pilots)
+        painter.drawText(right - pilots_width, self._line_2, pilots)
 
         ready = squadron.untasked_crewed_aircraft
         if not ready:
@@ -410,6 +538,6 @@ class SquadronDelegate(QStyledItemDelegate):
         painter.setPen(GREEN)
         painter.drawText(
             right - pilots_width - 8 - ready_metrics.horizontalAdvance(text),
-            LINE_2,
+            self._line_2,
             text,
         )
