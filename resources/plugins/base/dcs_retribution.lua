@@ -30,6 +30,13 @@ dirty_state = false -- Track if state has changed and needs writing
 -- hits that destroyed the objective landed within 29 m of its zone, collateral
 -- from 31 m out.
 SCENERY_MATCH_RADIUS = 30
+-- A death beyond the match radius is almost always an unrelated building, and a
+-- mission produces hundreds of those. But an objective can be far larger than a
+-- house: CHIMAERA is four submarines over a hundred metres long, so a hit on one
+-- end lands well outside the radius. Deaths in this band are reported without
+-- being credited, which is what tells a near miss apart from DCS never having
+-- reported the kill at all.
+SCENERY_NEAR_MISS_RADIUS = 250
 scenery_zone_reported = {} -- zone name -> true, so a building is only counted once
 scenery_zones_primed = false
 
@@ -441,17 +448,22 @@ local function onEvent(event)
         if not is_player_despawn(name) then
             if type(name) == "number" then
                 -- Scenery. The id is meaningless downstream, so credit the
-                -- objective standing on that spot instead, or drop it. Only the
-                -- credit is logged: a mission destroys hundreds of unrelated
-                -- buildings and logging the misses drowns the log.
+                -- objective standing on that spot instead, or drop it.
                 local zone, distance = scenery_zone_for(event.initiator)
-                if zone ~= nil and distance <= SCENERY_MATCH_RADIUS
+                if zone ~= nil and distance <= SCENERY_MATCH_RADIUS then
+                    if not scenery_zone_reported[zone.name] then
+                        scenery_zone_reported[zone.name] = true
+                        dead_events[#dead_events + 1] = zone.name
+                        logger:info(string.format(
+                            "Objective destroyed: '%s' (%.0f m from the hit)",
+                            zone.name, distance))
+                    end
+                elseif zone ~= nil and distance <= SCENERY_NEAR_MISS_RADIUS
                         and not scenery_zone_reported[zone.name] then
-                    scenery_zone_reported[zone.name] = true
-                    dead_events[#dead_events + 1] = zone.name
                     logger:info(string.format(
-                        "Objective destroyed: '%s' (%.0f m from the hit)",
-                        zone.name, distance))
+                        "Objective NOT credited: nearest is '%s' at %.0f m "
+                        .. "(match radius %d m)", zone.name, distance,
+                        SCENERY_MATCH_RADIUS))
                 end
             else
                 dead_events[#dead_events + 1] = name
