@@ -30,6 +30,18 @@ dirty_state = false -- Track if state has changed and needs writing
 -- hits that destroyed the objective landed within 29 m of its zone, collateral
 -- from 31 m out.
 SCENERY_MATCH_RADIUS = 30
+
+-- Some map objects have no damage model at all. DCS reports a life of 1e38 for
+-- them and they never die, so an objective standing on one could never be
+-- completed however much ordnance it absorbed. For those the direct hit is the
+-- destruction, because nothing else is ever coming.
+--
+-- Measured on Kola: the four submarines of the CHIMAERA objective at Gadzhiyevo
+-- took eight JDAM, every one matching within 2 m of its zone, without losing a
+-- point of life. The piers 200 m away, which do have a damage model, lost life
+-- to the same bombs.
+SCENERY_INDESTRUCTIBLE_LIFE = 1e37
+
 scenery_zone_reported = {} -- zone name -> true, so a building is only counted once
 scenery_zones_primed = false
 
@@ -90,6 +102,31 @@ end
 player_left_units = {} -- unit name -> mission time of S_EVENT_PLAYER_LEAVE_UNIT
 ejected_units = {}     -- unit name -> true; ejected = real loss, never suppress
 PLAYER_LEAVE_GRACE_S = 5 -- a crash within this long after a leave = the despawn
+
+-- Credit the objective standing where this scenery object is, at most once.
+-- Only the credit is logged: a mission destroys hundreds of unrelated buildings
+-- and logging the misses drowns the log.
+local function credit_scenery_zone(obj, note)
+    local zone, distance = scenery_zone_for(obj)
+    if zone == nil or distance > SCENERY_MATCH_RADIUS
+            or scenery_zone_reported[zone.name] then
+        return false
+    end
+    scenery_zone_reported[zone.name] = true
+    dead_events[#dead_events + 1] = zone.name
+    logger:info(string.format("Objective destroyed: '%s' (%.0f m from the hit%s)",
+        zone.name, distance, note or ""))
+    return true
+end
+
+-- Scenery that can never die, so a hit on it has to be the destruction.
+local function is_indestructible(obj)
+    local life
+    if not pcall(function() life = obj:getLife() end) then
+        return false
+    end
+    return life ~= nil and life >= SCENERY_INDESTRUCTIBLE_LIFE
+end
 
 local function ends_with(str, ending)
    return ending == "" or str:sub(-#ending) == ending
@@ -436,23 +473,26 @@ local function onEvent(event)
         dirty_state = true
     end
 
+    if event.id == world.event.S_EVENT_HIT and event.target and event.target.getName then
+        -- Only scenery gets this far, and only the kind that cannot be damaged:
+        -- anything with a damage model is left to die on its own and be counted
+        -- by S_EVENT_DEAD below. The numeric name is the cheapest of the three
+        -- tests, so it goes first and keeps strafing runs off the zone search.
+        local name = event.target.getName(event.target)
+        if type(name) == "number" and is_indestructible(event.target) then
+            if credit_scenery_zone(event.target, ", indestructible: credited on impact") then
+                dirty_state = true
+            end
+        end
+    end
+
     if event.id == world.event.S_EVENT_DEAD and event.initiator and event.initiator.getName then
         local name = event.initiator.getName(event.initiator)
         if not is_player_despawn(name) then
             if type(name) == "number" then
                 -- Scenery. The id is meaningless downstream, so credit the
-                -- objective standing on that spot instead, or drop it. Only the
-                -- credit is logged: a mission destroys hundreds of unrelated
-                -- buildings and logging the misses drowns the log.
-                local zone, distance = scenery_zone_for(event.initiator)
-                if zone ~= nil and distance <= SCENERY_MATCH_RADIUS
-                        and not scenery_zone_reported[zone.name] then
-                    scenery_zone_reported[zone.name] = true
-                    dead_events[#dead_events + 1] = zone.name
-                    logger:info(string.format(
-                        "Objective destroyed: '%s' (%.0f m from the hit)",
-                        zone.name, distance))
-                end
+                -- objective standing on that spot instead, or drop it.
+                credit_scenery_zone(event.initiator)
             else
                 dead_events[#dead_events + 1] = name
             end
