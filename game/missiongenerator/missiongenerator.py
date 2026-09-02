@@ -133,7 +133,9 @@ class MissionGenerator:
         TriggerGenerator(self.mission, self.game).generate()
         ForcedOptionsGenerator(self.mission, self.game).generate()
         VisualsGenerator(self.mission, self.game).generate()
-        LuaGenerator(self.game, self.mission, self.mission_data).generate()
+        LuaGenerator(
+            self.game, self.mission, self.mission_data, self.unit_map
+        ).generate()
         DrawingsGenerator(self.mission, self.game).generate()
 
         self.setup_combined_arms()

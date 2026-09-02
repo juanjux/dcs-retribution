@@ -103,6 +103,15 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   [#20](https://github.com/juanjux/dcs-retribution/pull/20))
 
 ### Missions, AI & tasking
+- **Mission Log** (plugin, off by default) — a running commentary of what happens to
+  your side while you fly: who shot down whom and with what, which targets went down,
+  who ejected, who crashed with nobody shooting. DCS has all of these events but calls
+  the aircraft `STAG BARCAP|2|14|F-15C Eagle| Pilot #2` and does not know the pilot at
+  all, so the generator seeds `RETRIBUTION_PILOTS` (unit name → pilot name) and the
+  script reads the aircraft type straight out of the unit name — mod aircraft come out
+  right without a table of their own. Each message goes only to the coalition it is news
+  for: a kill for the shooter, a loss for the other side. Every category has its own
+  toggle, and the roster is only seeded when the plugin is on.
 - **Turn times from the sun** — the four turn slots are derived from the
   theater's latitude and the campaign date instead of one fixed window per map.
   Kola's shipped table gives `dawn: [3, 9]` and `day: [9, 18]` all year, so a
