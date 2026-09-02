@@ -13,11 +13,12 @@
     "splashdamage3",
     "tic",
     "airboss",
-    "MooseSoundhandler",    
+    "MooseSoundhandler",
     "MooseAutolase",
     "MooseMarkerOps",
     "ai_reaction",
     "cruisemissiles",
     "navalmagazines",
-    "gpsjamming"
+    "gpsjamming",
+    "missionlog"
 ]

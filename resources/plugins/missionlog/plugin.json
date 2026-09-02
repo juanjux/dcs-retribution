@@ -1,0 +1,51 @@
+{
+    "nameInUI": "Mission Log (running commentary of what happens to your side)",
+    "descriptionInUI": "Prints a message whenever something happens: kills, losses, ejections, targets destroyed, ships hit, takeoffs and landings. Each category can be switched off on its own.",
+    "defaultValue": false,
+    "specificOptions": [
+        {
+            "nameInUI": "Air-to-air kills",
+            "mnemonic": "airkills",
+            "defaultValue": true
+        },
+        {
+            "nameInUI": "Ground and naval targets destroyed",
+            "mnemonic": "groundkills",
+            "defaultValue": true
+        },
+        {
+            "nameInUI": "Targets damaged but not destroyed",
+            "mnemonic": "damage",
+            "defaultValue": false
+        },
+        {
+            "nameInUI": "Our losses (shot down, ejections, deaths)",
+            "mnemonic": "losses",
+            "defaultValue": true
+        },
+        {
+            "nameInUI": "Crashes with nobody shooting",
+            "mnemonic": "crashes",
+            "defaultValue": true
+        },
+        {
+            "nameInUI": "Takeoffs, landings and air spawns",
+            "mnemonic": "flightstatus",
+            "defaultValue": false
+        },
+        {
+            "nameInUI": "Seconds each message stays on screen",
+            "mnemonic": "duration",
+            "defaultValue": 20,
+            "minimumValue": 5,
+            "maximumValue": 60
+        }
+    ],
+    "scriptsWorkOrders": [
+        {
+            "file": "missionlog.lua",
+            "mnemonic": "missionlog"
+        }
+    ],
+    "configurationWorkOrders": []
+}

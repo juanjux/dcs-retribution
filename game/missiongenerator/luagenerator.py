@@ -27,6 +27,7 @@ from .missiondata import MissionData
 
 if TYPE_CHECKING:
     from game import Game
+    from game.unitmap import UnitMap
 
 
 class LuaGenerator:
@@ -35,10 +36,12 @@ class LuaGenerator:
         game: Game,
         mission: Mission,
         mission_data: MissionData,
+        unit_map: UnitMap | None = None,
     ) -> None:
         self.game = game
         self.mission = mission
         self.mission_data = mission_data
+        self.unit_map = unit_map
         self.plugin_scripts: list[str] = []
 
     def generate(self) -> None:
@@ -46,6 +49,7 @@ class LuaGenerator:
             x for x in self.mission.triggerrules.triggers if isinstance(x, TriggerStart)
         ]
         self.generate_plugin_data()
+        self._seed_pilot_roster()
         self.inject_plugins()
         self._seed_scenery_objectives()
         self._inject_tic_script()
@@ -87,6 +91,40 @@ class LuaGenerator:
         trigger.add_action(DoScript(String(preamble)))
         self.mission.triggerrules.triggers.append(trigger)
         logging.info("Seeded %d building objectives for scenery matching", len(rows))
+
+    def _seed_pilot_roster(self) -> None:
+        """Hand the Mission Log the name of the pilot behind every unit.
+
+        A DCS event names a unit "STAG BARCAP|2|14|F-15C Eagle| Pilot #2". The
+        aircraft is in there, but the pilot is not: only Retribution knows who
+        was rostered into that seat. This is that mapping, and it is seeded only
+        when the plugin that reads it is switched on -- an unused table of a few
+        hundred names in every mission is pure weight.
+        """
+        if self.unit_map is None:
+            return
+        try:
+            if not self.game.settings.plugin_option("missionlog"):
+                return
+        except KeyError:
+            # The plugin has never been initialized in this save's settings.
+            return
+
+        rows = []
+        for unit_name, flying_unit in self.unit_map.aircraft.items():
+            if flying_unit.pilot is None:
+                continue
+            name = escape_string_for_lua(unit_name)
+            pilot = escape_string_for_lua(flying_unit.pilot.name)
+            rows.append(f'  ["{name}"] = "{pilot}",')
+        if not rows:
+            return
+
+        preamble = "RETRIBUTION_PILOTS = {\n" + "\n".join(rows) + "\n}\n"
+        trigger = TriggerStart(comment="Mission Log (pilot roster)")
+        trigger.add_action(DoScript(String(preamble)))
+        self.mission.triggerrules.triggers.append(trigger)
+        logging.info("Seeded %d pilots for the mission log", len(rows))
 
     def _inject_tic_script(self) -> None:
         """Inject TIC_v1.1.lua (Troops In Contact, by Grendel) as a core script.
