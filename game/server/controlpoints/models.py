@@ -60,7 +60,13 @@ class ControlPointJs(BaseModel):
                 continue
             # A carrier/LHA is "destroyed" once its whole ship group (carrier + escorts)
             # is sunk; naval losses are permanent, so this is a non-repairable death.
-            dead = tgo.is_dead
+            #
+            # Fleets only. A FOB carries an is_control_point objective too — its own
+            # structures — and reading that one as destroyed hid every neutral FARP
+            # behind the "destroyed (non-repairable)" layer, which is off by default.
+            # Those FARPs are exactly the ones you are meant to spot and capture.
+            if control_point.is_fleet:
+                dead = tgo.is_dead
             # Show every unit (display_name already tags dead ones with
             # " [DEAD]"), matching how ordinary naval groups list their losses.
             units.extend(unit.display_name for unit in tgo.units)
