@@ -242,6 +242,15 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   (branch [`juanjux/ch_china_1.1.6`](https://github.com/juanjux/dcs-retribution/tree/juanjux/ch_china_1.1.6))
 
 ### Fixes
+- **Neutral FARPs were invisible on the map.** The map hides a control point whose ship
+  group is sunk, so a destroyed carrier disappears with the other non-repairable wrecks.
+  That flag was read from whichever ground object of the control point is flagged
+  `is_control_point`, on the assumption that only a carrier or an LHA has one — but a FOB
+  has one too, its own structures. Reading that as destroyed filed both neutral FARPs
+  under the "destroyed (non-repairable)" layer, which is off by default, so they were
+  never drawn. The auto-planner kept fragging Air Assaults at them, because it works off
+  the model rather than the map, but a human could not select what was not there. Now
+  gated on `is_fleet`.
 - **A CAP guarding its own base could vanish the instant the mission started.** DCS
   deletes an air-started flight on spawn if its route is short enough, without it flying
   a metre: the engine runs the last waypoint's tasks straight away, and for an
