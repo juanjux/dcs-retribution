@@ -225,6 +225,14 @@ local function is_aircraft(unit)
     return category == Unit.Category.AIRPLANE or category == Unit.Category.HELICOPTER
 end
 
+local function name_of(unit)
+    local name
+    if pcall(function() name = unit:getName() end) and name ~= nil then
+        return tostring(name)
+    end
+    return nil
+end
+
 local function weapon_name(event)
     local name
     if event.weapon ~= nil and pcall(function() name = event.weapon:getTypeName() end)
@@ -233,18 +241,68 @@ local function weapon_name(event)
         -- everywhere a human writes it.
         return (tostring(name):gsub("_", "-"))
     end
-    -- A gun kill carries no weapon object.
     return nil
 end
 
--- No article: "with AGM-65D" sidesteps the a/an problem that "a AGM-65D"
--- walks straight into.
+-- DCS does not always attach the weapon to S_EVENT_KILL. A ship's SAM kill
+-- arrives bare, and the first version of this reported it as cannon fire --
+-- the Ticonderoga shot an SM-2, not its gun. The preceding S_EVENT_HIT does
+-- carry the weapon, so it is remembered per shooter-and-target and used when
+-- the kill omits it.
+--
+-- Keys are built with concatenation, so always strings: a numeric key here
+-- would be harmless (this table is never serialised) but the habit is worth
+-- keeping after what one cost us in state.json.
+WEAPON_MEMORY_SECONDS = 30
+
+local weapon_memory = {}
+
+local function engagement_key(initiator, target)
+    if initiator == nil or target == nil then
+        return nil
+    end
+    local shooter, victim = name_of(initiator), name_of(target)
+    if shooter == nil or victim == nil then
+        return nil
+    end
+    return shooter .. "\30" .. victim
+end
+
+local function remember_weapon(event)
+    local weapon = weapon_name(event)
+    if weapon == nil then
+        return
+    end
+    local key = engagement_key(event.initiator, event.target)
+    if key ~= nil then
+        weapon_memory[key] = {weapon = weapon, t = timer.getTime()}
+    end
+end
+
+local function forget_old_weapons()
+    local now = timer.getTime()
+    for key, entry in pairs(weapon_memory) do
+        if now - entry.t > WEAPON_MEMORY_SECONDS then
+            weapon_memory[key] = nil
+        end
+    end
+end
+
+-- No article: "with AGM-65D" sidesteps the a/an problem that "a AGM-65D" walks
+-- straight into.
 local function weapon_suffix(event)
     local weapon = weapon_name(event)
+    if weapon == nil then
+        local key = engagement_key(event.initiator, event.target)
+        local remembered = key ~= nil and weapon_memory[key] or nil
+        weapon = remembered ~= nil and remembered.weapon or nil
+    end
     if weapon then
         return " with " .. weapon
     end
-    return " with cannon fire"
+    -- Unknown stays unknown. Naming a weapon we were never told about is how
+    -- an SM-2 became cannon fire.
+    return ""
 end
 
 local function with_weapon(text, event)
@@ -345,14 +403,6 @@ local function flush_ground()
     end
 end
 
-local function name_of(unit)
-    local name
-    if pcall(function() name = unit:getName() end) and name ~= nil then
-        return tostring(name)
-    end
-    return nil
-end
-
 -- Scenery is the one thing DCS names with a number instead of a string.
 local function is_scenery(unit)
     local name
@@ -409,6 +459,9 @@ function handler:onEvent(event)
     end
 
     if id == e.S_EVENT_HIT and event.initiator and event.target then
+        -- Recorded for every hit, aircraft included: this is where the weapon
+        -- behind a bare kill event comes from.
+        remember_weapon(event)
         local shooter = side_of(event.initiator)
         if shooter and not is_aircraft(event.target) then
             local text, target_id, scenery = ground_target(event.target)
@@ -603,6 +656,7 @@ end, nil, timer.getTime() + INTERCEPT_POLL_SECONDS)
 
 timer.scheduleFunction(function(_, time)
     pcall(flush_ground)
+    pcall(forget_old_weapons)
     return time + GROUND_FLUSH_SECONDS
 end, nil, timer.getTime() + GROUND_FLUSH_SECONDS)
 
