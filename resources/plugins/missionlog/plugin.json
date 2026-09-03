@@ -39,6 +39,11 @@
             "defaultValue": true
         },
         {
+            "nameInUI": "Our flights launching on a target",
+            "mnemonic": "engaging",
+            "defaultValue": true
+        },
+        {
             "nameInUI": "Defending against an incoming missile",
             "mnemonic": "defending",
             "defaultValue": true
