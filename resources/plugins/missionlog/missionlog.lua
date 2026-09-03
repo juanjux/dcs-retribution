@@ -362,13 +362,18 @@ local function is_scenery(unit)
     return false
 end
 
--- Text, dedup id, and whether this is scenery, for one ground target.
+-- Text, dedup id, and whether this is scenery, for one ground target. Returns
+-- nil for anything not worth a line.
 local function ground_target(unit)
     if is_scenery(unit) then
         local objective = scenery_objective(unit)
-        if objective ~= nil then
-            return objective, name_of(unit), true
+        if objective == nil then
+            -- Scenery belonging to no objective: a bomb short into the woods.
+            -- "hit the GREENASHFOREST" is a model name, not news, and the miss
+            -- is already obvious from the target still standing.
+            return nil
         end
+        return objective, name_of(unit), true
     end
     return (describe_bare(unit)), name_of(unit), false
 end
@@ -395,8 +400,10 @@ function handler:onEvent(event)
             end
         elseif shooter then
             local text, target_id, scenery = ground_target(event.target)
-            queue_ground(shooter, "groundkills", killer_text, "destroyed",
-                text, weapon_suffix(event), target_id, scenery)
+            if text ~= nil then
+                queue_ground(shooter, "groundkills", killer_text, "destroyed",
+                    text, weapon_suffix(event), target_id, scenery)
+            end
         end
         return
     end
@@ -405,8 +412,10 @@ function handler:onEvent(event)
         local shooter = side_of(event.initiator)
         if shooter and not is_aircraft(event.target) then
             local text, target_id, scenery = ground_target(event.target)
-            queue_ground(shooter, "damage", describe(event.initiator), "hit",
-                text, weapon_suffix(event), target_id, scenery)
+            if text ~= nil then
+                queue_ground(shooter, "damage", describe(event.initiator), "hit",
+                    text, weapon_suffix(event), target_id, scenery)
+            end
         end
         return
     end
