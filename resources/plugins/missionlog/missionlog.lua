@@ -74,20 +74,23 @@ end
 -- What to call something in a sentence. Aircraft get their pilot, ground units
 -- get the readable half of their name ("0379 | SAM SA-8 Osa 'Gecko' TEL"), and
 -- anything unrecognised falls back to its DCS type.
-local function describe(unit)
+-- Returns the text and whether it already names somebody. A crewed aircraft is
+-- "F-15C Eagle flown by X" and stands alone; a tank is "T-72B", which needs an
+-- article in a sentence but must stay bare to be counted ("3 T-72B").
+local function describe_bare(unit)
     if unit == nil then
-        return "something"
+        return "something", true
     end
     local name, kind
     if not pcall(function() name = unit:getName() end) or name == nil then
-        return "something"
+        return "something", true
     end
     pcall(function() kind = unit:getTypeName() end)
     name = tostring(name)
 
     local readable = string.match(name, "^%d+%s*|%s*(.+)$")
     if readable then
-        return "the " .. readable
+        return readable, false
     end
 
     local fields = fields_of(name)
@@ -97,9 +100,17 @@ local function describe(unit)
     end
     local pilot = pilot_of(unit, name)
     if pilot then
-        return string.format("%s flown by %s", aircraft, pilot)
+        return string.format("%s flown by %s", aircraft, pilot), true
     end
-    return "the " .. aircraft
+    return aircraft, false
+end
+
+local function describe(unit)
+    local text, named = describe_bare(unit)
+    if named then
+        return text
+    end
+    return "the " .. text
 end
 
 -- A formation, not a jet. An interception is something a flight does to another
@@ -151,19 +162,28 @@ end
 
 local function weapon_name(event)
     local name
-    if event.weapon ~= nil and pcall(function() name = event.weapon:getTypeName() end) then
-        return name
+    if event.weapon ~= nil and pcall(function() name = event.weapon:getTypeName() end)
+            and name ~= nil then
+        -- DCS hands back the internal id, "AGM_65D". The underscore is a hyphen
+        -- everywhere a human writes it.
+        return (tostring(name):gsub("_", "-"))
     end
     -- A gun kill carries no weapon object.
     return nil
 end
 
-local function with_weapon(text, event)
+-- No article: "with AGM-65D" sidesteps the a/an problem that "a AGM-65D"
+-- walks straight into.
+local function weapon_suffix(event)
     local weapon = weapon_name(event)
     if weapon then
-        return text .. " with a " .. weapon
+        return " with " .. weapon
     end
-    return text .. " with cannon fire"
+    return " with cannon fire"
+end
+
+local function with_weapon(text, event)
+    return text .. weapon_suffix(event)
 end
 
 local function place_name(event)
@@ -193,6 +213,51 @@ local function was_killed(unit)
     return false
 end
 
+-- One Maverick against a tank fires S_EVENT_HIT once per fragment, and a pass
+-- over a column produces a line per vehicle. Both read as spam, and the vehicles
+-- are indistinguishable in text anyway -- "the T-72B" seven times tells you
+-- nothing. So ground events are collected for a few seconds and reported once
+-- with a count: repeated hits on the same vehicle collapse to one, and several
+-- vehicles of a kind become "3 T-72B".
+GROUND_FLUSH_SECONDS = 8
+
+local pending_ground = {}
+
+local function queue_ground(side, category, actor, verb, target, weapon, target_id)
+    local key = table.concat(
+        {tostring(side), category, actor, verb, target, weapon}, "\30")
+    local bucket = pending_ground[key]
+    if bucket == nil then
+        bucket = {side = side, category = category, actor = actor, verb = verb,
+                  target = target, weapon = weapon, seen = {}, count = 0}
+        pending_ground[key] = bucket
+    end
+    local id = tostring(target_id or target)
+    if not bucket.seen[id] then
+        bucket.seen[id] = true
+        bucket.count = bucket.count + 1
+    end
+end
+
+local function flush_ground()
+    for key, bucket in pairs(pending_ground) do
+        local what = bucket.count > 1
+            and string.format("%d %s", bucket.count, bucket.target)
+            or ("the " .. bucket.target)
+        announce(bucket.side, bucket.category, string.format(
+            "%s %s %s%s", bucket.actor, bucket.verb, what, bucket.weapon))
+        pending_ground[key] = nil
+    end
+end
+
+local function name_of(unit)
+    local name
+    if pcall(function() name = unit:getName() end) and name ~= nil then
+        return tostring(name)
+    end
+    return nil
+end
+
 local handler = {}
 
 function handler:onEvent(event)
@@ -214,8 +279,9 @@ function handler:onEvent(event)
                     with_weapon(string.format("%s was shot down by %s", victim_text, killer_text), event))
             end
         elseif shooter then
-            announce(shooter, "groundkills",
-                with_weapon(string.format("%s destroyed %s", killer_text, victim_text), event))
+            local target_text = (describe_bare(event.target))
+            queue_ground(shooter, "groundkills", killer_text, "destroyed",
+                target_text, weapon_suffix(event), name_of(event.target))
         end
         return
     end
@@ -223,9 +289,9 @@ function handler:onEvent(event)
     if id == e.S_EVENT_HIT and event.initiator and event.target then
         local shooter = side_of(event.initiator)
         if shooter and not is_aircraft(event.target) then
-            announce(shooter, "damage",
-                with_weapon(string.format("%s hit %s", describe(event.initiator),
-                    describe(event.target)), event))
+            local target_text = (describe_bare(event.target))
+            queue_ground(shooter, "damage", describe(event.initiator), "hit",
+                target_text, weapon_suffix(event), name_of(event.target))
         end
         return
     end
@@ -410,6 +476,11 @@ timer.scheduleFunction(function(_, time)
     pcall(poll_intercepts)
     return time + INTERCEPT_POLL_SECONDS
 end, nil, timer.getTime() + INTERCEPT_POLL_SECONDS)
+
+timer.scheduleFunction(function(_, time)
+    pcall(flush_ground)
+    return time + GROUND_FLUSH_SECONDS
+end, nil, timer.getTime() + GROUND_FLUSH_SECONDS)
 
 if logger then
     -- RETRIBUTION_PILOTS is keyed by unit name, so # would report 0.
