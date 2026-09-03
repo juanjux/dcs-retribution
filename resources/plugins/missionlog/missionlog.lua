@@ -20,6 +20,7 @@ MISSION_LOG_DEFAULTS = {
     flightstatus = false,
     intercepts = true,
     defending = true,
+    engaging = true,
     duration = 20,
     maxmessages = 12,
 }
@@ -511,22 +512,38 @@ function handler:onEvent(event)
         if pcall(function() target = event.weapon:getTarget() end) and target ~= nil
                 and is_aircraft(target) then
             local victim = side_of(target)
+            local shooter = side_of(event.initiator)
             local key = engagement_key(event.initiator, target)
             local now = timer.getTime()
             -- A salvo is one moment of drama, not four.
-            if victim ~= nil and key ~= nil
-                    and (defending_seen[key] == nil
-                         or now - defending_seen[key] > DEFENDING_QUIET_SECONDS) then
+            if key ~= nil and (defending_seen[key] == nil
+                               or now - defending_seen[key] > DEFENDING_QUIET_SECONDS) then
                 defending_seen[key] = now
                 local shooter_type, shooter_pilot = unit_fields(event.initiator)
                 local target_type, target_pilot = unit_fields(target)
-                record({kind = "defending", side = victim,
-                        actor_type = target_type, actor_pilot = target_pilot,
-                        target_type = shooter_type, target_pilot = shooter_pilot,
-                        weapon = weapon_name(event)})
-                announce(victim, "defending", string.format(
-                    "%s is defending against%s from %s", describe(target),
-                    weapon_suffix(event), describe(event.initiator)))
+                -- One launch is news to both sides, and it is a different piece
+                -- of news to each: your wingman is shooting, or something is
+                -- shooting at you. Reporting only the second left a player
+                -- watching his own flights fire at nothing.
+                if victim ~= nil then
+                    record({kind = "defending", side = victim,
+                            actor_type = target_type, actor_pilot = target_pilot,
+                            target_type = shooter_type, target_pilot = shooter_pilot,
+                            weapon = weapon_name(event)})
+                    announce(victim, "defending", string.format(
+                        "%s is defending against %s from %s", describe(target),
+                        weapon_name(event) or "a missile",
+                        describe(event.initiator)))
+                end
+                if shooter ~= nil then
+                    record({kind = "engaging", side = shooter,
+                            actor_type = shooter_type, actor_pilot = shooter_pilot,
+                            target_type = target_type, target_pilot = target_pilot,
+                            weapon = weapon_name(event)})
+                    announce(shooter, "engaging", string.format(
+                        "%s is engaging %s%s", describe(event.initiator),
+                        describe(target), weapon_suffix(event)))
+                end
             end
         end
         return
@@ -654,6 +671,9 @@ world.addEventHandler(handler)
 -- time, so a long tail chase does not repeat itself every sweep.
 INTERCEPT_POLL_SECONDS = 20
 INTERCEPT_MAX_RANGE_M = 148160 -- 80 nm: past this it is a blip, not an intercept
+-- Inside this a fighter plausibly commits; beyond it, a BARCAP stays on
+-- station however well it can see the contact.
+INTERCEPT_COMMIT_M = 74080 -- 40 nm
 
 local announced_contacts = {}
 
@@ -737,9 +757,15 @@ local function report_contacts(hunter_group, targets, source)
                         actor_type = hunter_type, actor_pilot = hunter_pilot,
                         target_type = bandit_type, target_pilot = bandit_pilot,
                         range = math.floor(range), source = source})
+                -- Only say "intercept" when one is plausible. A BARCAP handed a
+                -- contact by datalink eighty miles away does not leave its
+                -- racetrack -- knowing is not acting, and claiming otherwise
+                -- had the log announcing interceptions that never happened.
+                local verb = range <= INTERCEPT_COMMIT_M
+                    and "is moving to intercept" or "holds"
                 announce(side, "intercepts", string.format(
-                    "%s is moving to intercept %s at %.0f nm, %s",
-                    describe_flight(hunter_group), describe_flight(group),
+                    "%s %s %s at %.0f nm, %s",
+                    describe_flight(hunter_group), verb, describe_flight(group),
                     range / 1852, source))
             end
         end
