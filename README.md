@@ -35,14 +35,14 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
 - **Air Wing squadron list, redesigned** — the aircraft type leads the row so the list
   can be scanned, the primary task shows as a role chip, and the list gained a filter, a
   sort order and grouping by type or base, both remembered between openings.
-  (branch [`juanjux/airwing-redesign`](https://github.com/juanjux/dcs-retribution/tree/juanjux/airwing-redesign))
+  ([#118](https://github.com/juanjux/dcs-retribution/pull/118))
 
   <img src="https://raw.githubusercontent.com/juanjux/dcs-retribution/juanjux/screenshots/airwing-redesign.png" width="760">
 
 - **"All >>" and "None <<" in the unit transfer dialog** — a base can hold two dozen
   unit types, and queueing a whole garrison meant clicking every row up to its count.
   The two buttons sit above the list and move everything at once, or clear it.
-  (branch [`juanjux/transfer-all-none`](https://github.com/juanjux/dcs-retribution/tree/juanjux/transfer-all-none))
+  ([#117](https://github.com/juanjux/dcs-retribution/pull/117))
 - **Your payload library is backed up on startup.** DCS keeps your custom
   loadouts as one `.lua` per airframe under `MissionEditor/UnitPayloads`, and
   nothing else holds a copy — not the campaign save, not the generated `.miz`.
@@ -115,6 +115,7 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   rather than eventful — DCS fires nothing for "I have seen him and I am going after
   him" — so every fighter group is asked what its radar holds and what the datalink
   handed it, and the message says which of the two found the target.
+  ([#120](https://github.com/juanjux/dcs-retribution/pull/120))
 - **Turn times from the sun** — the four turn slots are derived from the
   theater's latitude and the campaign date instead of one fixed window per map.
   Kola's shipped table gives `dawn: [3, 9]` and `day: [9, 18]` all year, so a
@@ -125,6 +126,7 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   so the slots hang off solar noon and stay dark — if it is night, it is night.
   A theater keeps its old table with `daytime_mode: table` in
   `resources/theaters/<map>/info.yaml`; campaigns saved before this keep theirs.
+  ([#113](https://github.com/juanjux/dcs-retribution/pull/113))
 - **Campaign Doctrine: "non-combat (crash) air losses don't count"** — AI
   crashes/collisions DCS not credited to a weapon or SAM (which happen a lot because DCS AI is stupid) no longer deplete a
   squadron or kill the pilot; backed by per-loss kill attribution and shown in
@@ -262,7 +264,7 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   under the "destroyed (non-repairable)" layer, which is off by default, so they were
   never drawn. The auto-planner kept fragging Air Assaults at them, because it works off
   the model rather than the map, but a human could not select what was not there. Now
-  gated on `is_fleet`.
+  gated on `is_fleet`. ([#119](https://github.com/juanjux/dcs-retribution/pull/119))
 - **A CAP guarding its own base could vanish the instant the mission started.** DCS
   deletes an air-started flight on spawn if its route is short enough, without it flying
   a metre: the engine runs the last waypoint's tasks straight away, and for an
