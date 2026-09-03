@@ -111,11 +111,17 @@ class LuaGenerator:
         """
         if self.unit_map is None:
             return
-        try:
-            if not self.game.settings.plugin_option("missionlog"):
-                return
-        except KeyError:
-            # The plugin has never been initialized in this save's settings.
+        # Asked of the plugin manager, which is also what decides whether the
+        # script that reads this table gets injected. Reading game.settings
+        # directly looked equivalent and was not: the manager is a class-level
+        # singleton holding whatever Settings it was last loaded with, so
+        # starting a second campaign left it answering for the first. The script
+        # went in and the roster did not, and every message named an aircraft
+        # with no pilot behind it.
+        if not any(
+            plugin.identifier == "missionlog" and plugin.enabled
+            for plugin in LuaPluginManager.plugins()
+        ):
             return
 
         rows = []
