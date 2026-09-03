@@ -44,6 +44,13 @@
             "defaultValue": 20,
             "minimumValue": 5,
             "maximumValue": 60
+        },
+        {
+            "nameInUI": "Most messages per minute (the rest are counted, and always logged)",
+            "mnemonic": "maxmessages",
+            "defaultValue": 12,
+            "minimumValue": 3,
+            "maximumValue": 60
         }
     ],
     "scriptsWorkOrders": [
