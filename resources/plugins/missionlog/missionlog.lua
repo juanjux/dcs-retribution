@@ -102,6 +102,37 @@ local function describe(unit)
     return "the " .. aircraft
 end
 
+-- A formation, not a jet. An interception is something a flight does to another
+-- flight: describing it unit by unit turns one event into a wall of nine
+-- identical lines, all at the same range, differing only in which enemy
+-- wingman was named.
+local function describe_flight(group)
+    local leader, size
+    if not pcall(function() leader = group:getUnit(1) end) or leader == nil then
+        return "a flight"
+    end
+    if not pcall(function() size = group:getSize() end) or size == nil then
+        size = 1
+    end
+    if size <= 1 then
+        return describe(leader)
+    end
+    local name
+    if not pcall(function() name = leader:getName() end) or name == nil then
+        return "a flight"
+    end
+    name = tostring(name)
+    local aircraft = fields_of(name)[4]
+    if aircraft == nil or aircraft == "" then
+        pcall(function() aircraft = leader:getTypeName() end)
+    end
+    local pilot = pilot_of(leader, name)
+    if pilot then
+        return string.format("a flight of %d %s led by %s", size, aircraft or "aircraft", pilot)
+    end
+    return string.format("a flight of %d %s", size, aircraft or "aircraft")
+end
+
 local function side_of(unit)
     local side
     if pcall(function() side = unit:getCoalition() end) then
@@ -296,26 +327,47 @@ local function range_between(a, b)
     return math.sqrt(dx * dx + dy * dy + dz * dz)
 end
 
-local function report_contacts(hunter, targets, source)
-    local hunter_name
-    if not pcall(function() hunter_name = hunter:getName() end) or hunter_name == nil then
+local function report_contacts(hunter_group, targets, source)
+    local hunter_name, leader
+    if not pcall(function() hunter_name = hunter_group:getName() end)
+            or hunter_name == nil then
         return
     end
-    local side = side_of(hunter)
+    if not pcall(function() leader = hunter_group:getUnit(1) end) or leader == nil then
+        return
+    end
+    local side = side_of(leader)
     if side == nil then
         return
     end
-    for name, target in pairs(targets) do
+
+    -- Collapse the contacts into the formations they belong to, so a four-ship
+    -- holding six bandits is one line and not six.
+    local formations = {}
+    for _, target in pairs(targets) do
+        local target_side = side_of(target)
+        if target_side ~= nil and target_side ~= side and is_aircraft(target) then
+            local group, name
+            if pcall(function() group = target:getGroup() end) and group ~= nil
+                    and pcall(function() name = group:getName() end) and name ~= nil then
+                formations[tostring(name)] = group
+            end
+        end
+    end
+
+    for name, group in pairs(formations) do
         local key = tostring(hunter_name) .. "->" .. name
         if not announced_contacts[key] then
-            local target_side = side_of(target)
-            local range = range_between(hunter, target)
-            if target_side ~= nil and target_side ~= side and is_aircraft(target)
-                    and range ~= nil and range <= INTERCEPT_MAX_RANGE_M then
+            local target_leader
+            pcall(function() target_leader = group:getUnit(1) end)
+            local range = target_leader ~= nil
+                and range_between(leader, target_leader) or nil
+            if range ~= nil and range <= INTERCEPT_MAX_RANGE_M then
                 announced_contacts[key] = true
                 announce(side, "intercepts", string.format(
                     "%s is moving to intercept %s at %.0f nm, %s",
-                    describe(hunter), describe(target), range / 1852, source))
+                    describe_flight(hunter_group), describe_flight(group),
+                    range / 1852, source))
             end
         end
     end
@@ -342,12 +394,12 @@ local function poll_intercepts()
                     -- Own radar wins the credit: a target held on both was not
                     -- "handed over", it was found.
                     local radar = detected_names(controller, Controller.Detection.RADAR)
-                    report_contacts(unit, radar, "found on its own radar")
+                    report_contacts(group, radar, "found on its own radar")
                     local shared = detected_names(controller, Controller.Detection.DLINK)
                     for name in pairs(radar) do
                         shared[name] = nil
                     end
-                    report_contacts(unit, shared, "handed over by shared awareness")
+                    report_contacts(group, shared, "handed over by shared awareness")
                 end
             end
         end
