@@ -264,11 +264,46 @@ The DCS AI that actually flies these missions is limited. Plan robustly around i
   a fighter in that geometry and has killed Felons and Su-30s doing it. Kill helicopters
   with radar missiles from an angle, never by merging at the same altitude.
 
+### "In Flight" spawns you at the BASE, not on the racetrack
+
+This one has killed a whole turn's fighters, so read it twice.
+
+`startup_min` is minutes from mission start until the flight **exists** — the same clock
+as `tot_minutes`. Before that moment there is nothing in the sky. That much is easy. The
+trap is **where** it appears:
+
+> **`start: In Flight` materialises the flight over its home base**, or on the route out
+> of it — **not** on the racetrack you dragged it to.
+
+Dragging RACETRACK START and END moves the *patrol*. It does not move the *spawn*. There
+is no OPFOR trick that makes a squadron appear a hundred miles from its own airfield.
+
+What that cost, once: a BARCAP was launched from an airfield sitting 9 nm from an enemy
+Ticonderoga, with the racetrack dragged ~100 nm south to safety and `start: In Flight`
+chosen precisely to skip the dangerous climb-out. Nine fighters — four Su-27, four MiG-29
+and a MiG-31 — appeared **over the airfield**, inside the ship's ring, and all nine were
+shot down by SM-2ER before reaching the station they were supposed to defend.
+
+**The check that would have caught it:** after `waypoints/edit`, `GET /waypoints/{id}` and
+look at waypoints 0 and 1. They are the TAKEOFF pins and they still name the **squadron's
+base**. If that base is inside a threat ring, the flight dies there regardless of where
+the patrol is. Move the squadron, or do not fly it this turn.
+
 ### BARCAP racetracks: check the geometry, always
 
 The planner picks the station; it does **not** guarantee the racetrack covers it. When the
 defended point is a FOB it often does not: pins have been generated 30-50 nm away, over
 empty theater or at the map edge, so a CAP "defending" a base never overflies it.
+
+**Find the pins by type, never by index.** The waypoint list is not a stable shape: the
+same BARCAP built from one field had its racetrack at waypoints 2 and 3, and from another
+field the generator inserted an extra NAV first and put it at 3 and 4. Editing "waypoint
+2 and 3" in the second case moved a NAV point and left the racetrack END at its default,
+turning a tidy north-south oval into an enormous diagonal across the map. Match on
+`type=PATROL_TRACK` (that is START) and `type=PATROL` (that is END).
+
+**Task names come back title-case.** After `POST /packages` the task reads `Refueling`,
+not `REFUELING`. Compare case-insensitively or your tanker never gets its oval.
 
 Every BARCAP, after `POST /packages`, per **flight** (not per package):
 
@@ -286,6 +321,11 @@ Every BARCAP, after `POST /packages`, per **flight** (not per package):
 
 The exception to 5: if you want **numbers over one point** rather than coverage of both,
 do not alternate — put those flights in the **same package** so they arrive together.
+
+**Ask for `count: 2`, not `count: 4`.** A four-ship BARCAP has repeatedly swallowed a
+leftover pair from the squadron and left the engine to build a second package out of the
+remainder — which then flies its own plan, on its own station, with none of the geometry
+you just checked. Two per flight, and a second package if you want four aircraft.
 
 **AEW&C and tankers get the same treatment.** Their racetrack defaults to a quiet corner
 of the map, and a BARCAP parked over your airfields is not covering it. Drag the AWACS
@@ -368,6 +408,12 @@ a raid. If you want a raid met, you have to put a flight where it will arrive.
 **Without an advanced IADS that is all your radars do.** Every SAM site is on its own,
 plain DCS AI, shooting at what its own radar sees. The EWRs still feed the shared
 picture, but they do not touch the batteries.
+
+**That does not make an EWR a waste with the IADS off** — a trap worth naming, because it
+reads like one. The shared picture is the whole point: it is what tells your side a raid
+exists at all. And unlike an AWACS, a ground radar cannot be shot down by a fighter, does
+not run out of fuel and does not go home. Buy one as the backup that keeps you seeing
+after the AWACS is lost, which is exactly when you need it most.
 
 **What the network adds is a switch on your SAMs.** With the advanced IADS running, those
 same detections turn sites **on and off**: a battery lies dark until the network cues it,
@@ -506,7 +552,52 @@ does.
   is no terrain to hide in and it is detected and engaged like any other contact. Route helos
   over land as a general rule, not only near the enemy fleet (see Naval warfare).
 
+### The ground war: fronts, recruiting, transfers and stances
+
+**A front exists only between two adjacent enemy control points.** If a CP's `links` is
+empty, there is no front there and no `kind: front` will appear in `targets[]` — which
+means **ground forces can never take it**, however much armor you park nearby. Your only
+route in is AIR_ASSAULT. Watch for this trap: capturing the last CP that linked to an
+enemy base turns the front off and strands the ones behind it.
+
+**Recruiting needs a factory or a front nearby.** `POST /buy/ground` refuses with *"can't
+recruit ground units"* unless the CP reports `can_recruit_ground`. That field is **present
+only when true** — its absence means you cannot recruit there, not that the answer is
+unknown. And a **damaged** factory does not lift the restriction the turn you order the
+repair: repairs are scheduled (typically four turns) and the CP stays unable to recruit
+until they finish.
+
+**A ground transfer leaves a hole.** `POST /ground/transfer` with `by_air: false` removes
+the units from the origin **immediately**, and they do not appear at the destination for
+a turn or more. In between, neither end has them. If you strip a base to reinforce a
+front and the enemy attacks that dawn, both are empty. Move armor before you need it, not
+when you need it.
+
+**DEFEND never takes ground, and an empty defender gives it away.** A stance of DEFEND or
+DEFENSIVE holds at best; it will not advance a metre. Worse, PUSH or AGGRESSIVE against a
+defender with **no armor on that front** does not stall — the engine simply hands over the
+control point. If you intend to hold, you need iron on the line: a stalemate is HOLD
+against HOLD, or comparable mass on both sides. An empty front plus an enemy PUSH is a
+base lost in the debrief, with nothing to watch.
+
 ### Naval warfare
+
+**Run this checklist every single turn.** An enemy cruiser parked off your coast is not
+one more threat among many; it can close every airfield you own. One Ticonderoga
+(`threat_nm` 53, SM-2ER) once put four of the five airfields on a peninsula inside its
+ring — the fifth cleared it by 0.8 nm — and every flight launched from the other four
+died on climb-out, twice, in two different turns.
+
+1. For **every friendly CP you might launch from**, compute the distance to **every**
+   `kind: ship` in `threats[]` with `threat_nm >= 20`.
+2. If `distance < threat_nm`, plan **nothing** out of that CP: no BARCAP, no AEW&C, no
+   refuelling, no CAS, no air assault. `start: In Flight` does not save you — see the
+   section above, the flight still materialises over the field.
+3. Recompute after the enemy moves. A ship that sails 30 nm overnight opens one airfield
+   and closes another; last turn's answer is worthless.
+4. The one-line version: **nothing towards the ship.** Station your patrols on the far
+   side, run the racetrack across the threat axis rather than along it, and never let a
+   CAP chase a fleeing target into the ring.
 
 - **Every fleet — yours and the enemy's — starts HOT and shoots on its own.** Ship groups
   are generated on a RED alarm state with weapon-free ROE, so a ship fires autonomously at
@@ -1105,6 +1196,14 @@ what killed them. If the `crashes_dont_count` setting (`/settings`) is ON, crash
 aircraft do NOT deplete the squadron or kill the pilot, so weigh them lightly; if OFF, a
 crash costs the airframe and pilot like any loss.
 
+**Two ways these get misread, both seen in play.** `*_air_killers` mixes airframes with
+individual ground units — you will find `TICONDEROG`, `snr s-125 tr` and `Strela-10M3`
+sitting in the same list as fighters, because whatever fired is what is credited. And
+`blue_air_kills_by_weapon` is the weapons that killed **RED**, which is easy to read
+backwards when you are RED: `SM_2ER: 8` there means eight of yours died to a ship, not
+eight of theirs. When the aggregates and the live post disagree, trust the combat counts
+and the killers list, then the human's account of who chased whom.
+
 **Three breakdowns that let you judge an airframe and a loadout, not just a headline.**
 All three are aggregates keyed by TYPE, so they cost a few hundred tokens whatever
 happened in the mission:
@@ -1225,7 +1324,9 @@ Write bodies:
   is refused when the squadron is at its `max_ac` cap, its base has no free parking, or
   you lack budget. An aircraft bought at a base whose runway is cratered is born
   grounded — **when every runway you own is cratered, buy on a CARRIER-based squadron**:
-  the deck always launches.
+  the deck always launches. When selling, the quantity is against `owned`, not `flyable`:
+  a squadron with four airframes and one crewed aircraft can still sell all four. A
+  `flyable` count lagging behind `owned` until the turn processes is normal, not a bug.
 - `POST /buy/ground` `{side, cp_id, unit_name, quantity}` (only at a base with a
   factory/front — the `can_recruit_ground` field). If the destination base is captured
   before the units arrive, the pending order is **refunded**, not delivered to the
