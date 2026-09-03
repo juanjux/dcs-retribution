@@ -121,3 +121,11 @@ def _prune(directory: Path) -> None:
                 path,
                 KEEP_ARCHIVED_MISSIONS,
             )
+        # The mission chronicle is written beside its miz and shares its stem, so
+        # it leaves with it. Missing is the normal case: a turn generated but
+        # never flown has no chronicle.
+        chronicle = path.with_suffix(".md")
+        try:
+            chronicle.unlink(missing_ok=True)
+        except OSError:
+            logging.warning("Could not prune chronicle %s", chronicle, exc_info=True)

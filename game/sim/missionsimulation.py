@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Optional, TYPE_CHECKING
 
 from game.debriefing import Debriefing
+from game.chronicle import write_chronicle
 from game.missionarchive import archive_mission
 from game.missiongenerator import MissionGenerator
 from game.settings.settings import FastForwardStopCondition, CombatResolutionMethod
@@ -39,6 +40,9 @@ class MissionSimulation:
         #: written after this belongs to the current mission; older files are
         #: stale leftovers and must be ignored by end-of-mission detection.
         self.miz_generated_at: float = 0.0
+        #: Where the archived copy of this turn's mission landed, so the
+        #: chronicle can be written beside it once the mission is flown.
+        self.archived_mission: Optional[Path] = None
 
     def begin_simulation(self) -> None:
         self.time = self.game.conditions.start_time
@@ -86,7 +90,7 @@ class MissionSimulation:
         self.miz_generated_at = time.time()
         # Keep a named copy: `output` is a fixed path the next generation overwrites.
         # Best-effort, never raises -- the mission itself is already written.
-        archive_mission(self.game, output)
+        self.archived_mission = archive_mission(self.game, output)
 
     def debrief_current_state(
         self, state_path: Path, force_end: bool = False
@@ -103,6 +107,10 @@ class MissionSimulation:
             data["mission_ended"] = True
         debriefing = Debriefing(data, self.game, self.unit_map)
         debriefing.merge_simulation_results(self.aircraft_simulation.results)
+        # Only once, at the end: this runs on every poll while the mission is in
+        # progress, and a half-flown mission is not a story yet.
+        if debriefing.state_data.mission_ended and self.archived_mission is not None:
+            write_chronicle(debriefing, self.archived_mission)
         return debriefing
 
     def process_results(self, debriefing: Debriefing, events: GameUpdateEvents) -> None:

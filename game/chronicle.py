@@ -14,7 +14,9 @@ reads like somebody was actually watching.
 from __future__ import annotations
 
 import datetime
+import logging
 from dataclasses import dataclass
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Sequence
 
 if TYPE_CHECKING:
@@ -210,6 +212,16 @@ def survived_defence(event: LogEvent, events: Sequence[LogEvent]) -> bool:
     )
 
 
+def _capitalised(sentence: str) -> str:
+    """Some phrasings lead with the target ("the factory WILDEBEEST took...").
+
+    Fixing it here rather than in each template keeps the templates free to
+    start with whatever reads best. Digits are untouched by upper(), so "3
+    T-72B destroyed" survives.
+    """
+    return sentence[:1].upper() + sentence[1:] if sentence else sentence
+
+
 def _ordinal(n: int) -> str:
     return {1: "first", 2: "second", 3: "third", 4: "fourth", 5: "fifth"}.get(
         n, f"{n}th"
@@ -360,7 +372,7 @@ def chronicle_from_events(
             sentence = _sentence(event, index, events, streaks)
             index += 1
             if sentence:
-                sentences.append(sentence)
+                sentences.append(_capitalised(sentence))
         if not sentences:
             continue
         lines.append(f"**{_clock(act[0].t)}** — " + " ".join(sentences))
@@ -387,3 +399,23 @@ def build_chronicle(debriefing: Debriefing) -> str:
         title=str(getattr(game, "campaign_name", "Mission chronicle")),
         subtitle=subtitle,
     )
+
+
+def write_chronicle(debriefing: Debriefing, archived_miz: Path) -> Optional[Path]:
+    """Writes the chronicle beside its archived mission, sharing the stem.
+
+    Returns the path, or None when there was nothing to tell or the write
+    failed. Never raises: the campaign has already been debriefed by the time
+    this runs, and losing a keepsake must not cost the turn.
+    """
+    text = build_chronicle(debriefing)
+    if not text:
+        return None
+    path = archived_miz.with_suffix(".md")
+    try:
+        path.write_text(text, encoding="utf-8")
+    except OSError:
+        logging.warning("Could not write chronicle %s", path, exc_info=True)
+        return None
+    logging.info("Wrote mission chronicle %s", path)
+    return path
