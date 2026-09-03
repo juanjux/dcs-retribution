@@ -34,6 +34,11 @@
             "defaultValue": false
         },
         {
+            "nameInUI": "Fighters moving to intercept (and how they found the target)",
+            "mnemonic": "intercepts",
+            "defaultValue": true
+        },
+        {
             "nameInUI": "Seconds each message stays on screen",
             "mnemonic": "duration",
             "defaultValue": 20,
