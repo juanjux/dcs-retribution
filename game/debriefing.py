@@ -154,6 +154,13 @@ class StateData:
     #: feature is off or the state file predates it.
     cruise_missiles_state: List[Tuple[str, int]] = field(default_factory=list)
 
+    #: One flat record per event the Mission Log plugin saw -- kills, losses,
+    #: crashes, interceptions, missiles defended against -- in the order they
+    #: happened, each with its mission time. The chronicle is written from these.
+    #: Empty when the plugin is off, and absent from every state file written
+    #: before the feature, so it is parsed defensively like everything else here.
+    mission_log_events: List[Dict[str, Any]] = field(default_factory=list)
+
     #: ``(naval_group_name, fired)`` per naval group that fired ANTI-SHIP missiles this
     #: mission, mirrored by the navalmagazines plugin. reconcile_naval_magazines debits
     #: the persisted campaign magazine by ``fired`` at the turn boundary -- the only
@@ -222,6 +229,15 @@ class StateData:
                     out.append((group, int(fired)))
             return out
 
+        def parse_log_events(raw: Any) -> List[Dict[str, Any]]:
+            # The Lua side writes a contiguous array of flat tables, which the
+            # encoder yields as a list of objects -- and as [] when there were
+            # none. Anything else is a state file this build does not
+            # understand, and a chronicle is never worth breaking a debrief for.
+            if not isinstance(raw, list):
+                return []
+            return [entry for entry in raw if isinstance(entry, dict)]
+
         return cls(
             mission_ended=data.get("mission_ended", False),
             killed_aircraft=killed_aircraft,
@@ -238,6 +254,7 @@ class StateData:
             naval_magazines_state=parse_group_fired_state(
                 data.get("naval_magazines_state", [])
             ),
+            mission_log_events=parse_log_events(data.get("mission_log_events", [])),
         )
 
 

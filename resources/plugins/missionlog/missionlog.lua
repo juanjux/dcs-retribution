@@ -19,6 +19,7 @@ MISSION_LOG_DEFAULTS = {
     crashes = true,
     flightstatus = false,
     intercepts = true,
+    defending = true,
     duration = 20,
     maxmessages = 12,
 }
@@ -38,6 +39,42 @@ end
 local DURATION = tonumber(option("duration")) or MISSION_LOG_DEFAULTS.duration
 
 local logger = mist and mist.Logger:new("MissionLog", "info") or nil
+
+-- The chronicle's raw material.
+--
+-- Facts, not sentences: "two kills forty seconds apart by the same pilot" is a
+-- statement about a list, and you cannot recover it from prose. The prose is
+-- written afterwards, in Python, from these.
+--
+-- Two rules, both bought with pain. The table is a contiguous integer array and
+-- never keyed by anything a unit might be called -- scenery getName() returns a
+-- number in the tens of millions, and one numeric key makes JSON.lua encode
+-- seventy-one million null holes, which is the in-mission freeze documented in
+-- dcs_retribution.lua. And it is bounded: state.json is rewritten every fifteen
+-- seconds on the sim thread, so an unbounded list is a frame-time bug waiting.
+MISSION_LOG_MAX_EVENTS = 2000
+
+mission_log_events = mission_log_events or {}
+
+local recorded = 0
+local truncated = false
+
+local function record(fields)
+    if recorded >= MISSION_LOG_MAX_EVENTS then
+        if not truncated then
+            truncated = true
+            if logger then
+                logger:info(string.format(
+                    "Mission Log: %d events recorded, no longer recording",
+                    MISSION_LOG_MAX_EVENTS))
+            end
+        end
+        return
+    end
+    recorded = recorded + 1
+    fields.t = timer.getTime()
+    mission_log_events[recorded] = fields
+end
 
 -- A budget, per side, per minute.
 --
@@ -109,12 +146,20 @@ local function pilot_of(unit, name)
     return nil
 end
 
+local function name_of(unit)
+    local name
+    if pcall(function() name = unit:getName() end) and name ~= nil then
+        return tostring(name)
+    end
+    return nil
+end
+
 -- What to call something in a sentence. Aircraft get their pilot, ground units
 -- get the readable half of their name ("0379 | SAM SA-8 Osa 'Gecko' TEL"), and
--- anything unrecognised falls back to its DCS type.
--- Returns the text and whether it already names somebody. A crewed aircraft is
--- "F-15C Eagle flown by X" and stands alone; a tank is "T-72B", which needs an
--- article in a sentence but must stay bare to be counted ("3 T-72B").
+-- anything unrecognised falls back to its DCS type. Returns the text and whether
+-- it already names somebody: a crewed aircraft is "F-15C Eagle flown by X" and
+-- stands alone; a tank is "T-72B", which needs an article in a sentence but must
+-- stay bare to be counted ("3 T-72B").
 local function describe_bare(unit)
     if unit == nil then
         return "something", true
@@ -149,6 +194,27 @@ local function describe(unit)
         return text
     end
     return "the " .. text
+end
+
+-- The same information describe() renders, but kept apart: the chronicle needs
+-- to say "Bentley's third of the day" and cannot get that out of a sentence.
+local function unit_fields(unit)
+    if unit == nil then
+        return nil, nil
+    end
+    local name = name_of(unit)
+    if name == nil then
+        return nil, nil
+    end
+    local readable = string.match(name, "^%d+%s*|%s*(.+)$")
+    if readable then
+        return readable, nil
+    end
+    local kind = fields_of(name)[4]
+    if kind == nil or kind == "" then
+        pcall(function() kind = unit:getTypeName() end)
+    end
+    return kind, pilot_of(unit, name)
 end
 
 -- Which objective a piece of scenery belongs to.
@@ -223,14 +289,6 @@ local function is_aircraft(unit)
         return false
     end
     return category == Unit.Category.AIRPLANE or category == Unit.Category.HELICOPTER
-end
-
-local function name_of(unit)
-    local name
-    if pcall(function() name = unit:getName() end) and name ~= nil then
-        return tostring(name)
-    end
-    return nil
 end
 
 local function weapon_name(event)
@@ -346,6 +404,9 @@ GROUND_FLUSH_SECONDS = 8
 
 local pending_ground = {}
 
+DEFENDING_QUIET_SECONDS = 20
+local defending_seen = {}
+
 -- A target that dies inside the window should read as killed, not as hit and
 -- then killed: the earlier damage was on the way to this.
 local function forget_damage(target_id)
@@ -364,22 +425,24 @@ local function forget_damage(target_id)
     end
 end
 
-local function queue_ground(side, category, actor, verb, target, weapon, target_id,
-                            scenery)
-    if category == "groundkills" then
-        forget_damage(target_id)
+-- Takes a table: ten positional arguments was one too many to read.
+local function queue_ground(e)
+    if e.category == "groundkills" then
+        forget_damage(e.target_id)
     end
     local key = table.concat(
-        {tostring(side), category, actor, verb, target, weapon}, "\30")
+        {tostring(e.side), e.category, e.actor, e.verb, e.target, e.weapon}, "\30")
     local bucket = pending_ground[key]
     if bucket == nil then
-        bucket = {side = side, category = category, actor = actor, verb = verb,
-                  target = target, weapon = weapon, scenery = scenery == true,
+        bucket = {side = e.side, category = e.category, actor = e.actor,
+                  verb = e.verb, target = e.target, weapon = e.weapon,
+                  scenery = e.scenery == true, actor_type = e.actor_type,
+                  actor_pilot = e.actor_pilot, weapon_name = e.weapon_name,
                   seen = {}, count = 0}
         pending_ground[key] = bucket
     end
     -- Counted per piece even for scenery, so "several" means several.
-    local id = tostring(target_id or target)
+    local id = tostring(e.target_id or e.target)
     if not bucket.seen[id] then
         bucket.seen[id] = true
         bucket.count = bucket.count + 1
@@ -397,6 +460,12 @@ local function flush_ground()
         else
             what = "the " .. bucket.target
         end
+        -- Recorded here, not at queue time: the count is the fact worth
+        -- keeping, and it is only known once the window closes.
+        record({kind = bucket.category, side = bucket.side, verb = bucket.verb,
+                actor_type = bucket.actor_type, actor_pilot = bucket.actor_pilot,
+                target_type = bucket.target, count = bucket.count,
+                scenery = bucket.scenery, weapon = bucket.weapon_name})
         announce(bucket.side, bucket.category, string.format(
             "%s %s %s%s", bucket.actor, bucket.verb, what, bucket.weapon))
         pending_ground[key] = nil
@@ -434,12 +503,47 @@ function handler:onEvent(event)
     local id = event.id
     local e = world.event
 
+    -- A missile in the air with one of ours on the nose. DCS puts no target on
+    -- S_EVENT_SHOT, but the weapon itself knows what it is guiding on, which is
+    -- the only way to say who is defending rather than merely who fired.
+    if id == e.S_EVENT_SHOT and event.weapon then
+        local target
+        if pcall(function() target = event.weapon:getTarget() end) and target ~= nil
+                and is_aircraft(target) then
+            local victim = side_of(target)
+            local key = engagement_key(event.initiator, target)
+            local now = timer.getTime()
+            -- A salvo is one moment of drama, not four.
+            if victim ~= nil and key ~= nil
+                    and (defending_seen[key] == nil
+                         or now - defending_seen[key] > DEFENDING_QUIET_SECONDS) then
+                defending_seen[key] = now
+                local shooter_type, shooter_pilot = unit_fields(event.initiator)
+                local target_type, target_pilot = unit_fields(target)
+                record({kind = "defending", side = victim,
+                        actor_type = target_type, actor_pilot = target_pilot,
+                        target_type = shooter_type, target_pilot = shooter_pilot,
+                        weapon = weapon_name(event)})
+                announce(victim, "defending", string.format(
+                    "%s is defending against%s from %s", describe(target),
+                    weapon_suffix(event), describe(event.initiator)))
+            end
+        end
+        return
+    end
+
     if id == e.S_EVENT_KILL and event.initiator and event.target then
         local shooter, victim = side_of(event.initiator), side_of(event.target)
         local killer_text = describe(event.initiator)
         local victim_text = describe(event.target)
         if is_aircraft(event.target) then
             remember_killed(event.target)
+            local killer_type, killer_pilot = unit_fields(event.initiator)
+            local victim_type, victim_pilot = unit_fields(event.target)
+            record({kind = "airkill", side = shooter,
+                    actor_type = killer_type, actor_pilot = killer_pilot,
+                    target_type = victim_type, target_pilot = victim_pilot,
+                    weapon = weapon_name(event)})
             if shooter then
                 announce(shooter, "airkills",
                     with_weapon(string.format("%s shot down %s", killer_text, victim_text), event))
@@ -451,8 +555,12 @@ function handler:onEvent(event)
         elseif shooter then
             local text, target_id, scenery = ground_target(event.target)
             if text ~= nil then
-                queue_ground(shooter, "groundkills", killer_text, "destroyed",
-                    text, weapon_suffix(event), target_id, scenery)
+                local kind, pilot = unit_fields(event.initiator)
+                queue_ground({side = shooter, category = "groundkills",
+                    actor = killer_text, verb = "destroyed", target = text,
+                    weapon = weapon_suffix(event), weapon_name = weapon_name(event),
+                    target_id = target_id, scenery = scenery,
+                    actor_type = kind, actor_pilot = pilot})
             end
         end
         return
@@ -466,8 +574,12 @@ function handler:onEvent(event)
         if shooter and not is_aircraft(event.target) then
             local text, target_id, scenery = ground_target(event.target)
             if text ~= nil then
-                queue_ground(shooter, "damage", describe(event.initiator), "hit",
-                    text, weapon_suffix(event), target_id, scenery)
+                local kind, pilot = unit_fields(event.initiator)
+                queue_ground({side = shooter, category = "damage",
+                    actor = describe(event.initiator), verb = "hit", target = text,
+                    weapon = weapon_suffix(event), weapon_name = weapon_name(event),
+                    target_id = target_id, scenery = scenery,
+                    actor_type = kind, actor_pilot = pilot})
             end
         end
         return
@@ -476,6 +588,9 @@ function handler:onEvent(event)
     if id == e.S_EVENT_EJECTION and event.initiator then
         local side = side_of(event.initiator)
         if side then
+            local kind, pilot = unit_fields(event.initiator)
+            record({kind = "ejection", side = side,
+                    actor_type = kind, actor_pilot = pilot})
             announce(side, "losses", string.format("%s ejected", describe(event.initiator)))
         end
         return
@@ -487,6 +602,9 @@ function handler:onEvent(event)
         end
         local side = side_of(event.initiator)
         if side then
+            local kind, pilot = unit_fields(event.initiator)
+            record({kind = "crash", side = side,
+                    actor_type = kind, actor_pilot = pilot})
             announce(side, "crashes", string.format("%s crashed", describe(event.initiator)))
         end
         return
@@ -495,6 +613,9 @@ function handler:onEvent(event)
     if id == e.S_EVENT_TAKEOFF and event.initiator then
         local side = side_of(event.initiator)
         if side then
+            local kind, pilot = unit_fields(event.initiator)
+            record({kind = "takeoff", side = side, actor_type = kind,
+                    actor_pilot = pilot, place = place_name(event)})
             local place = place_name(event)
             local text = string.format("%s took off", describe(event.initiator))
             if place then
@@ -508,6 +629,9 @@ function handler:onEvent(event)
     if id == e.S_EVENT_LAND and event.initiator then
         local side = side_of(event.initiator)
         if side then
+            local kind, pilot = unit_fields(event.initiator)
+            record({kind = "land", side = side, actor_type = kind,
+                    actor_pilot = pilot, place = place_name(event)})
             local place = place_name(event)
             local text = string.format("%s landed", describe(event.initiator))
             if place then
@@ -607,6 +731,12 @@ local function report_contacts(hunter_group, targets, source)
                 and range_between(leader, target_leader) or nil
             if range ~= nil and range <= INTERCEPT_MAX_RANGE_M then
                 announced_contacts[key] = true
+                local hunter_type, hunter_pilot = unit_fields(leader)
+                local bandit_type, bandit_pilot = unit_fields(target_leader)
+                record({kind = "intercept", side = side,
+                        actor_type = hunter_type, actor_pilot = hunter_pilot,
+                        target_type = bandit_type, target_pilot = bandit_pilot,
+                        range = math.floor(range), source = source})
                 announce(side, "intercepts", string.format(
                     "%s is moving to intercept %s at %.0f nm, %s",
                     describe_flight(hunter_group), describe_flight(group),
