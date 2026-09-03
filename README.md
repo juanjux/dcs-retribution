@@ -111,7 +111,10 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   script reads the aircraft type straight out of the unit name — mod aircraft come out
   right without a table of their own. Each message goes only to the coalition it is news
   for: a kill for the shooter, a loss for the other side. Every category has its own
-  toggle, and the roster is only seeded when the plugin is on.
+  toggle, and the roster is only seeded when the plugin is on. Interceptions are polled
+  rather than eventful — DCS fires nothing for "I have seen him and I am going after
+  him" — so every fighter group is asked what its radar holds and what the datalink
+  handed it, and the message says which of the two found the target.
 - **Turn times from the sun** — the four turn slots are derived from the
   theater's latitude and the campaign date instead of one fixed window per map.
   Kola's shipped table gives `dawn: [3, 9]` and `day: [9, 18]` all year, so a

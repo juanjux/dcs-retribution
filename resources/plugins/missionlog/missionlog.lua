@@ -18,6 +18,7 @@ MISSION_LOG_DEFAULTS = {
     losses = true,
     crashes = true,
     flightstatus = false,
+    intercepts = true,
     duration = 20,
 }
 
@@ -245,6 +246,118 @@ function handler:onEvent(event)
 end
 
 world.addEventHandler(handler)
+
+-- Interceptions.
+--
+-- DCS fires no event for "I have seen him and I am going after him", so this is
+-- polled: every fighter group is asked what its radar holds and what the
+-- datalink handed it, which is the same getDetectedTargets call the EWRS plugin
+-- has been using all along. A contact is announced once, and only the first
+-- time, so a long tail chase does not repeat itself every sweep.
+INTERCEPT_POLL_SECONDS = 20
+INTERCEPT_MAX_RANGE_M = 148160 -- 80 nm: past this it is a blip, not an intercept
+
+local announced_contacts = {}
+
+local function detected_names(controller, method)
+    local seen = {}
+    local contacts
+    if not pcall(function() contacts = controller:getDetectedTargets(method) end) then
+        return seen
+    end
+    for _, contact in pairs(contacts or {}) do
+        local name
+        if contact.object ~= nil and pcall(function() name = contact.object:getName() end) then
+            if name ~= nil then
+                seen[tostring(name)] = contact.object
+            end
+        end
+    end
+    return seen
+end
+
+local function is_fighter(unit)
+    local fighter = false
+    pcall(function()
+        fighter = unit:hasAttribute("Fighters") or unit:hasAttribute("Interceptors")
+    end)
+    return fighter
+end
+
+local function range_between(a, b)
+    local pa, pb
+    if not pcall(function() pa, pb = a:getPoint(), b:getPoint() end) then
+        return nil
+    end
+    if pa == nil or pb == nil then
+        return nil
+    end
+    local dx, dy, dz = pa.x - pb.x, pa.y - pb.y, pa.z - pb.z
+    return math.sqrt(dx * dx + dy * dy + dz * dz)
+end
+
+local function report_contacts(hunter, targets, source)
+    local hunter_name
+    if not pcall(function() hunter_name = hunter:getName() end) or hunter_name == nil then
+        return
+    end
+    local side = side_of(hunter)
+    if side == nil then
+        return
+    end
+    for name, target in pairs(targets) do
+        local key = tostring(hunter_name) .. "->" .. name
+        if not announced_contacts[key] then
+            local target_side = side_of(target)
+            local range = range_between(hunter, target)
+            if target_side ~= nil and target_side ~= side and is_aircraft(target)
+                    and range ~= nil and range <= INTERCEPT_MAX_RANGE_M then
+                announced_contacts[key] = true
+                announce(side, "intercepts", string.format(
+                    "%s is moving to intercept %s at %.0f nm, %s",
+                    describe(hunter), describe(target), range / 1852, source))
+            end
+        end
+    end
+end
+
+local function poll_intercepts()
+    if not option("intercepts") then
+        return
+    end
+    for _, side in pairs({coalition.side.BLUE, coalition.side.RED}) do
+        local groups
+        if not pcall(function()
+            groups = coalition.getGroups(side, Group.Category.AIRPLANE)
+        end) then
+            groups = nil
+        end
+        for _, group in pairs(groups or {}) do
+            local unit
+            if pcall(function() unit = group:getUnit(1) end) and unit ~= nil
+                    and is_fighter(unit) then
+                local controller
+                if pcall(function() controller = group:getController() end)
+                        and controller ~= nil then
+                    -- Own radar wins the credit: a target held on both was not
+                    -- "handed over", it was found.
+                    local radar = detected_names(controller, Controller.Detection.RADAR)
+                    report_contacts(unit, radar, "found on its own radar")
+                    local shared = detected_names(controller, Controller.Detection.DLINK)
+                    for name in pairs(radar) do
+                        shared[name] = nil
+                    end
+                    report_contacts(unit, shared, "handed over by shared awareness")
+                end
+            end
+        end
+    end
+end
+
+timer.scheduleFunction(function(_, time)
+    pcall(poll_intercepts)
+    return time + INTERCEPT_POLL_SECONDS
+end, nil, timer.getTime() + INTERCEPT_POLL_SECONDS)
 
 if logger then
     -- RETRIBUTION_PILOTS is keyed by unit name, so # would report 0.
