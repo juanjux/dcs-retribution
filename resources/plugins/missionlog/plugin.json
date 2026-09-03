@@ -39,6 +39,11 @@
             "defaultValue": true
         },
         {
+            "nameInUI": "Defending against an incoming missile",
+            "mnemonic": "defending",
+            "defaultValue": true
+        },
+        {
             "nameInUI": "Seconds each message stays on screen",
             "mnemonic": "duration",
             "defaultValue": 20,

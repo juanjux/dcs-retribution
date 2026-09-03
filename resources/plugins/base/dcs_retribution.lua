@@ -15,6 +15,7 @@ took_off = {}   -- unit name -> true (S_EVENT_TAKEOFF); a ground-start unit abse
 death_time = {} -- unit name -> first death-event mission time (s), for indirect-kill timing
 cruise_missiles_state = {} -- cruisemissiles plugin appends/updates {group=, fired=} per ship group that launched; Python debits the campaign magazine at the turn boundary
 naval_magazines_state = {} -- navalmagazines plugin appends/updates {group=, fired=} per naval group that fired ANTI-SHIP missiles (a disjoint weapon set from cruise_missiles_state); Python debits the campaign magazine at the turn boundary
+mission_log_events = {} -- missionlog plugin appends one flat record per event (kill, loss, crash, intercept...); Python renders the mission chronicle from it. Contiguous integer array, capped by the plugin: see the numeric-key warning further down.
 mission_ended = false
 dirty_state = false -- Track if state has changed and needs writing
 
@@ -244,6 +245,7 @@ function write_state()
         ["death_time"] = death_time,
         ["cruise_missiles_state"] = cruise_missiles_state or {},
         ["naval_magazines_state"] = naval_magazines_state or {},
+        ["mission_log_events"] = mission_log_events or {},
     }
     local t0 = os.clock()
     local ok, write_error = pcall(function()
