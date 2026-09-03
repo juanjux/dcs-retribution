@@ -20,6 +20,7 @@ MISSION_LOG_DEFAULTS = {
     flightstatus = false,
     intercepts = true,
     duration = 20,
+    maxmessages = 12,
 }
 
 local function option(name)
@@ -38,14 +39,51 @@ local DURATION = tonumber(option("duration")) or MISSION_LOG_DEFAULTS.duration
 
 local logger = mist and mist.Logger:new("MissionLog", "info") or nil
 
+-- A budget, per side, per minute.
+--
+-- One Mk-83 into a building objective hits a dozen separate scenery pieces, each
+-- with its own name, and a Harrier working over a target area filled the entire
+-- screen top to bottom. Coalescing helps but cannot save it: those really are
+-- different targets. So the screen gets a budget and the overflow is counted,
+-- not printed.
+--
+-- dcs.log keeps everything regardless. The limit is about what a pilot can read
+-- mid-flight, not about what is worth recording.
+MESSAGE_WINDOW_SECONDS = 60
+
+local budget_state = {}
+
 local function announce(side, category, text)
-    if not option(category) then
-        return
-    end
-    trigger.action.outTextForCoalition(side, text, DURATION, false)
     if logger then
         logger:info(string.format("[%s] %s", category, text))
     end
+    if not option(category) then
+        return
+    end
+
+    local budget = tonumber(option("maxmessages")) or MISSION_LOG_DEFAULTS.maxmessages
+    local now = timer.getTime()
+    local state = budget_state[side]
+    if state == nil then
+        state = {start = now, shown = 0, held = 0}
+        budget_state[side] = state
+    end
+
+    if now - state.start >= MESSAGE_WINDOW_SECONDS then
+        if state.held > 0 then
+            trigger.action.outTextForCoalition(side, string.format(
+                "(%d more mission log messages this minute, see dcs.log)",
+                state.held), DURATION, false)
+        end
+        state.start, state.shown, state.held = now, 0, 0
+    end
+
+    if state.shown >= budget then
+        state.held = state.held + 1
+        return
+    end
+    state.shown = state.shown + 1
+    trigger.action.outTextForCoalition(side, text, DURATION, false)
 end
 
 -- Retribution names a flight's units "<target> <task>|<country>|<n>|<aircraft>|
@@ -111,6 +149,33 @@ local function describe(unit)
         return text
     end
     return "the " .. text
+end
+
+-- Which objective a piece of scenery belongs to.
+--
+-- A bomb into a factory damages a dozen separate map models -- BLACKGUM,
+-- SILO_02, HOLE12 -- and naming those tells a pilot nothing. The objective they
+-- stand in does. The base plugin already matches scenery to objectives by
+-- position for scoring; this borrows the same lookup, but with a far wider
+-- radius: 30 m is the right bar for *crediting* a kill, and much too tight for
+-- merely saying which factory a shed was part of.
+SCENERY_NAMING_RADIUS = 500
+
+local function scenery_objective(unit)
+    if type(scenery_zone_for) ~= "function" then
+        return nil
+    end
+    local ok, zone, distance = pcall(scenery_zone_for, unit)
+    if not ok or zone == nil or distance == nil or distance > SCENERY_NAMING_RADIUS then
+        return nil
+    end
+    if zone.objective == nil or zone.objective == "" then
+        return nil
+    end
+    if zone.category ~= nil and zone.category ~= "" then
+        return string.format("%s %s", zone.category, zone.objective)
+    end
+    return zone.objective
 end
 
 -- A formation, not a jet. An interception is something a flight does to another
@@ -223,15 +288,39 @@ GROUND_FLUSH_SECONDS = 8
 
 local pending_ground = {}
 
-local function queue_ground(side, category, actor, verb, target, weapon, target_id)
+-- A target that dies inside the window should read as killed, not as hit and
+-- then killed: the earlier damage was on the way to this.
+local function forget_damage(target_id)
+    if target_id == nil then
+        return
+    end
+    local id = tostring(target_id)
+    for key, bucket in pairs(pending_ground) do
+        if bucket.category == "damage" and bucket.seen[id] then
+            bucket.seen[id] = nil
+            bucket.count = bucket.count - 1
+            if bucket.count <= 0 then
+                pending_ground[key] = nil
+            end
+        end
+    end
+end
+
+local function queue_ground(side, category, actor, verb, target, weapon, target_id,
+                            scenery)
+    if category == "groundkills" then
+        forget_damage(target_id)
+    end
     local key = table.concat(
         {tostring(side), category, actor, verb, target, weapon}, "\30")
     local bucket = pending_ground[key]
     if bucket == nil then
         bucket = {side = side, category = category, actor = actor, verb = verb,
-                  target = target, weapon = weapon, seen = {}, count = 0}
+                  target = target, weapon = weapon, scenery = scenery == true,
+                  seen = {}, count = 0}
         pending_ground[key] = bucket
     end
+    -- Counted per piece even for scenery, so "several" means several.
     local id = tostring(target_id or target)
     if not bucket.seen[id] then
         bucket.seen[id] = true
@@ -241,9 +330,15 @@ end
 
 local function flush_ground()
     for key, bucket in pairs(pending_ground) do
-        local what = bucket.count > 1
-            and string.format("%d %s", bucket.count, bucket.target)
-            or ("the " .. bucket.target)
+        local what
+        if bucket.scenery then
+            what = string.format("%s in the %s",
+                bucket.count > 1 and "several objects" or "an object", bucket.target)
+        elseif bucket.count > 1 then
+            what = string.format("%d %s", bucket.count, bucket.target)
+        else
+            what = "the " .. bucket.target
+        end
         announce(bucket.side, bucket.category, string.format(
             "%s %s %s%s", bucket.actor, bucket.verb, what, bucket.weapon))
         pending_ground[key] = nil
@@ -256,6 +351,26 @@ local function name_of(unit)
         return tostring(name)
     end
     return nil
+end
+
+-- Scenery is the one thing DCS names with a number instead of a string.
+local function is_scenery(unit)
+    local name
+    if pcall(function() name = unit:getName() end) then
+        return type(name) == "number"
+    end
+    return false
+end
+
+-- Text, dedup id, and whether this is scenery, for one ground target.
+local function ground_target(unit)
+    if is_scenery(unit) then
+        local objective = scenery_objective(unit)
+        if objective ~= nil then
+            return objective, name_of(unit), true
+        end
+    end
+    return (describe_bare(unit)), name_of(unit), false
 end
 
 local handler = {}
@@ -279,9 +394,9 @@ function handler:onEvent(event)
                     with_weapon(string.format("%s was shot down by %s", victim_text, killer_text), event))
             end
         elseif shooter then
-            local target_text = (describe_bare(event.target))
+            local text, target_id, scenery = ground_target(event.target)
             queue_ground(shooter, "groundkills", killer_text, "destroyed",
-                target_text, weapon_suffix(event), name_of(event.target))
+                text, weapon_suffix(event), target_id, scenery)
         end
         return
     end
@@ -289,9 +404,9 @@ function handler:onEvent(event)
     if id == e.S_EVENT_HIT and event.initiator and event.target then
         local shooter = side_of(event.initiator)
         if shooter and not is_aircraft(event.target) then
-            local target_text = (describe_bare(event.target))
+            local text, target_id, scenery = ground_target(event.target)
             queue_ground(shooter, "damage", describe(event.initiator), "hit",
-                target_text, weapon_suffix(event), name_of(event.target))
+                text, weapon_suffix(event), target_id, scenery)
         end
         return
     end

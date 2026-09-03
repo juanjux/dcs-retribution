@@ -79,9 +79,17 @@ class LuaGenerator:
                     continue
                 name = escape_string_for_lua(unit.name)
                 dead = "false" if unit.alive else "true"
+                # The objective and its category are for the Mission Log, which
+                # has to name what was hit. A bomb into a factory damages a
+                # dozen separate map models with names like BLACKGUM and
+                # SILO_02, and reporting those tells the pilot nothing; the
+                # objective they belong to does.
+                objective = escape_string_for_lua(tgo.name)
+                category = escape_string_for_lua(str(tgo.category))
                 rows.append(
                     f'  {{ name = "{name}", x = {unit.position.x}, '
-                    f"y = {unit.position.y}, dead = {dead} }},"
+                    f"y = {unit.position.y}, dead = {dead}, "
+                    f'objective = "{objective}", category = "{category}" }},'
                 )
         if not rows:
             return
