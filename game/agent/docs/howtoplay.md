@@ -164,6 +164,12 @@ The DCS AI that actually flies these missions is limited. Plan robustly around i
   huge blob. The defense can't suppress them all at once, so more flights reach their launch
   range before reacting to fire. Saturation works by **dispersion in space and time**, not by
   one big formation (which all aborts together).
+- **`ground_pending_transfer` means an army you have decided to move and cannot.** Those
+  vehicles are *included* in `ground`: still parked at that base, still deploying to its
+  front, still counted in the ground war. They leave only when a transport turns up, so a
+  large number here is a standing order going nowhere -- cancel it, or buy the lift.
+  `ground_transferring_out` is the opposite: gone this turn, and they will not defend
+  that base or its front.
 - **Match the INGRESS to the weapon's range — for ANY stand-off attack, this is the big one.**
   The auto-planned **INGRESS** waypoint (where the attack *begins*) is placed close to the
   target (~45 nm) for EVERY attack type. That's fine for short-range / direct-attack weapons

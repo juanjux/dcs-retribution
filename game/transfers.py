@@ -115,6 +115,13 @@ class TransferOrder:
 
     transport: Optional[Transport] = field(default=None)
 
+    #: True once the units have actually left their origin, which is when a
+    #: transport is first assigned -- not when the order is written. A transfer
+    #: waiting for a lift it does not have is not in limbo: its units are still
+    #: at the origin, still deployable to the front, still counted in the ground
+    #: war. Old saves have no such field, so it defaults to departed.
+    departed: bool = field(default=True)
+
     request_airflift: bool = field(default=False)
 
     def __str__(self) -> str:
@@ -161,7 +168,9 @@ class TransferOrder:
 
     def disband_at(self, location: ControlPoint) -> None:
         logging.info(f"Units halting at {location}.")
-        location.base.commission_units(self.units)
+        if self.departed:
+            # Never left, never debited: handing them over would create copies.
+            location.base.commission_units(self.units)
         self.units.clear()
 
     @property
@@ -630,6 +639,15 @@ class PendingTransfers:
         return self.game.transit_network_for(control_point.captured)
 
     def arrange_transport(self, transfer: TransferOrder, now: datetime) -> None:
+        self._assign_transport(transfer, now)
+        if transfer.transport is not None and not transfer.departed:
+            # The units leave the origin now, not when the order was written. Until
+            # a lift exists they sit at their base, where the ground war can still
+            # count them.
+            transfer.origin.base.commit_losses(transfer.units)
+            transfer.departed = True
+
+    def _assign_transport(self, transfer: TransferOrder, now: datetime) -> None:
         network = self.network_for(transfer.position)
         path = network.shortest_path_between(transfer.position, transfer.destination)
         next_stop = path[0]
@@ -649,7 +667,7 @@ class PendingTransfers:
         AirliftPlanner(self.game, transfer, next_stop).create_package_for_airlift(now)
 
     def new_transfer(self, transfer: TransferOrder, now: datetime) -> None:
-        transfer.origin.base.commit_losses(transfer.units)
+        transfer.departed = False
         self.pending_transfers.append(transfer)
         self.arrange_transport(transfer, now)
         self._send_supply_route_event_stream_update()
@@ -719,7 +737,10 @@ class PendingTransfers:
         if transfer.transport is not None:
             self.cancel_transport(transfer.transport, transfer)
         self.pending_transfers.remove(transfer)
-        transfer.origin.base.commission_units(transfer.units)
+        if transfer.departed:
+            # Units that never found a lift never left, so there is nothing to
+            # give back -- they have been at the origin the whole time.
+            transfer.origin.base.commission_units(transfer.units)
         self._send_supply_route_event_stream_update()
 
     def perform_transfers(self) -> None:
