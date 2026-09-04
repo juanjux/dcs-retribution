@@ -261,10 +261,12 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   displaced by up to 2500 m in a random direction, so every salvo landed in open country
   a few hundred metres off the runway. Measured over one turn: 48 ATACMS rounds, zero
   hits, target airfield untouched. They now aim at live, immobile ground objects at the
-  target base, fall back to the map coordinate only for a base that has none, and the
-  aimpoint error drops to 250 m -- a ballistic missile should miss, not be guaranteed to.
-  Range is measured to the aimpoint rather than to the base. Kirkuk went from one
-  abstract point to eleven real ones. Cuts both ways: enemy Scuds get more dangerous.
+  target base, fall back to the map coordinate only for a base that has none, and range
+  is measured to the aimpoint rather than to the base. Kirkuk went from one abstract
+  point to eleven real ones. The scatter is now each launcher's published CEP rather
+  than one number for all of them -- 450 m for a Scud, 25 m for an ATACMS, 10 m for a
+  CJ-10 -- so an inertial missile from the sixties and a GPS-guided one no longer land
+  alike. Cuts both ways: enemy Scuds get more dangerous.
   ([#128](https://github.com/juanjux/dcs-retribution/pull/128))
 - **Su-25s flew close air support with weapons they cannot guide.** A flight took off
   with eight S-25L each and attacked nothing while the Su-34s beside them worked
