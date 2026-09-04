@@ -1,4 +1,5 @@
 name: KAB-500LG
+type: LGB
 year: 1975
 fallback: KAB-500Kr
 clsids:
