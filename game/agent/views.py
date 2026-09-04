@@ -1376,8 +1376,14 @@ def build_packages(game: Game, side: str = "red") -> list[PackageView]:
 
 def build_prev_turns(game: Game, n: int = 3) -> list[TurnForcesView]:
     """The last ``n`` turns' force totals (blue=allied, red=enemy in game_stats),
-    merged with that turn's debriefed losses when available."""
-    data = game.game_stats.data_per_turn
+    merged with that turn's debriefed losses when available.
+
+    Previous means previous. The turn being planned already has a stats entry --
+    it gets one the moment it starts -- but it has not been flown and has no
+    debrief, so including it made ``n=1`` answer with the turn you are sitting
+    in, empty of losses, instead of the one you just fought.
+    """
+    data = game.game_stats.data_per_turn[: game.turn]
     losses_by_turn = {
         d.get("turn"): d for d in getattr(game, "debrief_history", []) or []
     }
