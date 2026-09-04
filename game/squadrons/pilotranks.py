@@ -164,19 +164,26 @@ RANK_NAMES_SKILL = "skill"
 RANK_NAMES_CUSTOM = "custom"
 
 
-def custom_ladder(names: Sequence[str]) -> RankLadder:
-    """Five names typed by the player. A box left empty keeps its generic rung."""
+def custom_ladder(names: Sequence[tuple[str, str]]) -> RankLadder:
+    """Five abbreviation/name pairs typed by the player.
+
+    Each half falls back on its own: a player who fills in the full names and leaves
+    the short forms alone gets their names with generic abbreviations, rather than a
+    ladder that refuses to work until every box is filled.
+    """
     picked = []
     for index, generic in enumerate(GENERIC_RANKS):
-        typed = names[index].strip() if index < len(names) else ""
-        picked.append(Rank(typed, typed) if typed else generic)
+        short, full = names[index] if index < len(names) else ("", "")
+        picked.append(
+            Rank(short.strip() or generic.abbreviation, full.strip() or generic.name)
+        )
     return (picked[0], picked[1], picked[2], picked[3], picked[4])
 
 
 def ranks_for(
     source: str,
     country: Optional[Country] = None,
-    custom_names: Sequence[str] = (),
+    custom_names: Sequence[tuple[str, str]] = (),
 ) -> RankLadder:
     """Return the ladder a squadron promotes through under this naming choice.
 

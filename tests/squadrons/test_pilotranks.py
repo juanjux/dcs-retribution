@@ -8,7 +8,7 @@ from dcs.country import Country
 from dcs.unit import Skill
 
 from game.dcs.skills import CADET_SKILL, SKILL_LADDER, ground_skill
-from game.settings import ChoicesOption, Settings
+from game.settings import ChoicesOption, Settings, TextOption
 from game.settings.skilloption import GROUND_SKILL_CHOICES, PILOT_SKILL_CHOICES
 from game.squadrons.pilotranks import (
     COUNTRY_RANKS,
@@ -117,14 +117,41 @@ def test_skill_names_are_the_dcs_levels() -> None:
 
 def test_custom_names_are_used_as_typed() -> None:
     ladder = ranks_for(
-        RANK_NAMES_CUSTOM, None, ["Novato", "Piloto", "Veterano", "Jefe", "As"]
+        RANK_NAMES_CUSTOM,
+        None,
+        [
+            ("Nov", "Novato"),
+            ("Pil", "Piloto"),
+            ("Vet", "Veterano"),
+            ("Jef", "Jefe"),
+            ("As", "As de ases"),
+        ],
     )
-    assert _abbreviations(ladder) == ["Novato", "Piloto", "Veterano", "Jefe", "As"]
+    assert _abbreviations(ladder) == ["Nov", "Pil", "Vet", "Jef", "As"]
+    assert [rank.name for rank in ladder] == [
+        "Novato",
+        "Piloto",
+        "Veterano",
+        "Jefe",
+        "As de ases",
+    ]
 
 
-def test_a_blank_custom_box_keeps_its_generic_rung() -> None:
-    ladder = ranks_for(RANK_NAMES_CUSTOM, None, ["Novato", "  ", "", "Jefe", "As"])
-    assert _abbreviations(ladder) == ["Novato", "1stLt", "Capt", "Jefe", "As"]
+def test_each_half_of_a_custom_rung_falls_back_on_its_own() -> None:
+    """Filling in the full names should not require inventing abbreviations too."""
+    ladder = ranks_for(
+        RANK_NAMES_CUSTOM,
+        None,
+        [("Nov", "Novato"), ("", "Piloto"), ("Vet", "  "), ("", ""), ("As", "As")],
+    )
+    assert _abbreviations(ladder) == ["Nov", "1stLt", "Vet", "Maj", "As"]
+    assert [rank.name for rank in ladder] == [
+        "Novato",
+        "Piloto",
+        "Captain",
+        "Major",
+        "As",
+    ]
 
 
 def test_an_unknown_naming_falls_back_rather_than_raising() -> None:
@@ -159,7 +186,7 @@ def test_the_setting_offers_exactly_the_namings_that_exist() -> None:
 def test_the_custom_boxes_are_hidden_until_they_apply() -> None:
     settings = Settings()
     fields = list(Settings.fields("Live Pilots", "Custom Rank Names"))
-    assert len(fields) == len(SKILL_LADDER)
+    assert len(fields) == 2 * len(SKILL_LADDER)
 
     for _, description in fields:
         assert description.visible_when is not None
@@ -172,12 +199,25 @@ def test_the_custom_boxes_are_hidden_until_they_apply() -> None:
         assert description.visible_when(settings)
 
 
+def test_only_the_abbreviation_boxes_are_capped() -> None:
+    for name, description in Settings.fields("Live Pilots", "Custom Rank Names"):
+        assert isinstance(description, TextOption)
+        assert description.max_length == (5 if name.endswith("_short") else None)
+
+
 def test_the_custom_boxes_start_filled_with_the_generic_ladder() -> None:
     settings = Settings()
     assert [
-        settings.live_pilots_rank_cadet,
-        settings.live_pilots_rank_average,
-        settings.live_pilots_rank_good,
-        settings.live_pilots_rank_high,
-        settings.live_pilots_rank_excellent,
+        settings.live_pilots_rank_cadet_short,
+        settings.live_pilots_rank_average_short,
+        settings.live_pilots_rank_good_short,
+        settings.live_pilots_rank_high_short,
+        settings.live_pilots_rank_excellent_short,
     ] == _abbreviations(GENERIC_RANKS)
+    assert [
+        settings.live_pilots_rank_cadet_full,
+        settings.live_pilots_rank_average_full,
+        settings.live_pilots_rank_good_full,
+        settings.live_pilots_rank_high_full,
+        settings.live_pilots_rank_excellent_full,
+    ] == [rank.name for rank in GENERIC_RANKS]
