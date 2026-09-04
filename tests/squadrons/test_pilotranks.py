@@ -171,7 +171,7 @@ def test_the_setting_offers_exactly_the_namings_that_exist() -> None:
     """settings.py cannot import the constants without a cycle, so pin them here."""
     (description,) = [
         d
-        for n, d in Settings.fields("Live Pilots", "General")
+        for n, d in Settings.fields("Live Pilots", "Rank Names")
         if n == "live_pilots_rank_names"
     ]
     assert isinstance(description, ChoicesOption)
@@ -185,14 +185,16 @@ def test_the_setting_offers_exactly_the_namings_that_exist() -> None:
 
 def test_the_rank_boxes_are_always_shown() -> None:
     """They preview whichever naming is chosen, greyed out unless it is the custom one."""
-    fields = list(Settings.fields("Live Pilots", "Custom Rank Names"))
-    assert len(fields) == 2 * len(SKILL_LADDER)
+    fields = list(Settings.fields("Live Pilots", "Rank Names"))
+    # The naming choice heads the box, then a short and a full name per rung.
+    assert len(fields) == 1 + 2 * len(SKILL_LADDER)
     assert all(description.visible_when is None for _, description in fields)
 
 
 def test_only_the_abbreviation_boxes_are_capped() -> None:
-    for name, description in Settings.fields("Live Pilots", "Custom Rank Names"):
-        assert isinstance(description, TextOption)
+    for name, description in Settings.fields("Live Pilots", "Rank Names"):
+        if not isinstance(description, TextOption):
+            continue
         assert description.max_length == (5 if name.endswith("_short") else None)
 
 
