@@ -6,7 +6,7 @@ from typing import Callable, Dict, Iterable, List, Optional, Tuple
 
 from PySide6 import QtWidgets
 from PySide6.QtCore import QItemSelectionModel, QPoint, QSize, Qt
-from PySide6.QtGui import QStandardItem, QStandardItemModel, QCloseEvent
+from PySide6.QtGui import QFont, QStandardItem, QStandardItemModel, QCloseEvent
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QApplication,
@@ -285,11 +285,19 @@ class AutoSettingsLayout(QGridLayout):
             ladder = ranks_for(settings.live_pilots_rank_names, country)
             pairs = [(rank.abbreviation, rank.name) for rank in ladder]
 
+        italic = QFont()
+        italic.setItalic(not editable)
         for (short_edit, full_edit), (short_text, full_text) in zip(
             self._rank_rows, pairs
         ):
             for edit, text in ((short_edit, short_text), (full_edit, full_text)):
-                edit.setEnabled(editable)
+                # Read-only rather than disabled, so a preview can still be selected and
+                # copied. Dropping the frame is what says so at a glance: the box stops
+                # looking like a box and reads as printed text, in either theme and
+                # without hard-coding a colour.
+                edit.setReadOnly(not editable)
+                edit.setFrame(editable)
+                edit.setFont(italic)
                 if edit.text() != text:
                     edit.blockSignals(True)
                     edit.setText(text)
@@ -635,9 +643,10 @@ class QSettingsWidget(QtWidgets.QWizardPage, SettingsContainer):
         self.settings = game.settings if game else settings
         self.game = game
 
+        #: Only the pages the player has actually looked at. See _ensure_page.
         self.pages: dict[str, AutoSettingsPage] = {}
-        for page in Settings.pages():
-            self.pages[page] = AutoSettingsPage(page, self, self.applySettings)
+        self._page_names: list[str] = list(Settings.pages())
+        self._page_scrolls: dict[int, QScrollArea] = {}
 
         self.pluginsPage = PluginsPage(self)
         self.pluginsOptionsPage = PluginOptionsPage(self)
@@ -658,7 +667,7 @@ class QSettingsWidget(QtWidgets.QWizardPage, SettingsContainer):
 
         self.categoryList.setIconSize(QSize(32, 32))
 
-        for name, page in self.pages.items():
+        for index, name in enumerate(self._page_names):
             page_item = QStandardItem(name)
             if name in CONST.ICONS:
                 page_item.setIcon(CONST.ICONS[name])
@@ -668,8 +677,8 @@ class QSettingsWidget(QtWidgets.QWizardPage, SettingsContainer):
             page_item.setSelectable(True)
             self.categoryModel.appendRow(page_item)
             scroll = QScrollArea()
-            scroll.setWidget(page)
             scroll.setWidgetResizable(True)
+            self._page_scrolls[index] = scroll
             self.right_layout.addWidget(scroll)
 
         self.initCheatLayout()
@@ -705,6 +714,9 @@ class QSettingsWidget(QtWidgets.QWizardPage, SettingsContainer):
             self.categoryList.indexAt(QPoint(1, 1)),
             QItemSelectionModel.SelectionFlag.Select,
         )
+        # The default selection is set before the signal is connected, so nothing
+        # would build the page the dialog opens on.
+        self._ensure_page(0)
         self.categoryList.selectionModel().selectionChanged.connect(
             self.onSelectionChanged
         )
@@ -788,8 +800,24 @@ class QSettingsWidget(QtWidgets.QWizardPage, SettingsContainer):
             EventStream.put_nowait(events)
             GameUpdateSignal.get_instance().updateGame(self.game)
 
+    def _ensure_page(self, index: int) -> None:
+        """Build a settings page the first time it is looked at.
+
+        The seven pages together are 192 settings and some six hundred widgets, and
+        the dialog is rebuilt from scratch on every open -- it used to build all of
+        them to show one, which is the couple of seconds before the window appears.
+        """
+        scroll = self._page_scrolls.get(index)
+        if scroll is None or scroll.widget() is not None:
+            return
+        name = self._page_names[index]
+        page = AutoSettingsPage(name, self, self.applySettings)
+        self.pages[name] = page
+        scroll.setWidget(page)
+
     def onSelectionChanged(self) -> None:
         index = self.categoryList.selectionModel().currentIndex().row()
+        self._ensure_page(index)
         self.right_layout.setCurrentIndex(index)
 
     def update_from_settings(self) -> None:
