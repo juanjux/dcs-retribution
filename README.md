@@ -256,6 +256,16 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   (branch [`juanjux/ch_china_1.1.6`](https://github.com/juanjux/dcs-retribution/tree/juanjux/ch_china_1.1.6))
 
 ### Fixes
+- **Scud and ATACMS sites cratered empty fields.** A missile site fired at the enemy
+  control point's `position` -- a campaign-map coordinate with nothing standing on it --
+  displaced by up to 2500 m in a random direction, so every salvo landed in open country
+  a few hundred metres off the runway. Measured over one turn: 48 ATACMS rounds, zero
+  hits, target airfield untouched. They now aim at live, immobile ground objects at the
+  target base, fall back to the map coordinate only for a base that has none, and the
+  aimpoint error drops to 250 m -- a ballistic missile should miss, not be guaranteed to.
+  Range is measured to the aimpoint rather than to the base. Kirkuk went from one
+  abstract point to eleven real ones. Cuts both ways: enemy Scuds get more dangerous.
+  ([#128](https://github.com/juanjux/dcs-retribution/pull/128))
 - **Su-25s flew close air support with weapons they cannot guide.** A flight took off
   with eight S-25L each and attacked nothing while the Su-34s beside them worked
   normally: the S-25L is a laser-guided rocket and the plain Su-25 has no designator, so
