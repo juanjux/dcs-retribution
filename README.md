@@ -272,6 +272,20 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   (branch [`juanjux/ch_china_1.1.6`](https://github.com/juanjux/dcs-retribution/tree/juanjux/ch_china_1.1.6))
 
 ### Fixes
+- **A dry run grounded a squadron for the turn.** `plan_mission` claims aircraft flight
+  by flight and releases them when it scrubs a mission for missing types, but anything
+  that *raises* in between walked out with the claims standing: the squadron read as
+  fully committed to a package that never reached the ATO. The agent's
+  `/packages/evaluate` hit it reliably -- probing a task the target does not accept is
+  exactly the failure that raises -- leaving an H-6J wing reporting "all 1 already
+  tasked" with an empty package list and nothing for `DELETE /packages` to clear. Fixed
+  at the claim rather than the endpoint, so planning is atomic for every caller.
+  ([#131](https://github.com/juanjux/dcs-retribution/pull/131))
+- **The Su-25 flew DEAD carrying only weapons it cannot guide.** All six attack pylons
+  were Kh-25ML and Kh-29L, both semi-active laser, and the plain Frogfoot has no
+  designator -- so `replace_lgbs_if_no_tgp` strips them, and where it finds no fallback
+  it deletes the pylon outright. The aircraft flew the mission unarmed. RBK-250 with
+  PTAB-2.5M instead. ([#130](https://github.com/juanjux/dcs-retribution/pull/130))
 - **Scud and ATACMS sites cratered empty fields.** A missile site fired at the enemy
   control point's `position` -- a campaign-map coordinate with nothing standing on it --
   displaced by up to 2500 m in a random direction, so every salvo landed in open country
