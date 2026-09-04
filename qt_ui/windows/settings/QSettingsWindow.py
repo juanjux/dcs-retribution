@@ -164,7 +164,7 @@ class AutoSettingsLayout(QGridLayout):
         self.sc = sc
         self.write_full_settings = write_full_settings
         self.settings_map: Dict[str, QWidget] = {}
-        self.labels_map: Dict[str, QLabel] = {}
+        self.label_map: Dict[str, QWidget] = {}
 
         self.init_ui()
 
@@ -172,7 +172,7 @@ class AutoSettingsLayout(QGridLayout):
         for row, (name, description) in enumerate(
             Settings.fields(self.page, self.section)
         ):
-            self.labels_map[name] = self.add_label(row, description)
+            self.label_map[name] = self.add_label(row, description)
             if isinstance(description, BooleanOption):
                 self.add_checkbox_for(row, name, description)
             elif isinstance(description, ChoicesOption):
@@ -205,7 +205,7 @@ class AutoSettingsLayout(QGridLayout):
         if not isinstance(master, QCheckBox):
             return
         dependents = [
-            (self.settings_map.get(name), self.labels_map.get(name))
+            (self.settings_map.get(name), self.label_map.get(name))
             for name in dependent_names
         ]
 
