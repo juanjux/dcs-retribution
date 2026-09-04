@@ -21,9 +21,12 @@ class _Generator(MissileSiteGenerator):
     whole mission to exist; the range itself is not what these tests are about.
     """
 
-    def __init__(self, ground_object: Any, game: Any, site_range: int) -> None:
+    def __init__(
+        self, ground_object: Any, game: Any, site_range: int, mission: Any = None
+    ) -> None:
         self.ground_object = ground_object
         self.game = game
+        self.m = mission
         self._site_range = site_range
 
     @property
@@ -110,3 +113,46 @@ def test_range_is_measured_to_the_aimpoint_not_the_base() -> None:
     assert _coords(_generator([cp], site_range=60000).possible_missile_targets()) == [
         (55000.0, 0.0)
     ]
+
+
+def _mission_holding(unit_types: List[str]) -> Any:
+    group = SimpleNamespace(units=[SimpleNamespace(type=t) for t in unit_types])
+
+    def find_group(name: str) -> Any:
+        return group
+
+    return SimpleNamespace(find_group=find_group)
+
+
+def _error_for(*unit_types: str) -> int:
+    site = SimpleNamespace(
+        position=Point(0, 0, None),  # type: ignore[arg-type]
+        control_point=SimpleNamespace(captured=False),
+        groups=[SimpleNamespace(group_name="site")],
+    )
+    game = SimpleNamespace(theater=SimpleNamespace(controlpoints=[]))
+    generator = _Generator(site, game, 100000, _mission_holding(list(unit_types)))
+    return generator.aimpoint_error
+
+
+def test_a_scud_misses_by_a_quarter_kilometre() -> None:
+    """450 m CEP, doubled: an inertial missile from the sixties."""
+    assert _error_for("Scud_B") == 900
+
+
+def test_an_atacms_lands_near_where_it_was_pointed() -> None:
+    """25 m CEP, doubled: eighteen times better than the Scud."""
+    assert _error_for("CH_M270A1_ATACMS") == 50
+
+
+def test_an_unlisted_launcher_takes_the_default() -> None:
+    assert _error_for("SomeModdedLauncher") == 300
+
+
+def test_the_least_accurate_launcher_sets_the_error() -> None:
+    assert _error_for("CH_M270A1_ATACMS", "Scud_B") == 900
+
+
+def test_support_vehicles_do_not_drag_a_site_to_the_default() -> None:
+    """A Scud site is a Scud site even though its fuel truck is in no table."""
+    assert _error_for("Scud_B", "Ural-375") == 900

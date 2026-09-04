@@ -100,10 +100,24 @@ AA_CP_MIN_DISTANCE = 40000
 # Offset (meters) from airport position to place the portable TACAN beacon
 _PORTABLE_TACAN_OFFSET_M = 50
 
-# How far (meters) a missile site's salvo may fall from its aimpoint. Ballistic
-# missiles should miss -- a Scud's real CEP is a few hundred metres -- but the old
-# 2500 m guaranteed it, landing every round in open country next to the target.
-MISSILE_SITE_AIMPOINT_ERROR_M = 250
+# Published circular error probable (meters) per launcher. There are eighteen times
+# more error in a Scud than in an ATACMS, so one shared constant flattered the Soviet
+# missile and libelled the American one.
+MISSILE_SITE_CEP_M = {
+    "Scud_B": 450,  # R-17: inertial only, and it shows
+    "CH_M270A1_ATACMS": 25,  # Block IA and later, INS + GPS
+    "CHAP_9K720_HE": 50,  # Iskander-M on satellite guidance; far better with the
+    "CHAP_9K720_Cluster": 50,  # optical seeker, which is not what DCS models
+    "CH_IskanderK": 10,  # Iskander-K is a cruise missile, not the ballistic one
+    "CH_CJ10": 10,
+    "CH_DF21D": 30,  # manufacturer's claim, widely disputed
+    "CH_Shahed136": 50,  # against fixed coordinates; blind to anything that moves
+}
+
+# For launchers with no published figure -- and for the YJ-12B, an anti-ship missile
+# with no business aiming at a building. The V-1 needs no entry: its site cannot fire
+# in DCS at all.
+MISSILE_SITE_DEFAULT_CEP_M = 150
 
 
 def farp_truck_types_for_country(
@@ -591,7 +605,7 @@ class MissileSiteGenerator(GroundObjectGenerator):
                     target = random.choice(targets)
                     real_target = target.point_from_heading(
                         Heading.random().degrees,
-                        random.randint(0, MISSILE_SITE_AIMPOINT_ERROR_M),
+                        random.randint(0, self.aimpoint_error),
                     )
                     hold = ControlledTask(Hold())
                     hold.stop_after_duration(
@@ -659,6 +673,24 @@ class MissileSiteGenerator(GroundObjectGenerator):
                         if vehicle_map[u.type].threat_range > site_range:
                             site_range = vehicle_map[u.type].threat_range
         return site_range
+
+    @property
+    def aimpoint_error(self) -> int:
+        """
+        Get how far (meters) this site's salvo may fall from its aimpoint
+
+        The fire task draws the miss evenly from zero to this, so the median round
+        lands at half of it: doubling the published CEP puts half the salvo inside
+        the real figure. Takes the least accurate launcher on the site, mirroring
+        :meth:`missile_site_range`.
+        """
+        cep = 0
+        for group in self.ground_object.groups:
+            vg = self.m.find_group(group.group_name)
+            if vg is not None:
+                for u in vg.units:
+                    cep = max(cep, MISSILE_SITE_CEP_M.get(u.type, 0))
+        return 2 * (cep or MISSILE_SITE_DEFAULT_CEP_M)
 
 
 class GenericCarrierGenerator(GroundObjectGenerator):
