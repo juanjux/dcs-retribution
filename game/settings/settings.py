@@ -13,7 +13,7 @@ from .choicesoption import choices_option
 from .minutesoption import minutes_option
 from .textoption import text_option
 from .optiondescription import OptionDescription, SETTING_DESCRIPTION_KEY
-from .skilloption import skill_option
+from .skilloption import pilot_skill_option, skill_option
 from ..ato.starttype import StartType
 
 Views = ForcedOptions.Views
@@ -117,13 +117,13 @@ class Settings:
 
     # Difficulty settings
     # AI Difficulty
-    player_skill: str = skill_option(
+    player_skill: str = pilot_skill_option(
         "Player coalition skill",
         page=DIFFICULTY_PAGE,
         section=AI_DIFFICULTY_SECTION,
         default="High",
     )
-    enemy_skill: str = skill_option(
+    enemy_skill: str = pilot_skill_option(
         "Enemy coalition skill",
         page=DIFFICULTY_PAGE,
         section=AI_DIFFICULTY_SECTION,
