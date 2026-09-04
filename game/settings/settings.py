@@ -95,7 +95,7 @@ PRETENSE_PAGE = "Pretense"
 MISSION_GENERATOR_PAGE = "Mission Generator"
 
 LIVE_PILOTS_PAGE = "Live Pilots"
-LIVE_PILOTS_CUSTOM_SECTION = "Custom Rank Names"
+LIVE_PILOTS_RANKS_SECTION = "Rank Names"
 
 
 GAMEPLAY_SECTION = "Gameplay"
@@ -1790,7 +1790,7 @@ class Settings:
     live_pilots_rank_names: str = choices_option(
         "Rank names",
         page=LIVE_PILOTS_PAGE,
-        section=GENERAL_SECTION,
+        section=LIVE_PILOTS_RANKS_SECTION,
         default="country",
         choices={
             "Use faction country ranks": "country",
@@ -1807,66 +1807,66 @@ class Settings:
     live_pilots_rank_cadet_short: str = text_option(
         "Cadet",
         page=LIVE_PILOTS_PAGE,
-        section=LIVE_PILOTS_CUSTOM_SECTION,
+        section=LIVE_PILOTS_RANKS_SECTION,
         default="2ndLt",
         max_length=5,
     )
     live_pilots_rank_cadet_full: str = text_option(
         "Cadet",
         page=LIVE_PILOTS_PAGE,
-        section=LIVE_PILOTS_CUSTOM_SECTION,
+        section=LIVE_PILOTS_RANKS_SECTION,
         default="Second Lieutenant",
     )
     live_pilots_rank_average_short: str = text_option(
         "Average",
         page=LIVE_PILOTS_PAGE,
-        section=LIVE_PILOTS_CUSTOM_SECTION,
+        section=LIVE_PILOTS_RANKS_SECTION,
         default="1stLt",
         max_length=5,
     )
     live_pilots_rank_average_full: str = text_option(
         "Average",
         page=LIVE_PILOTS_PAGE,
-        section=LIVE_PILOTS_CUSTOM_SECTION,
+        section=LIVE_PILOTS_RANKS_SECTION,
         default="First Lieutenant",
     )
     live_pilots_rank_good_short: str = text_option(
         "Good",
         page=LIVE_PILOTS_PAGE,
-        section=LIVE_PILOTS_CUSTOM_SECTION,
+        section=LIVE_PILOTS_RANKS_SECTION,
         default="Capt",
         max_length=5,
     )
     live_pilots_rank_good_full: str = text_option(
         "Good",
         page=LIVE_PILOTS_PAGE,
-        section=LIVE_PILOTS_CUSTOM_SECTION,
+        section=LIVE_PILOTS_RANKS_SECTION,
         default="Captain",
     )
     live_pilots_rank_high_short: str = text_option(
         "High",
         page=LIVE_PILOTS_PAGE,
-        section=LIVE_PILOTS_CUSTOM_SECTION,
+        section=LIVE_PILOTS_RANKS_SECTION,
         default="Maj",
         max_length=5,
     )
     live_pilots_rank_high_full: str = text_option(
         "High",
         page=LIVE_PILOTS_PAGE,
-        section=LIVE_PILOTS_CUSTOM_SECTION,
+        section=LIVE_PILOTS_RANKS_SECTION,
         default="Major",
     )
     live_pilots_rank_excellent_short: str = text_option(
         "Excellent",
         page=LIVE_PILOTS_PAGE,
-        section=LIVE_PILOTS_CUSTOM_SECTION,
+        section=LIVE_PILOTS_RANKS_SECTION,
         default="LtCol",
         max_length=5,
     )
     live_pilots_rank_excellent_full: str = text_option(
         "Excellent",
         page=LIVE_PILOTS_PAGE,
-        section=LIVE_PILOTS_CUSTOM_SECTION,
+        section=LIVE_PILOTS_RANKS_SECTION,
         default="Lieutenant Colonel",
     )
     pretense_maxdistfromfront_distance: int = bounded_int_option(

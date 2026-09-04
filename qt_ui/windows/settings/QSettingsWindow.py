@@ -6,7 +6,7 @@ from typing import Callable, Dict, Iterable, List, Optional, Tuple
 
 from PySide6 import QtWidgets
 from PySide6.QtCore import QItemSelectionModel, QPoint, QSize, Qt
-from PySide6.QtGui import QFont, QStandardItem, QStandardItemModel, QCloseEvent
+from PySide6.QtGui import QStandardItem, QStandardItemModel, QCloseEvent
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QApplication,
@@ -47,7 +47,7 @@ from game.settings import (
 from game.settings.ISettingsContainer import SettingsContainer
 from game.settings.settings import (
     CloudPresetPack,
-    LIVE_PILOTS_CUSTOM_SECTION,
+    LIVE_PILOTS_RANKS_SECTION,
     LIVE_PILOTS_PAGE,
     OPFOR_AI_SECTION,
 )
@@ -180,7 +180,7 @@ class AutoSettingsLayout(QGridLayout):
         self.init_ui()
 
     def init_ui(self):
-        if self.section == LIVE_PILOTS_CUSTOM_SECTION:
+        if self.section == LIVE_PILOTS_RANKS_SECTION:
             self._build_rank_grid()
             return
         for row, (name, description) in enumerate(
@@ -210,7 +210,6 @@ class AutoSettingsLayout(QGridLayout):
                 (
                     "live_pilots_show_names",
                     "live_pilots_show_ranks",
-                    "live_pilots_rank_names",
                 ),
             )
 
@@ -221,13 +220,23 @@ class AutoSettingsLayout(QGridLayout):
         (short)", "Cadet (full)" is a form to fill in; a rung per row under two column
         headings is a ladder you can read down.
         """
-        self.addWidget(QLabel("<b>Short</b>"), 0, 1)
-        self.addWidget(QLabel("<b>Full</b>"), 0, 2)
-
-        row = 1
+        row = 0
         for name, description in Settings.fields(self.page, self.section):
+            if isinstance(description, ChoicesOption):
+                # The naming choice belongs at the head of the ladder it names.
+                self.label_map[name] = self.add_label(row, description)
+                self.add_combobox_for(row, name, description)
+                self._rank_combo = self.settings_map[name]
+                self.removeWidget(self._rank_combo)
+                self.addWidget(self._rank_combo, row, 1, 1, 2)
+                row += 1
+                continue
             if not name.endswith("_short"):
                 continue
+            if not self._rank_rows:
+                self.addWidget(QLabel("<b>Short</b>"), row, 1)
+                self.addWidget(QLabel("<b>Full</b>"), row, 2)
+                row += 1
             full_name = name[: -len("_short")] + "_full"
             label = QLabel(f"<strong>{description.text}</strong>")
             self.addWidget(label, row, 0)
@@ -286,19 +295,17 @@ class AutoSettingsLayout(QGridLayout):
             ladder = ranks_for(settings.live_pilots_rank_names, country)
             pairs = [(rank.abbreviation, rank.name) for rank in ladder]
 
-        italic = QFont()
-        italic.setItalic(not editable)
+        combo = getattr(self, "_rank_combo", None)
+        if combo is not None:
+            combo.setEnabled(bool(settings.live_pilots_enabled))
         for (short_edit, full_edit), (short_text, full_text) in zip(
             self._rank_rows, pairs
         ):
             for edit, text in ((short_edit, short_text), (full_edit, full_text)):
-                # Read-only rather than disabled, so a preview can still be selected and
-                # copied. Dropping the frame is what says so at a glance: the box stops
-                # looking like a box and reads as printed text, in either theme and
-                # without hard-coding a colour.
-                edit.setReadOnly(not editable)
-                edit.setFrame(editable)
-                edit.setFont(italic)
+                # Disabled, not read-only: the greyed-out tone is what a player reads
+                # as "you cannot type here", and it comes from the theme rather than
+                # from a colour hard-coded here.
+                edit.setEnabled(editable)
                 if edit.text() != text:
                     edit.blockSignals(True)
                     edit.setText(text)
