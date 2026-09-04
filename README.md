@@ -679,9 +679,10 @@ An account of the mission in prose, from a button in the debriefing and as a `.m
 the archived `.miz`. Built and working, and **parked after reading one**: with fixed
 templates it comes out repetitive — the same handful of sentences whichever way the
 mission went — and the Mission Log already tells you everything it does without the
-literary pretension. The event recording it feeds on is still in `state.json`, so
-reviving it is a matter of writing a better renderer, or handing the timeline to an LLM
-and letting it write the thing properly.
+literary pretension. **The code has since been taken back out** -- it was still shipping
+in every build for a feature nobody was going to open. The event recording it fed on is
+untouched and still lands in `state.json`, so reviving it means writing a better renderer
+against that timeline, or handing it to an LLM and letting it write the thing properly.
 ([#121](https://github.com/juanjux/dcs-retribution/pull/121))
 
 ### SYNTAX weapon mods (AARGM-ER, LRASM, JASSM-ER)

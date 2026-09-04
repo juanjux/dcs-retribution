@@ -156,7 +156,7 @@ class StateData:
 
     #: One flat record per event the Mission Log plugin saw -- kills, losses,
     #: crashes, interceptions, missiles defended against -- in the order they
-    #: happened, each with its mission time. The chronicle is written from these.
+    #: happened, each with its mission time.
     #: Empty when the plugin is off, and absent from every state file written
     #: before the feature, so it is parsed defensively like everything else here.
     mission_log_events: List[Dict[str, Any]] = field(default_factory=list)
@@ -233,7 +233,7 @@ class StateData:
             # The Lua side writes a contiguous array of flat tables, which the
             # encoder yields as a list of objects -- and as [] when there were
             # none. Anything else is a state file this build does not
-            # understand, and a chronicle is never worth breaking a debrief for.
+            # understand, and a log is never worth breaking a debrief for.
             if not isinstance(raw, list):
                 return []
             return [entry for entry in raw if isinstance(entry, dict)]

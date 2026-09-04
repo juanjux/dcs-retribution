@@ -762,7 +762,7 @@ local function report_contacts(hunter_group, targets, source)
                 -- racetrack -- knowing is not acting, and claiming otherwise
                 -- had the log announcing interceptions that never happened.
                 local verb = range <= INTERCEPT_COMMIT_M
-                    and "is moving to intercept" or "holds"
+                    and "is moving to intercept" or "monitors"
                 announce(side, "intercepts", string.format(
                     "%s %s %s at %.0f nm, %s",
                     describe_flight(hunter_group), verb, describe_flight(group),

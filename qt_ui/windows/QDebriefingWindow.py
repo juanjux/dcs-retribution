@@ -14,7 +14,6 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from game.chronicle import build_chronicle
 from game.cruise_raids import debrief_expenditures
 from game.debriefing import Debriefing
 from game.theater import Player
@@ -183,33 +182,6 @@ class MissionImpactContainer(QGroupBox):
         self.setLayout(layout)
 
 
-class ChronicleWindow(QDialog):
-    """The mission chronicle, read after the fact.
-
-    Markdown rather than plain text: QTextBrowser renders it, so the act
-    headings and their times stand apart from the prose without any styling of
-    our own.
-    """
-
-    def __init__(self, chronicle: str, parent: QWidget) -> None:
-        super().__init__(parent)
-        self.setWindowTitle("Mission chronicle")
-        self.setMinimumSize(700, 560)
-        self.setWindowIcon(QIcon("./resources/icon.png"))
-
-        body = QTextBrowser()
-        body.setMarkdown(chronicle)
-        body.setOpenExternalLinks(False)
-
-        close = QPushButton("Close")
-        close.clicked.connect(self.close)
-
-        layout = QVBoxLayout()
-        layout.addWidget(body)
-        layout.addWidget(close)
-        self.setLayout(layout)
-
-
 class QDebriefingWindow(QDialog):
     def __init__(self, debriefing: Debriefing):
         super(QDebriefingWindow, self).__init__()
@@ -261,20 +233,9 @@ class QDebriefingWindow(QDialog):
             expenditure_box.setLayout(expenditure_grid)
             layout.addWidget(expenditure_box)
 
-        # Only offered when the mission log recorded something worth reading:
-        # a button that opens an empty window is worse than no button.
-        self.chronicle = build_chronicle(debriefing)
-        if self.chronicle:
-            read = QPushButton("Read the chronicle")
-            read.clicked.connect(self.show_chronicle)
-            layout.addWidget(read)
-
         okay = QPushButton("Okay")
         okay.clicked.connect(self.close)
         layout.addWidget(okay)
-
-    def show_chronicle(self) -> None:
-        ChronicleWindow(self.chronicle, self).show()
 
     def closeEvent(self, event: QCloseEvent) -> None:
         super().closeEvent(event)
