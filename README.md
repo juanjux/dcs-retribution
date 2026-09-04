@@ -265,6 +265,38 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   (branch [`juanjux/ch_china_1.1.6`](https://github.com/juanjux/dcs-retribution/tree/juanjux/ch_china_1.1.6))
 
 ### Fixes
+- **Su-25s flew close air support with weapons they cannot guide.** A flight took off
+  with eight S-25L each and attacked nothing while the Su-34s beside them worked
+  normally: the S-25L is a laser-guided rocket and the plain Su-25 has no designator, so
+  it can carry them and never fire them. The strip that exists for exactly this
+  (`replace_lgbs_if_no_tgp`) checks `WeaponType.LGB`, and the whole Soviet laser family
+  was typed `UNKNOWN`. `LGB` here means "needs a designator" — the laser Maverick, a
+  missile, was already typed that way — so S-25L, Kh-25ML, Kh-29L and the laser KABs now
+  match. Dual GPS/laser weapons are deliberately left alone: they work without one. The
+  Su-25T gains its Klen-PS, so it keeps what the plain Su-25 loses. ([#125](https://github.com/juanjux/dcs-retribution/pull/125))
+- **A Patriot battery reported no threat at all.** Two AN/MPQ-53 radars and eight PAC-3
+  launchers drew no ring on the campaign map while shooting perfectly well in the
+  mission. A launcher only counts when one of its paired trackers is alive, and the CH
+  launchers were paired with the MPQ-65 and LTAMDS but not with the MPQ-53 — the original
+  Patriot array, the radar the system is named after — which was missing from
+  `TRACK_RADARS` entirely. ([#126](https://github.com/juanjux/dcs-retribution/pull/126))
+- **`/prev_turns?n=1` answered with the turn you are sitting in.** The turn being planned
+  gets a stats entry the moment it starts, so the last *n* always included it and the
+  debrief of the turn actually flown sat one place further back. An LLM asking for its
+  own results got totals with no losses and concluded the endpoint was broken.
+  ([#127](https://github.com/juanjux/dcs-retribution/pull/127))
+- **The pilot roster went missing whenever a second campaign was started.** Every Mission
+  Log message named an aircraft with nobody flying it. The script is injected when the
+  plugin manager says the plugin is on; the roster was seeded when `game.settings` said
+  so. The manager is a class-level singleton holding whatever settings it was last loaded
+  with, so a second campaign left it answering for the first — script in, roster out.
+  ([#124](https://github.com/juanjux/dcs-retribution/pull/124))
+- **The Mission Log never showed our own launches, and claimed interceptions that were
+  not happening.** A launch was only reported to the side being shot at, so blue fighters
+  firing AMRAAMs put nothing on the blue player's screen; it now also reports as
+  "engaging" to the shooter. And a BARCAP handed a contact by datalink at 78 nm does not
+  leave its racetrack, so beyond 40 nm the message reads "holds" rather than "is moving
+  to intercept". ([#123](https://github.com/juanjux/dcs-retribution/pull/123))
 - **Neutral FARPs were invisible on the map.** The map hides a control point whose ship
   group is sunk, so a destroyed carrier disappears with the other non-repairable wrecks.
   That flag was read from whichever ground object of the control point is flagged
