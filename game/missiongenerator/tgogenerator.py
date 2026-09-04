@@ -100,6 +100,11 @@ AA_CP_MIN_DISTANCE = 40000
 # Offset (meters) from airport position to place the portable TACAN beacon
 _PORTABLE_TACAN_OFFSET_M = 50
 
+# How far (meters) a missile site's salvo may fall from its aimpoint. Ballistic
+# missiles should miss -- a Scud's real CEP is a few hundred metres -- but the old
+# 2500 m guaranteed it, landing every round in open country next to the target.
+MISSILE_SITE_AIMPOINT_ERROR_M = 250
+
 
 def farp_truck_types_for_country(
     country_id: int,
@@ -585,7 +590,8 @@ class MissileSiteGenerator(GroundObjectGenerator):
                 if targets:
                     target = random.choice(targets)
                     real_target = target.point_from_heading(
-                        Heading.random().degrees, random.randint(0, 2500)
+                        Heading.random().degrees,
+                        random.randint(0, MISSILE_SITE_AIMPOINT_ERROR_M),
                     )
                     hold = ControlledTask(Hold())
                     hold.stop_after_duration(
@@ -610,15 +616,32 @@ class MissileSiteGenerator(GroundObjectGenerator):
 
     def possible_missile_targets(self) -> List[Point]:
         """
-        Find enemy control points in range
+        Find aimpoints at enemy control points in range
         :return: List of possible missile targets
+
+        A control point's ``position`` is a campaign-map coordinate, not a target:
+        for an airfield it is the reference point, and nothing in particular stands
+        there. Aiming at it is why missile sites reliably cratered empty grass a few
+        hundred metres off the runway. Prefer the positions of real ground objects
+        at the enemy base -- depots, warehouses, defences, all of them immobile --
+        and only fall back to the map coordinate for a base that has none.
         """
         targets: List[Point] = []
         for cp in self.game.theater.controlpoints:
-            if cp.captured != self.ground_object.control_point.captured:
-                distance = cp.position.distance_to_point(self.ground_object.position)
-                if distance < self.missile_site_range:
-                    targets.append(cp.position)
+            if cp.captured == self.ground_object.control_point.captured:
+                continue
+            # Ships move; a fire task aimed where one used to be is the same bug.
+            aimpoints = [
+                tgo.position
+                for tgo in cp.ground_objects
+                if not tgo.is_dead and tgo.category != "ship"
+            ]
+            targets.extend(
+                aimpoint
+                for aimpoint in (aimpoints or [cp.position])
+                if aimpoint.distance_to_point(self.ground_object.position)
+                < self.missile_site_range
+            )
         return targets
 
     @property
