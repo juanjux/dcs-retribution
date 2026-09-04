@@ -103,6 +103,20 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   [#20](https://github.com/juanjux/dcs-retribution/pull/20))
 
 ### Missions, AI & tasking
+- **Live Pilots II: a rank has to be earned.** Rank used to be a count of missions flown --
+  one tier every four sorties, ticked for every pilot in the ATO whether he flew, fought,
+  or died on the ramp. It is paid for now: 500 for an air kill, 500 for coming home, 200 a
+  vehicle, 300 a hull, and a building is worth what the building is worth (an oil platform
+  500, a warehouse 100, from `REWARDS`). Thresholds double at every rung, 1000 to 8000, and
+  the coalition skill setting becomes a **floor** rather than a starting point. Nothing new
+  had to be recorded to find out who did it: the base plugin has written the killer's unit
+  name on every kill all along and Python simply never read it. Proportionality comes from
+  the pieces rather than a damage percentage, which DCS does not report anywhere -- a
+  refinery is four platforms, each with its own death, so two of them is half a refinery.
+  Rank now also decides whether a pilot walks away from a loss, one in five for a cadet and
+  four in five for a squadron leader. The debriefing gains a Pilots box: promotions, who was
+  shot down and recovered, and who was killed and by whom, flagging friendly fire.
+  ([#134](https://github.com/juanjux/dcs-retribution/pull/134))
 - **Live Pilots** (off by default) — a pilot holds a *rank* instead of a bare AI skill
   level, and carries it into the mission: the flight label reads `1stLt Pepito Perez`
   where DCS would leave `Pilot #2`, and the Air Wing roster names the rank in full under
