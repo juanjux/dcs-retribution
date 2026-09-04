@@ -21,7 +21,7 @@ from .pilot import Pilot, PilotStatus
 from game.dcs.skills import SKILL_LADDER
 
 from .pilotnames import faker_for_country
-from .pilotranks import Rank, rank_for_skill
+from .pilotranks import Rank, rank_for_skill, ranks_for
 from ..db.database import Database
 from ..radio.radios import RadioFrequency
 from ..utils import meters, nautical_miles
@@ -155,11 +155,18 @@ class Squadron:
         """
         if not self.settings.live_pilots_enabled:
             return None
-        return rank_for_skill(
-            self.pilot_skill(pilot),
+        ladder = ranks_for(
+            self.settings.live_pilots_rank_names,
             self.country,
-            self.settings.live_pilots_use_country_ranks,
+            (
+                self.settings.live_pilots_rank_cadet,
+                self.settings.live_pilots_rank_average,
+                self.settings.live_pilots_rank_good,
+                self.settings.live_pilots_rank_high,
+                self.settings.live_pilots_rank_excellent,
+            ),
         )
+        return rank_for_skill(self.pilot_skill(pilot), ladder)
 
     def assign_to_base(self, base: ControlPoint) -> None:
         self.location = base

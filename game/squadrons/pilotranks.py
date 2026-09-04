@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Sequence
 
 from dcs.country import Country
 from dcs.unit import Skill
@@ -35,6 +35,16 @@ GENERIC_RANKS: RankLadder = (
 )
 
 USAF_RANKS: RankLadder = GENERIC_RANKS
+
+# No ranks at all: the DCS skill levels themselves, for players who would rather
+# read the mechanic than a fiction over it.
+SKILL_NAME_RANKS: RankLadder = (
+    Rank("Cdt", "Cadet"),
+    Rank("Avg", "Average"),
+    Rank("Gdd", "Good"),
+    Rank("Hig", "High"),
+    Rank("Exc", "Excellent"),
+)
 
 USN_RANKS: RankLadder = (
     Rank("ENS", "Ensign"),
@@ -146,25 +156,50 @@ COUNTRY_RANKS: dict[str, RankLadder] = {
 }
 
 
-def ranks_for_country(
-    country: Optional[Country], use_country_ranks: bool = True
+# Stored in the campaign save, so these are a format: rename one and every campaign
+# forgets which naming it was using.
+RANK_NAMES_COUNTRY = "country"
+RANK_NAMES_GENERIC = "generic"
+RANK_NAMES_SKILL = "skill"
+RANK_NAMES_CUSTOM = "custom"
+
+
+def custom_ladder(names: Sequence[str]) -> RankLadder:
+    """Five names typed by the player. A box left empty keeps its generic rung."""
+    picked = []
+    for index, generic in enumerate(GENERIC_RANKS):
+        typed = names[index].strip() if index < len(names) else ""
+        picked.append(Rank(typed, typed) if typed else generic)
+    return (picked[0], picked[1], picked[2], picked[3], picked[4])
+
+
+def ranks_for(
+    source: str,
+    country: Optional[Country] = None,
+    custom_names: Sequence[str] = (),
 ) -> RankLadder:
-    """Return the rank ladder a squadron of ``country`` promotes through."""
-    if not use_country_ranks or country is None:
-        return GENERIC_RANKS
-    return COUNTRY_RANKS.get(country.name, GENERIC_RANKS)
+    """Return the ladder a squadron promotes through under this naming choice.
 
-
-def rank_for_skill(
-    skill: Skill, country: Optional[Country], use_country_ranks: bool = True
-) -> Rank:
-    """Return the rank a pilot flying at ``skill`` holds.
-
-    An unrecognised skill -- ``Random``, ``Player`` and ``Client`` are skills to DCS but
-    not rungs of anything -- reads as the bottom of the ladder rather than raising: a
-    label is never worth a failed mission generation.
+    Any unknown source, and any country with no ladder of its own, resolves to the
+    generic one: a naming that cannot be worked out should make a label plainer, never
+    break mission generation.
     """
-    ladder = ranks_for_country(country, use_country_ranks)
+    if source == RANK_NAMES_SKILL:
+        return SKILL_NAME_RANKS
+    if source == RANK_NAMES_CUSTOM:
+        return custom_ladder(custom_names)
+    if source == RANK_NAMES_COUNTRY and country is not None:
+        return COUNTRY_RANKS.get(country.name, GENERIC_RANKS)
+    return GENERIC_RANKS
+
+
+def rank_for_skill(skill: Skill, ladder: RankLadder) -> Rank:
+    """Return the rung of ``ladder`` a pilot flying at ``skill`` stands on.
+
+    An unrecognised skill -- Random, Player and Client are skills to DCS but not steps
+    of a career -- reads as the bottom rather than raising: a label is never worth a
+    failed mission generation.
+    """
     try:
         return ladder[SKILL_LADDER.index(skill)]
     except ValueError:

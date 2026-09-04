@@ -167,6 +167,9 @@ class AutoSettingsLayout(QGridLayout):
         self.write_full_settings = write_full_settings
         self.settings_map: Dict[str, QWidget] = {}
         self.label_map: Dict[str, QWidget] = {}
+        #: Set by the page once every group exists. A setting can hide one in
+        #: another group, so a change here has to re-evaluate the whole page.
+        self.on_settings_changed: Optional[Callable[[], None]] = None
 
         self.init_ui()
 
@@ -198,7 +201,7 @@ class AutoSettingsLayout(QGridLayout):
                 (
                     "live_pilots_show_names",
                     "live_pilots_show_ranks",
-                    "live_pilots_use_country_ranks",
+                    "live_pilots_rank_names",
                 ),
             )
 
@@ -215,12 +218,26 @@ class AutoSettingsLayout(QGridLayout):
         self.addWidget(edit, row, 1, Qt.AlignmentFlag.AlignRight)
         self.settings_map[name] = edit
 
-    def apply_visibility(self) -> None:
-        """Hide the settings whose visible_when says they do not apply right now."""
+    def settings_changed(self) -> None:
+        """A value changed: re-evaluate visibility, page-wide when the page said how."""
+        if self.on_settings_changed is not None:
+            self.on_settings_changed()
+        else:
+            self.apply_visibility()
+
+    def apply_visibility(self) -> bool:
+        """Hide the settings whose visible_when says they do not apply right now.
+
+        Returns whether anything is left showing, so a section whose every setting is
+        conditional can hide its own group box instead of leaving an empty frame.
+        """
+        any_visible = False
         for name, description in Settings.fields(self.page, self.section):
             if description.visible_when is None:
+                any_visible = True
                 continue
             visible = bool(description.visible_when(self.sc.settings))
+            any_visible = any_visible or visible
             self.label_map[name].setVisible(visible)
             entry = self.settings_map[name]
             # The spinner and time options register a layout rather than a widget,
@@ -231,6 +248,7 @@ class AutoSettingsLayout(QGridLayout):
                         child.setVisible(visible)
             else:
                 entry.setVisible(visible)
+        return any_visible
 
     def _wire_dependents(
         self, master_name: str, dependent_names: Iterable[str]
@@ -316,7 +334,7 @@ class AutoSettingsLayout(QGridLayout):
             if description.invert:
                 value = not value
             self.sc.settings.__dict__[name] = value
-            self.apply_visibility()
+            self.settings_changed()
             if description.causes_expensive_game_update:
                 self.write_full_settings()
 
@@ -334,7 +352,7 @@ class AutoSettingsLayout(QGridLayout):
 
         def on_changed(index: int) -> None:
             self.sc.settings.__dict__[name] = combobox.itemData(index)
-            self.apply_visibility()
+            self.settings_changed()
 
         for text, value in description.choices.items():
             combobox.addItem(text, value)
@@ -428,8 +446,12 @@ class AutoSettingsGroup(QGroupBox):
         self.layout = AutoSettingsLayout(page, section, sc, write_full_settings)
         self.setLayout(self.layout)
 
+    def apply_visibility(self) -> None:
+        self.setVisible(self.layout.apply_visibility())
+
     def update_from_settings(self) -> None:
         self.layout.update_from_settings()
+        self.apply_visibility()
 
 
 class AutoSettingsPageLayout(QVBoxLayout):
@@ -448,6 +470,14 @@ class AutoSettingsPageLayout(QVBoxLayout):
                 AutoSettingsGroup(page, section, sc, write_full_settings)
             )
             self.addWidget(self.widgets[-1])
+
+        def refresh_page() -> None:
+            for group in self.widgets:
+                group.apply_visibility()
+
+        for group in self.widgets:
+            group.layout.on_settings_changed = refresh_page
+        refresh_page()
 
     def update_from_settings(self) -> None:
         for w in self.widgets:
