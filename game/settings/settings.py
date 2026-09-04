@@ -14,6 +14,7 @@ from .minutesoption import minutes_option
 from .textoption import text_option
 from .optiondescription import OptionDescription, SETTING_DESCRIPTION_KEY
 from .skilloption import pilot_skill_option, skill_option
+from .textoption import text_option
 from ..ato.starttype import StartType
 
 Views = ForcedOptions.Views
@@ -96,6 +97,20 @@ PRETENSE_PAGE = "Pretense"
 MISSION_GENERATOR_PAGE = "Mission Generator"
 
 LIVE_PILOTS_PAGE = "Live Pilots"
+LIVE_PILOTS_CUSTOM_SECTION = "Custom Rank Names"
+
+
+def _using_custom_ranks(settings: Any) -> bool:
+    """The custom name boxes mean nothing unless the player asked for them.
+
+    The literal matches ``pilotranks.RANK_NAMES_CUSTOM``; settings cannot import
+    that module without a cycle through game.squadrons, so a test holds the two
+    together instead.
+    """
+    return bool(
+        settings.live_pilots_enabled and settings.live_pilots_rank_names == "custom"
+    )
+
 
 GAMEPLAY_SECTION = "Gameplay"
 KNEEBOARD_SECTION = "Kneeboard"
@@ -1831,20 +1846,58 @@ class Settings:
         default=True,
         detail="Prefixes the label with the pilot's abbreviated rank.",
     )
-    live_pilots_use_country_ranks: bool = choices_option(
+    live_pilots_rank_names: str = choices_option(
         "Rank names",
         page=LIVE_PILOTS_PAGE,
         section=GENERAL_SECTION,
-        default=True,
+        default="country",
         choices={
-            "Use faction country ranks": True,
-            "Use generic ranks": False,
+            "Use faction country ranks": "country",
+            "Use generic ranks": "generic",
+            "Use skill names": "skill",
+            "Custom names (define below)": "custom",
         },
         detail=(
             "Country ranks name each squadron in its own service -- FltLt for the "
-            "RAF, Hptm for the Luftwaffe. Countries with no ladder of their own fall "
-            "back to the generic one either way."
+            "RAF, Hptm for the Luftwaffe -- falling back to the generic ladder for a "
+            "country with none of its own. Skill names use what DCS calls the level."
         ),
+    )
+    live_pilots_rank_cadet: str = text_option(
+        "Cadet",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_CUSTOM_SECTION,
+        default="2ndLt",
+        visible_when=_using_custom_ranks,
+        detail="Left empty, this rung keeps its generic name.",
+    )
+    live_pilots_rank_average: str = text_option(
+        "Average",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_CUSTOM_SECTION,
+        default="1stLt",
+        visible_when=_using_custom_ranks,
+    )
+    live_pilots_rank_good: str = text_option(
+        "Good",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_CUSTOM_SECTION,
+        default="Capt",
+        visible_when=_using_custom_ranks,
+    )
+    live_pilots_rank_high: str = text_option(
+        "High",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_CUSTOM_SECTION,
+        default="Maj",
+        visible_when=_using_custom_ranks,
+    )
+    live_pilots_rank_excellent: str = text_option(
+        "Excellent",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_CUSTOM_SECTION,
+        default="LtCol",
+        visible_when=_using_custom_ranks,
     )
     pretense_maxdistfromfront_distance: int = bounded_int_option(
         "Max distance from front (km)",

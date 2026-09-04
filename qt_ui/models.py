@@ -502,12 +502,14 @@ class SquadronModel(QAbstractListModel):
             return pilot
         return None
 
-    def text_for_pilot(self, pilot: Pilot) -> str:
-        """Returns the text that should be displayed for the pilot."""
-        rank = self.squadron.pilot_rank(pilot)
-        if rank is None:
-            return pilot.name
-        return f"{rank.abbreviation} {pilot.name}"
+    @staticmethod
+    def text_for_pilot(pilot: Pilot) -> str:
+        """Returns the text that should be displayed for the pilot.
+
+        No rank here: the detail line under the name already carries it in full,
+        and an abbreviation on top of that is the same fact twice.
+        """
+        return pilot.name
 
     @staticmethod
     def icon_for_pilot(_pilot: Pilot) -> Optional[QIcon]:
