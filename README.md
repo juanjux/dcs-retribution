@@ -112,8 +112,11 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   `game/dcs/skills.py` adds it and owns the ladder. Ranks are named in each squadron's
   own service -- `FltLt` for the RAF, `Hptm` for the Luftwaffe, `MlLt` for the VVS,
   31 countries -- or generically, by a setting. Rank is a renaming of the skill level,
-  not a second ladder: competence is the only thing DCS can be told about. First slice
-  of a larger feature; promotion is still by missions flown.
+  not a second ladder: competence is the only thing DCS can be told about. The coalition
+  skill setting now offers Cadet for pilots but not for vehicles -- blue shares that one
+  setting with its tanks, where the editor has no such rung -- so anything not flying
+  clamps back to `Average`. First slice of a larger feature; promotion is still by
+  missions flown.
   ([#129](https://github.com/juanjux/dcs-retribution/pull/129))
 - **Mission Log** (plugin, off by default) — a running commentary of what happens to
   your side while you fly: who shot down whom and with what, which targets went down,
