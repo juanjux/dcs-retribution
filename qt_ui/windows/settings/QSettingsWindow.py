@@ -2,7 +2,7 @@ import json
 import logging
 import textwrap
 import zipfile
-from typing import Callable, Optional, Dict
+from typing import Callable, Dict, Iterable, Optional
 
 from PySide6 import QtWidgets
 from PySide6.QtCore import QItemSelectionModel, QPoint, QSize, Qt
@@ -43,7 +43,11 @@ from game.settings import (
     Settings,
 )
 from game.settings.ISettingsContainer import SettingsContainer
-from game.settings.settings import CloudPresetPack, OPFOR_AI_SECTION
+from game.settings.settings import (
+    CloudPresetPack,
+    LIVE_PILOTS_PAGE,
+    OPFOR_AI_SECTION,
+)
 from game.sim import GameUpdateEvents
 from pydcs_extensions import AtmosXClouds, BanditClouds, Weather2Clouds
 from qt_ui.widgets.QLabeledWidget import QLabeledWidget
@@ -160,6 +164,7 @@ class AutoSettingsLayout(QGridLayout):
         self.sc = sc
         self.write_full_settings = write_full_settings
         self.settings_map: Dict[str, QWidget] = {}
+        self.labels_map: Dict[str, QLabel] = {}
 
         self.init_ui()
 
@@ -167,7 +172,7 @@ class AutoSettingsLayout(QGridLayout):
         for row, (name, description) in enumerate(
             Settings.fields(self.page, self.section)
         ):
-            self.add_label(row, description)
+            self.labels_map[name] = self.add_label(row, description)
             if isinstance(description, BooleanOption):
                 self.add_checkbox_for(row, name, description)
             elif isinstance(description, ChoicesOption):
@@ -182,6 +187,37 @@ class AutoSettingsLayout(QGridLayout):
                 raise TypeError(f"Unhandled option type: {description}")
         if self.section == OPFOR_AI_SECTION:
             self._wire_opfor_ai()
+        if self.page == LIVE_PILOTS_PAGE:
+            self._wire_dependents(
+                "live_pilots_enabled",
+                (
+                    "live_pilots_show_names",
+                    "live_pilots_show_ranks",
+                    "live_pilots_use_country_ranks",
+                ),
+            )
+
+    def _wire_dependents(
+        self, master_name: str, dependent_names: Iterable[str]
+    ) -> None:
+        """Grey out the settings that mean nothing while their master is off."""
+        master = self.settings_map.get(master_name)
+        if not isinstance(master, QCheckBox):
+            return
+        dependents = [
+            (self.settings_map.get(name), self.labels_map.get(name))
+            for name in dependent_names
+        ]
+
+        def refresh() -> None:
+            enabled = master.isChecked()
+            for widget, label in dependents:
+                for target in (widget, label):
+                    if target is not None:
+                        target.setEnabled(enabled)
+
+        master.toggled.connect(lambda _=None: refresh())
+        refresh()
 
     def _wire_opfor_ai(self) -> None:
         """Show the REST/MCP connect URLs when OPFOR AI control is enabled."""
@@ -227,7 +263,7 @@ class AutoSettingsLayout(QGridLayout):
         parent_layout.addLayout(h)
         return field
 
-    def add_label(self, row: int, description: OptionDescription) -> None:
+    def add_label(self, row: int, description: OptionDescription) -> QLabel:
         wrapped_title = "<br />".join(textwrap.wrap(description.text, width=55))
         text = f"<strong>{wrapped_title}</strong>"
         if description.detail is not None:
@@ -238,6 +274,7 @@ class AutoSettingsLayout(QGridLayout):
             label.setToolTip(description.tooltip)
         label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         self.addWidget(label, row, 0)
+        return label
 
     def add_checkbox_for(self, row: int, name: str, description: BooleanOption) -> None:
         def on_toggle(value: bool) -> None:

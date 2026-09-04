@@ -60,8 +60,11 @@ class PilotDelegate(TwoColumnRowDelegate):
             return f"{flown} {missions} flown"
         elif (row, column) == (1, 0):
             who = "Player" if pilot.player else "AI"
-            skill = self.squadron_model.squadron.pilot_skill(pilot)
-            return f"{who} - Level: {skill.value}"
+            squadron = self.squadron_model.squadron
+            rank = squadron.pilot_rank(pilot)
+            if rank is not None:
+                return f"{who} - {rank.name}"
+            return f"{who} - Level: {squadron.pilot_skill(pilot).value}"
         elif (row, column) == (1, 1):
             # Dead pilots have their own list and living pilots are active by
             # default, so only the "on leave" state is worth surfacing here.
