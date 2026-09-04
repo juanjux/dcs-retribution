@@ -31,6 +31,7 @@ from dcs.ships import (
 from dcs.statics import Fortification
 from dcs.task import (
     ActivateBeaconCommand,
+    AttackGroup,
     ActivateICLSCommand,
     ActivateLink4Command,
     ActivateACLSCommand,
@@ -49,7 +50,7 @@ from dcs.triggers import (
     TriggerZoneQuadPoint,
 )
 from dcs.unit import Unit, InvisibleFARP, BaseFARP, SingleHeliPad, FARP
-from dcs.unitgroup import MovingGroup, ShipGroup, StaticGroup, VehicleGroup
+from dcs.unitgroup import Group, MovingGroup, ShipGroup, StaticGroup, VehicleGroup
 from dcs.unittype import ShipType, VehicleType
 from dcs.vehicles import vehicle_map, Unarmed, Fortification as VehicleFortification
 
@@ -96,6 +97,8 @@ if TYPE_CHECKING:
 
 FARP_FRONTLINE_DISTANCE = 10000
 AA_CP_MIN_DISTANCE = 40000
+
+from game.data.missile_ranges import MISSILE_SITE_MIN_RANGE_M
 
 # Offset (meters) from airport position to place the portable TACAN beacon
 _PORTABLE_TACAN_OFFSET_M = 50
@@ -591,72 +594,116 @@ class MissileSiteGenerator(GroundObjectGenerator):
 
     def generate(self) -> None:
         super(MissileSiteGenerator, self).generate()
+        # The fire task waits for plan_fire_mission(). Aiming at a group rather than a
+        # coordinate means the target's group has to exist, and the generator walks the
+        # theater one control point at a time -- half of it does not exist yet.
 
+    def plan_fire_mission(self) -> None:
+        """Task the site, once every group in the theater has been generated.
+
+        A coordinate is not a target. The CH ATACMS turns on its seeker and flies its
+        terminal manoeuvre only "if target is locked on", so tasked at a bare point it
+        cruises straight over the aimpoint and comes down miles beyond. Naming the
+        enemy group gives it something to lock. Sites whose only reachable targets are
+        statics keep the old point-and-scatter behaviour, which is all a Scud needs.
+        """
         if not self.game.settings.generate_fire_tasks_for_missile_sites:
             return
 
         # Note : Only the SCUD missiles group can fire (V1 site cannot fire in game right now)
-        # TODO : Should be pre-planned ?
         for group in self.ground_object.groups:
             vg = self.m.find_group(group.group_name)
-            if vg is not None:
-                targets = self.possible_missile_targets()
-                if targets:
-                    target = random.choice(targets)
-                    real_target = target.point_from_heading(
-                        Heading.random().degrees,
-                        random.randint(0, self.aimpoint_error),
-                    )
-                    hold = ControlledTask(Hold())
-                    hold.stop_after_duration(
-                        random.randint(
-                            60,
-                            int(
-                                self.game.settings.desired_player_mission_duration.total_seconds()
-                            ),
-                        )
-                    )
-                    vg.points[0].add_task(hold)
-                    vg.points[0].add_task(FireAtPoint(real_target))
-                    logging.info("Set up fire task for missile group.")
-                else:
-                    logging.info(
-                        "Couldn't setup missile site to fire, no valid target in range."
-                    )
-            else:
+            if vg is None:
                 logging.info(
                     "Couldn't setup missile site to fire, group was not generated."
                 )
+                continue
 
-    def possible_missile_targets(self) -> List[Point]:
-        """
-        Find aimpoints at enemy control points in range
-        :return: List of possible missile targets
+            targets = self.possible_missile_targets()
+            if not targets:
+                logging.info(
+                    "Couldn't setup missile site to fire, no valid target in range."
+                )
+                continue
 
-        A control point's ``position`` is a campaign-map coordinate, not a target:
-        for an airfield it is the reference point, and nothing in particular stands
-        there. Aiming at it is why missile sites reliably cratered empty grass a few
-        hundred metres off the runway. Prefer the positions of real ground objects
-        at the enemy base -- depots, warehouses, defences, all of them immobile --
-        and only fall back to the map coordinate for a base that has none.
+            target = random.choice(targets)
+            hold = ControlledTask(Hold())
+            hold.stop_after_duration(
+                random.randint(
+                    60,
+                    int(
+                        self.game.settings.desired_player_mission_duration.total_seconds()
+                    ),
+                )
+            )
+            vg.points[0].add_task(hold)
+
+            target_group = self.dcs_group_for(target)
+            if target_group is not None:
+                vg.points[0].add_task(AttackGroup(target_group.id, group_attack=True))
+                logging.info(
+                    f"Missile site {vg.name} tasked against {target_group.name}"
+                )
+            else:
+                aimpoint = target.position.point_from_heading(
+                    Heading.random().degrees,
+                    random.randint(0, self.aimpoint_error),
+                )
+                vg.points[0].add_task(FireAtPoint(aimpoint))
+                logging.info(
+                    f"Missile site {vg.name} tasked at a point near {target.name}"
+                )
+
+    def dcs_group_for(self, target: TheaterGroundObject) -> Optional[Group[Any, Any]]:
+        """The generated group to name as the target, if the objective has one.
+
+        Buildings and other statics are not groups and cannot be attacked by name.
         """
-        targets: List[Point] = []
+        for group in target.groups:
+            vg = self.m.find_group(group.group_name)
+            if vg is not None:
+                return vg
+        return None
+
+    def possible_missile_targets(self) -> List[TheaterGroundObject]:
+        """Enemy objectives this site can actually reach.
+
+        A control point's ``position`` is a campaign-map coordinate, not a target: for
+        an airfield it is the reference point, and nothing in particular stands there.
+        Aiming at it is why missile sites reliably cratered empty grass. Real ground
+        objects are the targets, bounded at both ends -- several of these launchers
+        have a minimum range as well, which nothing here used to respect.
+        """
+        minimum = self.missile_site_min_range
+        maximum = self.missile_site_range
+        origin = self.ground_object.position
+        targets: List[TheaterGroundObject] = []
         for cp in self.game.theater.controlpoints:
             if cp.captured == self.ground_object.control_point.captured:
                 continue
-            # Ships move; a fire task aimed where one used to be is the same bug.
-            aimpoints = [
-                tgo.position
-                for tgo in cp.ground_objects
-                if not tgo.is_dead and tgo.category != "ship"
-            ]
-            targets.extend(
-                aimpoint
-                for aimpoint in (aimpoints or [cp.position])
-                if aimpoint.distance_to_point(self.ground_object.position)
-                < self.missile_site_range
-            )
+            for tgo in cp.ground_objects:
+                # Ships move; a fire mission aimed where one used to be is the old bug.
+                if tgo.is_dead or tgo.category == "ship":
+                    continue
+                if minimum <= tgo.position.distance_to_point(origin) < maximum:
+                    targets.append(tgo)
         return targets
+
+    @property
+    def missile_site_min_range(self) -> int:
+        """How close this site cannot shoot.
+
+        pydcs carries no minimum, so it comes from a table of what the units declare.
+        The least capable launcher on the site sets it: a battery is only as flexible
+        as the weapon that needs the most room.
+        """
+        site_min = 0
+        for group in self.ground_object.groups:
+            vg = self.m.find_group(group.group_name)
+            if vg is not None:
+                for u in vg.units:
+                    site_min = max(site_min, MISSILE_SITE_MIN_RANGE_M.get(u.type, 0))
+        return site_min
 
     @property
     def missile_site_range(self) -> int:
@@ -1696,6 +1743,8 @@ class TgoGenerator:
         # import cycle; hoisted here so it resolves once per call, not per TGO.
         from game.missiongenerator.motorpoolgenerator import MotorpoolGenerator
 
+        missile_sites: List[MissileSiteGenerator] = []
+
         for cp in self.game.theater.controlpoints:
             # Use neutral country for neutral control points
             if cp.captured is Player.NEUTRAL:
@@ -1774,6 +1823,7 @@ class TgoGenerator:
                     generator = MissileSiteGenerator(
                         ground_object, country, self.game, self.m, self.unit_map
                     )
+                    missile_sites.append(generator)
                 elif isinstance(ground_object, MotorpoolGroundObject):
                     generator = MotorpoolGenerator(
                         ground_object, country, self.game, self.m, self.unit_map
@@ -1799,5 +1849,10 @@ class TgoGenerator:
                     self._portable_tacan_callsigns,
                 )
                 portable_tacan_gen.generate()
+
+        # Last, because a missile site names the enemy group it is shooting at and
+        # half the theater did not exist while the site itself was being built.
+        for missile_site in missile_sites:
+            missile_site.plan_fire_mission()
 
         self.mission_data.runways = list(self.runways.values())
