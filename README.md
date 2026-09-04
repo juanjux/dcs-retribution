@@ -103,16 +103,6 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   [#20](https://github.com/juanjux/dcs-retribution/pull/20))
 
 ### Missions, AI & tasking
-- **Mission chronicle** — an account of the mission in prose, read from a button in the
-  debriefing and kept as a `.md` beside the archived `.miz`, so a campaign accumulates
-  its own history. Built from the events the Mission Log records, split into acts
-  wherever the fighting went quiet. The restraint is the design: a chronicle that shouts
-  at every kill says nothing, so emphasis is spent only where something earns it — an
-  attack jet downing an aircraft, two kills by one pilot inside two minutes, a missile
-  that went wide, a crash with nobody shooting. An Eagle killing a Fulcrum is Tuesday and
-  reads plainly. Phrasing varies by position rather than at random, so reopening the
-  debrief gives the same chronicle.
-  ([#121](https://github.com/juanjux/dcs-retribution/pull/121))
 - **Mission Log** (plugin, off by default) — a running commentary of what happens to
   your side while you fly: who shot down whom and with what, which targets went down,
   who ejected, who crashed with nobody shooting. DCS has all of these events but calls
@@ -624,6 +614,17 @@ Planned, not started. Enough detail here to pick each one up cold.
 Work that was built and soak-tested but **parked** — pulled out of `master` and
 `juanjux-dev` to keep them clean, with every branch preserved here so it can be
 revived later.
+
+### Mission chronicle
+
+An account of the mission in prose, from a button in the debriefing and as a `.md` beside
+the archived `.miz`. Built and working, and **parked after reading one**: with fixed
+templates it comes out repetitive — the same handful of sentences whichever way the
+mission went — and the Mission Log already tells you everything it does without the
+literary pretension. The event recording it feeds on is still in `state.json`, so
+reviving it is a matter of writing a better renderer, or handing the timeline to an LLM
+and letting it write the thing properly.
+([#121](https://github.com/juanjux/dcs-retribution/pull/121))
 
 ### SYNTAX weapon mods (AARGM-ER, LRASM, JASSM-ER)
 
