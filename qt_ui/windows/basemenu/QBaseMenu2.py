@@ -437,9 +437,19 @@ class QBaseMenu2(QDialog):
             allocated.total_present - self.cp.frontline_unit_count_limit, 0
         )
         if self.cp.has_active_frontline:
-            deployable_unit_info = (
-                f" (Up to {ground_unit_limit} deployable, {unit_overage} reserve)"
-            )
+            parts = [
+                f"Up to {ground_unit_limit} deployable",
+                f"{unit_overage} reserve",
+            ]
+            # Ordered away but with no lift yet: still counted in Units above, because
+            # they are still here and will still fight if the front moves.
+            if allocated.total_pending_transfer:
+                parts.append(f"{allocated.total_pending_transfer} pending transfer")
+            if allocated.total_transferring_out:
+                parts.append(
+                    f"{allocated.total_transferring_out} transferring this turn"
+                )
+            deployable_unit_info = f" ({', '.join(parts)})"
 
         # Grouped into Air / Ground / Status sections for readability. Indentation
         # via non-breaking spaces since this renders as rich text in a QLabel.

@@ -196,6 +196,12 @@ The DCS AI that actually flies these missions is limited. Plan robustly around i
   huge blob. The defense can't suppress them all at once, so more flights reach their launch
   range before reacting to fire. Saturation works by **dispersion in space and time**, not by
   one big formation (which all aborts together).
+- **`ground_pending_transfer` means an army you have decided to move and cannot.** Those
+  vehicles are *included* in `ground`: still parked at that base, still deploying to its
+  front, still counted in the ground war. They leave only when a transport turns up, so a
+  large number here is a standing order going nowhere -- cancel it, or buy the lift.
+  `ground_transferring_out` is the opposite: gone this turn, and they will not defend
+  that base or its front.
 - **At night, a flight whose only air-to-ground weapons are unguided will not attack.**
   Dumb bombs and unguided rockets are aimed by eye. Without a targeting pod the AI reaches
   the target in the dark, finds nothing it can aim at, and turns for home with a full load —

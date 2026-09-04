@@ -114,6 +114,18 @@ class ControlPointView(BaseModel):
     can_recruit_ground: bool | None = None  # has a factory/front — buy ground here
     links: list[str] | None = None  # adjacent control-point ids (land moves / fronts)
     ground: dict[str, int] | None = None  # armor on hand here (unit name -> count)
+    ground_pending_transfer: int | None = (
+        None  # vehicles ordered away from here that have found no transport yet.
+        # They are INCLUDED in ground above: still parked here, still deployable to
+        # the front, still counted in the ground war. They leave only when a lift
+        # turns up, so a big number here is an army you have decided to move and
+        # cannot
+    )
+    ground_transferring_out: int | None = (
+        None  # vehicles that left here under a transport this turn. NOT included
+        # in ground above -- they are on the road or in the air and will not defend
+        # this base or its front
+    )
     pending_ground: dict[str, int] | None = (
         None  # armor ORDERED here, arriving next turn (unit name -> count). Aircraft
         # have `pending` on the squadron; ground had nothing, so a planner that bought
@@ -635,6 +647,14 @@ def build_control_point(
     pending_ground = _pending_ground(cp) if cp.captured == viewer else {}
     links = [str(n.id) for n in getattr(cp, "connected_points", [])] or None
     try:
+        allocations = cp.allocated_ground_units(
+            game.coalition_for(cp.captured).transfers
+        )
+        pending_out = allocations.total_pending_transfer or None
+        moving_out = allocations.total_transferring_out or None
+    except Exception:
+        pending_out = moving_out = None
+    try:
         recruit = bool(cp.has_ground_unit_source(game)) or None
     except Exception:
         recruit = None
@@ -656,6 +676,8 @@ def build_control_point(
         can_recruit_ground=recruit,
         links=links,
         ground=ground or None,
+        ground_pending_transfer=pending_out,
+        ground_transferring_out=moving_out,
         pending_ground=pending_ground or None,
         air=_air_intel(cp),
         can_launch=(False if not operational else None),
