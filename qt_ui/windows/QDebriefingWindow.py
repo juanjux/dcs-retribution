@@ -1,5 +1,5 @@
 import logging
-from typing import Callable, Dict, TypeVar
+from typing import Callable, Dict, Optional, TypeVar
 
 from PySide6.QtGui import QIcon, QPixmap, QCloseEvent
 from PySide6.QtWidgets import (
@@ -233,9 +233,66 @@ class QDebriefingWindow(QDialog):
             expenditure_box.setLayout(expenditure_grid)
             layout.addWidget(expenditure_box)
 
+        pilots_box = self._pilots_box(debriefing)
+        if pilots_box is not None:
+            layout.addWidget(pilots_box)
+
         okay = QPushButton("Okay")
         okay.clicked.connect(self.close)
         layout.addWidget(okay)
+
+    @staticmethod
+    def _pilots_box(debriefing: Debriefing) -> Optional[QGroupBox]:
+        """Who went up, who walked away, and who did not come back.
+
+        Omitted entirely when nothing happened to the aircrew: an empty box says less
+        than no box.
+        """
+        outcomes = debriefing.pilot_outcomes
+        if outcomes.empty:
+            return None
+
+        box = QGroupBox("Pilots:")
+        grid = QGridLayout()
+        row = 0
+
+        def line(text: str, detail: str = "") -> None:
+            nonlocal row
+            grid.addWidget(QLabel(text), row, 0)
+            if detail:
+                grid.addWidget(QLabel(detail), row, 1)
+            row += 1
+
+        if outcomes.promotions:
+            line("<b>Promoted</b>")
+            for promotion in outcomes.promotions:
+                line(
+                    f"{promotion.from_rank} {promotion.pilot_name}",
+                    f"promoted to {promotion.to_rank} — {promotion.squadron}",
+                )
+
+        if outcomes.survivors:
+            line("<b>Shot down and recovered</b>")
+            for survivor in outcomes.survivors:
+                brought_down = survivor.killed_by or "an unknown attacker"
+                line(
+                    survivor.pilot_name,
+                    f"lost his {survivor.aircraft} to {brought_down}, and walked away",
+                )
+
+        if outcomes.deaths:
+            line("<b>Killed in action</b>")
+            for death in outcomes.deaths:
+                if death.friendly_fire:
+                    detail = f"killed by {death.killed_by} — friendly fire"
+                elif death.killed_by:
+                    detail = f"killed by {death.killed_by}"
+                else:
+                    detail = "lost, with nobody credited"
+                line(f"{death.pilot_name} ({death.aircraft})", detail)
+
+        box.setLayout(grid)
+        return box
 
     def closeEvent(self, event: QCloseEvent) -> None:
         super().closeEvent(event)

@@ -18,7 +18,7 @@ from game.settings import AutoAtoBehavior, Settings
 from game.theater import ParkingType
 from game.theater.player import Player
 from .pilot import Pilot, PilotStatus
-from game.dcs.skills import SKILL_LADDER
+from game.dcs.skills import SKILL_LADDER, skill_for_experience
 
 from .pilotnames import faker_for_country
 from .pilotranks import Rank, rank_for_skill, ranks_for
@@ -129,22 +129,14 @@ class Squadron:
     def pilot_skill(self, pilot: Pilot) -> Skill:
         """The effective DCS skill the pilot flies at.
 
-        Pilots level up one skill tier every few missions flown, starting from
-        the coalition's base skill and capped at the top tier. Levelling only
-        applies when the ``ai_pilot_levelling`` setting is enabled.
+        Earned, not counted: a pilot flies at the highest rung his experience has paid
+        for. The coalition's setting is the floor rather than the starting point, so
+        raising the difficulty lifts the whole wing at once and never demotes a veteran.
+        Levelling only applies when the ``ai_pilot_levelling`` setting is enabled.
         """
-        levels = SKILL_LADDER
-        current_level = levels.index(self.base_skill)
-        missions_for_skill_increase = 4
-        increase = pilot.record.missions_flown // missions_for_skill_increase
-        capped_increase = min(current_level + increase, len(levels) - 1)
-
-        if self.settings.ai_pilot_levelling:
-            new_level = capped_increase
-        else:
-            new_level = current_level
-
-        return levels[new_level]
+        if not self.settings.ai_pilot_levelling:
+            return self.base_skill
+        return skill_for_experience(pilot.record.xp, self.base_skill)
 
     def pilot_rank(self, pilot: Pilot) -> Optional[Rank]:
         """The rank the pilot holds, or None while Live Pilots is switched off.

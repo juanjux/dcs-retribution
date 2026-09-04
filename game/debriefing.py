@@ -20,6 +20,7 @@ from uuid import UUID
 from game.ato.starttype import StartType
 from game.dcs.aircrafttype import AircraftType
 from game.dcs.groundunittype import GroundUnitType
+from game.squadrons.experience import PilotOutcomes
 from game.theater import Airfield, ControlPoint, Player
 
 if TYPE_CHECKING:
@@ -272,6 +273,9 @@ class Debriefing:
         # id(loss) -> its DCS unit name, populated by dead_aircraft(); lets the
         # indirect-kill logic look up per-loss takeoff/death-time state.
         self._loss_name_by_id: Dict[int, str] = {}
+        #: What became of the aircrew, filled in by the results processor as it
+        #: commits losses and experience, and read by the debriefing window.
+        self.pilot_outcomes = PilotOutcomes()
         self.air_losses = self.dead_aircraft()
         self.ground_losses = self.dead_ground_units()
         self.base_captures = self.base_capture_events()
@@ -309,6 +313,11 @@ class Debriefing:
             logging.exception("Failed to index kill details; killer attribution off")
         return index
 
+    def resolve_killed_object(self, name: str) -> Optional[Any]:
+        """Public face of the name -> loss-object resolution, for callers that start
+        from a kill detail rather than from a loss."""
+        return self._resolve_killed_object(name)
+
     def _resolve_killed_object(self, name: str) -> Optional[Any]:
         """Resolve a killed unit name to its loss object, mirroring how
         dead_aircraft/dead_ground_units resolve names, so id() lines up."""
@@ -324,10 +333,16 @@ class Debriefing:
             um.cargo_ship,
             um.theater_units,
             um.scenery_object,
+            um.motorpool_unit,
+            um.airfield,
         ):
             obj = getter(name)
             if obj is not None:
                 return obj
+        # dead_ground_units retries statics under a " object" suffix; a kill detail for
+        # one of those used to be resolved here as nothing and quietly dropped.
+        if not name.endswith(" object"):
+            return self._resolve_killed_object(f"{name} object")
         return None
 
     def _has_direct_shooter(self, loss: "FlyingUnit") -> bool:

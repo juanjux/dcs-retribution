@@ -23,6 +23,7 @@ from dcs.task import CAP, CAS, PinpointStrike
 from dcs.vehicles import AirDefence
 
 from game.ato.closestairfields import ObjectiveDistanceCache
+from game.dcs.skills import CADET_SKILL, experience_for_skill
 from game.ground_forces.ai_ground_planner import GroundPlanner
 from game.models.game_stats import GameStats
 from game.plugins import LuaPluginManager
@@ -616,6 +617,29 @@ class Game:
         player_cp, enemy_cp = self.theater.closest_opposing_control_points()
         self.blue.bullseye = Bullseye(enemy_cp.position)
         self.red.bullseye = Bullseye(player_cp.position)
+
+    def begin_live_pilots(self) -> None:
+        """Start the career ladder, once, when Live Pilots is switched on.
+
+        Both coalitions' air skill drops to Cadet so there is somewhere to climb from,
+        and every pilot already in the campaign keeps the rank he has, seeded with what
+        that rank costs. Nobody is demoted and nobody gets a windfall; the next
+        promotion is paid for in full.
+
+        Read the skills before resetting the settings: a pilot's rung is measured
+        against the coalition floor, which is what we are about to lower.
+        """
+        if getattr(self, "live_pilots_initialized", False):
+            return
+        for coalition in (self.blue, self.red):
+            for squadron in coalition.air_wing.iter_squadrons():
+                for pilot in list(squadron.pilot_pool) + list(squadron.current_roster):
+                    earned = experience_for_skill(squadron.pilot_skill(pilot))
+                    pilot.record.xp = max(pilot.record.xp, earned)
+        self.settings.player_skill = CADET_SKILL.value
+        self.settings.enemy_skill = CADET_SKILL.value
+        self.live_pilots_initialized = True
+        logging.info("Live Pilots started: both coalitions reset to Cadet")
 
     def plan_ground_war(self) -> None:
         """Decide which of each base's vehicles deploy to which front.
