@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
     QGroupBox,
     QHBoxLayout,
     QLabel,
+    QLayout,
     QLineEdit,
     QListView,
     QPushButton,
@@ -41,6 +42,7 @@ from game.settings import (
     MinutesOption,
     OptionDescription,
     Settings,
+    TextOption,
 )
 from game.settings.ISettingsContainer import SettingsContainer
 from game.settings.settings import (
@@ -183,8 +185,11 @@ class AutoSettingsLayout(QGridLayout):
                 self.add_spinner_for(row, name, description)
             elif isinstance(description, MinutesOption):
                 self.add_duration_controls_for(row, name, description)
+            elif isinstance(description, TextOption):
+                self.add_line_edit_for(row, name, description)
             else:
                 raise TypeError(f"Unhandled option type: {description}")
+        self.apply_visibility()
         if self.section == OPFOR_AI_SECTION:
             self._wire_opfor_ai()
         if self.page == LIVE_PILOTS_PAGE:
@@ -196,6 +201,36 @@ class AutoSettingsLayout(QGridLayout):
                     "live_pilots_use_country_ranks",
                 ),
             )
+
+    def add_line_edit_for(self, row: int, name: str, description: TextOption) -> None:
+        edit = QLineEdit(self.sc.settings.__dict__[name])
+        if description.placeholder is not None:
+            edit.setPlaceholderText(description.placeholder)
+
+        def on_changed(value: str) -> None:
+            self.sc.settings.__dict__[name] = value.strip()
+
+        edit.textChanged.connect(on_changed)
+        edit.setMinimumWidth(260)
+        self.addWidget(edit, row, 1, Qt.AlignmentFlag.AlignRight)
+        self.settings_map[name] = edit
+
+    def apply_visibility(self) -> None:
+        """Hide the settings whose visible_when says they do not apply right now."""
+        for name, description in Settings.fields(self.page, self.section):
+            if description.visible_when is None:
+                continue
+            visible = bool(description.visible_when(self.sc.settings))
+            self.label_map[name].setVisible(visible)
+            entry = self.settings_map[name]
+            # The spinner and time options register a layout rather than a widget,
+            # and a layout cannot be hidden -- its contents can.
+            if isinstance(entry, QLayout):
+                for i in range(entry.count()):
+                    if (child := entry.itemAt(i).widget()) is not None:
+                        child.setVisible(visible)
+            else:
+                entry.setVisible(visible)
 
     def _wire_dependents(
         self, master_name: str, dependent_names: Iterable[str]
@@ -281,6 +316,7 @@ class AutoSettingsLayout(QGridLayout):
             if description.invert:
                 value = not value
             self.sc.settings.__dict__[name] = value
+            self.apply_visibility()
             if description.causes_expensive_game_update:
                 self.write_full_settings()
 
@@ -298,6 +334,7 @@ class AutoSettingsLayout(QGridLayout):
 
         def on_changed(index: int) -> None:
             self.sc.settings.__dict__[name] = combobox.itemData(index)
+            self.apply_visibility()
 
         for text, value in description.choices.items():
             combobox.addItem(text, value)
