@@ -1,4 +1,5 @@
 name: Kh-25ML
+type: LGB
 year: 1979
 # The base Kh-25L IOCed in 1974, but does not appear to be in the game
 fallback: S-25L

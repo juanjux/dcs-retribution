@@ -1,4 +1,5 @@
 name: KAB-1500LG-Pr
+type: LGB
 year: 2000
 fallback: KAB-1500L
 clsids:
