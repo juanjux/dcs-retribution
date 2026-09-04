@@ -183,20 +183,11 @@ def test_the_setting_offers_exactly_the_namings_that_exist() -> None:
     ]
 
 
-def test_the_custom_boxes_are_hidden_until_they_apply() -> None:
-    settings = Settings()
+def test_the_rank_boxes_are_always_shown() -> None:
+    """They preview whichever naming is chosen, greyed out unless it is the custom one."""
     fields = list(Settings.fields("Live Pilots", "Custom Rank Names"))
     assert len(fields) == 2 * len(SKILL_LADDER)
-
-    for _, description in fields:
-        assert description.visible_when is not None
-        assert not description.visible_when(settings)
-
-    settings.live_pilots_enabled = True
-    settings.live_pilots_rank_names = RANK_NAMES_CUSTOM
-    for _, description in fields:
-        assert description.visible_when is not None
-        assert description.visible_when(settings)
+    assert all(description.visible_when is None for _, description in fields)
 
 
 def test_only_the_abbreviation_boxes_are_capped() -> None:
