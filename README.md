@@ -272,6 +272,19 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   (branch [`juanjux/ch_china_1.1.6`](https://github.com/juanjux/dcs-retribution/tree/juanjux/ch_china_1.1.6))
 
 ### Fixes
+- **Transferring an army mid-turn made it vanish from the ground war.** Two faults, one
+  symptom: 26 blue groups holding the line on the map, no armor recorded anywhere in the
+  theater, and a defeat handed to a red base with two vehicles. The ground war was planned
+  once at the start of the turn and cached on the `Game`, so anything moved afterwards was
+  still deployed from the stale plan while the battle was resolved from the books; the
+  cache had one reader, so it plans at mission generation now. And units waiting for a lift
+  that did not exist were debited on order and therefore absent from the ground war --
+  thirty-two vehicles sat under "No transports available" for a whole turn while their
+  front was resolved as undefended. They are debited **on departure** now, and until then
+  they are simply at their base: deployable, defending, counted. Cancel, disband and
+  arrival check the same flag so nothing is handed back that never left. The base dialog
+  spells it out (`25 pending transfer, 12 transferring this turn`) and so does the LLM's
+  control point view. ([#133](https://github.com/juanjux/dcs-retribution/pull/133))
 - **The settings dialog took a couple of seconds and flashed white windows first.** Two
   faults. The page refreshed visibility while its layout was still being built, and a
   group box added to a layout that is not yet installed on a widget has no parent -- in
