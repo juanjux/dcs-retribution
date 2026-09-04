@@ -175,6 +175,8 @@ class AutoSettingsLayout(QGridLayout):
         self.refresh_hooks: List[Callable[[], None]] = []
         self._rank_rows: List[Tuple[QLineEdit, QLineEdit]] = []
         self._rank_names: List[Tuple[str, str]] = []
+        self._rank_labels: List[QLabel] = []
+        self._rank_combo_label: Optional[QLabel] = None
 
         self.init_ui()
 
@@ -223,7 +225,8 @@ class AutoSettingsLayout(QGridLayout):
         for name, description in Settings.fields(self.page, self.section):
             if isinstance(description, ChoicesOption):
                 # The naming choice belongs at the head of the ladder it names.
-                self.label_map[name] = self.add_label(row, description)
+                self._rank_combo_label = self.add_label(row, description)
+                self.label_map[name] = self._rank_combo_label
                 self.add_combobox_for(row, name, description)
                 self._rank_combo = self.settings_map[name]
                 self.removeWidget(self._rank_combo)
@@ -233,8 +236,10 @@ class AutoSettingsLayout(QGridLayout):
             if not name.endswith("_short"):
                 continue
             if not self._rank_rows:
-                self.addWidget(QLabel("<b>Short</b>"), row, 1)
-                self.addWidget(QLabel("<b>Full</b>"), row, 2)
+                for column, heading in ((1, "Short"), (2, "Full")):
+                    header = QLabel(f"<b>{heading}</b>")
+                    self.addWidget(header, row, column)
+                    self._rank_labels.append(header)
                 row += 1
             full_name = name[: -len("_short")] + "_full"
             label = QLabel(f"<strong>{description.text}</strong>")
@@ -242,6 +247,7 @@ class AutoSettingsLayout(QGridLayout):
             # One label serves both boxes, so both names have to find it.
             self.label_map[name] = label
             self.label_map[full_name] = label
+            self._rank_labels.append(label)
 
             max_length = getattr(description, "max_length", None)
             short = self._rank_edit(name, 60, max_length)
@@ -280,7 +286,10 @@ class AutoSettingsLayout(QGridLayout):
         name.
         """
         settings = self.sc.settings
-        editable = settings.live_pilots_rank_names == RANK_NAMES_CUSTOM
+        editable = (
+            bool(settings.live_pilots_enabled)
+            and settings.live_pilots_rank_names == RANK_NAMES_CUSTOM
+        )
         if editable:
             pairs = [
                 (settings.__dict__[short], settings.__dict__[full])
@@ -294,9 +303,15 @@ class AutoSettingsLayout(QGridLayout):
             ladder = ranks_for(settings.live_pilots_rank_names, country)
             pairs = [(rank.abbreviation, rank.name) for rank in ladder]
 
+        # The choice follows the master switch; the ladder follows the choice.
+        master_on = bool(settings.live_pilots_enabled)
         combo = getattr(self, "_rank_combo", None)
         if combo is not None:
-            combo.setEnabled(bool(settings.live_pilots_enabled))
+            combo.setEnabled(master_on)
+        if self._rank_combo_label is not None:
+            self._rank_combo_label.setEnabled(master_on)
+        for rank_label in self._rank_labels:
+            rank_label.setEnabled(editable)
         for (short_edit, full_edit), (short_text, full_text) in zip(
             self._rank_rows, pairs
         ):
