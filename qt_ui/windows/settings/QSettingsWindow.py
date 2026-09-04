@@ -214,7 +214,11 @@ class AutoSettingsLayout(QGridLayout):
             self.sc.settings.__dict__[name] = value.strip()
 
         edit.textChanged.connect(on_changed)
-        edit.setMinimumWidth(260)
+        if description.max_length is not None:
+            edit.setMaxLength(description.max_length)
+            edit.setMinimumWidth(90)
+        else:
+            edit.setMinimumWidth(260)
         self.addWidget(edit, row, 1, Qt.AlignmentFlag.AlignRight)
         self.settings_map[name] = edit
 

@@ -16,6 +16,10 @@ class TextOption(OptionDescription):
 
     placeholder: Optional[str] = None
 
+    #: Cap on how much can be typed. A short cap also narrows the box, because a
+    #: field five characters wide should not look like one that takes a path.
+    max_length: Optional[int] = None
+
 
 def text_option(
     text: str,
@@ -23,6 +27,7 @@ def text_option(
     section: str,
     default: str = "",
     placeholder: Optional[str] = None,
+    max_length: Optional[int] = None,
     detail: Optional[str] = None,
     tooltip: Optional[str] = None,
     causes_expensive_game_update: bool = False,
@@ -39,6 +44,7 @@ def text_option(
                 tooltip,
                 causes_expensive_game_update,
                 placeholder,
+                max_length,
                 visible_when=visible_when,
             )
         },

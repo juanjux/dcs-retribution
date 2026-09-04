@@ -159,11 +159,26 @@ class Squadron:
             self.settings.live_pilots_rank_names,
             self.country,
             (
-                self.settings.live_pilots_rank_cadet,
-                self.settings.live_pilots_rank_average,
-                self.settings.live_pilots_rank_good,
-                self.settings.live_pilots_rank_high,
-                self.settings.live_pilots_rank_excellent,
+                (
+                    self.settings.live_pilots_rank_cadet_short,
+                    self.settings.live_pilots_rank_cadet_full,
+                ),
+                (
+                    self.settings.live_pilots_rank_average_short,
+                    self.settings.live_pilots_rank_average_full,
+                ),
+                (
+                    self.settings.live_pilots_rank_good_short,
+                    self.settings.live_pilots_rank_good_full,
+                ),
+                (
+                    self.settings.live_pilots_rank_high_short,
+                    self.settings.live_pilots_rank_high_full,
+                ),
+                (
+                    self.settings.live_pilots_rank_excellent_short,
+                    self.settings.live_pilots_rank_excellent_full,
+                ),
             ),
         )
         return rank_for_skill(self.pilot_skill(pilot), ladder)
