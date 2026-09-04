@@ -607,6 +607,23 @@ class Game:
         self.blue.bullseye = Bullseye(enemy_cp.position)
         self.red.bullseye = Bullseye(player_cp.position)
 
+    def plan_ground_war(self) -> None:
+        """Decide which of each base's vehicles deploy to which front.
+
+        Planned from ``base.armor`` as it stands *now*, and deliberately not cached
+        across the turn: ordering a transfer debits the origin the moment it is
+        created, so a plan made at the start of the turn deploys units the campaign
+        no longer owns. That is not a cosmetic disagreement -- the front line battle
+        is resolved from the books, so a player who moved his army mid-turn watched
+        it hold the line on the map and lose the ground war for being absent.
+        """
+        self.ground_planners = {}
+        for cp in self.theater.controlpoints:
+            if cp.has_frontline:
+                gplanner = GroundPlanner(cp, self)
+                gplanner.plan_groundwar()
+                self.ground_planners[cp.id] = gplanner
+
     def initialize_turn(
         self,
         events: GameUpdateEvents,
@@ -670,13 +687,7 @@ class Game:
         if for_red:
             self.red.initialize_turn(self.turn == 0 and squadrons_start_full)
 
-        # Plan GroundWar
-        self.ground_planners = {}
-        for cp in self.theater.controlpoints:
-            if cp.has_frontline:
-                gplanner = GroundPlanner(cp, self)
-                gplanner.plan_groundwar()
-                self.ground_planners[cp.id] = gplanner
+        self.plan_ground_war()
 
         # Update cull zones
         with logged_duration("Computing culling positions"):
