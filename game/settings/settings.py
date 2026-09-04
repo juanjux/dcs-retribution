@@ -95,6 +95,8 @@ PRETENSE_PAGE = "Pretense"
 
 MISSION_GENERATOR_PAGE = "Mission Generator"
 
+LIVE_PILOTS_PAGE = "Live Pilots"
+
 GAMEPLAY_SECTION = "Gameplay"
 KNEEBOARD_SECTION = "Kneeboard"
 
@@ -1803,6 +1805,45 @@ class Settings:
         detail=(
             "If enabled, AI flights will de-spawn over their base "
             "if the start-up type was manually changed to 'In-Flight'."
+        ),
+    )
+    live_pilots_enabled: bool = boolean_option(
+        "Enable Live Pilots",
+        page=LIVE_PILOTS_PAGE,
+        section=GENERAL_SECTION,
+        default=False,
+        detail=(
+            "Pilots hold a rank rather than a bare AI skill level, and can be named "
+            "in the mission itself."
+        ),
+    )
+    live_pilots_show_names: bool = boolean_option(
+        "Show pilot names in mission",
+        page=LIVE_PILOTS_PAGE,
+        section=GENERAL_SECTION,
+        default=True,
+        detail='Replaces the "Pilot #2" part of a flight label with the pilot name.',
+    )
+    live_pilots_show_ranks: bool = boolean_option(
+        "Show pilot ranks in mission",
+        page=LIVE_PILOTS_PAGE,
+        section=GENERAL_SECTION,
+        default=True,
+        detail="Prefixes the label with the pilot's abbreviated rank.",
+    )
+    live_pilots_use_country_ranks: bool = choices_option(
+        "Rank names",
+        page=LIVE_PILOTS_PAGE,
+        section=GENERAL_SECTION,
+        default=True,
+        choices={
+            "Use faction country ranks": True,
+            "Use generic ranks": False,
+        },
+        detail=(
+            "Country ranks name each squadron in its own service -- FltLt for the "
+            "RAF, Hptm for the Luftwaffe. Countries with no ladder of their own fall "
+            "back to the generic one either way."
         ),
     )
     pretense_maxdistfromfront_distance: int = bounded_int_option(

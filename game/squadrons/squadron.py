@@ -18,7 +18,10 @@ from game.settings import AutoAtoBehavior, Settings
 from game.theater import ParkingType
 from game.theater.player import Player
 from .pilot import Pilot, PilotStatus
+from game.dcs.skills import SKILL_LADDER
+
 from .pilotnames import faker_for_country
+from .pilotranks import Rank, rank_for_skill
 from ..db.database import Database
 from ..radio.radios import RadioFrequency
 from ..utils import meters, nautical_miles
@@ -130,12 +133,7 @@ class Squadron:
         the coalition's base skill and capped at the top tier. Levelling only
         applies when the ``ai_pilot_levelling`` setting is enabled.
         """
-        levels = [
-            Skill.Average,
-            Skill.Good,
-            Skill.High,
-            Skill.Excellent,
-        ]
+        levels = SKILL_LADDER
         current_level = levels.index(self.base_skill)
         missions_for_skill_increase = 4
         increase = pilot.record.missions_flown // missions_for_skill_increase
@@ -147,6 +145,21 @@ class Squadron:
             new_level = current_level
 
         return levels[new_level]
+
+    def pilot_rank(self, pilot: Pilot) -> Optional[Rank]:
+        """The rank the pilot holds, or None while Live Pilots is switched off.
+
+        A rank is a renaming of the DCS skill level rather than a second ladder:
+        competence is the only thing the engine can be told about, so promotion
+        and skill have to be the same step.
+        """
+        if not self.settings.live_pilots_enabled:
+            return None
+        return rank_for_skill(
+            self.pilot_skill(pilot),
+            self.country,
+            self.settings.live_pilots_use_country_ranks,
+        )
 
     def assign_to_base(self, base: ControlPoint) -> None:
         self.location = base

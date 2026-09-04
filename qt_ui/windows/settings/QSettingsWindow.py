@@ -2,7 +2,7 @@ import json
 import logging
 import textwrap
 import zipfile
-from typing import Callable, Optional, Dict
+from typing import Callable, Dict, Iterable, Optional
 
 from PySide6 import QtWidgets
 from PySide6.QtCore import QItemSelectionModel, QPoint, QSize, Qt
@@ -45,7 +45,7 @@ from game.settings import (
     TextOption,
 )
 from game.settings.ISettingsContainer import SettingsContainer
-from game.settings.settings import OPFOR_AI_SECTION
+from game.settings.settings import LIVE_PILOTS_PAGE, OPFOR_AI_SECTION
 from game.weather.cloudpresetpacks import apply_cloud_preset_pack
 from game.sim import GameUpdateEvents
 from qt_ui.widgets.QLabeledWidget import QLabeledWidget
@@ -188,6 +188,37 @@ class AutoSettingsLayout(QGridLayout):
         self.apply_visibility()
         if self.section == OPFOR_AI_SECTION:
             self._wire_opfor_ai()
+        if self.page == LIVE_PILOTS_PAGE:
+            self._wire_dependents(
+                "live_pilots_enabled",
+                (
+                    "live_pilots_show_names",
+                    "live_pilots_show_ranks",
+                    "live_pilots_use_country_ranks",
+                ),
+            )
+
+    def _wire_dependents(
+        self, master_name: str, dependent_names: Iterable[str]
+    ) -> None:
+        """Grey out the settings that mean nothing while their master is off."""
+        master = self.settings_map.get(master_name)
+        if not isinstance(master, QCheckBox):
+            return
+        dependents = [
+            (self.settings_map.get(name), self.label_map.get(name))
+            for name in dependent_names
+        ]
+
+        def refresh() -> None:
+            enabled = master.isChecked()
+            for widget, label in dependents:
+                for target in (widget, label):
+                    if target is not None:
+                        target.setEnabled(enabled)
+
+        master.toggled.connect(lambda _=None: refresh())
+        refresh()
 
     def _wire_opfor_ai(self) -> None:
         """Show the REST/MCP connect URLs when OPFOR AI control is enabled."""
