@@ -87,3 +87,19 @@ def test_generic_ranks_can_be_asked_for_explicitly() -> None:
 def test_a_skill_that_is_not_a_rung_reads_as_the_bottom(skill: Skill) -> None:
     """Random, Player and Client are skills to DCS but not steps of a career."""
     assert rank_for_skill(skill, None) == GENERIC_RANKS[0]
+
+
+def test_ground_units_never_see_cadet() -> None:
+    """Blue shares one setting between its pilots and its tanks."""
+    from game.dcs.skills import ground_skill
+
+    assert ground_skill(CADET_SKILL) is Skill.Average
+    for skill in SKILL_LADDER[1:]:
+        assert ground_skill(skill) is skill
+
+
+def test_only_pilots_are_offered_cadet() -> None:
+    from game.settings.skilloption import GROUND_SKILL_CHOICES, PILOT_SKILL_CHOICES
+
+    assert PILOT_SKILL_CHOICES == ["Cadet", *GROUND_SKILL_CHOICES]
+    assert "Cadet" not in GROUND_SKILL_CHOICES

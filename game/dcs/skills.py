@@ -44,3 +44,14 @@ SKILL_LADDER: tuple[Skill, ...] = (
     Skill.High,
     Skill.Excellent,
 )
+
+
+def ground_skill(skill: Skill) -> Skill:
+    """Clamp a skill to something a ground unit understands.
+
+    The editor keeps two lists: aircraft get Cadet through Ace, everything else starts
+    at ``Average``. The blue coalition shares one setting between its pilots and its
+    vehicles, so a coalition set to Cadet would otherwise write a skill onto tanks that
+    no ground unit has.
+    """
+    return Skill.Average if skill is CADET_SKILL else skill
