@@ -112,6 +112,7 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   that went wide, a crash with nobody shooting. An Eagle killing a Fulcrum is Tuesday and
   reads plainly. Phrasing varies by position rather than at random, so reopening the
   debrief gives the same chronicle.
+  ([#121](https://github.com/juanjux/dcs-retribution/pull/121))
 - **Mission Log** (plugin, off by default) — a running commentary of what happens to
   your side while you fly: who shot down whom and with what, which targets went down,
   who ejected, who crashed with nobody shooting. DCS has all of these events but calls
