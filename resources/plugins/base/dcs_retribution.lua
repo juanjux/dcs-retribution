@@ -107,7 +107,7 @@ PLAYER_LEAVE_GRACE_S = 5 -- a crash within this long after a leave = the despawn
 -- Credit the objective standing where this scenery object is, at most once.
 -- Only the credit is logged: a mission destroys hundreds of unrelated buildings
 -- and logging the misses drowns the log.
-local function credit_scenery_zone(obj, note)
+local function credit_scenery_zone(obj, note, killer, weapon)
     local zone, distance = scenery_zone_for(obj)
     if zone == nil or distance > SCENERY_MATCH_RADIUS
             or scenery_zone_reported[zone.name] then
@@ -115,6 +115,21 @@ local function credit_scenery_zone(obj, note)
     end
     scenery_zone_reported[zone.name] = true
     dead_events[#dead_events + 1] = zone.name
+    if killer ~= nil then
+        -- An indestructible objective never fires a kill of its own, so this is
+        -- the only chance to record who did it.
+        local detail = { ["target"] = zone.name }
+        pcall(function() detail["initiator"] = killer:getName() end)
+        pcall(function() detail["initiator_type"] = killer:getTypeName() end)
+        pcall(function()
+            local pn = killer:getPlayerName()
+            if pn and pn ~= "" then detail["initiator_player"] = pn end
+        end)
+        if weapon ~= nil then
+            pcall(function() detail["weapon"] = weapon:getTypeName() end)
+        end
+        kill_details[#kill_details + 1] = detail
+    end
     logger:info(string.format("Objective destroyed: '%s' (%.0f m from the hit%s)",
         zone.name, distance, note or ""))
     return true
@@ -460,6 +475,16 @@ local function onEvent(event)
         -- Also record who killed it and with what, for the UI event feed. All
         -- accessors are pcall-guarded so a missing field never breaks the mission.
         local detail = { ["target"] = target_name }
+        if type(target_name) == "number" then
+            -- Scenery: the id means nothing downstream, and a kill recorded
+            -- against it can never be resolved, so the pilot who levelled a
+            -- refinery went uncredited. Name the objective standing on that spot,
+            -- which is the key the scenery map is built on.
+            local zone, distance = scenery_zone_for(event.target)
+            if zone ~= nil and distance <= SCENERY_MATCH_RADIUS then
+                detail["target"] = zone.name
+            end
+        end
         if event.initiator then
             pcall(function() detail["initiator"] = event.initiator:getName() end)
             pcall(function() detail["initiator_type"] = event.initiator:getTypeName() end)
@@ -482,7 +507,8 @@ local function onEvent(event)
         -- tests, so it goes first and keeps strafing runs off the zone search.
         local name = event.target.getName(event.target)
         if type(name) == "number" and is_indestructible(event.target) then
-            if credit_scenery_zone(event.target, ", indestructible: credited on impact") then
+            if credit_scenery_zone(event.target, ", indestructible: credited on impact",
+                    event.initiator, event.weapon) then
                 dirty_state = true
             end
         end
