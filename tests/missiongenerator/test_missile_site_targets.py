@@ -1,9 +1,9 @@
-"""Aimpoint selection for missile sites (Scud, ATACMS).
+"""Target selection for missile sites (Scud, ATACMS, Iskander).
 
-A control point's position is a campaign-map coordinate, so firing at it dropped
-every salvo in whatever field sat at the middle of the airfield. These cover the
-preference for real ground objects and the fallback that keeps a bare base from
-silently losing its fire task.
+A control point's position is a campaign-map coordinate, so firing at it dropped every
+salvo in whatever field sat at the middle of the airfield. These cover the preference
+for real objectives and the range bounds -- including the minimum, which several of
+these launchers have and none of this used to respect.
 """
 
 from types import SimpleNamespace
@@ -15,23 +15,27 @@ from game.missiongenerator.tgogenerator import MissileSiteGenerator
 
 
 class _Generator(MissileSiteGenerator):
-    """A generator with just the attributes the aimpoint search reads.
+    """A generator with just the attributes the target search reads.
 
-    ``missile_site_range`` is derived from the generated DCS group, which needs a
-    whole mission to exist; the range itself is not what these tests are about.
+    The ranges are derived from the generated DCS group, which needs a whole mission to
+    exist; the ranges themselves are not what these tests are about.
     """
 
     def __init__(
-        self, ground_object: Any, game: Any, site_range: int, mission: Any = None
+        self, ground_object: Any, game: Any, site_range: int, site_min: int = 0
     ) -> None:
         self.ground_object = ground_object
         self.game = game
-        self.m = mission
         self._site_range = site_range
+        self._site_min = site_min
 
     @property
     def missile_site_range(self) -> int:
         return self._site_range
+
+    @property
+    def missile_site_min_range(self) -> int:
+        return self._site_min
 
 
 def _tgo(x: float, y: float, *, category: str = "ammo", dead: bool = False) -> Any:
@@ -50,20 +54,22 @@ def _control_point(x: float, y: float, *, blue: bool, tgos: List[Any]) -> Any:
     )
 
 
-def _generator(cps: List[Any], site_range: int = 100000) -> _Generator:
+def _generator(
+    cps: List[Any], site_range: int = 100000, site_min: int = 0
+) -> _Generator:
     site = SimpleNamespace(
         position=Point(0, 0, None),  # type: ignore[arg-type]
         control_point=SimpleNamespace(captured=False),
     )
     game = SimpleNamespace(theater=SimpleNamespace(controlpoints=cps))
-    return _Generator(site, game, site_range)
+    return _Generator(site, game, site_range, site_min)
 
 
-def _coords(points: List[Point]) -> List[Tuple[float, float]]:
-    return sorted((p.x, p.y) for p in points)
+def _coords(targets: List[Any]) -> List[Tuple[float, float]]:
+    return sorted((t.position.x, t.position.y) for t in targets)
 
 
-def test_prefers_real_ground_objects_over_the_map_coordinate() -> None:
+def test_it_aims_at_real_objectives() -> None:
     cp = _control_point(
         50000, 0, blue=True, tgos=[_tgo(50500, 0), _tgo(49500, 0, category="fuel")]
     )
@@ -73,12 +79,13 @@ def test_prefers_real_ground_objects_over_the_map_coordinate() -> None:
     ]
 
 
-def test_falls_back_to_the_map_coordinate_when_the_base_is_bare() -> None:
+def test_a_bare_base_offers_nothing_to_shoot_at() -> None:
+    """Its map coordinate is not a target, and firing at it was the whole bug."""
     cp = _control_point(50000, 0, blue=True, tgos=[])
-    assert _coords(_generator([cp]).possible_missile_targets()) == [(50000.0, 0.0)]
+    assert _generator([cp]).possible_missile_targets() == []
 
 
-def test_skips_dead_objects_and_ships() -> None:
+def test_it_skips_dead_objectives_and_ships() -> None:
     cp = _control_point(
         50000,
         0,
@@ -92,22 +99,12 @@ def test_skips_dead_objects_and_ships() -> None:
     assert _coords(_generator([cp]).possible_missile_targets()) == [(50300.0, 0.0)]
 
 
-def test_a_base_of_only_wrecks_and_ships_still_falls_back() -> None:
-    cp = _control_point(
-        50000,
-        0,
-        blue=True,
-        tgos=[_tgo(50100, 0, dead=True), _tgo(50200, 0, category="ship")],
-    )
-    assert _coords(_generator([cp]).possible_missile_targets()) == [(50000.0, 0.0)]
-
-
-def test_ignores_friendly_control_points() -> None:
+def test_it_ignores_friendly_control_points() -> None:
     cp = _control_point(50000, 0, blue=False, tgos=[_tgo(50500, 0)])
     assert _generator([cp]).possible_missile_targets() == []
 
 
-def test_range_is_measured_to_the_aimpoint_not_the_base() -> None:
+def test_range_is_measured_to_the_objective_not_the_base() -> None:
     """The far depot is out of reach even though its base's centre is not."""
     cp = _control_point(50000, 0, blue=True, tgos=[_tgo(55000, 0), _tgo(70000, 0)])
     assert _coords(_generator([cp], site_range=60000).possible_missile_targets()) == [
@@ -115,44 +112,22 @@ def test_range_is_measured_to_the_aimpoint_not_the_base() -> None:
     ]
 
 
-def _mission_holding(unit_types: List[str]) -> Any:
-    group = SimpleNamespace(units=[SimpleNamespace(type=t) for t in unit_types])
-
-    def find_group(name: str) -> Any:
-        return group
-
-    return SimpleNamespace(find_group=find_group)
-
-
-def _error_for(*unit_types: str) -> int:
-    site = SimpleNamespace(
-        position=Point(0, 0, None),  # type: ignore[arg-type]
-        control_point=SimpleNamespace(captured=False),
-        groups=[SimpleNamespace(group_name="site")],
+def test_it_will_not_shoot_inside_its_minimum_range() -> None:
+    """An ATACMS battery cannot engage inside 75 km, however inviting the target."""
+    cp = _control_point(
+        50000, 0, blue=True, tgos=[_tgo(40000, 0), _tgo(80000, 0), _tgo(90000, 0)]
     )
-    game = SimpleNamespace(theater=SimpleNamespace(controlpoints=[]))
-    generator = _Generator(site, game, 100000, _mission_holding(list(unit_types)))
-    return generator.aimpoint_error
+    targets = _generator([cp], site_range=100000, site_min=75000)
+    assert _coords(targets.possible_missile_targets()) == [
+        (80000.0, 0.0),
+        (90000.0, 0.0),
+    ]
 
 
-def test_a_scud_misses_by_a_quarter_kilometre() -> None:
-    """450 m CEP, doubled: an inertial missile from the sixties."""
-    assert _error_for("Scud_B") == 900
-
-
-def test_an_atacms_lands_near_where_it_was_pointed() -> None:
-    """25 m CEP, doubled: eighteen times better than the Scud."""
-    assert _error_for("CH_M270A1_ATACMS") == 50
-
-
-def test_an_unlisted_launcher_takes_the_default() -> None:
-    assert _error_for("SomeModdedLauncher") == 300
-
-
-def test_the_least_accurate_launcher_sets_the_error() -> None:
-    assert _error_for("CH_M270A1_ATACMS", "Scud_B") == 900
-
-
-def test_support_vehicles_do_not_drag_a_site_to_the_default() -> None:
-    """A Scud site is a Scud site even though its fuel truck is in no table."""
-    assert _error_for("Scud_B", "Ural-375") == 900
+def test_a_minimum_that_swallows_everything_leaves_the_site_silent() -> None:
+    """The DF-21D declares a 300 km floor; a site with nothing beyond it holds fire."""
+    cp = _control_point(50000, 0, blue=True, tgos=[_tgo(50000, 0)])
+    assert (
+        _generator([cp], site_range=1000000, site_min=300000).possible_missile_targets()
+        == []
+    )
