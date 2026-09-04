@@ -570,13 +570,19 @@ class AutoSettingsPageLayout(QVBoxLayout):
             )
             self.addWidget(self.widgets[-1])
 
-        def refresh_page() -> None:
-            for group in self.widgets:
-                group.apply_visibility()
-
         for group in self.widgets:
-            group.layout.on_settings_changed = refresh_page
-        refresh_page()
+            group.layout.on_settings_changed = self.refresh_page
+
+    def refresh_page(self) -> None:
+        """Re-evaluate every group, since one section can hide another's settings.
+
+        Never call this while the layout is still being built. A group box added to
+        a layout that is not yet installed on a widget has no parent, and showing a
+        parentless widget in Qt makes it a window: the settings dialog flashed a
+        handful of white frames that resized and vanished as the real parent
+        arrived. The page calls it once its layout is in place."""
+        for group in self.widgets:
+            group.apply_visibility()
 
     def update_from_settings(self) -> None:
         for w in self.widgets:
@@ -593,6 +599,9 @@ class AutoSettingsPage(QWidget):
         super().__init__()
         self.layout = AutoSettingsPageLayout(page, sc, write_full_settings)
         self.setLayout(self.layout)
+        # Only now do the group boxes have a parent, and only now is hiding one of
+        # them a layout change rather than a stray window.
+        self.layout.refresh_page()
 
     def update_from_settings(self) -> None:
         self.layout.update_from_settings()
