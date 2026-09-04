@@ -2,7 +2,7 @@ import json
 import logging
 import textwrap
 import zipfile
-from typing import Callable, Dict, Iterable, Optional
+from typing import Callable, Dict, Iterable, List, Optional, Tuple
 
 from PySide6 import QtWidgets
 from PySide6.QtCore import QItemSelectionModel, QPoint, QSize, Qt
@@ -45,7 +45,12 @@ from game.settings import (
     TextOption,
 )
 from game.settings.ISettingsContainer import SettingsContainer
-from game.settings.settings import LIVE_PILOTS_PAGE, OPFOR_AI_SECTION
+from game.settings.settings import (
+    LIVE_PILOTS_CUSTOM_SECTION,
+    LIVE_PILOTS_PAGE,
+    OPFOR_AI_SECTION,
+)
+from game.squadrons.pilotranks import RANK_NAMES_CUSTOM, ranks_for
 from game.weather.cloudpresetpacks import apply_cloud_preset_pack
 from game.sim import GameUpdateEvents
 from qt_ui.widgets.QLabeledWidget import QLabeledWidget
@@ -166,10 +171,17 @@ class AutoSettingsLayout(QGridLayout):
         #: Set by the page once every group exists. A setting can hide one in
         #: another group, so a change here has to re-evaluate the whole page.
         self.on_settings_changed: Optional[Callable[[], None]] = None
+        #: Extra work a hand-built section needs doing whenever a value changes.
+        self.refresh_hooks: List[Callable[[], None]] = []
+        self._rank_rows: List[Tuple[QLineEdit, QLineEdit]] = []
+        self._rank_names: List[Tuple[str, str]] = []
 
         self.init_ui()
 
     def init_ui(self):
+        if self.section == LIVE_PILOTS_CUSTOM_SECTION:
+            self._build_rank_grid()
+            return
         for row, (name, description) in enumerate(
             Settings.fields(self.page, self.section)
         ):
@@ -200,6 +212,88 @@ class AutoSettingsLayout(QGridLayout):
                     "live_pilots_rank_names",
                 ),
             )
+
+    def _build_rank_grid(self) -> None:
+        """The rank ladder: five rungs, short and full form side by side.
+
+        Not one setting per row like every other section. Ten rows reading "Cadet
+        (short)", "Cadet (full)" is a form to fill in; a rung per row under two column
+        headings is a ladder you can read down.
+        """
+        self.addWidget(QLabel("<b>Short</b>"), 0, 1)
+        self.addWidget(QLabel("<b>Full</b>"), 0, 2)
+
+        row = 1
+        for name, description in Settings.fields(self.page, self.section):
+            if not name.endswith("_short"):
+                continue
+            full_name = name[: -len("_short")] + "_full"
+            label = QLabel(f"<strong>{description.text}</strong>")
+            self.addWidget(label, row, 0)
+            # One label serves both boxes, so both names have to find it.
+            self.label_map[name] = label
+            self.label_map[full_name] = label
+
+            max_length = getattr(description, "max_length", None)
+            short = self._rank_edit(name, 60, max_length)
+            full = self._rank_edit(full_name, 156)
+            self.addWidget(short, row, 1)
+            self.addWidget(full, row, 2)
+            self._rank_rows.append((short, full))
+            self._rank_names.append((name, full_name))
+            row += 1
+
+        self.setColumnStretch(3, 1)
+        self.refresh_hooks.append(self._sync_rank_boxes)
+        self._sync_rank_boxes()
+
+    def _rank_edit(
+        self, name: str, width: int, max_length: Optional[int] = None
+    ) -> QLineEdit:
+        edit = QLineEdit(self.sc.settings.__dict__[name])
+        if max_length is not None:
+            edit.setMaxLength(max_length)
+        edit.setFixedWidth(width)
+
+        def on_changed(value: str) -> None:
+            self.sc.settings.__dict__[name] = value.strip()
+
+        edit.textChanged.connect(on_changed)
+        self.settings_map[name] = edit
+        return edit
+
+    def _sync_rank_boxes(self) -> None:
+        """Show the ladder the chosen naming produces, editable only when it is custom.
+
+        The other namings write nothing back: their values are a preview, the boxes are
+        read-only while one is on display, and switching to Custom restores whatever the
+        player last typed -- blanks included, which is how a rung asks for its generic
+        name.
+        """
+        settings = self.sc.settings
+        editable = settings.live_pilots_rank_names == RANK_NAMES_CUSTOM
+        if editable:
+            pairs = [
+                (settings.__dict__[short], settings.__dict__[full])
+                for short, full in self._rank_names
+            ]
+        else:
+            # The container is the settings window, which knows the campaign; country
+            # ranks are per squadron, so the player faction is the honest preview.
+            faction = getattr(getattr(self.sc, "game", None), "blue", None)
+            country = getattr(getattr(faction, "faction", None), "country", None)
+            ladder = ranks_for(settings.live_pilots_rank_names, country)
+            pairs = [(rank.abbreviation, rank.name) for rank in ladder]
+
+        for (short_edit, full_edit), (short_text, full_text) in zip(
+            self._rank_rows, pairs
+        ):
+            for edit, text in ((short_edit, short_text), (full_edit, full_text)):
+                edit.setEnabled(editable)
+                if edit.text() != text:
+                    edit.blockSignals(True)
+                    edit.setText(text)
+                    edit.blockSignals(False)
 
     def _wire_dependents(
         self, master_name: str, dependent_names: Iterable[str]
@@ -409,9 +503,13 @@ class AutoSettingsLayout(QGridLayout):
                         child.setVisible(visible)
             else:
                 entry.setVisible(visible)
+        for hook in self.refresh_hooks:
+            hook()
         return any_visible
 
     def update_from_settings(self) -> None:
+        for hook in self.refresh_hooks:
+            hook()
         for name, description in Settings.fields(self.page, self.section):
             widget = self.settings_map[name]
             value = self.sc.settings.__dict__[name]

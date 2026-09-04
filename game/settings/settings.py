@@ -100,18 +100,6 @@ LIVE_PILOTS_PAGE = "Live Pilots"
 LIVE_PILOTS_CUSTOM_SECTION = "Custom Rank Names"
 
 
-def _using_custom_ranks(settings: Any) -> bool:
-    """The custom name boxes mean nothing unless the player asked for them.
-
-    The literal matches ``pilotranks.RANK_NAMES_CUSTOM``; settings cannot import
-    that module without a cycle through game.squadrons, so a test holds the two
-    together instead.
-    """
-    return bool(
-        settings.live_pilots_enabled and settings.live_pilots_rank_names == "custom"
-    )
-
-
 GAMEPLAY_SECTION = "Gameplay"
 KNEEBOARD_SECTION = "Kneeboard"
 
@@ -1864,80 +1852,69 @@ class Settings:
         ),
     )
     live_pilots_rank_cadet_short: str = text_option(
-        "Cadet (short)",
+        "Cadet",
         page=LIVE_PILOTS_PAGE,
         section=LIVE_PILOTS_CUSTOM_SECTION,
         default="2ndLt",
         max_length=5,
-        visible_when=_using_custom_ranks,
-        detail="Left empty, this rung keeps its generic name.",
     )
     live_pilots_rank_cadet_full: str = text_option(
-        "Cadet (full)",
+        "Cadet",
         page=LIVE_PILOTS_PAGE,
         section=LIVE_PILOTS_CUSTOM_SECTION,
         default="Second Lieutenant",
-        visible_when=_using_custom_ranks,
     )
     live_pilots_rank_average_short: str = text_option(
-        "Average (short)",
+        "Average",
         page=LIVE_PILOTS_PAGE,
         section=LIVE_PILOTS_CUSTOM_SECTION,
         default="1stLt",
         max_length=5,
-        visible_when=_using_custom_ranks,
     )
     live_pilots_rank_average_full: str = text_option(
-        "Average (full)",
+        "Average",
         page=LIVE_PILOTS_PAGE,
         section=LIVE_PILOTS_CUSTOM_SECTION,
         default="First Lieutenant",
-        visible_when=_using_custom_ranks,
     )
     live_pilots_rank_good_short: str = text_option(
-        "Good (short)",
+        "Good",
         page=LIVE_PILOTS_PAGE,
         section=LIVE_PILOTS_CUSTOM_SECTION,
         default="Capt",
         max_length=5,
-        visible_when=_using_custom_ranks,
     )
     live_pilots_rank_good_full: str = text_option(
-        "Good (full)",
+        "Good",
         page=LIVE_PILOTS_PAGE,
         section=LIVE_PILOTS_CUSTOM_SECTION,
         default="Captain",
-        visible_when=_using_custom_ranks,
     )
     live_pilots_rank_high_short: str = text_option(
-        "High (short)",
+        "High",
         page=LIVE_PILOTS_PAGE,
         section=LIVE_PILOTS_CUSTOM_SECTION,
         default="Maj",
         max_length=5,
-        visible_when=_using_custom_ranks,
     )
     live_pilots_rank_high_full: str = text_option(
-        "High (full)",
+        "High",
         page=LIVE_PILOTS_PAGE,
         section=LIVE_PILOTS_CUSTOM_SECTION,
         default="Major",
-        visible_when=_using_custom_ranks,
     )
     live_pilots_rank_excellent_short: str = text_option(
-        "Excellent (short)",
+        "Excellent",
         page=LIVE_PILOTS_PAGE,
         section=LIVE_PILOTS_CUSTOM_SECTION,
         default="LtCol",
         max_length=5,
-        visible_when=_using_custom_ranks,
     )
     live_pilots_rank_excellent_full: str = text_option(
-        "Excellent (full)",
+        "Excellent",
         page=LIVE_PILOTS_PAGE,
         section=LIVE_PILOTS_CUSTOM_SECTION,
         default="Lieutenant Colonel",
-        visible_when=_using_custom_ranks,
     )
     pretense_maxdistfromfront_distance: int = bounded_int_option(
         "Max distance from front (km)",
