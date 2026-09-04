@@ -103,6 +103,18 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   [#20](https://github.com/juanjux/dcs-retribution/pull/20))
 
 ### Missions, AI & tasking
+- **Live Pilots** (off by default) — a pilot holds a *rank* instead of a bare AI skill
+  level, and carries it into the mission: the flight label reads `1stLt Pepito Perez`
+  where DCS would leave `Pilot #2`, and the Air Wing roster shows the abbreviation
+  before the name. DCS turns out to have five air skills rather than four -- the mission
+  editor's Cadet, Rookie, Trained, Veteran and Ace are written as `Cadet`, `Average`,
+  `Good`, `High`, `Excellent`, and pydcs' enum was missing the bottom one, so
+  `game/dcs/skills.py` adds it and owns the ladder. Ranks are named in each squadron's
+  own service -- `FltLt` for the RAF, `Hptm` for the Luftwaffe, `MlLt` for the VVS,
+  31 countries -- or generically, by a setting. Rank is a renaming of the skill level,
+  not a second ladder: competence is the only thing DCS can be told about. First slice
+  of a larger feature; promotion is still by missions flown.
+  ([#129](https://github.com/juanjux/dcs-retribution/pull/129))
 - **Mission Log** (plugin, off by default) — a running commentary of what happens to
   your side while you fly: who shot down whom and with what, which targets went down,
   who ejected, who crashed with nobody shooting. DCS has all of these events but calls
