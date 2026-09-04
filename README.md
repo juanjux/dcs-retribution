@@ -282,7 +282,14 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   point to eleven real ones. The scatter is now each launcher's published CEP rather
   than one number for all of them -- 450 m for a Scud, 25 m for an ATACMS, 10 m for a
   CJ-10 -- so an inertial missile from the sixties and a GPS-guided one no longer land
-  alike. Cuts both ways: enemy Scuds get more dangerous.
+  alike. Cuts both ways: enemy Scuds get more dangerous. A follow-up names the enemy
+  *group* instead of a coordinate: the CH ATACMS flies its terminal manoeuvre only "if
+  target is locked on", so a bare point left it cruising straight over the aimpoint at
+  its 25 km glide height and coming down 18 km beyond -- measured in game, every round
+  in the same field. Sites whose only reachable targets are statics keep the point,
+  which is all a Scud needs. Minimum ranges are respected as well: the ATACMS and
+  Iskander cannot engage inside 75 km, the DF-21D inside 300, and pydcs carries no such
+  field so the values come from the launchers' own mod files.
   ([#128](https://github.com/juanjux/dcs-retribution/pull/128))
 - **Su-25s flew close air support with weapons they cannot guide.** A flight took off
   with eight S-25L each and attacked nothing while the Su-34s beside them worked
