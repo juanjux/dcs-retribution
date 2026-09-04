@@ -72,6 +72,12 @@ TRACK_RADARS = {
     smap.LvS_103_PM103_HX,
     smap.UndE23,
     ukmap.CH_SkySabreGiraffe,
+    # The AN/MPQ-53 is the original Patriot phased array -- the radar the
+    # system is named after. Without it here, a battery built around one has no
+    # tracker its launchers recognise, so it reports a threat range of zero and
+    # the map draws no ring at all, while in the mission it shoots perfectly
+    # well. That is what happened at Baghdad International.
+    usamap.CH_MIM104_ANMPQ53_KAT1,
     usamap.CH_MIM104_ANMPQ65,
     usamap.CH_MIM104_ANMPQ65A,
     usamap.CH_MIM104_ANMPQ65_HEMTT,
@@ -138,6 +144,7 @@ LAUNCHER_TRACKER_PAIRS = {
     smap.RBS_98: (smap.UndE23,),
     ukmap.CH_SkySabreLN: (ukmap.CH_SkySabreGiraffe,),
     usamap.CH_MIM104_M903_PAC2: (
+        usamap.CH_MIM104_ANMPQ53_KAT1,
         usamap.CH_MIM104_ANMPQ65,
         usamap.CH_MIM104_ANMPQ65A,
         usamap.CH_MIM104_LTAMDS,
@@ -146,6 +153,7 @@ LAUNCHER_TRACKER_PAIRS = {
         usamap.CH_MIM104_LTAMDS_HEMTT,
     ),
     usamap.CH_MIM104_M903_PAC3: (
+        usamap.CH_MIM104_ANMPQ53_KAT1,
         usamap.CH_MIM104_ANMPQ65,
         usamap.CH_MIM104_ANMPQ65A,
         usamap.CH_MIM104_LTAMDS,
@@ -154,6 +162,7 @@ LAUNCHER_TRACKER_PAIRS = {
         usamap.CH_MIM104_LTAMDS_HEMTT,
     ),
     usamap.CH_MIM104_M903_PAC2_HEMTT: (
+        usamap.CH_MIM104_ANMPQ53_KAT1,
         usamap.CH_MIM104_ANMPQ65,
         usamap.CH_MIM104_ANMPQ65A,
         usamap.CH_MIM104_LTAMDS,
@@ -162,6 +171,7 @@ LAUNCHER_TRACKER_PAIRS = {
         usamap.CH_MIM104_LTAMDS_HEMTT,
     ),
     usamap.CH_MIM104_M903_PAC3_HEMTT: (
+        usamap.CH_MIM104_ANMPQ53_KAT1,
         usamap.CH_MIM104_ANMPQ65,
         usamap.CH_MIM104_ANMPQ65A,
         usamap.CH_MIM104_LTAMDS,
