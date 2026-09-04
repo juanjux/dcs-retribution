@@ -272,6 +272,15 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   (branch [`juanjux/ch_china_1.1.6`](https://github.com/juanjux/dcs-retribution/tree/juanjux/ch_china_1.1.6))
 
 ### Fixes
+- **The settings dialog took a couple of seconds and flashed white windows first.** Two
+  faults. The page refreshed visibility while its layout was still being built, and a
+  group box added to a layout that is not yet installed on a widget has no parent -- in
+  Qt, showing a parentless widget makes it a top-level window, so every section briefly
+  became its own frame on top of the map. And the dialog, rebuilt from scratch on every
+  open, raised all seven pages -- 192 settings, some six hundred widgets -- to show one.
+  Pages are now built the first time they are selected: opening the dialog raises
+  Difficulty's thirteen settings instead of all 192.
+  ([#129](https://github.com/juanjux/dcs-retribution/pull/129))
 - **A dry run grounded a squadron for the turn.** `plan_mission` claims aircraft flight
   by flight and releases them when it scrubs a mission for missing types, but anything
   that *raises* in between walked out with the claims standing: the squadron read as
