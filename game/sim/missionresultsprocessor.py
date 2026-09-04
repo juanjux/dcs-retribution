@@ -1,9 +1,21 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
+import random
+from typing import Any, Optional, TYPE_CHECKING
 
 from game.debriefing import Debriefing
+from game.squadrons.experience import (
+    PilotDeath,
+    PilotPromotion,
+    XP_AIR_KILL,
+    XP_GROUND_KILL,
+    XP_MISSION_COMPLETE,
+    XP_SHIP_KILL,
+    XP_UNKNOWN_KILL,
+    building_xp,
+    survival_chance,
+)
 from game.ground_forces.combat_stance import CombatStance
 from game.profiling import logged_duration
 from game.theater import ControlPoint
@@ -32,7 +44,7 @@ class MissionResultsProcessor:
             with logged_duration("commit_air_losses"):
                 self.commit_air_losses(debriefing)
             with logged_duration("commit_pilot_experience"):
-                self.commit_pilot_experience()
+                self.commit_pilot_experience(debriefing)
             with logged_duration("commit_front_line_losses"):
                 self.commit_front_line_losses(debriefing)
             with logged_duration("commit_motorpool_losses"):
@@ -84,7 +96,7 @@ class MissionResultsProcessor:
                 not loss.pilot.player
                 or not self.game.settings.invulnerable_player_pilots
             ):
-                loss.pilot.kill()
+                self._resolve_pilot_fate(loss, debriefing)
             squadron = loss.flight.squadron
             aircraft = loss.flight.unit_type
             available = squadron.owned_aircraft
@@ -197,10 +209,160 @@ class MissionResultsProcessor:
         squadron.owned_aircraft = count
         coalition.air_wing.add_squadron(squadron)
 
-    @staticmethod
-    def _commit_pilot_experience(ato: AirTaskingOrder) -> None:
+    def _resolve_pilot_fate(self, loss: Any, debriefing: Debriefing) -> None:
+        """Kill the pilot, or let his rank save him.
+
+        Only Live Pilots rolls: with the feature off, losing the aircraft still means
+        losing the pilot, exactly as before.
+        """
+        pilot = loss.pilot
+        squadron = loss.flight.squadron
+        record = self._describe_loss(loss, debriefing)
+        if self.game.settings.live_pilots_enabled and random.random() < survival_chance(
+            squadron.pilot_skill(pilot)
+        ):
+            debriefing.pilot_outcomes.survivors.append(record)
+            logging.info(f"{pilot.name} survived the loss of his aircraft")
+            return
+        pilot.kill()
+        debriefing.pilot_outcomes.deaths.append(record)
+
+    def _describe_loss(self, loss: Any, debriefing: Debriefing) -> PilotDeath:
+        squadron = loss.flight.squadron
+        detail = debriefing.kill_info_by_unit_id.get(id(loss))
+        killer, friendly = self._describe_killer(
+            detail, debriefing, squadron.player.is_blue
+        )
+        return PilotDeath(
+            pilot_name=loss.pilot.name if loss.pilot is not None else "Unknown pilot",
+            squadron=str(squadron),
+            aircraft=str(loss.flight.unit_type),
+            killed_by=killer,
+            friendly_fire=friendly,
+        )
+
+    def _describe_killer(
+        self,
+        detail: Optional[dict[str, Any]],
+        debriefing: Debriefing,
+        victim_is_blue: bool,
+    ) -> tuple[Optional[str], bool]:
+        """Name whoever did it, as precisely as the data allows.
+
+        DCS credits exactly one initiator per kill and has no notion of an assist, so
+        this is whoever landed the killing blow. In order of preference: the roster
+        pilot behind the killing aircraft, the human's own name, the airframe or
+        vehicle type. No initiator at all means nobody shot him down.
+        """
+        if not detail:
+            return "a crash", False
+
+        name: Optional[str] = None
+        friendly = False
+        initiator = detail.get("initiator")
+        if initiator:
+            killer = debriefing.unit_map.flight(str(initiator))
+            if killer is not None:
+                friendly = killer.flight.squadron.player.is_blue == victim_is_blue
+                if killer.pilot is not None:
+                    name = killer.pilot.name
+
+        if name is None:
+            name = detail.get("initiator_player") or detail.get("initiator_type")
+        if name is None:
+            return None, friendly
+
+        airframe = detail.get("initiator_type")
+        if airframe and airframe != name:
+            name = f"{name} ({airframe})"
+        weapon = detail.get("weapon")
+        if weapon and weapon != airframe:
+            name = f"{name} with {weapon}"
+        return name, friendly
+
+    def _victim_is_blue(self, victim: Any) -> Optional[bool]:
+        """Which side the destroyed thing belonged to, where that can be established."""
+        flight = getattr(victim, "flight", None)
+        if flight is not None:
+            return bool(flight.squadron.player.is_blue)
+        for attr in ("origin", "airfield"):
+            origin = getattr(victim, attr, None)
+            if origin is not None and hasattr(origin, "captured"):
+                return bool(origin.captured.is_blue)
+        for attr in ("theater_unit", "ground_unit"):
+            unit = getattr(victim, attr, None)
+            tgo = getattr(unit, "ground_object", None)
+            if tgo is not None:
+                return bool(tgo.control_point.captured.is_blue)
+        convoy = getattr(victim, "convoy", None)
+        if convoy is not None:
+            return bool(convoy.player_owned.is_blue)
+        return None
+
+    def _kill_xp(self, victim: Any) -> int:
+        """What destroying this was worth.
+
+        Proportionality comes from the pieces: a refinery is four platforms, each with
+        its own death, so two of them is half a refinery. DCS reports no damage
+        magnitude anywhere, so there is nothing finer to divide by.
+        """
+        if victim is None:
+            return 0
+        if getattr(victim, "flight", None) is not None:
+            return XP_AIR_KILL
+        if getattr(victim, "convoy", None) is not None:
+            return XP_GROUND_KILL
+        if hasattr(victim, "unit_type") and getattr(victim, "origin", None) is not None:
+            return XP_GROUND_KILL  # front line and motorpool vehicles
+
+        unit = getattr(victim, "theater_unit", None) or getattr(
+            victim, "ground_unit", None
+        )
+        if unit is None:
+            return 0
+        unit_type = getattr(unit, "unit_type", None)
+        if unit_type is not None:
+            from game.dcs.shipunittype import ShipUnitType
+
+            if isinstance(unit_type, ShipUnitType):
+                return XP_SHIP_KILL
+            return XP_GROUND_KILL
+        # No unit type: a static or a scenery objective, paid by what it is worth.
+        tgo = getattr(unit, "ground_object", None)
+        if tgo is None:
+            return XP_UNKNOWN_KILL
+        return building_xp(getattr(tgo, "category", None))
+
+    def _experience_from_kills(self, debriefing: Debriefing) -> dict[int, int]:
+        """What each pilot earned this mission, keyed by pilot identity."""
+        earned: dict[int, int] = {}
+        for detail in debriefing.state_data.kill_details:
+            if not isinstance(detail, dict):
+                continue
+            initiator = detail.get("initiator")
+            target = detail.get("target")
+            if not initiator or not target:
+                continue
+            killer = debriefing.unit_map.flight(str(initiator))
+            if killer is None or killer.pilot is None:
+                continue
+            victim = debriefing.resolve_killed_object(str(target))
+            victim_blue = self._victim_is_blue(victim)
+            if victim_blue is not None and (
+                victim_blue == killer.flight.squadron.player.is_blue
+            ):
+                continue  # nobody is paid for killing his own side
+            xp = self._kill_xp(victim)
+            if xp:
+                earned[id(killer.pilot)] = earned.get(id(killer.pilot), 0) + xp
+        return earned
+
+    def _commit_pilot_experience(
+        self, ato: AirTaskingOrder, debriefing: Debriefing, earned: dict[int, int]
+    ) -> None:
         for package in ato.packages:
             for flight in package.flights:
+                squadron = flight.squadron
                 for idx, pilot in enumerate(flight.roster.iter_pilots()):
                     if pilot is None:
                         logging.error(
@@ -209,10 +371,28 @@ class MissionResultsProcessor:
                         )
                         continue
                     pilot.record.missions_flown += 1
+                    if not pilot.alive:
+                        # Losses are committed before this runs. He earned it and did
+                        # not live to collect it.
+                        continue
 
-    def commit_pilot_experience(self) -> None:
-        self._commit_pilot_experience(self.game.blue.ato)
-        self._commit_pilot_experience(self.game.red.ato)
+                    before = squadron.pilot_rank(pilot)
+                    pilot.record.xp += earned.get(id(pilot), 0) + XP_MISSION_COMPLETE
+                    after = squadron.pilot_rank(pilot)
+                    if before is not None and after is not None and after != before:
+                        debriefing.pilot_outcomes.promotions.append(
+                            PilotPromotion(
+                                pilot_name=pilot.name,
+                                squadron=str(squadron),
+                                from_rank=before.abbreviation,
+                                to_rank=after.abbreviation,
+                            )
+                        )
+
+    def commit_pilot_experience(self, debriefing: Debriefing) -> None:
+        earned = self._experience_from_kills(debriefing)
+        self._commit_pilot_experience(self.game.blue.ato, debriefing, earned)
+        self._commit_pilot_experience(self.game.red.ato, debriefing, earned)
 
     @staticmethod
     def commit_front_line_losses(debriefing: Debriefing) -> None:

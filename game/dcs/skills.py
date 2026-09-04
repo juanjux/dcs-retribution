@@ -55,3 +55,35 @@ def ground_skill(skill: Skill) -> Skill:
     no ground unit has.
     """
     return Skill.Average if skill is CADET_SKILL else skill
+
+
+# Experience needed to reach each rung, in the same order as SKILL_LADDER. A pilot flies
+# at the highest rung whose threshold he has passed. The steps double, so the climb out of
+# cadet is a couple of good sorties and the last one is a campaign.
+SKILL_XP_THRESHOLDS: tuple[int, ...] = (0, 1000, 2000, 4000, 8000)
+
+
+def skill_for_experience(xp: int, floor: Skill = Skill.Average) -> Skill:
+    """The rung ``xp`` has earned, never below ``floor``.
+
+    The coalition's skill setting is a floor rather than a starting point: raising the
+    difficulty lifts everyone at once, and a veteran is never demoted by it.
+    """
+    earned = 0
+    for rung, threshold in enumerate(SKILL_XP_THRESHOLDS):
+        if xp >= threshold:
+            earned = rung
+    try:
+        return SKILL_LADDER[max(earned, SKILL_LADDER.index(floor))]
+    except ValueError:
+        # Random, Player and Client are skills to DCS but not rungs of anything.
+        return SKILL_LADDER[earned]
+
+
+def experience_for_skill(skill: Skill) -> int:
+    """The experience a pilot flying at ``skill`` must have. Used when the feature is
+    switched on mid-campaign: a veteran keeps his rank and is seeded with its cost."""
+    try:
+        return SKILL_XP_THRESHOLDS[SKILL_LADDER.index(skill)]
+    except ValueError:
+        return 0

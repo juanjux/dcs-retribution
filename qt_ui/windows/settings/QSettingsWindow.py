@@ -650,6 +650,10 @@ class QSettingsWindow(QDialog):
 
     def closeEvent(self, event: QCloseEvent) -> None:
         self._handle_mod_settings()
+        if self.game is not None and self.game.settings.live_pilots_enabled:
+            # Idempotent: it starts the ladder the first time and does nothing after,
+            # so the player is free to raise the coalition skills again afterwards.
+            self.game.begin_live_pilots()
         super().closeEvent(event)
 
     def _handle_mod_settings(self) -> None:

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import unique, Enum
+from typing import Any
 
 from faker import Faker
 
@@ -9,6 +10,17 @@ from faker import Faker
 @dataclass
 class PilotRecord:
     missions_flown: int = field(default=0)
+
+    #: What the pilot has earned in the air, which is what decides his rank. A plain
+    #: default rather than a factory: dataclasses keep the former as a class attribute,
+    #: so a pilot unpickled from a save written before this field reads 0 instead of
+    #: raising.
+    xp: int = field(default=0)
+
+    def __setstate__(self, state: dict[str, Any]) -> None:
+        # Belt and braces for the same case: older saves carry no xp at all.
+        state.setdefault("xp", 0)
+        self.__dict__.update(state)
 
 
 @unique
