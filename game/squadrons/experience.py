@@ -132,6 +132,12 @@ class PilotPromotion:
     from_rank: str
     to_rank: str
 
+    #: The full name of the new rank, for anything with room to spell it out.
+    to_rank_full: str = ""
+
+    #: Whether this is a pilot the human flies himself, who is told about it.
+    player: bool = False
+
 
 @dataclass
 class PilotOutcomes:

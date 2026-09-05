@@ -497,6 +497,8 @@ class MissionResultsProcessor:
                                 squadron=str(squadron),
                                 from_rank=before.abbreviation,
                                 to_rank=after.abbreviation,
+                                to_rank_full=after.name,
+                                player=pilot.player,
                             )
                         )
                     self.xp_log.collected(
