@@ -32,6 +32,23 @@ Each item links to the fork PR that implements it. The authoritative, up-to-date
 list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=is%3Apr).
 
 ### Map & UI
+- **Air Wing squadron list, redesigned** — the list painted four blocks of identical
+  12pt text, with the aircraft type right-aligned on the far side of a 1200px row, so
+  finding an airframe meant reading every line. The type is now the only large, bold
+  text and sits on a fixed rail beside the silhouette, with the variant ("Block 135-GR
+  Late") demoted beside it; squadron and nickname drop to a quiet second line. Four
+  fixed columns replace the two ragged edges: type/squadron, base, role and strength.
+  The **primary task** appears for the first time as a colour-coded chip (air-to-air,
+  air-to-ground, support), a **6px diamond** marks carrier-based squadrons, pending
+  transfers get their own amber line instead of doubling the longest string in the row,
+  and the strength line leads with the aircraft count, greys the pilots and shows
+  "n ready" in green only when there is something to fly. A squadron with no aircraft
+  dims instead of shouting. Above the list: a **live filter** over type, squadron or
+  base, a **sort order** (type / squadron / base / aircraft count), **grouping** by
+  aircraft type or by base — the grouped column moves to a section header and the rows
+  lose it, and the choice is remembered next time you open the dialog — and a running
+  count of what is on screen. Design by Claude Design.
+  (branch [`juanjux/airwing-redesign`](https://github.com/juanjux/dcs-retribution/tree/juanjux/airwing-redesign))
 - **Mission dashboard** — an embedded in-progress panel (live clocks, weather,
   per-flight status and a kill feed, with accept / submit-manually / abort)
   that replaces the old modal "waiting for mission result" dialog.
@@ -195,6 +212,19 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   (branch [`juanjux/ch_china_1.1.6`](https://github.com/juanjux/dcs-retribution/tree/juanjux/ch_china_1.1.6))
 
 ### Fixes
+- **A CAP guarding its own base could vanish the instant the mission started.** DCS
+  deletes an air-started flight on spawn if its route is short enough, without it flying
+  a metre: the engine runs the last waypoint's tasks straight away, and for an
+  air-started AI flight that waypoint carries the script that despawns it over its base.
+  No event, nothing in the debriefing — the flight simply never existed. Measured by
+  editing only the patrol coordinates of one generated mission and flying each: total
+  routes of 35.8 and 42.6 nm died, 46 nm and up flew, whatever the shape. It is the
+  total and not any single leg (a triangle of three 20 nm legs flies). The cold war
+  doctrine can put the end of the track 8 nm from the field with a 12 nm track — a 24 nm
+  round trip — and Retribution's own planner produced a 4.4 nm track start for a BARCAP
+  over Banak. Patrol routes are now lengthened **away from the enemy** until they reach
+  60 nm, so the threat-facing end and the station stay where the planner put them.
+  (branch [`juanjux/min-patrol-route`](https://github.com/juanjux/dcs-retribution/tree/juanjux/min-patrol-route))
 - **Take Off died with "Duplicate convoy unit", stranding the campaign** — the name
   counter reset each turn onto a convoy still in transit. Same bug upstream.
   ([#93](https://github.com/juanjux/dcs-retribution/pull/93))
