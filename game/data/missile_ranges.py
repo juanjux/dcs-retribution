@@ -18,4 +18,10 @@ MISSILE_SITE_MIN_RANGE_M: dict[str, int] = {
     "CH_CJ10": 20000,
     "CH_IskanderK": 20000,
     "CH_YJ12B": 10000,
+    # ED shipped Currenthill's assets with the game as the CHAP pack, and those
+    # declare their own minimums in CoreMods/tech/Currenthill Assets Pack.
+    "CHAP_M142_ATACMS_M48": 50000,
+    "CHAP_M142_ATACMS_M39A1": 50000,
+    "CHAP_M142_GMLRS_M30": 15000,
+    "CHAP_M142_GMLRS_M31": 15000,
 }
