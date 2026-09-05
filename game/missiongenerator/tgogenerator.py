@@ -32,7 +32,6 @@ from dcs.ships import (
 from dcs.statics import Fortification
 from dcs.task import (
     ActivateBeaconCommand,
-    AttackGroup,
     ActivateICLSCommand,
     ActivateLink4Command,
     ActivateACLSCommand,
@@ -103,6 +102,10 @@ FARP_FRONTLINE_DISTANCE = 10000
 AA_CP_MIN_DISTANCE = 40000
 
 from game.data.missile_ranges import MISSILE_SITE_MIN_RANGE_M
+
+# How much of a launcher's nominal envelope is worth using. The last few per cent
+# are brochure range: the round leaves but does not arrive where it was sent.
+USABLE_RANGE_FRACTION = 0.85
 
 # Offset (meters) from airport position to place the portable TACAN beacon
 _PORTABLE_TACAN_OFFSET_M = 50
@@ -613,11 +616,13 @@ class MissileSiteGenerator(GroundObjectGenerator):
     def plan_fire_mission(self) -> None:
         """Task the site, once every group in the theater has been generated.
 
-        A coordinate is not a target. The CH ATACMS turns on its seeker and flies its
-        terminal manoeuvre only "if target is locked on", so tasked at a bare point it
-        cruises straight over the aimpoint and comes down miles beyond. Naming the
-        enemy group gives it something to lock. Sites whose only reachable targets are
-        statics keep the old point-and-scatter behaviour, which is all a Scud needs.
+        Fired at a point, because that is the only offensive task DCS ground AI honours.
+        Naming the target group with AttackGroup was tried and measured: of seven sites,
+        the six given a group fired nothing all mission and the one that fell back to a
+        point fired three Scuds. The engine ignores it.
+
+        The aimpoint is a real objective rather than the control point's map coordinate,
+        which is what used to put these salvos in open country.
         """
         if not self.game.settings.generate_fire_tasks_for_missile_sites:
             return
@@ -650,32 +655,12 @@ class MissileSiteGenerator(GroundObjectGenerator):
             )
             vg.points[0].add_task(hold)
 
-            target_group = self.dcs_group_for(target)
-            if target_group is not None:
-                vg.points[0].add_task(AttackGroup(target_group.id, group_attack=True))
-                logging.info(
-                    f"Missile site {vg.name} tasked against {target_group.name}"
-                )
-            else:
-                aimpoint = target.position.point_from_heading(
-                    Heading.random().degrees,
-                    random.randint(0, self.aimpoint_error),
-                )
-                vg.points[0].add_task(FireAtPoint(aimpoint))
-                logging.info(
-                    f"Missile site {vg.name} tasked at a point near {target.name}"
-                )
-
-    def dcs_group_for(self, target: TheaterGroundObject) -> Optional[Group[Any, Any]]:
-        """The generated group to name as the target, if the objective has one.
-
-        Buildings and other statics are not groups and cannot be attacked by name.
-        """
-        for group in target.groups:
-            vg = self.m.find_group(group.group_name)
-            if vg is not None:
-                return vg
-        return None
+            aimpoint = target.position.point_from_heading(
+                Heading.random().degrees,
+                random.randint(0, self.aimpoint_error),
+            )
+            vg.points[0].add_task(FireAtPoint(aimpoint))
+            logging.info(f"Missile site {vg.name} tasked at {target.name}")
 
     def possible_missile_targets(self) -> List[TheaterGroundObject]:
         """Enemy objectives this site can actually reach.
@@ -687,7 +672,11 @@ class MissileSiteGenerator(GroundObjectGenerator):
         have a minimum range as well, which nothing here used to respect.
         """
         minimum = self.missile_site_min_range
-        maximum = self.missile_site_range
+        # Not the last metre of the envelope: an ATACMS tasked at 296 of its nominal
+        # 300 km flew over the aimpoint and came down 18 km beyond, measured in game.
+        # A launcher that can reach nothing worth shooting holds its fire, which beats
+        # cratering empty desert.
+        maximum = int(self.missile_site_range * USABLE_RANGE_FRACTION)
         origin = self.ground_object.position
         targets: List[TheaterGroundObject] = []
         for cp in self.game.theater.controlpoints:

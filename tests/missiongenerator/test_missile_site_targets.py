@@ -106,8 +106,8 @@ def test_it_ignores_friendly_control_points() -> None:
 
 def test_range_is_measured_to_the_objective_not_the_base() -> None:
     """The far depot is out of reach even though its base's centre is not."""
-    cp = _control_point(50000, 0, blue=True, tgos=[_tgo(55000, 0), _tgo(70000, 0)])
-    assert _coords(_generator([cp], site_range=60000).possible_missile_targets()) == [
+    cp = _control_point(50000, 0, blue=True, tgos=[_tgo(55000, 0), _tgo(90000, 0)])
+    assert _coords(_generator([cp], site_range=80000).possible_missile_targets()) == [
         (55000.0, 0.0)
     ]
 
@@ -117,7 +117,7 @@ def test_it_will_not_shoot_inside_its_minimum_range() -> None:
     cp = _control_point(
         50000, 0, blue=True, tgos=[_tgo(40000, 0), _tgo(80000, 0), _tgo(90000, 0)]
     )
-    targets = _generator([cp], site_range=100000, site_min=75000)
+    targets = _generator([cp], site_range=140000, site_min=75000)
     assert _coords(targets.possible_missile_targets()) == [
         (80000.0, 0.0),
         (90000.0, 0.0),
@@ -131,3 +131,9 @@ def test_a_minimum_that_swallows_everything_leaves_the_site_silent() -> None:
         _generator([cp], site_range=1000000, site_min=300000).possible_missile_targets()
         == []
     )
+
+
+def test_it_does_not_shoot_at_the_last_metre_of_its_envelope() -> None:
+    """An ATACMS fired at 296 of its nominal 300 km came down 18 km past the aimpoint."""
+    cp = _control_point(50000, 0, blue=True, tgos=[_tgo(99000, 0)])
+    assert _generator([cp], site_range=100000).possible_missile_targets() == []
