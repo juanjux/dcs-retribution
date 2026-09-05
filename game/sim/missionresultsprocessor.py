@@ -283,7 +283,7 @@ class MissionResultsProcessor:
             random.random() < settings.live_pilots_wounded_chance / 100
         ):
             turns = random.randint(*WOUNDED_TURNS)
-            pilot.wound(turns)
+            pilot.wound(turns, self.game.turn)
             debriefing.pilot_outcomes.wounded.append(
                 PilotWound(pilot.name, str(squadron), turns)
             )

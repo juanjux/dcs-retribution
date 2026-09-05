@@ -319,8 +319,9 @@ class Squadron:
 
     def tend_the_wounded(self) -> None:
         """One turn of every wound served; the last one puts the pilot back to work."""
+        turn = self.coalition.game.turn
         for pilot in self.wounded_pilots:
-            pilot.serve_a_turn_wounded()
+            pilot.serve_a_turn_wounded(turn)
 
     def replenish_lost_pilots(self) -> None:
         if self.pilot_limits_enabled and self.replenish_count > 0:
