@@ -67,7 +67,11 @@ class PilotDelegate(TwoColumnRowDelegate):
             return f"{who} - Level: {squadron.pilot_skill(pilot).value}"
         elif (row, column) == (1, 1):
             # Dead pilots have their own list and living pilots are active by
-            # default, so only the "on leave" state is worth surfacing here.
+            # default, so only the states that keep a pilot off the roster are worth
+            # surfacing here.
+            if pilot.wounded:
+                turns = "turn" if pilot.wounded_turns == 1 else "turns"
+                return f"Wounded for {pilot.wounded_turns} {turns}"
             return pilot.status.value if pilot.on_leave else ""
         return ""
 
@@ -571,6 +575,12 @@ class SquadronDialog(QDialog):
         pilot = self.squadron_model.pilot_at_index(index)
         if not pilot.alive:
             button.setText("Pilot is dead")
+            button.setDisabled(True)
+            return True
+        if pilot.wounded:
+            # He is already off the roster and comes back on his own schedule.
+            turns = "turn" if pilot.wounded_turns == 1 else "turns"
+            button.setText(f"Wounded for {pilot.wounded_turns} {turns}")
             button.setDisabled(True)
             return True
         return False

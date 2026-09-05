@@ -280,6 +280,16 @@ class QDebriefingWindow(QDialog):
                     f"lost his {survivor.aircraft} to {brought_down}, and walked away",
                 )
 
+        if outcomes.wounded:
+            line("<b>Wounded</b>")
+            for wound in outcomes.wounded:
+                turns = "turn" if wound.turns == 1 else "turns"
+                line(
+                    wound.pilot_name,
+                    f"pulled out alive, unavailable for {wound.turns} {turns} "
+                    f"— {wound.squadron}",
+                )
+
         if outcomes.deaths:
             line("<b>Killed in action</b>")
             for death in outcomes.deaths:

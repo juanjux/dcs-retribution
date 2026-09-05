@@ -8,12 +8,15 @@ from game.debriefing import Debriefing
 from game.squadrons.experience import (
     PilotDeath,
     PilotPromotion,
+    PilotWound,
+    WOUNDED_TURNS,
     XP_AIR_KILL,
     XP_DAMAGE_SHARE,
     XP_GROUND_KILL,
     XP_MISSION_COMPLETE,
     XP_SHIP_KILL,
     XP_UNKNOWN_KILL,
+    XP_WOUNDED,
     building_xp,
     survival_chance,
 )
@@ -222,15 +225,20 @@ class MissionResultsProcessor:
         coalition.air_wing.add_squadron(squadron)
 
     def _resolve_pilot_fate(self, loss: Any, debriefing: Debriefing) -> None:
-        """Kill the pilot, or let his rank save him.
+        """Kill the pilot, or let his rank save him, or let the medics reach him.
 
-        Two switches have to be on: with either off, losing the aircraft still means
-        losing the pilot, exactly as before.
+        Two rolls, in that order. The first is bought with rank and needs both Live
+        Pilots and the rank survival switch; the second is flat and needs only Live
+        Pilots, so a wound can still spare a pilot in a campaign that does not want
+        rank deciding who lives. Neither switched on means losing the aircraft loses
+        the pilot, exactly as before.
         """
         settings = self.game.settings
         pilot = loss.pilot
         squadron = loss.flight.squadron
         record = self._describe_loss(loss, debriefing)
+        # However this ends for him, he did not bring the aircraft home.
+        debriefing.pilot_outcomes.lost_aircraft.add(id(pilot))
         rolls = settings.live_pilots_enabled and settings.live_pilots_rank_survival
         chance = (
             survival_chance(squadron.pilot_skill(pilot), settings) if rolls else 0.0
@@ -244,6 +252,19 @@ class MissionResultsProcessor:
             debriefing.pilot_outcomes.survivors.append(record)
             logging.info(f"{pilot.name} survived the loss of his aircraft")
             return
+
+        if settings.live_pilots_enabled and (
+            random.random() < settings.live_pilots_wounded_chance / 100
+        ):
+            turns = random.randint(*WOUNDED_TURNS)
+            pilot.wound(turns)
+            debriefing.pilot_outcomes.wounded.append(
+                PilotWound(pilot.name, str(squadron), turns)
+            )
+            self.xp_log.wounded(pilot, squadron, turns)
+            logging.info(f"{pilot.name} was wounded and is out for {turns} turns")
+            return
+
         pilot.kill()
         debriefing.pilot_outcomes.deaths.append(record)
 
@@ -447,7 +468,25 @@ class MissionResultsProcessor:
 
                     before = squadron.pilot_rank(pilot)
                     had = pilot.record.xp
-                    pilot.record.xp += earned.get(id(pilot), 0) + XP_MISSION_COMPLETE
+                    # A pilot who lost the aircraft did not complete the mission. If
+                    # the medics reached him, the wound is his consolation -- smaller
+                    # than the sortie, so being shot down is never the better outcome.
+                    extras = []
+                    if id(pilot) not in debriefing.pilot_outcomes.lost_aircraft:
+                        extras.append(
+                            ("returned", "mission complete", XP_MISSION_COMPLETE)
+                        )
+                    if pilot.wounded:
+                        extras.append(
+                            (
+                                "wounded",
+                                f"out for {pilot.wounded_turns} turns",
+                                XP_WOUNDED,
+                            )
+                        )
+                    pilot.record.xp += earned.get(id(pilot), 0) + sum(
+                        xp for _, _, xp in extras
+                    )
                     after = squadron.pilot_rank(pilot)
                     promotion = None
                     if before is not None and after is not None and after != before:
@@ -461,12 +500,7 @@ class MissionResultsProcessor:
                             )
                         )
                     self.xp_log.collected(
-                        pilot,
-                        squadron,
-                        had,
-                        pilot.record.xp,
-                        XP_MISSION_COMPLETE,
-                        promotion,
+                        pilot, squadron, had, pilot.record.xp, extras, promotion
                     )
 
     def commit_pilot_experience(self, debriefing: Debriefing) -> None:

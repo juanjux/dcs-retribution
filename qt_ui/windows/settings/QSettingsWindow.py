@@ -367,9 +367,12 @@ class AutoSettingsLayout(QGridLayout):
         def refresh() -> None:
             live = bool(self.sc.settings.live_pilots_enabled)
             rolling = live and bool(self.sc.settings.live_pilots_rank_survival)
-            for name, enabled in [("live_pilots_rank_survival", live)] + [
-                (rung, rolling) for rung in rungs
-            ]:
+            # The wound roll is flat and rank-free, so it follows the master switch
+            # rather than the rank one: it still applies with rank survival off.
+            for name, enabled in [
+                ("live_pilots_rank_survival", live),
+                ("live_pilots_wounded_chance", live),
+            ] + [(rung, rolling) for rung in rungs]:
                 for target in (self.settings_map.get(name), self.label_map.get(name)):
                     if isinstance(target, QWidget):
                         target.setEnabled(enabled)
