@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import contextlib
 from datetime import datetime, timedelta
-from typing import TYPE_CHECKING, Union
+from typing import Any, TYPE_CHECKING, Union
 from uuid import UUID
 
 from game.ato.flighttype import FlightType
@@ -635,8 +635,10 @@ def edit_waypoint(
             waypoint.position = Point.from_latlng(
                 LatLng(lat, lng), game.theater.terrain
             )
+        warning = ""
         if alt_m is not None:
             waypoint.alt = meters(alt_m)
+            warning = _too_high_to_attack(flight, alt_m)
         events = _new_map_events()
         update_package_waypoints_if_primary_flight(waypoint, flight, events)
         try:  # recalc TOT via the Qt model when available (no-op headless)
@@ -650,7 +652,84 @@ def edit_waypoint(
             pass
         events.update_flight(flight)
         _push_map_events(events)
-        return schemas.OpResult(ok=True, detail=f"waypoint {waypoint_idx} updated")
+        return schemas.OpResult(
+            ok=True, detail=f"waypoint {waypoint_idx} updated{warning}"
+        )
+    except Exception as exc:
+        return schemas.OpResult(ok=False, error=str(exc))
+
+
+def _too_high_to_attack(flight: Any, alt_m: float) -> str:
+    """Warn when a ground attack flight is sent above the height it plans to fight at.
+
+    Some aircraft simply do not attack from up there, and no rule says which: it is a
+    property of the airframe and of the pilot, found by flying it. What is known is
+    each aircraft's own combat altitude, so that is the reference -- above it, the
+    caller is outside what the planner would ever choose.
+
+    Only a warning. The altitude is set either way, because there are reasons to fly
+    high and the caller may have one.
+    """
+    from game.ato import FlightType
+    from game.utils import meters
+
+    if flight.flight_type not in (FlightType.CAS, FlightType.BAI):
+        return ""
+    planned = flight.unit_type.preferred_combat_altitude
+    if meters(alt_m) <= planned:
+        return ""
+    return (
+        f" -- WARNING: {alt_m:.0f} m is above the {planned.meters:.0f} m this "
+        f"{flight.unit_type} is planned to fight from. Some aircraft fly over the "
+        "target without firing when sent higher than that, and how much higher is too "
+        "much varies by airframe and by how experienced the pilot is. Lower it unless "
+        "you have a reason."
+    )
+
+
+def set_flight_loadout(
+    game: Game, side: str, flight_id: str, loadout: str | dict[int, str]
+) -> schemas.OpResult:
+    """Re-arm a flight that already exists, the way the player uses the Payload tab.
+
+    ``/packages`` arms the flights it creates, but the engine also creates flights on
+    its own, and not all of them are armed: a squadron relocation launches its ferry
+    flights with the "Empty" loadout, because no airframe ships a payload named for
+    the Ferry task and that task has no fallback. Without this the LLM could not fix
+    that, while the player can.
+    """
+    flight = flight_for_side(game, side, flight_id)
+    if flight is None:
+        return schemas.OpResult(ok=False, error=f"no flight with id {flight_id!r}")
+    try:
+        if isinstance(loadout, dict):
+            built = _build_loadout(flight.unit_type, flight.flight_type, loadout)
+        else:
+            # Resolve against the same list /aircraft/loadouts offers. iter_for drops
+            # payloads carrying clsids the installed mods do not declare, which
+            # loadout_by_name does not -- and DCS discards those stores in silence.
+            from game.ato.loadouts import Loadout
+
+            name = str(loadout)
+            built = next(
+                (lo for lo in Loadout.iter_for(flight) if lo.name == name), None
+            )
+            if built is None:
+                raise ValueError(
+                    f"no loadout named {name!r} for "
+                    f"{flight.unit_type.display_name} -- see /aircraft/loadouts"
+                )
+        for member in flight.iter_members():
+            member.loadout = built
+            member.use_custom_loadout = built.is_custom
+        events = _new_map_events()
+        events.update_flight(flight)
+        _push_map_events(events)
+        return schemas.OpResult(
+            ok=True,
+            detail=f"{flight.flight_type.value} / "
+            f"{flight.unit_type.display_name}: {built.name}",
+        )
     except Exception as exc:
         return schemas.OpResult(ok=False, error=str(exc))
 
