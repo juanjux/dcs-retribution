@@ -137,3 +137,20 @@ def test_it_does_not_shoot_at_the_last_metre_of_its_envelope() -> None:
     """An ATACMS fired at 296 of its nominal 300 km came down 18 km past the aimpoint."""
     cp = _control_point(50000, 0, blue=True, tgos=[_tgo(99000, 0)])
     assert _generator([cp], site_range=100000).possible_missile_targets() == []
+
+
+def test_the_salvo_is_aimed_at_the_objective_itself() -> None:
+    """A CEP offset was moving the whole crater trail off the target.
+
+    Three launchers fire at one point and DCS walks the rounds along the firing line
+    for about a kilometre on its own, so there is no dispersion left for us to add --
+    only a target left to miss.
+    """
+    import inspect
+
+    from game.missiongenerator import tgogenerator
+
+    source = inspect.getsource(tgogenerator.MissileSiteGenerator.plan_fire_mission)
+    assert "FireAtPoint(target.position)" in source
+    assert not hasattr(tgogenerator.MissileSiteGenerator, "aimpoint_error")
+    assert not hasattr(tgogenerator, "MISSILE_SITE_CEP_M")
