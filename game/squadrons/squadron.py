@@ -18,7 +18,7 @@ from game.settings import AutoAtoBehavior, Settings
 from game.theater import ParkingType
 from game.theater.player import Player
 from .pilot import Pilot, PilotStatus
-from game.dcs.skills import SKILL_LADDER, skill_for_experience
+from game.dcs.skills import CADET_SKILL, SKILL_LADDER, skill_for_experience
 
 from .pilotnames import faker_for_country
 from .pilotranks import Rank, rank_for_skill, ranks_for
@@ -122,6 +122,21 @@ class Squadron:
 
     @property
     def base_skill(self) -> Skill:
+        """The lowest rung this coalition's pilots may fly at.
+
+        Live Pilots puts every wing on the bottom rung, because a rank that starts at
+        Veteran has nowhere to climb from. It does that here rather than by writing
+        Cadet into the difficulty settings: those belong to the player, they are what
+        the wing returns to when the feature is switched off, and overwriting them
+        leaked a Cadet air force into the next campaign started from them.
+        """
+        if self.settings.live_pilots_enabled:
+            return CADET_SKILL
+        return self.difficulty_skill
+
+    @property
+    def difficulty_skill(self) -> Skill:
+        """The skill the player set for this coalition on the difficulty page."""
         if self.player.is_blue:
             return Skill(self.settings.player_skill)
         return Skill(self.settings.enemy_skill)

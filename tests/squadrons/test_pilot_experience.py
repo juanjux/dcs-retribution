@@ -370,3 +370,36 @@ def test_an_older_save_carries_no_hits_at_all() -> None:
     from game.debriefing import StateData
 
     assert StateData.from_json({}, MagicMock()).hit_details == []
+
+
+# --- switching the feature on -----------------------------------------------
+
+
+def test_the_floor_drops_to_cadet_without_touching_the_difficulty_page() -> None:
+    """The reset used to be written into the settings, and leaked from there.
+
+    A campaign started afterwards inherited player_skill=Cadet, so the next time the
+    feature was switched on it seeded that wing from Cadet -- zero -- while the other
+    coalition, still at its own skill, kept its rank.
+    """
+    settings = Settings()
+    settings.player_skill = Skill.High.value
+    squadron = _ranked_squadron(settings)
+
+    assert squadron.base_skill is Skill.High
+    settings.live_pilots_enabled = True
+    assert squadron.base_skill is CADET_SKILL
+    assert squadron.difficulty_skill is Skill.High
+    assert settings.player_skill == Skill.High.value
+
+
+def test_the_wing_is_seeded_with_the_rank_it_was_flying_at() -> None:
+    settings = _live_settings()
+    settings.player_skill = Skill.High.value
+    squadron = _ranked_squadron(settings)
+    pilot = _pilot("Veteran", 0)
+
+    pilot.record.xp = max(
+        pilot.record.xp, experience_for_skill(squadron.difficulty_skill)
+    )
+    assert squadron.pilot_skill(pilot) is Skill.High
