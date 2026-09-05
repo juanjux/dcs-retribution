@@ -80,6 +80,31 @@ def skill_for_experience(xp: int, floor: Skill = Skill.Average) -> Skill:
         return SKILL_LADDER[earned]
 
 
+def one_promotion_at_most(before: int, after: int, floor: Skill = Skill.Average) -> int:
+    """Cap a mission's experience at one rung, and at the rung's own price.
+
+    A pilot who is promoted arrives at his new rank with nothing banked towards the
+    next: a cadet who earns 2500 in one sortie makes First Lieutenant, not Captain,
+    and holds the 1000 it costs. Double promotions do happen in life and are
+    extraordinary; a campaign would hand them out whenever a good SEAD sortie paid
+    two rungs at once, which is most of them.
+
+    Experience that does not promote anyone is kept in full.
+    """
+    rung_before = _rung_of(before, floor)
+    rung_after = _rung_of(after, floor)
+    if rung_after <= rung_before:
+        return after
+    return SKILL_XP_THRESHOLDS[min(rung_after, rung_before + 1)]
+
+
+def _rung_of(xp: int, floor: Skill) -> int:
+    try:
+        return SKILL_LADDER.index(skill_for_experience(xp, floor))
+    except ValueError:
+        return 0
+
+
 def experience_for_skill(skill: Skill) -> int:
     """The experience a pilot flying at ``skill`` must have. Used when the feature is
     switched on mid-campaign: a veteran keeps his rank and is seeded with its cost."""

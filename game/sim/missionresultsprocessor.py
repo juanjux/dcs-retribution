@@ -21,6 +21,7 @@ from game.squadrons.experience import (
     turns_phrase,
     survival_chance,
 )
+from game.dcs.skills import one_promotion_at_most
 from game.ground_forces.combat_stance import CombatStance
 from game.squadrons.pilot import Pilot
 from game.squadrons.xplog import XpLog
@@ -254,7 +255,12 @@ class MissionResultsProcessor:
             """
             if rolls or settings.live_pilots_enabled:
                 self.xp_log.fate(
-                    pilot, squadron, squadron.pilot_rank(pilot), chance, outcome
+                    pilot,
+                    squadron,
+                    loss.flight.unit_type,
+                    squadron.pilot_rank(pilot),
+                    chance,
+                    outcome,
                 )
 
         if survived:
@@ -475,7 +481,10 @@ class MissionResultsProcessor:
                         # Losses are committed before this runs. He earned it and did
                         # not live to collect it.
                         self.xp_log.uncollected(
-                            pilot, squadron, earned.get(id(pilot), 0)
+                            pilot,
+                            squadron,
+                            flight.unit_type,
+                            earned.get(id(pilot), 0),
                         )
                         continue
 
@@ -497,9 +506,21 @@ class MissionResultsProcessor:
                                 XP_WOUNDED,
                             )
                         )
-                    pilot.record.xp += earned.get(id(pilot), 0) + sum(
-                        xp for _, _, xp in extras
+                    # The same floor pilot_skill measures against, or the rungs
+                    # would be counted from the difficulty setting Live Pilots
+                    # replaces.
+                    raw = had + earned.get(id(pilot), 0) + sum(x for _, _, x in extras)
+                    pilot.record.xp = one_promotion_at_most(
+                        had, raw, squadron.base_skill
                     )
+                    if pilot.record.xp < raw:
+                        extras.append(
+                            (
+                                "forfeit",
+                                "no more than one promotion a mission",
+                                pilot.record.xp - raw,
+                            )
+                        )
                     after = squadron.pilot_rank(pilot)
                     promotion = None
                     if before is not None and after is not None and after != before:
@@ -515,7 +536,13 @@ class MissionResultsProcessor:
                             )
                         )
                     self.xp_log.collected(
-                        pilot, squadron, had, pilot.record.xp, extras, promotion
+                        pilot,
+                        squadron,
+                        flight.unit_type,
+                        had,
+                        pilot.record.xp,
+                        extras,
+                        promotion,
                     )
 
     def commit_pilot_experience(self, debriefing: Debriefing) -> None:

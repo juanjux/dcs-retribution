@@ -227,6 +227,7 @@ def test_the_ledger_names_the_rank_rather_than_reprs_it() -> None:
     log.fate(
         SimpleNamespace(name="Lt Vega"),
         "VFA-2",
+        "F/A-18C",
         Rank("1stLt", "First Lieutenant"),
         0.35,
         "wounded, out for 3 turns",
