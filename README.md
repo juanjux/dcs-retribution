@@ -113,10 +113,25 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   name on every kill all along and Python simply never read it. Proportionality comes from
   the pieces rather than a damage percentage, which DCS does not report anywhere -- a
   refinery is four platforms, each with its own death, so two of them is half a refinery.
-  Rank now also decides whether a pilot walks away from a loss, one in five for a cadet and
-  four in five for a squadron leader. The debriefing gains a Pilots box: promotions, who was
-  shot down and recovered, and who was killed and by whom, flagging friendly fire.
+  What DCS *does* report is who **hit** what, which makes an assist real rather than a
+  guess: the plugin records the first hit each aircraft lands on each target -- once per
+  pair, so a strafing pass is not paid by the round -- and that is worth a quarter of
+  destroying it, never on top of the kill. Rank now also decides whether a pilot walks
+  away from a loss, one in five for a cadet and four in five for a squadron leader, with
+  the five percentages on the settings page under a switch of their own. The debriefing
+  gains a Pilots box: promotions, who was shot down and recovered, and who was killed and
+  by whom, flagging friendly fire. The Air Wing lists the senior pilot first, in the
+  living roster and the roll of the dead alike.
   ([#134](https://github.com/juanjux/dcs-retribution/pull/134))
+- **Switching Live Pilots on demoted one coalition and not the other.** Starting the
+  ladder wrote Cadet into the difficulty page, and settings carry into the next campaign
+  started from them -- so a second campaign began at Cadet, seeding measured blue against
+  a floor a previous campaign had lowered and gave every pilot zero, while red kept its
+  rank. 261 second lieutenants against 295 first lieutenants, and no way back to whatever
+  the difficulty had been. The floor is computed now instead of stored: Live Pilots puts
+  every wing on the bottom rung and the difficulty page keeps saying what the player set,
+  which is what the wing returns to when the feature is switched off and what still
+  decides ground unit skill. ([#134](https://github.com/juanjux/dcs-retribution/pull/134))
 - **Live Pilots** (off by default) — a pilot holds a *rank* instead of a bare AI skill
   level, and carries it into the mission: the flight label reads `1stLt Pepito Perez`
   where DCS would leave `Pilot #2`, and the Air Wing roster names the rank in full under
@@ -332,14 +347,17 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   point to eleven real ones. The scatter is now each launcher's published CEP rather
   than one number for all of them -- 450 m for a Scud, 25 m for an ATACMS, 10 m for a
   CJ-10 -- so an inertial missile from the sixties and a GPS-guided one no longer land
-  alike. Cuts both ways: enemy Scuds get more dangerous. A follow-up names the enemy
-  *group* instead of a coordinate: the CH ATACMS flies its terminal manoeuvre only "if
-  target is locked on", so a bare point left it cruising straight over the aimpoint at
-  its 25 km glide height and coming down 18 km beyond -- measured in game, every round
-  in the same field. Sites whose only reachable targets are statics keep the point,
-  which is all a Scud needs. Minimum ranges are respected as well: the ATACMS and
-  Iskander cannot engage inside 75 km, the DF-21D inside 300, and pydcs carries no such
-  field so the values come from the launchers' own mod files.
+  alike. Cuts both ways: enemy Scuds get more dangerous. Naming the enemy *group* instead of a
+  coordinate was tried next and measured: of seven sites in one mission, the six given
+  an `AttackGroup` fired nothing at all and the one that fell back to a point fired
+  three Scuds. DCS ground AI does not honour the task, so it is back to firing at a
+  point. Minimum ranges are respected as well -- the ATACMS and Iskander cannot engage
+  inside 75 km, the DF-21D inside 300, and pydcs carries no such field so the values
+  come from the launchers' own mod files -- and so is the top of the envelope: an
+  ATACMS tasked at 296 of its nominal 300 km overflew the aimpoint by 18 km, because
+  the mod gates its terminal manoeuvre on a seeker lock the engine will not give it
+  when it is aimed at a coordinate. The last fifteen per cent is off limits, and a
+  launcher with nothing worth shooting holds its fire.
   ([#128](https://github.com/juanjux/dcs-retribution/pull/128))
 - **Su-25s flew close air support with weapons they cannot guide.** A flight took off
   with eight S-25L each and attacked nothing while the Su-34s beside them worked
