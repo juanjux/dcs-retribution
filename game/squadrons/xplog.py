@@ -32,11 +32,21 @@ class XpLog:
         """One thing destroyed or damaged, held until its pilot's line is written."""
         what = type(victim).__name__ if victim is not None else "unresolved"
         self._awards.setdefault(id(pilot), []).append(
-            f'    +{xp:<5} {verb:<9} {what} "{target}"'
+            f'    {xp:<+6} {verb:<9} {what} "{target}"'
         )
 
+    @staticmethod
+    def _who(pilot: Any, squadron: Any, aircraft: Any) -> str:
+        return f"{pilot.name} ({squadron}, {aircraft})"
+
     def fate(
-        self, pilot: Any, squadron: Any, rank: Any, chance: float, outcome: str
+        self,
+        pilot: Any,
+        squadron: Any,
+        aircraft: Any,
+        rank: Any,
+        chance: float,
+        outcome: str,
     ) -> None:
         """A pilot who lost his aircraft, and what the dice made of it.
 
@@ -45,7 +55,7 @@ class XpLog:
         """
         where = getattr(rank, "abbreviation", None) or "no rank"
         self._lines.append(
-            f"  {pilot.name} ({squadron}) lost his aircraft as {where}, "
+            f"  {self._who(pilot, squadron, aircraft)} lost his aircraft as {where}, "
             f"{chance:.0%} to walk away -- {outcome}"
         )
 
@@ -53,6 +63,7 @@ class XpLog:
         self,
         pilot: Any,
         squadron: Any,
+        aircraft: Any,
         before: int,
         after: int,
         extras: Iterable[tuple[str, str, int]],
@@ -61,21 +72,22 @@ class XpLog:
         breakdown = self._awards.pop(id(pilot), [])
         for verb, detail, xp in extras:
             if xp:
-                breakdown.append(f"    +{xp:<5} {verb:<9} {detail}")
+                breakdown.append(f"    {xp:<+6} {verb:<9} {detail}")
         self._lines.append(
-            f"  {pilot.name} ({squadron}): {before} -> {after} (+{after - before})"
+            f"  {self._who(pilot, squadron, aircraft)}: "
+            f"{before} -> {after} (+{after - before})"
         )
         self._lines.extend(breakdown)
         if promotion is not None:
             self._lines.append(f"    promoted: {promotion}")
 
-    def uncollected(self, pilot: Any, squadron: Any, xp: int) -> None:
+    def uncollected(self, pilot: Any, squadron: Any, aircraft: Any, xp: int) -> None:
         """He earned it and did not live to collect it."""
         breakdown = self._awards.pop(id(pilot), [])
         if not breakdown and not xp:
             return
         self._lines.append(
-            f"  {pilot.name} ({squadron}): killed in action, "
+            f"  {self._who(pilot, squadron, aircraft)}: killed in action, "
             f"{xp} earned and not collected"
         )
         self._lines.extend(breakdown)

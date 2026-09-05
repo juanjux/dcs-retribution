@@ -417,6 +417,7 @@ def test_the_ledger_shows_what_was_paid_and_what_it_left_him_with(tmp_path) -> N
     log.collected(
         pilot,
         "VFA-2",
+        "F/A-18C",
         1200,
         2200,
         [("returned", "mission complete", 500)],
@@ -432,7 +433,7 @@ def test_the_ledger_shows_what_was_paid_and_what_it_left_him_with(tmp_path) -> N
 
     text = written.read_text(encoding="utf-8")
     assert "turn 6" in text
-    assert "Capt Ortega (VFA-2): 1200 -> 2200 (+1000)" in text
+    assert "Capt Ortega (VFA-2, F/A-18C): 1200 -> 2200 (+1000)" in text
     assert '+500   destroyed object "RED 3-1"' in text
     assert "+500   returned  mission complete" in text
     assert "promoted: Capt -> Maj" in text
@@ -465,6 +466,8 @@ class _RankStub:
 class _PromotingSquadron:
     """Promotes at 2000, which is the Captain rung."""
 
+    base_skill = CADET_SKILL
+
     def pilot_rank(self, pilot: Pilot) -> Any:
         if pilot.record.xp >= 2000:
             return _RankStub("Capt", "Captain")
@@ -479,6 +482,7 @@ def _promote(pilot: Pilot) -> Any:
 
     flight = SimpleNamespace(
         squadron=_PromotingSquadron(),
+        unit_type="F/A-18C",
         roster=SimpleNamespace(iter_pilots=lambda: [pilot]),
     )
     ato: Any = SimpleNamespace(packages=[SimpleNamespace(flights=[flight])])
@@ -503,3 +507,48 @@ def test_the_promotion_says_whose_it_is_and_spells_the_rank_out() -> None:
 def test_an_ai_promotion_is_recorded_but_not_the_players() -> None:
     (promotion,) = _promote(_pilot("Lt Vega", 1500))
     assert promotion.player is False
+
+
+# --- one promotion a mission ------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "before,after,expected,why",
+    [
+        (0, 2500, 1000, "a cadet who earns two rungs makes one, and holds its price"),
+        (0, 900, 900, "experience that promotes nobody is kept in full"),
+        (0, 1500, 1000, "promotion leaves nothing banked towards the next rung"),
+        (1000, 1200, 1200, "no promotion, no cap"),
+        (1500, 9000, 2000, "from Average, one rung is Good however good the sortie"),
+        (8000, 20000, 20000, "the top rung cannot be jumped past"),
+    ],
+)
+def test_a_pilot_climbs_one_rung_a_mission(
+    before: int, after: int, expected: int, why: str
+) -> None:
+    from game.dcs.skills import one_promotion_at_most
+
+    assert one_promotion_at_most(before, after, CADET_SKILL) == expected, why
+
+
+def test_the_ledger_shows_what_the_cap_took_away() -> None:
+    from game.squadrons import xplog
+
+    pilot = SimpleNamespace(name="Lt Vega")
+    log = xplog.XpLog(6)
+    log.collected(
+        pilot,
+        "VFA-2",
+        "F/A-18C",
+        0,
+        1000,
+        [
+            ("destroyed", "a whole SAM site", 2000),
+            ("returned", "mission complete", 500),
+            ("forfeit", "no more than one promotion a mission", -1500),
+        ],
+        "2ndLt -> 1stLt",
+    )
+    text = "\n".join(log._lines)
+    assert "-1500  forfeit" in text
+    assert "0 -> 1000 (+1000)" in text
