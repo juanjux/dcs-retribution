@@ -23,7 +23,7 @@ from dcs.task import CAP, CAS, PinpointStrike
 from dcs.vehicles import AirDefence
 
 from game.ato.closestairfields import ObjectiveDistanceCache
-from game.dcs.skills import CADET_SKILL, experience_for_skill
+from game.dcs.skills import experience_for_skill
 from game.ground_forces.ai_ground_planner import GroundPlanner
 from game.models.game_stats import GameStats
 from game.plugins import LuaPluginManager
@@ -621,25 +621,25 @@ class Game:
     def begin_live_pilots(self) -> None:
         """Start the career ladder, once, when Live Pilots is switched on.
 
-        Both coalitions' air skill drops to Cadet so there is somewhere to climb from,
-        and every pilot already in the campaign keeps the rank he has, seeded with what
+        Every pilot already in the campaign keeps the rank he has, seeded with what
         that rank costs. Nobody is demoted and nobody gets a windfall; the next
         promotion is paid for in full.
 
-        Read the skills before resetting the settings: a pilot's rung is measured
-        against the coalition floor, which is what we are about to lower.
+        The rank is read from the difficulty page rather than from what the pilot
+        currently flies at, because the moment the feature is switched on the floor
+        under him is the bottom rung. Seeding from the floor instead would hand
+        every wing whose coalition was already at Cadet a career starting from zero
+        while the other side kept its rank -- which is what it did.
         """
         if getattr(self, "live_pilots_initialized", False):
             return
         for coalition in (self.blue, self.red):
             for squadron in coalition.air_wing.iter_squadrons():
+                earned = experience_for_skill(squadron.difficulty_skill)
                 for pilot in list(squadron.pilot_pool) + list(squadron.current_roster):
-                    earned = experience_for_skill(squadron.pilot_skill(pilot))
                     pilot.record.xp = max(pilot.record.xp, earned)
-        self.settings.player_skill = CADET_SKILL.value
-        self.settings.enemy_skill = CADET_SKILL.value
         self.live_pilots_initialized = True
-        logging.info("Live Pilots started: both coalitions reset to Cadet")
+        logging.info("Live Pilots started: every pilot seeded with his rank")
 
     def plan_ground_war(self) -> None:
         """Decide which of each base's vehicles deploy to which front.
