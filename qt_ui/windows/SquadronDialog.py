@@ -27,6 +27,7 @@ from game.ato.flightplans.custom import CustomFlightPlan
 from game.ato.flighttype import FlightType
 from game.ato.flightwaypointtype import FlightWaypointType
 from game.dcs.aircrafttype import AircraftType
+from game.squadrons.experience import turns_phrase
 from game.purchaseadapter import AircraftPurchaseAdapter, TransactionError
 from game.server import EventStream
 from game.sim import GameUpdateEvents
@@ -70,8 +71,7 @@ class PilotDelegate(TwoColumnRowDelegate):
             # default, so only the states that keep a pilot off the roster are worth
             # surfacing here.
             if pilot.wounded:
-                turns = "turn" if pilot.wounded_turns == 1 else "turns"
-                return f"Wounded for {pilot.wounded_turns} {turns}"
+                return f"Wounded for {turns_phrase(pilot.wounded_turns)}"
             return pilot.status.value if pilot.on_leave else ""
         return ""
 
@@ -579,8 +579,7 @@ class SquadronDialog(QDialog):
             return True
         if pilot.wounded:
             # He is already off the roster and comes back on his own schedule.
-            turns = "turn" if pilot.wounded_turns == 1 else "turns"
-            button.setText(f"Wounded for {pilot.wounded_turns} {turns}")
+            button.setText(f"Wounded for {turns_phrase(pilot.wounded_turns)}")
             button.setDisabled(True)
             return True
         return False

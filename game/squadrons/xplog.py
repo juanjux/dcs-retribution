@@ -36,17 +36,17 @@ class XpLog:
         )
 
     def fate(
-        self, pilot: Any, squadron: Any, rank: Any, chance: float, survived: bool
+        self, pilot: Any, squadron: Any, rank: Any, chance: float, outcome: str
     ) -> None:
-        """A pilot who lost his aircraft, and what the dice said about it."""
-        self._lines.append(
-            f"  {pilot.name} ({squadron}) lost his aircraft at {rank}, "
-            f"{chance:.0%} to walk away -- {'survived' if survived else 'died'}"
-        )
+        """A pilot who lost his aircraft, and what the dice made of it.
 
-    def wounded(self, pilot: Any, squadron: Any, turns: int) -> None:
+        One line for the whole business, written once both rolls are settled: saying
+        "died" and then "was wounded" two lines later read as a contradiction.
+        """
+        where = getattr(rank, "abbreviation", None) or "no rank"
         self._lines.append(
-            f"  {pilot.name} ({squadron}) was wounded, out for {turns} turns"
+            f"  {pilot.name} ({squadron}) lost his aircraft as {where}, "
+            f"{chance:.0%} to walk away -- {outcome}"
         )
 
     def collected(

@@ -18,6 +18,7 @@ from game.squadrons.experience import (
     XP_UNKNOWN_KILL,
     XP_WOUNDED,
     building_xp,
+    turns_phrase,
     survival_chance,
 )
 from game.ground_forces.combat_stance import CombatStance
@@ -244,11 +245,20 @@ class MissionResultsProcessor:
             survival_chance(squadron.pilot_skill(pilot), settings) if rolls else 0.0
         )
         survived = rolls and random.random() < chance
-        if rolls:
-            self.xp_log.fate(
-                pilot, squadron, squadron.pilot_rank(pilot), chance, survived
-            )
+
+        def note(outcome: str) -> None:
+            """One line per loss, written once both rolls are settled.
+
+            Recording the first roll on its own said "died" about pilots the medics
+            then saved two lines later.
+            """
+            if rolls or settings.live_pilots_enabled:
+                self.xp_log.fate(
+                    pilot, squadron, squadron.pilot_rank(pilot), chance, outcome
+                )
+
         if survived:
+            note("walked away")
             debriefing.pilot_outcomes.survivors.append(record)
             logging.info(f"{pilot.name} survived the loss of his aircraft")
             return
@@ -261,10 +271,13 @@ class MissionResultsProcessor:
             debriefing.pilot_outcomes.wounded.append(
                 PilotWound(pilot.name, str(squadron), turns)
             )
-            self.xp_log.wounded(pilot, squadron, turns)
-            logging.info(f"{pilot.name} was wounded and is out for {turns} turns")
+            note(f"wounded, out for {turns_phrase(turns)}")
+            logging.info(
+                f"{pilot.name} was wounded and is out for {turns_phrase(turns)}"
+            )
             return
 
+        note("died")
         pilot.kill()
         debriefing.pilot_outcomes.deaths.append(record)
 
@@ -480,7 +493,7 @@ class MissionResultsProcessor:
                         extras.append(
                             (
                                 "wounded",
-                                f"out for {pilot.wounded_turns} turns",
+                                f"out for {turns_phrase(pilot.wounded_turns)}",
                                 XP_WOUNDED,
                             )
                         )
