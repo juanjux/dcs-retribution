@@ -1930,10 +1930,8 @@ class Settings:
         min=0,
         max=100,
         detail=(
-            "Rolled for a pilot who did not walk away: instead of dying he is pulled "
-            "out of the wreckage and spends one to four turns in hospital, unavailable "
-            "like a pilot on leave. Flat, and the same for a cadet as for a squadron "
-            "leader -- rank buys the first roll, not the second."
+            "Chance that a pilot who would have died is wounded instead. Wounded "
+            "pilots are unavailable for 1-4 turns."
         ),
     )
     pretense_maxdistfromfront_distance: int = bounded_int_option(
