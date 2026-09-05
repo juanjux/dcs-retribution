@@ -209,3 +209,29 @@ def test_a_turn_of_the_squadron_is_a_turn_of_every_wound() -> None:
     assert hurt.wounded_turns == 2 and hurt.wounded
     assert not nearly_better.wounded
     assert squadron.wounded_pilots == [hurt]
+
+
+def test_a_single_turn_is_not_pluralised() -> None:
+    from game.squadrons.experience import turns_phrase
+
+    assert turns_phrase(1) == "1 turn"
+    assert turns_phrase(3) == "3 turns"
+
+
+def test_the_ledger_names_the_rank_rather_than_reprs_it() -> None:
+    """It was printing Rank(abbreviation='1stLt', name='First Lieutenant')."""
+    from game.squadrons import xplog
+    from game.squadrons.pilotranks import Rank
+
+    log = xplog.XpLog(6)
+    log.fate(
+        SimpleNamespace(name="Lt Vega"),
+        "VFA-2",
+        Rank("1stLt", "First Lieutenant"),
+        0.35,
+        "wounded, out for 3 turns",
+    )
+    (line,) = log._lines
+    assert "as 1stLt" in line
+    assert "Rank(" not in line
+    assert line.endswith("wounded, out for 3 turns")

@@ -1,13 +1,14 @@
 import logging
 from typing import Callable, Dict, Optional, TypeVar
 
-from PySide6.QtCore import QTimer
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QIcon, QPixmap, QCloseEvent
 from PySide6.QtWidgets import (
     QDialog,
     QGridLayout,
     QGroupBox,
     QLabel,
+    QFrame,
     QMessageBox,
     QPushButton,
     QScrollArea,
@@ -18,6 +19,7 @@ from PySide6.QtWidgets import (
 
 from game.cruise_raids import debrief_expenditures
 from game.debriefing import Debriefing
+from game.squadrons.experience import turns_phrase
 from game.theater import Player
 from qt_ui.windows.GameUpdateSignal import GameUpdateSignal
 
@@ -194,8 +196,23 @@ class QDebriefingWindow(QDialog):
         self.setMinimumSize(300, 200)
         self.setWindowIcon(QIcon("./resources/icon.png"))
 
+        # The report scrolls as a whole. It used not to, and a mission with a busy
+        # Pilots box squeezed every section until the lines overlapped each other:
+        # the window can only grow to the height of the screen, and the layout took
+        # the difference out of whatever was longest.
+        outer = QVBoxLayout()
+        self.setLayout(outer)
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        outer.addWidget(scroll, 1)
+
+        body = QWidget()
+        scroll.setWidget(body)
         layout = QVBoxLayout()
-        self.setLayout(layout)
+        body.setLayout(layout)
 
         header = QLabel(self)
         header.setGeometry(0, 0, 655, 106)
@@ -238,10 +255,20 @@ class QDebriefingWindow(QDialog):
         pilots_box = self._pilots_box(debriefing)
         if pilots_box is not None:
             layout.addWidget(pilots_box)
+        layout.addStretch(1)
 
+        # Outside the scroll area: the way out of the dialog is always in reach.
         okay = QPushButton("Okay")
         okay.clicked.connect(self.close)
-        layout.addWidget(okay)
+        outer.addWidget(okay)
+
+        # Tall enough to read without being taller than the screen.
+        available = self.screen().availableGeometry() if self.screen() else None
+        if available is not None:
+            self.resize(
+                min(760, available.width() - 80),
+                min(920, available.height() - 80),
+            )
 
     @staticmethod
     def _pilots_box(debriefing: Debriefing) -> Optional[QGroupBox]:
@@ -285,11 +312,10 @@ class QDebriefingWindow(QDialog):
         if outcomes.wounded:
             line("<b>Wounded</b>")
             for wound in outcomes.wounded:
-                turns = "turn" if wound.turns == 1 else "turns"
                 line(
                     wound.pilot_name,
-                    f"pulled out alive, unavailable for {wound.turns} {turns} "
-                    f"— {wound.squadron}",
+                    f"pulled out alive, unavailable for "
+                    f"{turns_phrase(wound.turns)} — {wound.squadron}",
                 )
 
         if outcomes.deaths:

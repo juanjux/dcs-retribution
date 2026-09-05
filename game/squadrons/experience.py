@@ -116,6 +116,11 @@ class PilotDeath:
     friendly_fire: bool = False
 
 
+def turns_phrase(turns: int) -> str:
+    """``1 turn``/``3 turns``. Counted out in three places and wrong in all of them."""
+    return f"{turns} turn" if turns == 1 else f"{turns} turns"
+
+
 @dataclass
 class PilotWound:
     """A pilot the medics reached in time, and for how long they keep him."""
