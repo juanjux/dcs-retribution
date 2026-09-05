@@ -91,6 +91,12 @@ class Flight(
         # outside their reach. Player/planner toggled; honored by SEAD ingress.
         self.release_at_ingress = False
 
+        # True for the stand-in flights that represent aircraft parked on the ramp.
+        # They are given a squadron and a pilot so the debriefing code can account for
+        # the airframe, but nobody is sitting in one: bombing the ramp costs aircraft,
+        # not aircrew. A plain default, so an older save reads False.
+        self.parked_reserve = False
+
         # When set on an AIR_ASSAULT helicopter flight, the helos land at the
         # objective and do NOT return home: at turn end they redeploy to the base
         # if it was captured, otherwise they are lost. Player/planner toggled.

@@ -109,7 +109,17 @@ class MissionResultsProcessor:
                     f"{loss.flight.squadron}"
                 )
                 continue
-            if loss.pilot is not None and (
+            if getattr(loss.flight, "parked_reserve", False):
+                # An aircraft caught on the ramp. It is still an airframe lost, and
+                # the count below takes it, but there was nobody in the cockpit --
+                # every reserve on the apron is assigned a pilot so the debriefing
+                # can account for it, and an attack on the parking used to kill them
+                # all.
+                logging.info(
+                    f"{loss.flight.unit_type} destroyed on the ground at "
+                    f"{loss.flight.squadron}; its pilot was not in it"
+                )
+            elif loss.pilot is not None and (
                 not loss.pilot.player
                 or not self.game.settings.invulnerable_player_pilots
             ):
