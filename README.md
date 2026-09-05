@@ -351,10 +351,12 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   hits, target airfield untouched. They now aim at live, immobile ground objects at the
   target base, fall back to the map coordinate only for a base that has none, and range
   is measured to the aimpoint rather than to the base. Kirkuk went from one abstract
-  point to eleven real ones. The scatter is now each launcher's published CEP rather
-  than one number for all of them -- 450 m for a Scud, 25 m for an ATACMS, 10 m for a
-  CJ-10 -- so an inertial missile from the sixties and a GPS-guided one no longer land
-  alike. Cuts both ways: enemy Scuds get more dangerous. Naming the enemy *group* instead of a
+  point to eleven real ones. The salvo is aimed at the objective itself, with
+  nothing added. A crater trail settled that: a site holds three launchers all tasked
+  at one point, and DCS walks the rounds along the firing line for about a kilometre
+  by itself, so there was never any dispersion left to model -- displacing the aimpoint
+  by a published CEP only moved the whole trail off the target. Measured before the
+  change: 7, 17 and 43 m off for the ATACMS sites and 181 to 793 m for the Scud ones. Naming the enemy *group* instead of a
   coordinate was tried next and measured: of seven sites in one mission, the six given
   an `AttackGroup` fired nothing at all and the one that fell back to a point fired
   three Scuds. DCS ground AI does not honour the task, so it is back to firing at a
