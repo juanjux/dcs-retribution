@@ -8,11 +8,15 @@ home. The rank that buys is defined in :mod:`game.dcs.skills`.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 from dcs.unit import Skill
 
 from game.config import REWARDS
+from game.dcs.skills import SKILL_LADDER
+
+if TYPE_CHECKING:
+    from game.settings import Settings
 
 #: An enemy aircraft.
 XP_AIR_KILL = 500
@@ -34,6 +38,12 @@ XP_PER_BUILDING_MILLION = 50
 
 #: Something destroyed that has no entry anywhere: still worth flying out for.
 XP_UNKNOWN_KILL = 100
+
+#: What hitting something is worth, as a share of destroying it. DCS reports who hit
+#: what, so unlike a shared kill this is a real assist rather than a guess: a pilot who
+#: leaves a destroyer burning and does not finish it off is paid a quarter of the hull.
+#: Once per target, however many rounds he put into it, and never on top of the kill.
+XP_DAMAGE_SHARE = 0.25
 
 
 def building_xp(category: Optional[str]) -> int:
@@ -59,8 +69,30 @@ SURVIVAL_BY_SKILL: dict[Skill, float] = {
 SURVIVAL_CADET = 0.20
 
 
-def survival_chance(skill: Skill) -> float:
-    return SURVIVAL_BY_SKILL.get(skill, SURVIVAL_CADET)
+#: The player's own odds, one per rung, in the same order as SKILL_LADDER. The defaults
+#: match the table above; the settings page lets them be tuned.
+SURVIVAL_SETTINGS: tuple[str, ...] = (
+    "live_pilots_survival_cadet",
+    "live_pilots_survival_average",
+    "live_pilots_survival_good",
+    "live_pilots_survival_high",
+    "live_pilots_survival_excellent",
+)
+
+
+def survival_chance(skill: Skill, settings: Optional["Settings"] = None) -> float:
+    """How likely a pilot of this rank is to walk away from losing his aircraft.
+
+    Without settings this is the default ladder, which is what the tests measure and
+    what the table documents.
+    """
+    if settings is None:
+        return SURVIVAL_BY_SKILL.get(skill, SURVIVAL_CADET)
+    try:
+        rung = SKILL_LADDER.index(skill)
+    except ValueError:
+        rung = 0
+    return getattr(settings, SURVIVAL_SETTINGS[rung]) / 100
 
 
 @dataclass

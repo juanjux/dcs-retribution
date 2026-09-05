@@ -138,6 +138,10 @@ class StateData:
     #: initiator_player, weapon}), used to attribute air losses in the UI feed.
     kill_details: List[Any] = field(default_factory=list)
 
+    #: One record per attacking aircraft per target it hit, whether or not the
+    #: target died. Written by the base plugin for pilot experience.
+    hit_details: List[Any] = field(default_factory=list)
+
     #: DCS mission model time in seconds (timer.getTime()); None for older states.
     model_time: Optional[float] = None
 
@@ -230,6 +234,7 @@ class StateData:
             destroyed_statics=data.get("destroyed_objects_positions", []),
             base_capture_events=data.get("base_capture_events", []),
             kill_details=data.get("kill_details", []),
+            hit_details=data.get("hit_details", []),
             model_time=data.get("model_time"),
             took_off=took_off,
             death_times=death_times,

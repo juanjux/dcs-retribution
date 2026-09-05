@@ -138,6 +138,21 @@ class Squadron:
             return self.base_skill
         return skill_for_experience(pilot.record.xp, self.base_skill)
 
+    def rank_order(self, pilot: Pilot) -> tuple[int, int]:
+        """Sort key placing the senior pilot first, the most experienced first within
+        a rank.
+
+        Constant while Live Pilots is off: no rank is on display then, so ordering a
+        roster by a number nobody can see would look arbitrary.
+        """
+        if self.pilot_rank(pilot) is None:
+            return 0, 0
+        try:
+            rung = SKILL_LADDER.index(self.pilot_skill(pilot))
+        except ValueError:
+            rung = 0
+        return -rung, -pilot.record.xp
+
     def pilot_rank(self, pilot: Pilot) -> Optional[Rank]:
         """The rank the pilot holds, or None while Live Pilots is switched off.
 

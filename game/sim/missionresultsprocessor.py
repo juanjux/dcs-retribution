@@ -2,13 +2,14 @@ from __future__ import annotations
 
 import logging
 import random
-from typing import Any, Optional, TYPE_CHECKING
+from typing import Any, Iterator, Optional, TYPE_CHECKING
 
 from game.debriefing import Debriefing
 from game.squadrons.experience import (
     PilotDeath,
     PilotPromotion,
     XP_AIR_KILL,
+    XP_DAMAGE_SHARE,
     XP_GROUND_KILL,
     XP_MISSION_COMPLETE,
     XP_SHIP_KILL,
@@ -17,6 +18,7 @@ from game.squadrons.experience import (
     survival_chance,
 )
 from game.ground_forces.combat_stance import CombatStance
+from game.squadrons.pilot import Pilot
 from game.profiling import logged_duration
 from game.theater import ControlPoint
 from .gameupdateevents import GameUpdateEvents
@@ -212,14 +214,16 @@ class MissionResultsProcessor:
     def _resolve_pilot_fate(self, loss: Any, debriefing: Debriefing) -> None:
         """Kill the pilot, or let his rank save him.
 
-        Only Live Pilots rolls: with the feature off, losing the aircraft still means
+        Two switches have to be on: with either off, losing the aircraft still means
         losing the pilot, exactly as before.
         """
+        settings = self.game.settings
         pilot = loss.pilot
         squadron = loss.flight.squadron
         record = self._describe_loss(loss, debriefing)
-        if self.game.settings.live_pilots_enabled and random.random() < survival_chance(
-            squadron.pilot_skill(pilot)
+        rolls = settings.live_pilots_enabled and settings.live_pilots_rank_survival
+        if rolls and random.random() < survival_chance(
+            squadron.pilot_skill(pilot), settings
         ):
             debriefing.pilot_outcomes.survivors.append(record)
             logging.info(f"{pilot.name} survived the loss of his aircraft")
@@ -304,7 +308,8 @@ class MissionResultsProcessor:
 
         Proportionality comes from the pieces: a refinery is four platforms, each with
         its own death, so two of them is half a refinery. DCS reports no damage
-        magnitude anywhere, so there is nothing finer to divide by.
+        magnitude anywhere, so nothing divides an element any finer -- hurting one
+        without destroying it is paid as an assist instead, at XP_DAMAGE_SHARE.
         """
         if victim is None:
             return 0
@@ -333,10 +338,16 @@ class MissionResultsProcessor:
             return XP_UNKNOWN_KILL
         return building_xp(getattr(tgo, "category", None))
 
-    def _experience_from_kills(self, debriefing: Debriefing) -> dict[int, int]:
-        """What each pilot earned this mission, keyed by pilot identity."""
-        earned: dict[int, int] = {}
-        for detail in debriefing.state_data.kill_details:
+    def _credited_events(
+        self, details: Any, debriefing: Debriefing
+    ) -> Iterator[tuple[Pilot, str, Any]]:
+        """(pilot, target name, target) for every record naming an aircrew and a victim.
+
+        Shared by kills and hits, which the plugin writes in the same shape. Anything
+        that cannot be resolved to a roster pilot is dropped, as is anything he did to
+        his own side.
+        """
+        for detail in details:
             if not isinstance(detail, dict):
                 continue
             initiator = detail.get("initiator")
@@ -351,10 +362,47 @@ class MissionResultsProcessor:
             if victim_blue is not None and (
                 victim_blue == killer.flight.squadron.player.is_blue
             ):
-                continue  # nobody is paid for killing his own side
+                continue  # nobody is paid for shooting his own side
+            yield killer.pilot, str(target), victim
+
+    def _experience_from_kills(
+        self, debriefing: Debriefing
+    ) -> tuple[dict[int, int], set[tuple[int, str]]]:
+        """What each pilot earned for what he destroyed, keyed by pilot identity.
+
+        Also returns the (pilot, target) pairs it paid for, so the damage pass does not
+        pay a second time for the hit that finished the job.
+        """
+        earned: dict[int, int] = {}
+        credited: set[tuple[int, str]] = set()
+        for pilot, target, victim in self._credited_events(
+            debriefing.state_data.kill_details, debriefing
+        ):
+            credited.add((id(pilot), target))
             xp = self._kill_xp(victim)
             if xp:
-                earned[id(killer.pilot)] = earned.get(id(killer.pilot), 0) + xp
+                earned[id(pilot)] = earned.get(id(pilot), 0) + xp
+        return earned, credited
+
+    def _experience_from_damage(
+        self, debriefing: Debriefing, credited: set[tuple[int, str]]
+    ) -> dict[int, int]:
+        """A share of the kill for hurting something without finishing it.
+
+        This is a real assist rather than a guess: DCS names the shooter on every hit,
+        and the plugin records the first one each aircraft lands on each target, so a
+        pilot is paid once for the destroyer he left burning however long he worked on
+        it. The pilot credited with the kill is skipped -- that kill already paid him.
+        """
+        earned: dict[int, int] = {}
+        for pilot, target, victim in self._credited_events(
+            debriefing.state_data.hit_details, debriefing
+        ):
+            if (id(pilot), target) in credited:
+                continue
+            xp = int(self._kill_xp(victim) * XP_DAMAGE_SHARE)
+            if xp:
+                earned[id(pilot)] = earned.get(id(pilot), 0) + xp
         return earned
 
     def _commit_pilot_experience(
@@ -390,7 +438,9 @@ class MissionResultsProcessor:
                         )
 
     def commit_pilot_experience(self, debriefing: Debriefing) -> None:
-        earned = self._experience_from_kills(debriefing)
+        earned, credited = self._experience_from_kills(debriefing)
+        for pilot_id, xp in self._experience_from_damage(debriefing, credited).items():
+            earned[pilot_id] = earned.get(pilot_id, 0) + xp
         self._commit_pilot_experience(self.game.blue.ato, debriefing, earned)
         self._commit_pilot_experience(self.game.red.ato, debriefing, earned)
 

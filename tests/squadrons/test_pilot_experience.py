@@ -21,14 +21,19 @@ from game.dcs.skills import (
     skill_for_experience,
 )
 from game.sim.missionresultsprocessor import MissionResultsProcessor
+from game.settings import Settings
 from game.squadrons.experience import (
+    SURVIVAL_BY_SKILL,
+    SURVIVAL_CADET,
+    SURVIVAL_SETTINGS,
     XP_AIR_KILL,
+    XP_DAMAGE_SHARE,
     XP_GROUND_KILL,
     XP_SHIP_KILL,
     building_xp,
     survival_chance,
 )
-from game.squadrons.pilot import PilotRecord
+from game.squadrons.pilot import Pilot, PilotRecord
 
 # --- the ladder -------------------------------------------------------------
 
@@ -105,6 +110,30 @@ def test_the_better_pilot_is_likelier_to_walk_away() -> None:
     chances = [survival_chance(skill) for skill in SKILL_LADDER]
     assert chances == sorted(chances)
     assert chances[0] < chances[-1]
+
+
+def test_the_settings_ship_the_documented_odds() -> None:
+    """The table in the module and the boxes on the settings page must not drift."""
+    settings = Settings()
+    for skill, name in zip(SKILL_LADDER, SURVIVAL_SETTINGS):
+        documented = SURVIVAL_BY_SKILL.get(skill, SURVIVAL_CADET)
+        assert getattr(settings, name) / 100 == pytest.approx(documented)
+
+
+def test_the_player_can_tune_the_odds() -> None:
+    settings = Settings()
+    settings.live_pilots_survival_cadet = 5
+    settings.live_pilots_survival_excellent = 95
+    assert survival_chance(CADET_SKILL, settings) == pytest.approx(0.05)
+    assert survival_chance(Skill.Excellent, settings) == pytest.approx(0.95)
+
+
+def test_a_pilot_flying_at_a_skill_that_is_not_a_rung_gets_the_bottom_odds() -> None:
+    """Random and Player are skills to DCS but not rungs of anything."""
+    settings = Settings()
+    assert survival_chance(Skill.Random, settings) == pytest.approx(
+        settings.live_pilots_survival_cadet / 100
+    )
 
 
 # --- crediting a kill -------------------------------------------------------
@@ -203,3 +232,141 @@ def test_a_killer_on_our_own_side_is_flagged() -> None:
         detail, _debriefing_with("Maj Ruiz", killer_is_blue=True), True
     )
     assert friendly is True
+
+
+# --- who is listed first ----------------------------------------------------
+
+
+def _ranked_squadron(settings: Settings) -> Any:
+    """A squadron thin enough to ask about rank without building a campaign."""
+    from game.squadrons.squadron import Squadron
+
+    squadron: Any = Squadron.__new__(Squadron)
+    squadron.settings = settings
+    squadron.coalition = SimpleNamespace(player=SimpleNamespace(is_blue=True))
+    squadron.country = None
+    return squadron
+
+
+def _pilot(name: str, xp: int) -> Pilot:
+    return Pilot(name, record=PilotRecord(xp=xp))
+
+
+def _live_settings() -> Settings:
+    settings = Settings()
+    settings.live_pilots_enabled = True
+    settings.ai_pilot_levelling = True
+    settings.player_skill = CADET_SKILL.value
+    return settings
+
+
+def test_the_air_wing_lists_the_senior_pilot_first() -> None:
+    squadron = _ranked_squadron(_live_settings())
+    pilots = [_pilot("Cadet", 0), _pilot("Ace", 8000), _pilot("Captain", 2000)]
+    assert [p.name for p in sorted(pilots, key=squadron.rank_order)] == [
+        "Ace",
+        "Captain",
+        "Cadet",
+    ]
+
+
+def test_pilots_of_one_rank_are_sorted_by_what_they_have_flown() -> None:
+    squadron = _ranked_squadron(_live_settings())
+    pilots = [_pilot("Junior", 2000), _pilot("Senior", 3999)]
+    assert [p.name for p in sorted(pilots, key=squadron.rank_order)] == [
+        "Senior",
+        "Junior",
+    ]
+
+
+def test_with_the_feature_off_the_roster_keeps_its_own_order() -> None:
+    """No rank is shown then, so nothing may reshuffle the list behind the player."""
+    squadron = _ranked_squadron(Settings())
+    pilots = [_pilot("First", 0), _pilot("Second", 8000)]
+    assert [p.name for p in sorted(pilots, key=squadron.rank_order)] == [
+        "First",
+        "Second",
+    ]
+
+
+# --- crediting an assist ----------------------------------------------------
+
+ATTACKER = "STAG|1|1|F-18C|"
+
+
+def _killer(is_blue: bool = True, name: str = "Capt Ortega") -> Any:
+    return SimpleNamespace(
+        pilot=Pilot(name),
+        flight=SimpleNamespace(
+            squadron=SimpleNamespace(player=SimpleNamespace(is_blue=is_blue))
+        ),
+    )
+
+
+def _ship(is_blue: bool) -> Any:
+    from game.dcs.shipunittype import ShipUnitType
+
+    return SimpleNamespace(
+        theater_unit=SimpleNamespace(
+            unit_type=MagicMock(spec=ShipUnitType),
+            ground_object=SimpleNamespace(
+                category="ship",
+                control_point=SimpleNamespace(
+                    captured=SimpleNamespace(is_blue=is_blue)
+                ),
+            ),
+        )
+    )
+
+
+def _events(killer: Any, victim: Any, hits: Any, kills: Any = ()) -> Any:
+    return SimpleNamespace(
+        state_data=SimpleNamespace(hit_details=list(hits), kill_details=list(kills)),
+        unit_map=SimpleNamespace(
+            flight=lambda name: killer if name == ATTACKER else None
+        ),
+        resolve_killed_object=lambda name: victim if name == "DESTROYER" else None,
+    )
+
+
+def test_a_hull_left_burning_pays_a_share_of_the_hull() -> None:
+    killer = _killer(is_blue=True)
+    debriefing = _events(
+        killer, _ship(is_blue=False), [{"initiator": ATTACKER, "target": "DESTROYER"}]
+    )
+    assert _processor()._experience_from_damage(debriefing, set()) == {
+        id(killer.pilot): int(XP_SHIP_KILL * XP_DAMAGE_SHARE)
+    }
+
+
+def test_the_pilot_who_sank_her_is_not_paid_twice() -> None:
+    """His own hit is in the log too; the kill already covered it."""
+    killer = _killer(is_blue=True)
+    event = [{"initiator": ATTACKER, "target": "DESTROYER"}]
+    debriefing = _events(killer, _ship(is_blue=False), event, event)
+    processor = _processor()
+    earned, credited = processor._experience_from_kills(debriefing)
+    assert earned == {id(killer.pilot): XP_SHIP_KILL}
+    assert processor._experience_from_damage(debriefing, credited) == {}
+
+
+def test_hitting_our_own_ship_pays_nothing() -> None:
+    killer = _killer(is_blue=True)
+    debriefing = _events(
+        killer, _ship(is_blue=True), [{"initiator": ATTACKER, "target": "DESTROYER"}]
+    )
+    assert _processor()._experience_from_damage(debriefing, set()) == {}
+
+
+def test_a_hit_by_something_that_is_not_a_roster_aircraft_pays_nobody() -> None:
+    debriefing = _events(
+        None, _ship(is_blue=False), [{"initiator": "SAM SA-11", "target": "DESTROYER"}]
+    )
+    assert _processor()._experience_from_damage(debriefing, set()) == {}
+
+
+def test_an_older_save_carries_no_hits_at_all() -> None:
+    """hit_details postdates the feature; a state.json without it must not raise."""
+    from game.debriefing import StateData
+
+    assert StateData.from_json({}, MagicMock()).hit_details == []
