@@ -414,7 +414,14 @@ def test_the_ledger_shows_what_was_paid_and_what_it_left_him_with(tmp_path) -> N
     pilot = SimpleNamespace(name="Capt Ortega")
     log = xplog.XpLog(6)
     log.award(pilot, 500, "destroyed", object(), "RED 3-1")
-    log.collected(pilot, "VFA-2", 1200, 2200, 500, "Capt -> Maj")
+    log.collected(
+        pilot,
+        "VFA-2",
+        1200,
+        2200,
+        [("returned", "mission complete", 500)],
+        "Capt -> Maj",
+    )
 
     written = tmp_path / "live_pilots_xp.log"
     original, xplog.LOG_PATH = xplog.LOG_PATH, written

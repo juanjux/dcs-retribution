@@ -313,8 +313,14 @@ class Squadron:
     def end_turn(self) -> None:
         if self.destination is not None:
             self.relocate_to(self.destination)
+        self.tend_the_wounded()
         self.replenish_lost_pilots()
         self.deliver_orders()
+
+    def tend_the_wounded(self) -> None:
+        """One turn of every wound served; the last one puts the pilot back to work."""
+        for pilot in self.wounded_pilots:
+            pilot.serve_a_turn_wounded()
 
     def replenish_lost_pilots(self) -> None:
         if self.pilot_limits_enabled and self.replenish_count > 0:
@@ -376,6 +382,10 @@ class Squadron:
         return self._pilots_with_status(PilotStatus.OnLeave)
 
     @property
+    def wounded_pilots(self) -> list[Pilot]:
+        return self._pilots_with_status(PilotStatus.Wounded)
+
+    @property
     def number_of_pilots_including_inactive(self) -> int:
         return len(self.current_roster)
 
@@ -389,7 +399,10 @@ class Squadron:
 
     @property
     def _number_of_unfilled_pilot_slots(self) -> int:
-        return self.pilot_limit - len(self.active_pilots)
+        # A wounded pilot is still on the books, so his slot is not free to recruit
+        # into. Otherwise the squadron backfills every casualty and finds itself over
+        # its own limit the turn the wounded come back.
+        return self.pilot_limit - len(self.active_pilots) - len(self.wounded_pilots)
 
     @property
     def number_of_available_pilots(self) -> int:

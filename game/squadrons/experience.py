@@ -39,6 +39,14 @@ XP_PER_BUILDING_MILLION = 50
 #: Something destroyed that has no entry anywhere: still worth flying out for.
 XP_UNKNOWN_KILL = 100
 
+#: Coming back in a stretcher rather than a box. Less than a sortie flown, because
+#: nobody should be better off for having been shot down -- a pilot who loses the
+#: aircraft forfeits XP_MISSION_COMPLETE, so a wound is a consolation, not a windfall.
+XP_WOUNDED = 200
+
+#: How long a wound keeps a pilot off the roster, in turns, inclusive.
+WOUNDED_TURNS = (1, 4)
+
 #: What hitting something is worth, as a share of destroying it. DCS reports who hit
 #: what, so unlike a shared kill this is a real assist rather than a guess: a pilot who
 #: leaves a destroyer burning and does not finish it off is paid a quarter of the hull.
@@ -109,6 +117,15 @@ class PilotDeath:
 
 
 @dataclass
+class PilotWound:
+    """A pilot the medics reached in time, and for how long they keep him."""
+
+    pilot_name: str
+    squadron: str
+    turns: int
+
+
+@dataclass
 class PilotPromotion:
     pilot_name: str
     squadron: str
@@ -127,8 +144,13 @@ class PilotOutcomes:
 
     promotions: list[PilotPromotion] = field(default_factory=list)
     survivors: list[PilotDeath] = field(default_factory=list)
+    wounded: list[PilotWound] = field(default_factory=list)
     deaths: list[PilotDeath] = field(default_factory=list)
+
+    #: ``id()`` of every pilot who lost his aircraft, however it ended for him. He did
+    #: not complete the mission, so he is not paid for completing it.
+    lost_aircraft: set[int] = field(default_factory=set)
 
     @property
     def empty(self) -> bool:
-        return not (self.promotions or self.survivors or self.deaths)
+        return not (self.promotions or self.survivors or self.wounded or self.deaths)

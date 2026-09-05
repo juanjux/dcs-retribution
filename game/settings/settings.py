@@ -1922,6 +1922,20 @@ class Settings:
         min=0,
         max=100,
     )
+    live_pilots_wounded_chance: int = bounded_int_option(
+        "Wounded instead of killed (%)",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_SURVIVAL_SECTION,
+        default=35,
+        min=0,
+        max=100,
+        detail=(
+            "Rolled for a pilot who did not walk away: instead of dying he is pulled "
+            "out of the wreckage and spends one to four turns in hospital, unavailable "
+            "like a pilot on leave. Flat, and the same for a cadet as for a squadron "
+            "leader -- rank buys the first roll, not the second."
+        ),
+    )
     pretense_maxdistfromfront_distance: int = bounded_int_option(
         "Max distance from front (km)",
         page=PRETENSE_PAGE,

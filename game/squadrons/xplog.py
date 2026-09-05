@@ -14,7 +14,7 @@ from __future__ import annotations
 import datetime
 import logging
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Iterable, Optional
 
 LOG_PATH = Path("logs") / "live_pilots_xp.log"
 PREFIX = "LIVE PILOTS XP"
@@ -44,18 +44,24 @@ class XpLog:
             f"{chance:.0%} to walk away -- {'survived' if survived else 'died'}"
         )
 
+    def wounded(self, pilot: Any, squadron: Any, turns: int) -> None:
+        self._lines.append(
+            f"  {pilot.name} ({squadron}) was wounded, out for {turns} turns"
+        )
+
     def collected(
         self,
         pilot: Any,
         squadron: Any,
         before: int,
         after: int,
-        mission_xp: int,
+        extras: Iterable[tuple[str, str, int]],
         promotion: Optional[str],
     ) -> None:
         breakdown = self._awards.pop(id(pilot), [])
-        if mission_xp:
-            breakdown.append(f"    +{mission_xp:<5} {'returned':<9} mission complete")
+        for verb, detail, xp in extras:
+            if xp:
+                breakdown.append(f"    +{xp:<5} {verb:<9} {detail}")
         self._lines.append(
             f"  {pilot.name} ({squadron}): {before} -> {after} (+{after - before})"
         )
