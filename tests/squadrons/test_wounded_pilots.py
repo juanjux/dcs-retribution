@@ -121,24 +121,37 @@ def test_with_live_pilots_off_a_loss_is_still_a_death() -> None:
 
 def test_a_wound_is_served_a_turn_at_a_time() -> None:
     pilot = Pilot("Lt Vega")
-    pilot.wound(2)
+    pilot.wound(2, turn=5)
 
     # Sampled rather than asserted in place: mypy keeps the narrowing it took from
     # the first assert and calls everything after the second one unreachable.
-    pilot.serve_a_turn_wounded()
+    pilot.serve_a_turn_wounded(6)
     after_one = (pilot.wounded, pilot.wounded_turns)
-    pilot.serve_a_turn_wounded()
+    pilot.serve_a_turn_wounded(7)
     after_two = (pilot.wounded, pilot.wounded_turns)
 
     assert after_one == (True, 1)
     assert after_two == (False, 0)
 
 
+def test_the_turn_he_was_hurt_in_does_not_count() -> None:
+    """Wounds land while a turn is closing and the squadron serves them at that close.
+
+    Counting it had the debriefing promise four turns and the Air Wing show three.
+    """
+    pilot = Pilot("Lt Vega")
+    pilot.wound(4, turn=5)
+
+    pilot.serve_a_turn_wounded(5)  # the same turn, still being closed
+
+    assert pilot.wounded_turns == 4
+
+
 def test_recovery_never_runs_past_zero() -> None:
     pilot = Pilot("Lt Vega")
-    pilot.wound(1)
-    for _ in range(3):
-        pilot.serve_a_turn_wounded()
+    pilot.wound(1, turn=5)
+    for turn in range(6, 9):
+        pilot.serve_a_turn_wounded(turn)
     assert pilot.wounded_turns == 0
     assert not pilot.wounded
 
@@ -162,12 +175,13 @@ def test_a_pilot_from_an_older_save_carries_no_wound() -> None:
     pilot = Pilot.__new__(Pilot)
     pilot.__setstate__({"name": "Lt Vega", "status": PilotStatus.Active})
     assert pilot.wounded_turns == 0
+    assert pilot.wounded_on_turn == -1
     assert not pilot.wounded
 
 
 def test_dying_of_the_wound_clears_the_counter() -> None:
     pilot = Pilot("Lt Vega")
-    pilot.wound(4)
+    pilot.wound(4, turn=5)
     pilot.kill()
     assert pilot.status is PilotStatus.Dead
     assert pilot.wounded_turns == 0
@@ -176,7 +190,7 @@ def test_dying_of_the_wound_clears_the_counter() -> None:
 # --- what the squadron does about it -----------------------------------------
 
 
-def _squadron_with(roster: list[Pilot], limit: int = 4) -> Any:
+def _squadron_with(roster: list[Pilot], limit: int = 4, turn: int = 6) -> Any:
     from game.squadrons.squadron import Squadron
 
     settings = Settings()
@@ -184,13 +198,14 @@ def _squadron_with(roster: list[Pilot], limit: int = 4) -> Any:
     squadron: Any = Squadron.__new__(Squadron)
     squadron.settings = settings
     squadron.current_roster = roster
+    squadron.coalition = SimpleNamespace(game=SimpleNamespace(turn=turn))
     return squadron
 
 
 def test_the_wounded_keep_their_place_on_the_books() -> None:
     """Otherwise the squadron backfills every casualty and overflows when they return."""
     fit, hurt = Pilot("Fit"), Pilot("Hurt")
-    hurt.wound(2)
+    hurt.wound(2, turn=5)
     squadron = _squadron_with([fit, hurt], limit=4)
 
     assert squadron.wounded_pilots == [hurt]
@@ -200,9 +215,9 @@ def test_the_wounded_keep_their_place_on_the_books() -> None:
 
 def test_a_turn_of_the_squadron_is_a_turn_of_every_wound() -> None:
     hurt, nearly_better = Pilot("Hurt"), Pilot("Nearly")
-    hurt.wound(3)
-    nearly_better.wound(1)
-    squadron = _squadron_with([Pilot("Fit"), hurt, nearly_better])
+    hurt.wound(3, turn=5)
+    nearly_better.wound(1, turn=5)
+    squadron = _squadron_with([Pilot("Fit"), hurt, nearly_better], turn=6)
 
     squadron.tend_the_wounded()
 

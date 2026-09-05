@@ -105,19 +105,20 @@ class LossGrid(QGridLayout):
                 )
 
 
-class ScrollingCasualtyReportContainer(QGroupBox):
+class CasualtyReportContainer(QGroupBox):
+    """The list of what one side lost.
+
+    It used to be a scroll area of its own, from when the window did not scroll. Now
+    that the whole report does, a second bar inside it only makes two lines of losses
+    look like a list too long to fit.
+    """
+
     def __init__(self, debriefing: Debriefing, player: Player) -> None:
         country = (
             debriefing.player_country if player.is_blue else debriefing.enemy_country
         )
         super().__init__(f"{country}'s lost units:")
-        scroll_content = QWidget()
-        scroll_content.setLayout(LossGrid(debriefing, player))
-        scroll_area = QScrollArea()
-        scroll_area.setWidget(scroll_content)
-        layout = QVBoxLayout()
-        layout.addWidget(scroll_area)
-        self.setLayout(layout)
+        self.setLayout(LossGrid(debriefing, player))
 
 
 class MissionImpactGrid(QGridLayout):
@@ -226,15 +227,11 @@ class QDebriefingWindow(QDialog):
         impact = MissionImpactContainer(debriefing)
         layout.addWidget(impact)
 
-        player_lost_units = ScrollingCasualtyReportContainer(
-            debriefing, player=Player.BLUE
-        )
+        player_lost_units = CasualtyReportContainer(debriefing, player=Player.BLUE)
         layout.addWidget(player_lost_units)
 
-        enemy_lost_units = ScrollingCasualtyReportContainer(
-            debriefing, player=Player.RED
-        )
-        layout.addWidget(enemy_lost_units, 1)
+        enemy_lost_units = CasualtyReportContainer(debriefing, player=Player.RED)
+        layout.addWidget(enemy_lost_units)
 
         # Shown after the turn-boundary debit, so "remaining" is the magazine sailing
         # into next turn. Enemy remainders stay hidden.
@@ -346,15 +343,13 @@ class QDebriefingWindow(QDialog):
         if not promotions:
             return
 
-        lines = [
-            f"<b>{promotion.pilot_name}</b> is promoted to "
-            f"<b>{promotion.to_rank_full or promotion.to_rank}</b>"
-            f" — {promotion.squadron}"
-            for promotion in promotions
-        ]
+        # He knows who he is and which squadron he flies for. The rank is the news.
+        ranks = [p.to_rank_full or p.to_rank for p in promotions]
         box = QMessageBox(self)
         box.setWindowTitle("Promotion")
         box.setIcon(QMessageBox.Icon.Information)
-        box.setText("<b>Congratulations!</b>")
-        box.setInformativeText("<br>".join(lines))
+        box.setText(
+            "<b>Congratulations, you have been promoted to "
+            f"{' and '.join(ranks)}!</b>"
+        )
         box.exec()
