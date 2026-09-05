@@ -403,3 +403,41 @@ def test_the_wing_is_seeded_with_the_rank_it_was_flying_at() -> None:
         pilot.record.xp, experience_for_skill(squadron.difficulty_skill)
     )
     assert squadron.pilot_skill(pilot) is Skill.High
+
+
+# --- the temporary ledger ---------------------------------------------------
+
+
+def test_the_ledger_shows_what_was_paid_and_what_it_left_him_with(tmp_path) -> None:  # type: ignore[no-untyped-def]
+    from game.squadrons import xplog
+
+    pilot = SimpleNamespace(name="Capt Ortega")
+    log = xplog.XpLog(6)
+    log.award(pilot, 500, "destroyed", object(), "RED 3-1")
+    log.collected(pilot, "VFA-2", 1200, 2200, 500, "Capt -> Maj")
+
+    written = tmp_path / "live_pilots_xp.log"
+    original, xplog.LOG_PATH = xplog.LOG_PATH, written
+    try:
+        log.write()
+    finally:
+        xplog.LOG_PATH = original
+
+    text = written.read_text(encoding="utf-8")
+    assert "turn 6" in text
+    assert "Capt Ortega (VFA-2): 1200 -> 2200 (+1000)" in text
+    assert '+500   destroyed object "RED 3-1"' in text
+    assert "+500   returned  mission complete" in text
+    assert "promoted: Capt -> Maj" in text
+
+
+def test_a_quiet_turn_writes_nothing(tmp_path) -> None:  # type: ignore[no-untyped-def]
+    from game.squadrons import xplog
+
+    written = tmp_path / "live_pilots_xp.log"
+    original, xplog.LOG_PATH = xplog.LOG_PATH, written
+    try:
+        xplog.XpLog(6).write()
+    finally:
+        xplog.LOG_PATH = original
+    assert not written.exists()

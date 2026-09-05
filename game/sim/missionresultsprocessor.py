@@ -19,6 +19,7 @@ from game.squadrons.experience import (
 )
 from game.ground_forces.combat_stance import CombatStance
 from game.squadrons.pilot import Pilot
+from game.squadrons.xplog import XpLog
 from game.profiling import logged_duration
 from game.theater import ControlPoint
 from .gameupdateevents import GameUpdateEvents
@@ -40,6 +41,15 @@ STRONG_DEFEAT_INFLUENCE = 0.5
 class MissionResultsProcessor:
     def __init__(self, game: Game) -> None:
         self.game = game
+        # TEMPORARY: see game.squadrons.xplog. Remove with the rest of it.
+        self._xp_log: Optional[XpLog] = None
+
+    @property
+    def xp_log(self) -> XpLog:
+        """TEMPORARY: the turn's experience ledger, written out at the end of it."""
+        if self._xp_log is None:
+            self._xp_log = XpLog(getattr(self.game, "turn", "?"))
+        return self._xp_log
 
     def commit(self, debriefing: Debriefing, events: GameUpdateEvents) -> None:
         with logged_duration("Committing mission results"):
@@ -222,9 +232,15 @@ class MissionResultsProcessor:
         squadron = loss.flight.squadron
         record = self._describe_loss(loss, debriefing)
         rolls = settings.live_pilots_enabled and settings.live_pilots_rank_survival
-        if rolls and random.random() < survival_chance(
-            squadron.pilot_skill(pilot), settings
-        ):
+        chance = (
+            survival_chance(squadron.pilot_skill(pilot), settings) if rolls else 0.0
+        )
+        survived = rolls and random.random() < chance
+        if rolls:
+            self.xp_log.fate(
+                pilot, squadron, squadron.pilot_rank(pilot), chance, survived
+            )
+        if survived:
             debriefing.pilot_outcomes.survivors.append(record)
             logging.info(f"{pilot.name} survived the loss of his aircraft")
             return
@@ -382,6 +398,7 @@ class MissionResultsProcessor:
             xp = self._kill_xp(victim)
             if xp:
                 earned[id(pilot)] = earned.get(id(pilot), 0) + xp
+                self.xp_log.award(pilot, xp, "destroyed", victim, target)
         return earned, credited
 
     def _experience_from_damage(
@@ -403,6 +420,7 @@ class MissionResultsProcessor:
             xp = int(self._kill_xp(victim) * XP_DAMAGE_SHARE)
             if xp:
                 earned[id(pilot)] = earned.get(id(pilot), 0) + xp
+                self.xp_log.award(pilot, xp, "damaged", victim, target)
         return earned
 
     def _commit_pilot_experience(
@@ -422,12 +440,18 @@ class MissionResultsProcessor:
                     if not pilot.alive:
                         # Losses are committed before this runs. He earned it and did
                         # not live to collect it.
+                        self.xp_log.uncollected(
+                            pilot, squadron, earned.get(id(pilot), 0)
+                        )
                         continue
 
                     before = squadron.pilot_rank(pilot)
+                    had = pilot.record.xp
                     pilot.record.xp += earned.get(id(pilot), 0) + XP_MISSION_COMPLETE
                     after = squadron.pilot_rank(pilot)
+                    promotion = None
                     if before is not None and after is not None and after != before:
+                        promotion = f"{before.abbreviation} -> {after.abbreviation}"
                         debriefing.pilot_outcomes.promotions.append(
                             PilotPromotion(
                                 pilot_name=pilot.name,
@@ -436,6 +460,14 @@ class MissionResultsProcessor:
                                 to_rank=after.abbreviation,
                             )
                         )
+                    self.xp_log.collected(
+                        pilot,
+                        squadron,
+                        had,
+                        pilot.record.xp,
+                        XP_MISSION_COMPLETE,
+                        promotion,
+                    )
 
     def commit_pilot_experience(self, debriefing: Debriefing) -> None:
         earned, credited = self._experience_from_kills(debriefing)
@@ -443,6 +475,8 @@ class MissionResultsProcessor:
             earned[pilot_id] = earned.get(pilot_id, 0) + xp
         self._commit_pilot_experience(self.game.blue.ato, debriefing, earned)
         self._commit_pilot_experience(self.game.red.ato, debriefing, earned)
+        self.xp_log.write()
+        self._xp_log = None
 
     @staticmethod
     def commit_front_line_losses(debriefing: Debriefing) -> None:
