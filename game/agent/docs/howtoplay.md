@@ -245,6 +245,20 @@ The DCS AI that actually flies these missions is limited. Plan robustly around i
   Read `GET /waypoints/{flight_id}` and reposition these with `/waypoints/edit` (move, never
   delete), exactly like the strike ingress above.
 
+- **Raising a CAS or BAI flight's altitude can stop it attacking altogether.** Height is
+  not free the way distance is: past a point the AI flies over the target and never fires,
+  and where that point sits depends on the airframe, on the weapons it is carrying, and on
+  how experienced the pilot is. There is no rule to read it off; it is found by flying it.
+  Worked example, measured in game: a pair of **Su-25T** with Vikhr and Kh-29T crossed a
+  front full of armour at 5,000 m unopposed and came home without firing a shot. Flown
+  again lower, the same pair attacked — a cadet down to about 3,000 m, an average pilot to
+  about 4,500. **Those numbers are that aircraft's with that load, and nothing else's.**
+
+  `/waypoints/edit` answers with a warning when `alt_m` puts a CAS or BAI flight above the
+  altitude its own aircraft is planned to fight from. The edit is applied either way, so
+  the warning is yours to weigh: flying high is how you stay out of MANPADS, and there is
+  no altitude that does both.
+
   **Moving the INGRESS alone is not enough, and this is the single most repeated planning
   miss.** After every DEAD/SEAD package, walk the whole list per flight:
 
