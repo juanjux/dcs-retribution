@@ -121,7 +121,13 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   the five percentages on the settings page under a switch of their own. The debriefing
   gains a Pilots box: promotions, who was shot down and recovered, and who was killed and
   by whom, flagging friendly fire. The Air Wing lists the senior pilot first, in the
-  living roster and the roll of the dead alike.
+  living roster and the roll of the dead alike. And a loss that rank did not save gets
+  one more throw: 35% by default that the pilot is **wounded rather than killed**, flat
+  and rank-free, out of the roster for one to four turns exactly as a pilot on leave is
+  -- keeping his place on the books, so the squadron flies short-handed instead of
+  backfilling him and overflowing when he comes back. The wound is worth 200, against
+  the 500 for a sortie: losing the aircraft now forfeits the mission-complete award it
+  was quietly still paying, so being shot down is never the better outcome.
   ([#134](https://github.com/juanjux/dcs-retribution/pull/134))
 - **Switching Live Pilots on demoted one coalition and not the other.** Starting the
   ladder wrote Cadet into the difficulty page, and settings carry into the next campaign
