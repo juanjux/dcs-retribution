@@ -103,6 +103,13 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   [#20](https://github.com/juanjux/dcs-retribution/pull/20))
 
 ### Missions, AI & tasking
+- **Bombing the parking killed the pilots who were not in the aircraft.** Every reserve
+  on the apron is given a stand-in flight so the debriefing can account for the airframe,
+  and that flight claims a real pilot from the roster. Nobody is sitting in one. An
+  attack on the parking killed them anyway -- a JF-17 shot up on the ramp cost 2ndLt
+  David Johnson his life without him leaving the squadron building. The airframe is
+  still lost; the pilot is not.
+  ([#134](https://github.com/juanjux/dcs-retribution/pull/134))
 - **Live Pilots II: a rank has to be earned.** Rank used to be a count of missions flown --
   one tier every four sorties, ticked for every pilot in the ATO whether he flew, fought,
   or died on the ramp. It is paid for now: 500 for an air kill, 500 for coming home, 200 a
