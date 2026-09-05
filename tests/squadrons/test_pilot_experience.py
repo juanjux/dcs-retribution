@@ -448,3 +448,58 @@ def test_a_quiet_turn_writes_nothing(tmp_path) -> None:  # type: ignore[no-untyp
     finally:
         xplog.LOG_PATH = original
     assert not written.exists()
+
+
+# --- telling the player -----------------------------------------------------
+
+
+class _RankStub:
+    def __init__(self, abbreviation: str, name: str) -> None:
+        self.abbreviation = abbreviation
+        self.name = name
+
+    def __eq__(self, other: Any) -> bool:
+        return isinstance(other, _RankStub) and other.abbreviation == self.abbreviation
+
+
+class _PromotingSquadron:
+    """Promotes at 2000, which is the Captain rung."""
+
+    def pilot_rank(self, pilot: Pilot) -> Any:
+        if pilot.record.xp >= 2000:
+            return _RankStub("Capt", "Captain")
+        return _RankStub("1stLt", "First Lieutenant")
+
+    def __str__(self) -> str:
+        return "VFA-2"
+
+
+def _promote(pilot: Pilot) -> Any:
+    from game.squadrons.experience import PilotOutcomes
+
+    flight = SimpleNamespace(
+        squadron=_PromotingSquadron(),
+        roster=SimpleNamespace(iter_pilots=lambda: [pilot]),
+    )
+    ato: Any = SimpleNamespace(packages=[SimpleNamespace(flights=[flight])])
+    debriefing: Any = SimpleNamespace(pilot_outcomes=PilotOutcomes())
+    _processor()._commit_pilot_experience(ato, debriefing, {})
+    return debriefing.pilot_outcomes.promotions
+
+
+def test_the_promotion_says_whose_it_is_and_spells_the_rank_out() -> None:
+    """The popup congratulates the human by name; the AI does not get a parade."""
+    pilot = _pilot("Lt Vega", 1500)
+    pilot.player = True
+
+    (promotion,) = _promote(pilot)
+
+    assert promotion.player is True
+    assert promotion.to_rank == "Capt"
+    assert promotion.to_rank_full == "Captain"
+    assert promotion.pilot_name == "Lt Vega"
+
+
+def test_an_ai_promotion_is_recorded_but_not_the_players() -> None:
+    (promotion,) = _promote(_pilot("Lt Vega", 1500))
+    assert promotion.player is False

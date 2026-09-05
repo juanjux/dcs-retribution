@@ -1,12 +1,14 @@
 import logging
 from typing import Callable, Dict, Optional, TypeVar
 
+from PySide6.QtCore import QTimer
 from PySide6.QtGui import QIcon, QPixmap, QCloseEvent
 from PySide6.QtWidgets import (
     QDialog,
     QGridLayout,
     QGroupBox,
     QLabel,
+    QMessageBox,
     QPushButton,
     QScrollArea,
     QVBoxLayout,
@@ -305,5 +307,27 @@ class QDebriefingWindow(QDialog):
 
     def closeEvent(self, event: QCloseEvent) -> None:
         super().closeEvent(event)
+        # Queued rather than shown here: this dialog is modal and still closing, and a
+        # second modal raised inside its own close handler does not always come up.
+        QTimer.singleShot(0, self._congratulate_the_player)
         state = self.debriefing.game.check_win_loss()
         GameUpdateSignal.get_instance().gameStateChanged(state)
+
+    def _congratulate_the_player(self) -> None:
+        """Tell the player he has been promoted. Nobody else gets a parade."""
+        promotions = [p for p in self.debriefing.pilot_outcomes.promotions if p.player]
+        if not promotions:
+            return
+
+        lines = [
+            f"<b>{promotion.pilot_name}</b> is promoted to "
+            f"<b>{promotion.to_rank_full or promotion.to_rank}</b>"
+            f" — {promotion.squadron}"
+            for promotion in promotions
+        ]
+        box = QMessageBox(self)
+        box.setWindowTitle("Promotion")
+        box.setIcon(QMessageBox.Icon.Information)
+        box.setText("<b>Congratulations!</b>")
+        box.setInformativeText("<br>".join(lines))
+        box.exec()
