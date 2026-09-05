@@ -517,17 +517,19 @@ class SquadronModel(QAbstractListModel):
         return None
 
     def _filtered_pilots(self) -> list[Pilot]:
-        """Roster subset this model exposes, preserving roster order.
+        """Roster subset this model exposes, ranking officers before their juniors.
 
-        "living" excludes dead pilots, "dead" keeps only them, "all" lists
-        everyone with living pilots first (stable within each group).
+        "living" excludes dead pilots, "dead" keeps only them, "all" lists everyone with
+        living pilots first. Sorting is stable, so pilots of equal rank keep the order
+        the roster gave them.
         """
         roster = self.squadron.current_roster
         if self.pilot_filter == "living":
-            return [p for p in roster if p.alive]
-        if self.pilot_filter == "dead":
-            return [p for p in roster if not p.alive]
-        return sorted(roster, key=lambda p: not p.alive)
+            roster = [p for p in roster if p.alive]
+        elif self.pilot_filter == "dead":
+            roster = [p for p in roster if not p.alive]
+        order = self.squadron.rank_order
+        return sorted(roster, key=lambda p: (not p.alive, *order(p)))
 
     def pilot_at_index(self, index: QModelIndex) -> Pilot:
         """Returns the pilot located at the given index."""

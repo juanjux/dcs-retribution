@@ -98,6 +98,7 @@ MISSION_GENERATOR_PAGE = "Mission Generator"
 
 LIVE_PILOTS_PAGE = "Live Pilots"
 LIVE_PILOTS_RANKS_SECTION = "Rank Names"
+LIVE_PILOTS_SURVIVAL_SECTION = "Survival Chance"
 
 
 GAMEPLAY_SECTION = "Gameplay"
@@ -1915,6 +1916,58 @@ class Settings:
         page=LIVE_PILOTS_PAGE,
         section=LIVE_PILOTS_RANKS_SECTION,
         default="Lieutenant Colonel",
+    )
+    live_pilots_rank_survival: bool = boolean_option(
+        "Rank decides who survives a loss",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_SURVIVAL_SECTION,
+        default=True,
+        detail=(
+            "Whether a pilot walks away from a crash or a shoot-down is rolled here, "
+            "against his rank, and owes nothing to whether he ejected in DCS -- the "
+            "engine reports neither an ejection nor a rescue. With this off, losing "
+            "the aircraft loses the pilot, as it always did."
+        ),
+    )
+    live_pilots_survival_cadet: int = bounded_int_option(
+        "Cadet (%)",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_SURVIVAL_SECTION,
+        default=20,
+        min=0,
+        max=100,
+    )
+    live_pilots_survival_average: int = bounded_int_option(
+        "Average (%)",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_SURVIVAL_SECTION,
+        default=35,
+        min=0,
+        max=100,
+    )
+    live_pilots_survival_good: int = bounded_int_option(
+        "Good (%)",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_SURVIVAL_SECTION,
+        default=50,
+        min=0,
+        max=100,
+    )
+    live_pilots_survival_high: int = bounded_int_option(
+        "High (%)",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_SURVIVAL_SECTION,
+        default=65,
+        min=0,
+        max=100,
+    )
+    live_pilots_survival_excellent: int = bounded_int_option(
+        "Excellent (%)",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_SURVIVAL_SECTION,
+        default=80,
+        min=0,
+        max=100,
     )
     pretense_maxdistfromfront_distance: int = bounded_int_option(
         "Max distance from front (km)",
