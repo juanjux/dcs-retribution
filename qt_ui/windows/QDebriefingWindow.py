@@ -343,13 +343,21 @@ class QDebriefingWindow(QDialog):
         if not promotions:
             return
 
-        # He knows who he is and which squadron he flies for. The rank is the news.
-        ranks = [p.to_rank_full or p.to_rank for p in promotions]
+        # He knows who he is and which squadron he flies for, so the rank is the whole
+        # of the news. More than one player pilot can be promoted in a mission, though,
+        # and then they cannot all be "you": name them instead.
         box = QMessageBox(self)
         box.setWindowTitle("Promotion")
         box.setIcon(QMessageBox.Icon.Information)
-        box.setText(
-            "<b>Congratulations, you have been promoted to "
-            f"{' and '.join(ranks)}!</b>"
-        )
+        if len(promotions) == 1:
+            rank = promotions[0].to_rank_full or promotions[0].to_rank
+            box.setText(f"<b>Congratulations, you have been promoted to {rank}!</b>")
+        else:
+            box.setText("<b>Congratulations!</b>")
+            box.setInformativeText(
+                "<br>".join(
+                    f"{p.pilot_name} is promoted to {p.to_rank_full or p.to_rank}"
+                    for p in promotions
+                )
+            )
         box.exec()
