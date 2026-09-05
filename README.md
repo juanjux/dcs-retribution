@@ -120,7 +120,8 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   away from a loss, one in five for a cadet and four in five for a squadron leader, with
   the five percentages on the settings page under a switch of their own. The debriefing
   gains a Pilots box: promotions, who was shot down and recovered, and who was killed and
-  by whom, flagging friendly fire. The Air Wing lists the senior pilot first, in the
+  by whom, flagging friendly fire -- and when the promoted pilot is one the player flies
+  himself, he is told so in a box of his own, with the rank spelled out. The Air Wing lists the senior pilot first, in the
   living roster and the roll of the dead alike. And a loss that rank did not save gets
   one more throw: 35% by default that the pilot is **wounded rather than killed**, flat
   and rank-free, out of the roster for one to four turns exactly as a pilot on leave is
