@@ -92,10 +92,13 @@ class PilotDelegate(TwoColumnRowDelegate):
             squadron.settings, "morale_enabled", True
         ):
             return ""
+        # Labelled, the way the line above it says "AI - Captain" rather than bare
+        # "Captain". Every pilot of an untouched campaign reads the same word, so
+        # without the label there is nothing to tell you what the word is about.
         state = morale_rules.morale_state(pilot.morale).name
         if pilot.wants_leave:
-            return f"{state} — asking for leave"
-        return state
+            return f"Morale: {state} — asking for leave"
+        return f"Morale: {state}"
 
     def colour_for(self, index: QModelIndex, row: int, column: int) -> Optional[QColor]:
         """Red for a man who is about to be no use, amber for one asking to rest."""
