@@ -1,0 +1,6 @@
+name: AGM-158B JASSM-ER
+range: 200  # nm - stand-off launch range
+year: 2014
+fallback: AGM-154C JSOW
+clsids:
+  - "{B21_AGM-158B*4}"   # 4 x AGM-158B JASSM-ER ALCM

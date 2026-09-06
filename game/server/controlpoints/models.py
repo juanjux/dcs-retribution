@@ -20,13 +20,17 @@ class ControlPointJs(BaseModel):
     mobile: bool
     destination: LeafletPoint | None
     sidc: str
+    units: list[str]
+    threat_ranges: list[float]
+    detection_ranges: list[float]
     # Comms/nav summary for the hover tooltip. None when not applicable
     # (e.g. enemy control point, or no TACAN allocated yet).
     tacan: str | None
     atc_frequency: str | None
-    units: list[str]
-    threat_ranges: list[float]
-    detection_ranges: list[float]
+    # Carrier/LHA control points only: True when the whole ship group is sunk, so the
+    # map's "destroyed (non-repairable)" layer can hide it like a destroyed naval TGO.
+    # Always False for airfields/FOBs (a base is not a "destroyed" object).
+    dead: bool = False
 
     class Config:
         title = "ControlPoint"
@@ -40,7 +44,6 @@ class ControlPointJs(BaseModel):
             blue = True
         else:
             blue = False
-        tacan, atc_frequency = _comms_summary(control_point)
 
         # Carrier/LHA control points carry their ship groups (the carrier and
         # its escorts) as an is_control_point ground object that is
@@ -51,9 +54,13 @@ class ControlPointJs(BaseModel):
         units: list[str] = []
         threat_ranges: list[float] = []
         detection_ranges: list[float] = []
+        dead = False
         for tgo in control_point.ground_objects:
             if not tgo.is_control_point:
                 continue
+            # A carrier/LHA is "destroyed" once its whole ship group (carrier + escorts)
+            # is sunk; naval losses are permanent, so this is a non-repairable death.
+            dead = tgo.is_dead
             # Show every unit (display_name already tags dead ones with
             # " [DEAD]"), matching how ordinary naval groups list their losses.
             units.extend(unit.display_name for unit in tgo.units)
@@ -65,6 +72,8 @@ class ControlPointJs(BaseModel):
                 if detection:
                     detection_ranges.append(detection)
 
+        tacan, atc_frequency = _comms_summary(control_point)
+
         return ControlPointJs(
             id=control_point.id,
             name=control_point.name,
@@ -73,11 +82,12 @@ class ControlPointJs(BaseModel):
             mobile=control_point.moveable and control_point.captured.is_blue,
             destination=destination,
             sidc=str(control_point.sidc()),
-            tacan=tacan,
-            atc_frequency=atc_frequency,
             units=units,
             threat_ranges=threat_ranges,
             detection_ranges=detection_ranges,
+            tacan=tacan,
+            atc_frequency=atc_frequency,
+            dead=dead,
         )
 
     @staticmethod

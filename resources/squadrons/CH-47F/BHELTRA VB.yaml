@@ -1,0 +1,10 @@
+---
+name: BHELTRA VB
+nickname: Colmenar Viejo
+country: Spain
+role: Heavy Transport
+aircraft: CH-47F Block I
+livery: spanish army aviation
+mission_types:
+  - Air Assault
+  - Transport

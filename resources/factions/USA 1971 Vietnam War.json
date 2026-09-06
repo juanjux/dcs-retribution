@@ -24,6 +24,7 @@
     "F-4E-45MC Phantom II",
     "F-5E Tiger II",
     "F-100 Super Sabre",
+    "F-100D Super Sabre",
     "F-104C Starfighter",
     "F-104G Starfighter",
     "F-105D Thunderchief",
@@ -68,7 +69,7 @@
     "M274 1/2-ton 4x4 utility truck"
   ],
   "air_defense_units": [
-    "SAM Hawk SR (AN/MPQ-50)",
+    "EWR AN/FPS-117 Radar",
     "M163 Vulcan Air Defense System",
     "M48 Chaparral"
   ],

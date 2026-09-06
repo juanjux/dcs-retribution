@@ -21,6 +21,75 @@ end
 
 function toboolean(str) return str == "true" end
 
+-- Dropped troops clear the ground around them.
+--
+-- CTLD walks unloaded troops to their destination waypoint and leaves them there with
+-- ROE OPEN_FIRE, which only means "shoot what you bump into". That is not enough to take
+-- a base: capture needs EVERY enemy ground unit out of a 3 km bubble, and infantry only
+-- fights a few hundred metres, so a single surviving AAA vehicle a kilometre away blocks
+-- the capture forever while the troops stand around. This walks them onto it instead.
+--
+-- Same 3 km as TRIGGER_RADIUS_CAPTURE in the Python (game/theater/controlpoint.py) — the
+-- point is to clear exactly what the capture trigger tests, no more.
+TROOPS_ASSAULT_RADIUS_M = 3000
+TROOPS_ASSAULT_INTERVAL_S = 30
+-- Already on top of it: let them fight instead of re-issuing a move order every sweep,
+-- which would keep resetting the AI's engagement.
+TROOPS_ASSAULT_ENGAGED_M = 250
+
+-- Positions of every living ground unit of one coalition. Collected ONCE per sweep and
+-- shared by all the dropped groups: coalition.getGroups is the expensive call here, and
+-- this runs on the mission thread, which we do not want to load (see the freeze work).
+local function living_ground_positions(side)
+    local positions = {}
+    for _, group in pairs(coalition.getGroups(side, Group.Category.GROUND)) do
+        for _, unit in pairs(group:getUnits()) do
+            if unit:isExist() and unit:getLife() > 0 then
+                positions[#positions + 1] = unit:getPoint()
+            end
+        end
+    end
+    return positions
+end
+
+local function nearest_position(origin, positions, max_range)
+    local best, best_range = nil, max_range
+    for i = 1, #positions do
+        local p = positions[i]
+        local dx, dz = p.x - origin.x, p.z - origin.z
+        local range = math.sqrt(dx * dx + dz * dz)
+        if range < best_range then
+            best, best_range = p, range
+        end
+    end
+    return best, best_range
+end
+
+function troops_assault_sweep()
+    local enemies_of = {
+        [coalition.side.BLUE] = living_ground_positions(coalition.side.RED),
+        [coalition.side.RED] = living_ground_positions(coalition.side.BLUE),
+    }
+    for _, list in pairs({ ctld.droppedTroopsRED, ctld.droppedTroopsBLUE,
+                           ctld.droppedVehiclesRED, ctld.droppedVehiclesBLUE }) do
+        for _, name in pairs(list or {}) do
+            local group = ctld.getAliveGroup(name)
+            local leader = group ~= nil and group:getUnit(1) or nil
+            if leader ~= nil then
+                local target, range = nearest_position(
+                    leader:getPoint(),
+                    enemies_of[group:getCoalition()] or {},
+                    TROOPS_ASSAULT_RADIUS_M
+                )
+                if target ~= nil and range > TROOPS_ASSAULT_ENGAGED_M then
+                    ctld.orderGroupToMoveToPoint(leader, target)
+                end
+            end
+        end
+    end
+    timer.scheduleFunction(troops_assault_sweep, nil, timer.getTime() + TROOPS_ASSAULT_INTERVAL_S)
+end
+
 -- CTLD plugin - configuration
 if dcsRetribution then
     local ctld_pickup_smoke = "none"
@@ -88,6 +157,29 @@ if dcsRetribution then
                 end
             end
 
+            --- CH-47F (and some other DCS modules) report :inAir() == true while
+            --- on the ground, so CTLD wrongly treats a landed helicopter as
+            --- airborne and blocks troop/cargo unload with "too high or too fast".
+            --- Override ctld.inAir to trust terrain-AGL as ground truth: within
+            --- 1 m of the ground counts as landed (a margin above 0 so a model
+            --- whose origin sits slightly above its contact points, or a unit on
+            --- a gentle slope, still reads as landed). See dcs-retribution #725.
+            --- Intentionally outside the tailorctld block: the :inAir() bug is
+            --- config-independent, so this override applies to every mission.
+            function ctld.inAir(_heli)
+                if _heli:inAir() == false then
+                    return false
+                end
+                if ctld.heightDiff(_heli) < 1.0 then
+                    return false
+                end
+                -- less than 5 cm/s so landed, BUT AI can hold a perfect hover so ignore AI
+                if mist.vec.mag(_heli:getVelocity()) < 0.05 and _heli:getPlayerName() ~= nil then
+                    return false
+                end
+                return true
+            end
+
             --- add all carriers as pickup zone
             if dcsRetribution.Carriers then
                 for _, carrier in pairs(dcsRetribution.Carriers) do
@@ -148,6 +240,11 @@ if dcsRetribution then
             end
             if dcsRetribution.plugins.ctld.airliftcrates then
                 timer.scheduleFunction(spawn_crates, nil, timer.getTime() + 3)
+            end
+            if dcsRetribution.plugins.ctld.troopsassault then
+                env.info("DCSRetribution|CTLD plugin - dropped troops will clear enemy ground units within "
+                    .. TROOPS_ASSAULT_RADIUS_M .. "m")
+                timer.scheduleFunction(troops_assault_sweep, nil, timer.getTime() + TROOPS_ASSAULT_INTERVAL_S)
             end
         end
     end

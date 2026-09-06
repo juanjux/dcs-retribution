@@ -30,35 +30,6 @@ local unitPayloads = {
 				[1] = 11,
 			},
 		},
-		[2] = {
-			["displayName"] = "Retribution Jamming",
-			["name"] = "Retribution Jamming",
-			["pylons"] = {
-				[1] = {
-					["CLSID"] = "{EA6B_ANALQ991}",
-					["num"] = 1,
-				},
-				[2] = {
-					["CLSID"] = "{B06DD79A-F21E-4EB9-BD9D-AB3844618C93}",
-					["num"] = 2,
-				},
-				[3] = {
-					["CLSID"] = "{EA6B_ANALQ992}",
-					["num"] = 3,
-				},
-				[4] = {
-					["CLSID"] = "{B06DD79A-F21E-4EB9-BD9D-AB3844618C93}",
-					["num"] = 4,
-				},
-				[5] = {
-					["CLSID"] = "{EA6B_ANALQ991}",
-					["num"] = 5,
-				},
-			},
-			["tasks"] = {
-				[1] = 11,
-			},
-		},
 	},
 	["unitType"] = "EA_6B",
 }

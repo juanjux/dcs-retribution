@@ -13,11 +13,11 @@
     "F-4E Phantom II",
     "F-4E-45MC Phantom II",
     "F-5E Tiger II",
+    "F-100D Super Sabre",
     "F-111C Aardvark",
     "A-4E Skyhawk",
     "A-6E Intruder",
     "OV-10A Bronco",
-    "C-101CC Aviojet",
     "B-52H Stratofortress",
     "C-47 Skytrain",
     "C-130",
@@ -74,7 +74,7 @@
     "USS The Sullivans (DD-537)"
   ],
   "air_defense_units": [
-    "SAM Hawk SR (AN/MPQ-50)",
+    "EWR AN/FPS-117 Radar",
     "M163 Vulcan Air Defense System",
     "M48 Chaparral"
   ],

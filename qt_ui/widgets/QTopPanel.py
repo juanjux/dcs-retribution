@@ -3,8 +3,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
 
-from PySide6.QtCore import Qt, QTimer
-from PySide6.QtGui import QAction
+from PySide6.QtCore import Qt, QTimer, QSize
+from PySide6.QtGui import QAction, QIcon, QMovie
 from PySide6.QtWidgets import (
     QApplication,
     QDialog,
@@ -20,6 +20,7 @@ from PySide6.QtWidgets import (
 )
 
 import qt_ui.uiconstants as CONST
+from qt_ui.liberation_theme import get_theme_icons
 from game import Game, persistency
 from game.ato.flight import Flight
 from game.ato.flightstate import Uninitialized
@@ -96,7 +97,34 @@ class QTopPanel(QFrame):
         self.buttonBoxLayout = QHBoxLayout()
         self.buttonBoxLayout.addWidget(self.air_wing)
         self.buttonBoxLayout.addWidget(self.transfers)
+        # OPFOR-AI commander indicator (only shown when the setting is on); lights up for
+        # a few seconds on each API call the LLM makes (no manual on/off), and Take Off
+        # is blocked while it's lit.
+        self.ai_status_button = QPushButton("OPFOR AI: idle")
+        self.ai_status_button.setProperty("style", "btn-primary")
+        self.ai_status_button.setToolTip("LLM OPFOR commander — click for status")
+        self.ai_status_button.clicked.connect(self._show_ai_status)
+        self.ai_status_button.setVisible(False)
+        # Robot-general icon, with a looping "thinking" animation while the LLM plans.
+        theme = get_theme_icons()
+        self._ai_idle_icon = QIcon(f"./resources/ui/misc/{theme}/opfor-commander.png")
+        self.ai_status_button.setIcon(self._ai_idle_icon)
+        self.ai_status_button.setIconSize(QSize(20, 20))
+        self._ai_thinking_movie = QMovie(
+            f"./resources/ui/misc/{theme}/opfor-commander-thinking.gif"
+        )
+        self._ai_thinking_movie.setScaledSize(QSize(20, 20))
+        self._ai_thinking_movie.frameChanged.connect(
+            lambda: self.ai_status_button.setIcon(
+                QIcon(self._ai_thinking_movie.currentPixmap())
+            )
+        )
+        self.buttonBoxLayout.addWidget(self.ai_status_button)
         self.buttonBox.setLayout(self.buttonBoxLayout)
+
+        self._ai_status_timer = QTimer(self)
+        self._ai_status_timer.timeout.connect(self._refresh_ai_status)
+        self._ai_status_timer.start(1000)
 
         self.simSpeedControls = SimSpeedControls(sim_controller)
 
@@ -177,6 +205,62 @@ class QTopPanel(QFrame):
         self.dialog = PendingTransfersDialog(self.game_model)
         self.dialog.show()
 
+    def _refresh_ai_status(self) -> None:
+        from game.agent.session import AI_SESSION
+
+        s = self.game.settings if self.game else None
+        enabled = bool(s and s.opfor_ai_enabled)
+        self.ai_status_button.setVisible(enabled)
+        if not enabled:
+            return
+        snap = AI_SESSION.snapshot()
+        if snap["active"]:
+            self.ai_status_button.setText(
+                f"OPFOR AI: {snap['status'] or 'planning...'}"
+            )
+            self.ai_status_button.setStyleSheet(
+                # red so the button contrasts with the green "thinking" animation balls
+                "color: white; background-color: #c62828; font-weight: bold;"
+            )
+            if self._ai_thinking_movie.state() != QMovie.MovieState.Running:
+                self._ai_thinking_movie.start()
+        else:
+            self.ai_status_button.setText("OPFOR AI: idle")
+            self.ai_status_button.setStyleSheet("color: gray;")
+            if self._ai_thinking_movie.state() == QMovie.MovieState.Running:
+                self._ai_thinking_movie.stop()
+                self.ai_status_button.setIcon(self._ai_idle_icon)
+
+    def _show_ai_status(self) -> None:
+        from game.agent import service
+        from game.agent.session import AI_SESSION
+
+        snap = AI_SESSION.snapshot()
+        try:
+            rest = service.connect_url()
+            mcp = service.mcp_url()
+        except Exception:
+            rest = mcp = "(unavailable)"
+        box = QMessageBox(self)
+        box.setWindowTitle("OPFOR AI commander")
+        box.setText(
+            f"Active: {snap['active']}\n"
+            f"Status: {snap['status'] or '(none)'}\n"
+            f"Last update: {snap['updated_at'] or '(never)'}\n\n"
+            f"Connect an LLM —\n"
+            f"REST (any HTTP/REST client or curl): {rest}\n"
+            f"MCP (any MCP-compatible client): {mcp}"
+        )
+        cancel_btn = None
+        if snap["active"]:
+            cancel_btn = box.addButton(
+                "Cancel AI turn", QMessageBox.ButtonRole.DestructiveRole
+            )
+        box.addButton(QMessageBox.StandardButton.Close)
+        box.exec()
+        if cancel_btn is not None and box.clickedButton() == cancel_btn:
+            AI_SESSION.cancel()
+
     def passTurn(self):
         with logged_duration("Skipping turn"):
             self.game.pass_turn(no_action=True)
@@ -205,13 +289,6 @@ class QTopPanel(QFrame):
         for package in packages:
             estimator = TotEstimator(package)
             package.time_over_target = estimator.earliest_tot(now)
-
-    def ato_has_clients(self) -> bool:
-        for package in self.game.blue.ato.packages:
-            for flight in package.flights:
-                if flight.client_count > 0:
-                    return True
-        return False
 
     def confirm_no_client_launch(self) -> bool:
         result = QMessageBox.question(
@@ -413,7 +490,28 @@ class QTopPanel(QFrame):
 
     def launch_mission(self):
         """Finishes planning and waits for mission completion."""
-        if not self.ato_has_clients() and not self.confirm_no_client_launch():
+        from game.agent.session import AI_SESSION
+
+        if AI_SESSION.active:
+            QMessageBox.warning(
+                self,
+                "OPFOR AI is planning",
+                "The OPFOR AI commander is still planning red's turn.\n\n"
+                "Wait for it to finish (the OPFOR AI indicator goes idle) or "
+                "cancel it before taking off.",
+            )
+            return
+
+        # OPFOR-AI fallback: if red was left for the LLM but it never played, run the
+        # scripted commander so red's turn is never empty.
+        try:
+            from game.agent import service
+
+            service.run_opfor_fallback_if_needed()
+        except Exception:
+            logging.exception("OPFOR-AI scripted fallback failed; continuing")
+
+        if not self.game.ato_has_clients() and not self.confirm_no_client_launch():
             return
 
         if self.check_no_missing_pilots():

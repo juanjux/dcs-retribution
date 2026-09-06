@@ -4,7 +4,6 @@
   "authors": "Starfire",
   "description": "<p>Combined Blufor in the 2020s intended for use with Currenthill's USA, Sweden, and UK asset packs.</p>",
   "aircrafts": [
-    "EC-130 Compass Call (emulated)",
     "A-10C Thunderbolt II (Suite 7)",
     "A-10C Thunderbolt II (Suite 3)",
     "AH-64D Apache Longbow",
@@ -21,6 +20,7 @@
     "CH-47F Block I",
     "F-117A Nighthawk",
     "F-14B Tomcat",
+    "F-14B(U) Tomcat",
     "F-15C Eagle",
     "F-15E Strike Eagle (AI)",
     "F-15E Strike Eagle (Suite 4+)",
@@ -80,6 +80,7 @@
     "[CH] LAV-AD SPAAGM",
     "[CH] M10 LT",
     "[CH] M1A2 SEPv3 MBT",
+    "[CH] Abrams X MBT",
     "[CH] M2A3 IFV",
     "[CH] M551 LT",
     "[CH] Oshkosh L-ATV (M2)",
@@ -104,10 +105,6 @@
     "[CH] M777 LTH M982 Excalibur",
     "[CH] M777 LTH M982 Excalibur (MTVR)",
     "[CH] M777 LTH M795 (MTVR)",
-    "MLRS M142 HIMARS ATACMS CM [CH]",
-    "MLRS M142 HIMARS ATACMS HE [CH]",
-    "MLRS M142 HIMARS GMLRS CM [CH]",
-    "MLRS M142 HIMARS GMLRS HE [CH]",
     "[CH] Grkpbv 90 SPM",
     "[CH] Archer SPG SGR77B",
     "[CH] Archer SPG M982 Excalibur",
@@ -191,10 +188,7 @@
     "[CH] Type 45 Destroyer"
   ],
   "missiles": [
-    "[CH] M270A1 MLRS (ATACMS)",
-    "[CH] M142 HIMARS (ATACMS)",
-    "[CH] M142 HIMARS (PrSM)",
-    "[CH] M142 HIMARS (PrSM AShM)"
+    "[CH] M270A1 MLRS (ATACMS)"
   ],
   "air_defense_units": [
     "EWR AN/FPS-117 Radar",
@@ -203,7 +197,6 @@
     "M6 Linebacker",
     "HEMTT C-RAM Phalanx",
     "M1097 Heavy HMMWV Avenger",
-    "SAM Hawk SR (AN/MPQ-50)",
     "[CH] UndE 23 (RBS 70/90/98) STR",
     "[CH] Centurion C-RAM",
     "[CH] LAV-AD SPAAGM",

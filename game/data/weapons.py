@@ -16,6 +16,7 @@ from dcs.weapon_settings import WeaponSettings, has_settings, create_settings
 
 from game.dcs.aircrafttype import AircraftType
 from game.factions.faction import Faction
+from game.utils import Distance, nautical_miles
 
 PydcsWeapon = Any
 PydcsWeaponAssignment = tuple[int, PydcsWeapon]
@@ -31,6 +32,34 @@ def weapons_migrator(name: str) -> str:
     while name in migration_map:
         name = migration_map[name]
     return name
+
+
+def clsid_migrator(clsid: str) -> str:
+    migration_map = {
+        "{SUPERHORNET_PYLON_03_IB_FT_1X_FPU-8A}": "{SUPERHORNET_PYLON_03_IB_FT_1X_FPU-12A}",
+        "{SUPERHORNET_PYLON_04_IB_FT_1X_FPU-8A}": "{SUPERHORNET_PYLON_04_IB_FT_1X_FPU-12A}",
+        "{SUPERHORNET_PYLON_08_IB_FT_1X_FPU-8A}": "{SUPERHORNET_PYLON_08_IB_FT_1X_FPU-12A}",
+        "{SUPERHORNET_PYLON_09_IB_FT_1X_FPU-8A}": "{SUPERHORNET_PYLON_09_IB_FT_1X_FPU-12A}",
+        "{SUPERHORNET_PYLON_03_MB_FT_1X_FPU-8A}": "{SUPERHORNET_PYLON_03_MB_FT_1X_FPU-12A}",
+        "{SUPERHORNET_PYLON_09_MB_FT_1X_FPU-8A}": "{SUPERHORNET_PYLON_09_MB_FT_1X_FPU-12A}",
+        "{SUPERHORNET_PYLON_03_IB_FT_1X_FPU-8A_HV}": "{SUPERHORNET_PYLON_03_IB_FT_1X_FPU-12A_HV}",
+        "{SUPERHORNET_PYLON_04_IB_FT_1X_FPU-8A_HV}": "{SUPERHORNET_PYLON_04_IB_FT_1X_FPU-12A_HV}",
+        "{SUPERHORNET_PYLON_08_IB_FT_1X_FPU-8A_HV}": "{SUPERHORNET_PYLON_08_IB_FT_1X_FPU-12A_HV}",
+        "{SUPERHORNET_PYLON_09_IB_FT_1X_FPU-8A_HV}": "{SUPERHORNET_PYLON_09_IB_FT_1X_FPU-12A_HV}",
+        "{SUPERHORNET_PYLON_03_MB_FT_1X_FPU-8A_HV}": "{SUPERHORNET_PYLON_03_MB_FT_1X_FPU-12A_HV}",
+        "{SUPERHORNET_PYLON_09_MB_FT_1X_FPU-8A_HV}": "{SUPERHORNET_PYLON_09_MB_FT_1X_FPU-12A_HV}",
+        # Centerline (station 6) tank was omitted from the FPU-8A->FPU-12A rename above,
+        # so CAP/AntiShip loadouts silently lost their fuselage tank on CJS 2.4.5.
+        "{SUPERHORNET_PYLON_06_FT_1X_FPU-8A}": "{SUPERHORNET_PYLON_06_FT_1X_FPU-12A}",
+        "{SUPERHORNET_PYLON_06_FT_1X_FPU-8A_HV}": "{SUPERHORNET_PYLON_06_FT_1X_FPU-12A_HV}",
+        # CJS 2.4.5 renamed the JSOW BRU->BRU55 clsids; we deliberately DON'T remap them.
+        # The pydcs_data fallback passes the installed mod's own clsid straight to the .miz,
+        # so a loadout works on whichever CJS version is installed. The old 02_MB remap sent
+        # JSOW-C to a BRU55/AGM-154A clsid absent from mod 2.4.4, silently emptying that pylon.
+    }
+    while clsid in migration_map:
+        clsid = migration_map[clsid]
+    return clsid
 
 
 def weapons_migrator_lib(name: str) -> str:
@@ -69,7 +98,20 @@ class Weapon:
                 "name": "Clean",
                 "weight": 0,
             }
-        return weapon_ids[self.clsid]
+        try:
+            return weapon_ids[self.clsid]
+        except KeyError:
+            # CLSID present in a loadout/save but absent from the weapon DB — typically a
+            # mod weapon our bundled pydcs_extensions don't mirror (e.g. a CJS Super
+            # Hornet pylon variant the mod exposes but our copy lacks). Don't abort the
+            # whole mission generation: pass the CLSID through verbatim so it lands in the
+            # .miz (DCS has the mod and will load it). Weight is unknown → planning as 0.
+            logging.warning(
+                "Weapon CLSID %r not in the weapon DB (unmirrored mod weapon); passing "
+                "it through to the mission with placeholder metadata.",
+                self.clsid,
+            )
+            return {"clsid": self.clsid, "name": self.clsid, "weight": 0}
 
     @property
     def name(self) -> str:
@@ -96,6 +138,7 @@ class Weapon:
     def with_clsid(cls, clsid: str) -> Optional[Weapon]:
         if not cls._loaded:
             cls._load_all()
+        clsid = clsid_migrator(clsid)
         return cls._by_clsid.get(clsid)
 
     @classmethod
@@ -123,6 +166,11 @@ class Weapon:
         while fallback is not None:
             yield from fallback.weapons
             fallback = fallback.fallback
+
+    @property
+    def launch_range(self) -> Optional[Distance]:
+        """The maximum stand-off launch range of this weapon, if known."""
+        return self.weapon_group.launch_range
 
     def has_settings(self) -> bool:
         try:
@@ -213,6 +261,11 @@ class WeaponGroup:
     #: The name of the fallback weapon group.
     fallback_name: Optional[str] = field(compare=False)
 
+    #: The maximum stand-off launch range of the weapon, if known. Populated from the
+    #: optional ``range`` key (in nautical miles) in the weapon resource file and used
+    #: by the mission planner to place the ingress point at a realistic launch distance.
+    launch_range: Optional[Distance] = field(default=None, compare=False)
+
     #: The specific weapons that belong to this weapon group.
     weapons: list[Weapon] = field(init=False, default_factory=list)
 
@@ -272,7 +325,9 @@ class WeaponGroup:
             fallback_name = data.get("fallback")
             if fallback_name:
                 links.append((name, fallback_name))
-            group = WeaponGroup(name, weapon_type, year, fallback_name)
+            range_nm = data.get("range")
+            launch_range = nautical_miles(range_nm) if range_nm is not None else None
+            group = WeaponGroup(name, weapon_type, year, fallback_name, launch_range)
 
             target_overrides = data.get("target_overrides", {})
             object.__setattr__(group, "target_overrides", target_overrides)

@@ -1,7 +1,7 @@
 import { UnculledZone } from "../../api/liberationApi";
 import { selectUnculledZones } from "../../api/unculledZonesSlice";
 import { useAppSelector } from "../../app/hooks";
-import { LayerGroup, LayersControl, Circle } from "react-leaflet";
+import { LayerGroup, Circle } from "react-leaflet";
 
 interface CullingExclusionCirclesProps {
   zones: UnculledZone[];
@@ -28,12 +28,8 @@ const CullingExclusionCircles = (props: CullingExclusionCirclesProps) => {
   );
 };
 
-export default function CullingExclusionZones() {
+// Raw-layer variant (no LayersControl.Overlay) for the custom map layers panel.
+export function CullingExclusionLayer() {
   const data = useAppSelector(selectUnculledZones).zones;
-
-  return (
-    <LayersControl.Overlay name="Culling exclusion zones">
-      <CullingExclusionCircles zones={data}></CullingExclusionCircles>
-    </LayersControl.Overlay>
-  );
+  return <CullingExclusionCircles zones={data} />;
 }

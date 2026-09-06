@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import copy
 import datetime
+import json
 import logging
 from collections.abc import Iterable
+from pathlib import Path
 from typing import Iterator, Optional, TYPE_CHECKING, Type, Dict, Any
 
 from dcs.unittype import FlyingType
@@ -12,11 +14,92 @@ from game.ato.flighttype import FlightType
 from game.data.weapons import Pylon, Weapon, WeaponType
 from game.dcs.aircrafttype import AircraftType
 from game.factions.faction import Faction
-from game.persistency import prefer_liberation_payloads
+from game.persistency import payloads_dir, prefer_liberation_payloads
+from game.utils import Distance, max_optional_distance
 
 if TYPE_CHECKING:
     from .flight import Flight
     from game.theater import MissionTarget
+
+
+# Default-loadout overrides: the payload editor's "Set as default" button lets a
+# user mark a specific named payload as the default for an aircraft + flight type.
+# Stored globally (all campaigns) next to the DCS payload files, keyed by aircraft
+# id then FlightType name. default_for_task_and_aircraft consults these before the
+# "Retribution <task>" name conventions. This only changes WHICH named payload is
+# picked as default; it never renames or overwrites a payload.
+_DEFAULT_LOADOUT_OVERRIDES_FILE = "retribution_default_loadouts.json"
+
+
+def _default_loadout_overrides_path() -> Path:
+    return payloads_dir() / _DEFAULT_LOADOUT_OVERRIDES_FILE
+
+
+def load_default_loadout_overrides() -> Dict[str, Dict[str, str]]:
+    try:
+        with _default_loadout_overrides_path().open(encoding="utf-8") as f:
+            data = json.load(f)
+    except (OSError, ValueError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def get_default_loadout_override(aircraft_id: str, task: FlightType) -> Optional[str]:
+    return load_default_loadout_overrides().get(aircraft_id, {}).get(task.name)
+
+
+def _write_default_loadout_overrides(data: Dict[str, Dict[str, str]]) -> None:
+    # Written via a temporary file and replaced in one step: a half-written JSON here
+    # would silently drop every default the user has set.
+    path = _default_loadout_overrides_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    with tmp.open("w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2)
+    tmp.replace(path)
+
+
+def set_default_loadout_override(
+    aircraft_id: str, task: FlightType, payload_name: str
+) -> None:
+    data = load_default_loadout_overrides()
+    data.setdefault(aircraft_id, {})[task.name] = payload_name
+    _write_default_loadout_overrides(data)
+
+
+def clear_default_loadout_override(aircraft_id: str, task: FlightType) -> bool:
+    """Drop the default for this aircraft + task. True if there was one to drop."""
+    data = load_default_loadout_overrides()
+    per_aircraft = data.get(aircraft_id)
+    if not per_aircraft or task.name not in per_aircraft:
+        return False
+    del per_aircraft[task.name]
+    if not per_aircraft:
+        del data[aircraft_id]
+    _write_default_loadout_overrides(data)
+    return True
+
+
+#: DCS ids of the Super Hornet family the SYNTAX AARGM-ER "realistic" toggle covers.
+_AARGM_ER_SUPER_HORNET_IDS = ("FA-18E", "FA-18F", "EA-18G")
+
+
+def aargm_er_active(mod_settings: Any, aircraft_id: str) -> bool:
+    """Whether the SYNTAX AGM-88G AARGM-ER should replace the HARM on this airframe. The
+    base ``fa18c_aargm_er`` toggle covers the whole F/A-18 family (legacy C + the Super
+    Hornets); the ``fa18c_aargm_er_realistic`` toggle covers only the Super Hornets
+    (E/F/G, no C). The two are mutually exclusive in the New Game wizard."""
+    from dcs.planes import FA_18C_hornet
+
+    if mod_settings is None:
+        return False
+    all_hornets = getattr(mod_settings, "fa18c_aargm_er", False)
+    super_only = getattr(mod_settings, "fa18c_aargm_er_realistic", False)
+    if aircraft_id == FA_18C_hornet.id:
+        return all_hornets
+    if aircraft_id in _AARGM_ER_SUPER_HORNET_IDS:
+        return all_hornets or super_only
+    return False
 
 
 class Loadout:
@@ -69,6 +152,12 @@ class Loadout:
             if weapon is not None and weapon.weapon_group.type is weapon_type:
                 return True
         return False
+
+    def max_standoff_range(self) -> Optional[Distance]:
+        """The longest stand-off launch range among the equipped weapons, if any."""
+        return max_optional_distance(
+            weapon.launch_range for weapon in self.pylons.values() if weapon
+        )
 
     @staticmethod
     def _fallback_for(
@@ -226,6 +315,12 @@ class Loadout:
     @staticmethod
     def valid_payload(pylons: Dict[int, Dict[str, str]]) -> bool:
         for p in pylons.values():
+            # An empty pylon is a pylon carrying nothing, not an unknown store.
+            # Treating it as invalid threw away whole payloads: the Tornado IDS
+            # "STRIKE" fit leaves stations 5-8 free, so the aircraft was planned
+            # with no loadout at all rather than with its GBU-16s.
+            if not p["CLSID"]:
+                continue
             if Weapon.with_clsid(p["CLSID"]) is None:
                 return False
         return True
@@ -279,9 +374,6 @@ class Loadout:
         loadout_names[FlightType.SEAD_SWEEP].extend(
             loadout_names[FlightType.SEAD_ESCORT]
         )
-        # An EW jammer flight has no dedicated payload, so fall back to the SEAD
-        # escort loadout (which itself falls back to SEAD).
-        loadout_names[FlightType.EWAR].extend(loadout_names[FlightType.SEAD_ESCORT])
         # Sweep and escort can fall back to TARCAP.
         loadout_names[FlightType.ESCORT].extend(loadout_names[FlightType.TARCAP])
         loadout_names[FlightType.SWEEP].extend(loadout_names[FlightType.TARCAP])
@@ -299,9 +391,31 @@ class Loadout:
 
     @classmethod
     def default_for(cls, flight: Flight) -> Loadout:
-        return cls.default_for_task_and_aircraft(
+        loadout = cls.default_for_task_and_aircraft(
             flight.flight_type, flight.unit_type.dcs_unit_type, flight.package.target
         )
+        return cls._apply_fa18c_aargm_er(flight, loadout)
+
+    @staticmethod
+    def _apply_fa18c_aargm_er(flight: Flight, loadout: Loadout) -> Loadout:
+        """SYNTAX AGM-88G AARGM-ER mod: with it enabled, the F/A-18 carries the AARGM-ER
+        in place of the stock AGM-88C HARM in its SEAD loadouts. The base toggle covers
+        the whole F/A-18 family (C + Super Hornets); the 'realistic' toggle only the
+        Super Hornets. Returns a clone with the swap so the cached loadout is untouched.
+        """
+        mod_settings = getattr(flight.coalition.faction, "mod_settings", None)
+        if not aargm_er_active(mod_settings, flight.unit_type.dcs_unit_type.id):
+            return loadout
+        aargm = Weapon.with_clsid("{PPC_AGM-88G}")
+        if aargm is None:
+            return loadout  # AARGM-ER not in the weapon DB (mod files absent)
+        swapped: Optional[Loadout] = None
+        for pylon, weapon in loadout.pylons.items():
+            if weapon is not None and weapon.weapon_group.name == "AGM-88C HARM":
+                if swapped is None:
+                    swapped = loadout.clone()
+                swapped.pylons[pylon] = aargm
+        return swapped if swapped is not None else loadout
 
     @classmethod
     def default_for_task_and_aircraft(
@@ -310,6 +424,10 @@ class Loadout:
         dcs_unit_type: Type[FlyingType],
         target: Optional[MissionTarget] = None,
     ) -> Loadout:
+        # This is cached, but must be called before loadout_by_name will work. A
+        # malformed or unsupported payload .lua (e.g. from a third-party mod)
+        # makes pydcs raise while parsing it; fall back to an empty loadout
+        # instead of aborting mission planning for the whole turn.
         try:
             dcs_unit_type.load_payloads()
         except Exception:
@@ -321,9 +439,17 @@ class Loadout:
             )
             return cls.empty_loadout()
 
+        # A user-chosen default (set via the payload editor's "Set as default"
+        # button) takes priority over the "Retribution <task>" name conventions.
+        # If its payload is missing or invalid we fall through to the conventions.
+        names = list(cls.default_loadout_names_for(task))
+        override = get_default_loadout_override(dcs_unit_type.id, task)
+        if override:
+            names = [override] + [n for n in names if n != override]
+
         # Iterate through each possible payload type for a given aircraft.
         # Some aircraft have custom loadouts that aren't in the standard set.
-        for name in cls.default_loadout_names_for(task):
+        for name in names:
             payload = dcs_unit_type.loadout_by_name(name)
             if payload is not None:
                 if target:

@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
 )
 
 from game import Game
+from game.ato import FlightType
 from game.ato.flight import Flight
 from game.ato.flightplans.planningerror import PlanningError
 from qt_ui.models import PackageModel
@@ -97,6 +98,49 @@ class FlightPlanPropertiesGroup(QGroupBox):
             self.divert.setCurrentText(flight.divert.name)
         layout.addLayout(QLabeledWidget("Divert:", self.divert))
 
+        if flight.flight_type == FlightType.SEAD:
+            self.release_at_ingress_checkbox = QCheckBox(
+                "Release decoys at ingress point ignoring the weapon range"
+            )
+            self.release_at_ingress_checkbox.setChecked(flight.release_at_ingress)
+            self.release_at_ingress_checkbox.setToolTip(
+                "For a decoy (e.g. TALD) SEAD run. Normally the AI closes to the "
+                "decoy's launch range before releasing, which means flying deep into "
+                "the SAM envelope and getting shot before it fires. With this on, the "
+                "flight releases its decoys from stand-off instead -- at a hidden bait "
+                "point just inside the threat ring -- so it fires from outside the "
+                "SAM's reach and the decoys glide the rest of the way in to draw "
+                "fire.\n\n"
+                "Only affects decoys; guided and anti-radiation weapons (HARM, JDAM) "
+                "still close to the target as usual.\n\n"
+                "Tip: place the flight's ingress waypoint OUTSIDE the SAM ring for the "
+                "stand-off effect to matter."
+            )
+            self.release_at_ingress_checkbox.toggled.connect(
+                self.set_release_at_ingress
+            )
+            layout.addWidget(self.release_at_ingress_checkbox)
+
+        if flight.flight_type == FlightType.AIR_ASSAULT and flight.is_helo:
+            self.remain_at_destination_checkbox = QCheckBox(
+                "Remain at the assault destination (do not return)"
+            )
+            self.remain_at_destination_checkbox.setChecked(flight.remain_at_destination)
+            self.remain_at_destination_checkbox.setToolTip(
+                "The helicopters land at the objective and do NOT fly home. At the "
+                "end of the turn:\n"
+                " - if you CAPTURE the objective's base, the helicopters redeploy "
+                "there (a free ferry to the new base);\n"
+                " - if you do NOT capture it, the helicopters are LOST.\n\n"
+                "Lets a one-way assault use the helicopter's full ferry range instead "
+                "of its round-trip radius, and forward-stages the aircraft on the "
+                "captured base. Helicopters only."
+            )
+            self.remain_at_destination_checkbox.toggled.connect(
+                self.set_remain_at_destination
+            )
+            layout.addWidget(self.remain_at_destination_checkbox)
+
         self.setLayout(layout)
 
     def update_departure_time(self) -> None:
@@ -144,3 +188,18 @@ class FlightPlanPropertiesGroup(QGroupBox):
         self.flight.flight_plan.tot_offset = -self.flight.flight_plan.tot_offset
         self.package_model.update_tot()
         self.update_departure_time()
+
+    def set_release_at_ingress(self, checked: bool) -> None:
+        self.flight.release_at_ingress = checked
+
+    def set_remain_at_destination(self, checked: bool) -> None:
+        self.flight.remain_at_destination = checked
+        # Toggling the flag alone does not regenerate the route: rebuild the flight
+        # plan so the return leg is dropped (or restored) and refresh the list.
+        try:
+            self.flight.recreate_flight_plan()
+        except PlanningError:
+            self.flight.remain_at_destination = not checked
+            logging.exception("Could not recreate flight plan after toggling remain")
+            return
+        self.flight_wpt_list.update_list()

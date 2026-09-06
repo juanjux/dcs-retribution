@@ -4,7 +4,8 @@ from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
 from shutil import copyfile
-from typing import Dict, Union, Any
+import logging
+from typing import Dict, Optional, Union, Any
 
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
@@ -127,49 +128,9 @@ class QLoadoutEditor(QGroupBox):
         if not payload_name_input.exec_():
             return
         payload_name = payload_name_input.textValue()
-        ac_type = self.flight.unit_type.dcs_unit_type
-        ac_id = ac_type.id
-        payloads_folder = payloads_dir()
-        payload_file = payloads_folder / f"{ac_id}.lua"
-        ac_type.payloads[payload_name] = DcsPayload.from_flight_member(
-            self.flight_member, payload_name
-        ).to_dict()
-        if payload_file.exists():
-            self._create_backup_if_needed(ac_id)
-            with payload_file.open("r", encoding="utf-8") as f:
-                payloads = lua.loads(f.read())
-            if payloads:
-                pdict = payloads["unitPayloads"]["payloads"]
-                next_key = len(pdict) + 1
-                for p in pdict:
-                    if pdict[p]["name"] == payload_name:
-                        next_key = p
-                pdict[next_key] = DcsPayload.from_flight_member(
-                    self.flight_member, payload_name
-                ).to_dict()
-                _atomic_write_text(
-                    payload_file,
-                    "local unitPayloads = "
-                    + lua.dumps(payloads["unitPayloads"], indent=1)
-                    + "\nreturn unitPayloads",
-                )
-        else:
-            payloads = {
-                "name": f"{self.flight.unit_type.dcs_unit_type.id}",
-                "payloads": {
-                    1: DcsPayload.from_flight_member(
-                        self.flight_member, payload_name
-                    ).to_dict(),
-                },
-                "unitType": f"{self.flight.unit_type.dcs_unit_type.id}",
-            }
-            _atomic_write_text(
-                payload_file,
-                "local unitPayloads = "
-                + lua.dumps(payloads, indent=1)
-                + "\nreturn unitPayloads",
-            )
-            self.flight.unit_type.dcs_unit_type.add_to_payload_cache(payload_file)
+        payload_file = self._persist_payload(payload_name)
+        if payload_file is None:
+            return
         self.saved.emit(payload_name)
         QMessageBox.information(
             QWidget(),
@@ -177,6 +138,153 @@ class QLoadoutEditor(QGroupBox):
             f"Payload for {self.flight.unit_type.dcs_unit_type.id} was successfully saved.\n"
             f"Location: {payload_file}",
         )
+
+    def save_as_task_default(self) -> None:
+        """Make the selected payload the default for this aircraft + flight type.
+
+        Records a mapping (aircraft, flight type) -> payload name that
+        Loadout.default_for_task_and_aircraft consults first, so new flights of
+        this aircraft + task start with this payload. The payload itself is NOT
+        renamed or overwritten — this only changes which named payload is picked
+        as the default. Custom (unsaved) loadouts must be saved + named first.
+        """
+        from game.ato.loadouts import set_default_loadout_override
+
+        if self.isChecked() or self.flight_member.loadout.is_custom:
+            QMessageBox.warning(
+                QWidget(),
+                "Set as default",
+                'Save this as a named payload first ("Save Payload"), then select '
+                "it from the list and set it as the default.",
+            )
+            return
+        payload_name = self.flight_member.loadout.name
+        ac_id = self.flight.unit_type.dcs_unit_type.id
+        task = self.flight.flight_type
+        reply = QMessageBox.question(
+            QWidget(),
+            "Set as default loadout",
+            f'Make "{payload_name}" the default loadout for {ac_id} on '
+            f"{task.value} missions?\n\n"
+            f"It applies to NEW {task.value} flights only — flights already in the "
+            f"ATO keep what they have.\n"
+            f"It applies to BOTH sides: enemy {ac_id} flights on {task.value} get it "
+            f"too.\n"
+            f"It applies to every campaign until you clear it.\n\n"
+            f"No payload file is modified — this only records which named payload "
+            f"is picked.",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+        set_default_loadout_override(ac_id, task, payload_name)
+        QMessageBox.information(
+            QWidget(),
+            "Default loadout set",
+            f'"{payload_name}" is now the default loadout for {ac_id} on '
+            f"{task.value} missions.",
+        )
+
+    def clear_task_default(self) -> None:
+        """Drop the default payload for this aircraft + flight type, if any."""
+        from game.ato.loadouts import (
+            clear_default_loadout_override,
+            get_default_loadout_override,
+        )
+
+        ac_id = self.flight.unit_type.dcs_unit_type.id
+        task = self.flight.flight_type
+        current = get_default_loadout_override(ac_id, task)
+        if current is None:
+            QMessageBox.information(
+                QWidget(),
+                "No default set",
+                f"{ac_id} has no default loadout for {task.value} missions, so "
+                f"there is nothing to clear.",
+            )
+            return
+        reply = QMessageBox.question(
+            QWidget(),
+            "Clear default loadout",
+            f'Stop using "{current}" as the default for {ac_id} on {task.value} '
+            f"missions?\n\nNew flights will go back to the built-in choice. No "
+            f"payload is deleted.",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+        clear_default_loadout_override(ac_id, task)
+        QMessageBox.information(
+            QWidget(),
+            "Default loadout cleared",
+            f"{ac_id} is back to the built-in default for {task.value} missions.",
+        )
+
+    def _persist_payload(self, payload_name: str) -> Optional[Path]:
+        """Write the payload into the aircraft's UnitPayloads file.
+
+        Returns the file written, or None when nothing was written — the caller must
+        not report success in that case. The in-memory payload table is updated only
+        after the file is, so a failed write cannot leave memory and disk disagreeing.
+        """
+        ac_type = self.flight.unit_type.dcs_unit_type
+        ac_id = ac_type.id
+        payloads_folder = payloads_dir()
+        payload_file = payloads_folder / f"{ac_id}.lua"
+        entry = DcsPayload.from_flight_member(
+            self.flight_member, payload_name
+        ).to_dict()
+        if payload_file.exists():
+            self._create_backup_if_needed(ac_id)
+            try:
+                with payload_file.open("r", encoding="utf-8") as f:
+                    payloads = lua.loads(f.read())
+                pdict = payloads["unitPayloads"]["payloads"]
+            except Exception:
+                # An unparseable or unexpected file used to raise straight out of the
+                # Qt slot, and one that merely parsed to nothing was skipped while
+                # still reporting "saved". Leave it untouched and say what happened.
+                logging.exception("Could not read %s", payload_file)
+                QMessageBox.warning(
+                    QWidget(),
+                    "Payload not saved",
+                    f"{payload_file} could not be read, so it was left untouched and "
+                    f'"{payload_name}" was NOT saved.',
+                )
+                return None
+            # The keys are the file's own numbering: they may have gaps or not start
+            # at 1, so len()+1 could land on a live entry and overwrite it silently.
+            numeric = [k for k in pdict if isinstance(k, int)]
+            next_key = max(numeric) + 1 if numeric else 1
+            for p in pdict:
+                if pdict[p]["name"] == payload_name:
+                    next_key = p
+            pdict[next_key] = entry
+            _atomic_write_text(
+                payload_file,
+                "local unitPayloads = "
+                + lua.dumps(payloads["unitPayloads"], indent=1)
+                + "\nreturn unitPayloads",
+            )
+        else:
+            payloads = {
+                "name": f"{ac_id}",
+                "payloads": {
+                    1: DcsPayload.from_flight_member(
+                        self.flight_member, payload_name
+                    ).to_dict(),
+                },
+                "unitType": f"{ac_id}",
+            }
+            _atomic_write_text(
+                payload_file,
+                "local unitPayloads = "
+                + lua.dumps(payloads, indent=1)
+                + "\nreturn unitPayloads",
+            )
+            ac_type.add_to_payload_cache(payload_file)
+        ac_type.payloads[payload_name] = entry
+        return payload_file
 
     def _create_backup_if_needed(self, ac_id):
         backup_file = payloads_dir(backup=True) / f"{ac_id}.lua"

@@ -1,0 +1,8 @@
+name: RBS-15 Mk4
+range: 110  # nm - stand-off launch range
+year: 2017
+fallback: RB-15F
+clsids:
+  - "{CH_RBS15MK4}"   # RBS-15 Mk4
+  - "{JAS39_RBS15}"   # RBS-15 Mk4 AShM
+  - "{JAS39_RBS15AI}"   # RBS-15 Mk4 AShM for AI

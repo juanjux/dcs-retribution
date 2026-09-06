@@ -1,60 +1,91 @@
 from types import SimpleNamespace
+from typing import Any
 
+from dcs.mapping import Point
+
+from game.theater.controlpoint import OffMapSpawn, Player
+from game.theater.presetlocation import PresetLocation
+from game.theater.shipmovement import move_and_reparent_ships
 from game.theater.theatergroundobject import ShipGroundObject
+from game.utils import Heading
 
 
-class _FakePoint:
-    """Minimal stand-in for dcs Point: supports subtraction, x/y, distance."""
-
-    def __init__(self, x: float, y: float) -> None:
-        self.x = x
-        self.y = y
-
-    def __sub__(self, other: "_FakePoint") -> "_FakePoint":
-        return _FakePoint(self.x - other.x, self.y - other.y)
-
-    def distance_to_point(self, other: "_FakePoint") -> float:
-        return ((self.x - other.x) ** 2 + (self.y - other.y) ** 2) ** 0.5
-
-
-def _ship() -> ShipGroundObject:
-    # Bypass __init__ (which needs a PresetLocation + control point); we only
-    # exercise the movement maths, which depend on position / groups / units.
-    return object.__new__(ShipGroundObject)
+def _cp(name: str, x: float, y: float, blue: bool) -> OffMapSpawn:
+    player = Player.BLUE if blue else Player.RED
+    cp = OffMapSpawn(
+        name=name,
+        position=Point(x, y, None),  # type: ignore[arg-type]
+        theater=None,  # type: ignore[arg-type]
+        starts_blue=player,
+    )
+    # Inject a minimal fake coalition so cp.captured works without a full Game.
+    cp._coalition = SimpleNamespace(player=player)  # type: ignore[assignment]
+    return cp
 
 
-def test_commit_move_shifts_group_and_units_by_delta() -> None:
-    ship = _ship()
-    ship.position = _FakePoint(0.0, 0.0)
-    unit_a = SimpleNamespace(position=_FakePoint(10.0, 20.0))
-    unit_b = SimpleNamespace(position=_FakePoint(-5.0, 5.0))
-    ship.groups = [SimpleNamespace(units=[unit_a, unit_b])]
-    ship.target_position = _FakePoint(1000.0, 2000.0)
+def _ship_on(cp: OffMapSpawn, x: float, y: float) -> ShipGroundObject:
+    location = PresetLocation(
+        name="loc", position=Point(x, y, None), heading=Heading(0)  # type: ignore[arg-type]
+    )
+    ship = ShipGroundObject(name="ship", location=location, control_point=cp)
+    cp.connected_objectives.append(ship)
+    return ship
 
-    ship.commit_move()
 
-    # Group recentered on the target, pending move cleared.
-    assert (ship.position.x, ship.position.y) == (1000.0, 2000.0)
+def test_snap_moves_position_and_units_and_clears_target() -> None:
+    home = _cp("home", 0, 0, blue=True)
+    ship = _ship_on(home, 0, 0)
+    # Fake group with one unit so tgo.units yields a unit with a mutable position.
+    unit: Any = SimpleNamespace(position=Point(0, 0, None))  # type: ignore[arg-type]
+    ship.groups.append(SimpleNamespace(units=[unit]))  # type: ignore[arg-type]
+    ship.target_position = Point(1000, 2000, None)  # type: ignore[arg-type]
+
+    move_and_reparent_ships([home])
+
+    assert ship.position.x == 1000 and ship.position.y == 2000
+    assert unit.position.x == 1000 and unit.position.y == 2000
     assert ship.target_position is None
-    # Every unit shifted by the same delta (+1000, +2000).
-    assert (unit_a.position.x, unit_a.position.y) == (1010.0, 2020.0)
-    assert (unit_b.position.x, unit_b.position.y) == (995.0, 2005.0)
 
 
-def test_commit_move_without_target_is_a_noop() -> None:
-    ship = _ship()
-    ship.position = _FakePoint(3.0, 4.0)
-    ship.groups = []
-    ship.target_position = None
+def test_reparent_to_closest_same_faction_cp() -> None:
+    home = _cp("home", 0, 0, blue=True)
+    near = _cp("near_blue", 1100, 2000, blue=True)
+    far = _cp("far_blue", 50000, 50000, blue=True)
+    ship = _ship_on(home, 0, 0)
+    ship.target_position = Point(1000, 2000, None)  # type: ignore[arg-type]
 
-    ship.commit_move()  # must not raise
+    move_and_reparent_ships([home, near, far])
 
-    assert (ship.position.x, ship.position.y) == (3.0, 4.0)
+    assert ship.control_point is near
+    assert ship in near.connected_objectives
+    assert ship not in home.connected_objectives
+    # Must be registered with exactly one CP — not left behind or double-added.
+    assert ship not in far.connected_objectives
 
 
-def test_destination_in_range_respects_80nm_cap() -> None:
-    ship = _ship()
-    ship.position = _FakePoint(0.0, 0.0)
-    # 80 nm == 148160 m.
-    assert ship.destination_in_range(_FakePoint(100_000.0, 0.0)) is True
-    assert ship.destination_in_range(_FakePoint(200_000.0, 0.0)) is False
+def test_reparent_follows_owner_when_origin_captured() -> None:
+    # Ship's home CP is now red (its base was captured this turn); the ship
+    # re-parents to the closest *red* CP. Captured-port-captures-ships, accepted v1.
+    home = _cp("home", 0, 0, blue=False)  # red now
+    red_near = _cp("red_near", 1100, 2000, blue=False)
+    blue_near = _cp("blue_near", 1000, 2000, blue=True)
+    ship = _ship_on(home, 0, 0)
+    ship.target_position = Point(1000, 2000, None)  # type: ignore[arg-type]
+
+    move_and_reparent_ships([home, red_near, blue_near])
+
+    assert ship.control_point is red_near
+    assert ship in red_near.connected_objectives
+    # The old CP's objective list must be cleaned up (no double-parenting).
+    assert ship not in home.connected_objectives
+
+
+def test_ship_without_target_is_untouched() -> None:
+    home = _cp("home", 0, 0, blue=True)
+    other = _cp("other", 1000, 0, blue=True)
+    ship = _ship_on(home, 0, 0)  # no target_position
+
+    move_and_reparent_ships([home, other])
+
+    assert ship.control_point is home
+    assert ship.position.x == 0 and ship.position.y == 0

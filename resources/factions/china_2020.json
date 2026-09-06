@@ -7,8 +7,6 @@
     "zh_CN"
   ],
   "aircrafts": [
-    "Su-34 Fullback",
-    "Su-24MP (emulated)",
     "FC-1 Fierce Dragon",
     "IL-76MD",
     "J-11A Flanker-L",
@@ -83,11 +81,8 @@
     "EWR 1L13",
     "EWR 55G6",
     "AAA ZU-23 Closed Emplacement",
-    "[CH] LD-3000 C-RAM Mobile",
-    "[CH] LD-3000 C-RAM Stationary",
-    "[CH] PGZ-09 SPAAG",
-    "[CH] PGZ-95 SPAAG",
-    "[CH] HQ-17A SHORAD"
+    "HEMTT C-RAM Phalanx",
+    "SA-15 Tor"
   ],
   "carrier_names": [
     "001 Liaoning",

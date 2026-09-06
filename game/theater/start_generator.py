@@ -19,9 +19,11 @@ from game.theater import (
     NavalControlPoint,
     EssexCarrier,
 )
+from game.theater.controlpoint import warn_if_motorpool_inside_capture_zone
 from game.theater.theatergroundobject import (
     BuildingGroundObject,
     IadsBuildingGroundObject,
+    MotorpoolGroundObject,
 )
 from game.utils import Heading, escape_string_for_lua
 from game.version import VERSION
@@ -84,6 +86,10 @@ class ModSettings:
     f_16_idf: bool = False
     fa_18efg: bool = False
     fa18ef_tanker: bool = False
+    fa18c_aargm_er: bool = False
+    fa18c_aargm_er_realistic: bool = False
+    fa18c_lrasm: bool = False
+    fa18c_jassm: bool = False
     f22_raptor: bool = False
     f84g_thunderjet: bool = False
     f100_supersabre: bool = False
@@ -105,6 +111,8 @@ class ModSettings:
     su30_flanker_h: bool = False
     su35s_flanker_m: bool = False
     f15ex: bool = False
+    f15cge: bool = False
+    eurofighter: bool = False
     su57_felon: bool = False
     tornado_adv: bool = False
     frenchpack: bool = False
@@ -116,6 +124,7 @@ class ModSettings:
     SWPack: bool = False
     vietnamwarvessels: bool = False
     chinesemilitaryassetspack: bool = False
+    iranmilitaryassetspack: bool = False
     russianmilitaryassetspack: bool = False
     usamilitaryassetspack: bool = False
     ukmilitaryassetspack: bool = False
@@ -227,6 +236,34 @@ class ControlPointGroundObjectGenerator:
         self.generate_navy()
         return True
 
+    def get_unit_group_for_task(
+        self, position: PresetLocation, task: GroupTask
+    ) -> Optional[ForceGroup]:
+        tgo_config = self.generator_settings.tgo_config
+        fg = tgo_config[position.original_name]
+        valid_fg = (
+            fg
+            and task in fg.tasks
+            and all([u in self.faction.accessible_units for u in fg.units])
+        )
+        if valid_fg:
+            assert fg
+            for layout in fg.layouts:
+                for lg in layout.groups:
+                    for ug in lg.unit_groups:
+                        if not fg.has_unit_for_layout_group(ug) and ug.fill:
+                            for g in self.faction.ground_units:
+                                if g.unit_class in ug.unit_classes:
+                                    fg.units.append(g)
+            unit_group: Optional[ForceGroup] = fg
+        else:
+            if fg:
+                logging.warning(
+                    f"Override in ground_forces failed for {fg} at {position.original_name}"
+                )
+            unit_group = self.armed_forces.random_group_for_task(task)
+        return unit_group
+
     def generate_ground_object_from_group(
         self,
         unit_group: ForceGroup,
@@ -252,7 +289,11 @@ class ControlPointGroundObjectGenerator:
         if self.control_point.captured.is_red and skip_enemy_navy:
             return
         for position in self.control_point.preset_locations.ships:
-            unit_group = self.armed_forces.random_group_for_task(GroupTask.NAVY)
+            # Honour the campaign's ground_forces override, the same way the air-defence
+            # sites do. Without it a fleet is whatever the faction rolls per marker, so a
+            # designer cannot say "this group is the heavy one and that one is the
+            # patrol boats". Falls back to a random group when nothing is pinned.
+            unit_group = self.get_unit_group_for_task(position, GroupTask.NAVY)
             if not unit_group:
                 logging.warning(f"{self.faction_name} has no ForceGroup for Navy")
                 return
@@ -338,7 +379,17 @@ class CarrierGroundObjectGenerator(GenericCarrierGroundObjectGenerator):
             )
             return False
 
-        unit_group = self.armed_forces.random_group_for_task(GroupTask.AIRCRAFT_CARRIER)
+        # Honour the campaign's ground_forces override, keyed by the control
+        # point's name -- a designer picking which hull sails as which ship has
+        # nowhere else to say it. Falls back to a random group when unpinned.
+        unit_group = self.get_unit_group_for_task(
+            PresetLocation(
+                self.control_point.name,
+                self.control_point.position,
+                self.control_point.heading,
+            ),
+            GroupTask.AIRCRAFT_CARRIER,
+        )
         if not unit_group:
             logging.error(f"{self.faction_name} has no access to AircraftCarrier")
             return False
@@ -389,8 +440,16 @@ class LhaGroundObjectGenerator(GenericCarrierGroundObjectGenerator):
             )
             return False
 
-        unit_group = self.armed_forces.random_group_for_task(
-            GroupTask.HELICOPTER_CARRIER
+        # Honour the campaign's ground_forces override, keyed by the control
+        # point's name -- a designer picking which hull sails as which ship has
+        # nowhere else to say it. Falls back to a random group when unpinned.
+        unit_group = self.get_unit_group_for_task(
+            PresetLocation(
+                self.control_point.name,
+                self.control_point.position,
+                self.control_point.heading,
+            ),
+            GroupTask.HELICOPTER_CARRIER,
         )
         if not unit_group:
             logging.error(f"{self.faction_name} has no access to HelicopterCarrier")
@@ -433,36 +492,9 @@ class AirbaseGroundObjectGenerator(ControlPointGroundObjectGenerator):
         self.generate_offshore_strike_targets()
         self.generate_factories()
         self.generate_ammunition_depots()
+        self.generate_motorpools()
         self.generate_missile_sites()
         self.generate_coastal_sites()
-
-    def get_unit_group_for_task(
-        self, position: PresetLocation, task: GroupTask
-    ) -> Optional[ForceGroup]:
-        tgo_config = self.generator_settings.tgo_config
-        fg = tgo_config[position.original_name]
-        valid_fg = (
-            fg
-            and task in fg.tasks
-            and all([u in self.faction.accessible_units for u in fg.units])
-        )
-        if valid_fg:
-            assert fg
-            for layout in fg.layouts:
-                for lg in layout.groups:
-                    for ug in lg.unit_groups:
-                        if not fg.has_unit_for_layout_group(ug) and ug.fill:
-                            for g in self.faction.ground_units:
-                                if g.unit_class in ug.unit_classes:
-                                    fg.units.append(g)
-            unit_group: Optional[ForceGroup] = fg
-        else:
-            if fg:
-                logging.warning(
-                    f"Override in ground_forces failed for {fg} at {position.original_name}"
-                )
-            unit_group = self.armed_forces.random_group_for_task(task)
-        return unit_group
 
     def generate_armor_groups(self) -> None:
         for position in self.control_point.preset_locations.armor_groups:
@@ -517,6 +549,19 @@ class AirbaseGroundObjectGenerator(ControlPointGroundObjectGenerator):
     def generate_ammunition_depots(self) -> None:
         for position in self.control_point.preset_locations.ammunition_depots:
             self.generate_building_at(GroupTask.AMMO, position)
+
+    def generate_motorpools(self) -> None:
+        if not self.game.settings.motorpool_enabled:
+            return
+        for location in self.control_point.preset_locations.motorpools:
+            # Codename like every other TGO (JAGUAR, ...); the "motorpool" category
+            # label already identifies what it is.
+            name = namegen.random_objective_name()
+            warn_if_motorpool_inside_capture_zone(name, location, self.control_point)
+            tgo = MotorpoolGroundObject(
+                name, location, self.control_point, GroupTask.MOTORPOOL
+            )
+            self.control_point.connected_objectives.append(tgo)
 
     def generate_factories(self) -> None:
         for position in self.control_point.preset_locations.factories:

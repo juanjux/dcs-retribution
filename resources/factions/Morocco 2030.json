@@ -1,0 +1,214 @@
+{
+  "country": "Morocco",
+  "name": "Morocco 2030",
+  "description": "<p>Morocco 2030</p>",
+  "authors": "Juanjo",
+  "aircrafts": [
+    "F-16CM Fighting Falcon (Block 50)",
+    "UH-1H Iroquois",
+    "CH-47D",
+    "C-130",
+    "UH-60A",
+    "AH-64D Apache Longbow",
+    "F-35A Lightning II",
+    "JF-17 Thunder",
+    "AH-64D Apache Longbow (AI)",
+    "KC-130"
+  ],
+  "awacs": [
+    "E-3A"
+  ],
+  "tankers": [
+    "KC-135 Stratotanker MPRS",
+    "KC-130"
+  ],
+  "frontline_units": [
+    "T-72B with Kontakt-1 ERA",
+    "M1A2 Abrams",
+    "M60A3 \"Patton\"",
+    "BMP-2",
+    "M113",
+    "M1043 HMMWV (M2 HMG)",
+    "AMX-13 90mm",
+    "BMP-3",
+    "T-90A",
+    "VBCI",
+    "M1045 HMMWV (BGM-71 TOW)",
+    "BMP-1",
+    "AMX-10 RCR"
+  ],
+  "artillery_units": [
+    "M109A6 Paladin",
+    "BM-21 Grad"
+  ],
+  "logistics_units": [
+    "Truck Bedford",
+    "Truck GAZ-66",
+    "Truck KAMAZ 43101",
+    "Truck Opel Blitz"
+  ],
+  "infantry_units": [
+    "Insurgent AK-74",
+    "MANPADS SA-18 Igla \"Grouse\" Ins",
+    "Infantry RPG",
+    "Infantry AK-74 Rus"
+  ],
+  "preset_groups": [
+    "Hawk",
+    "Patriot",
+    "SA-10B/S-300PS"
+  ],
+  "air_defense_units": [
+    "AAA ZU-23 Emplacement",
+    "M163 Vulcan Air Defense System"
+  ],
+  "naval_units": [
+    "FAC La Combattante IIa",
+    "FFG Oliver Hazard Perry",
+    "Type 054A Frigate"
+  ],
+  "missiles": [],
+  "has_jtac": true,
+  "jtac_unit": "MQ-9 Reaper",
+  "doctrine": "modern",
+  "building_set": [
+    "ware",
+    "derrick",
+    "comms",
+    "invisiblefob",
+    "oil",
+    "commandcenter",
+    "ammo",
+    "fob",
+    "farp",
+    "power",
+    "factory",
+    "fuel"
+  ],
+  "liveries_overrides": {
+    "C-130": [
+      "morocco"
+    ],
+    "F-16CM Fighting Falcon (Block 50)": [
+      "rmfa"
+    ],
+    "UH-1H Iroquois": [
+      "morocco"
+    ],
+    "CH-47D": [
+      "morocco"
+    ],
+    "AH-64D Apache Longbow": [
+      "iriaa"
+    ]
+  },
+  "liveries_overrides_ground_forces": {
+    "BMP-1": [
+      "desert"
+    ],
+    "BMP-2": [
+      "desert"
+    ],
+    "BMP-3": [
+      "desert"
+    ],
+    "GAZ-66": [
+      "desert"
+    ],
+    "Hawk ln": [
+      "desert"
+    ],
+    "Hawk pcp": [
+      "desert"
+    ],
+    "Hawk sr": [
+      "desert"
+    ],
+    "Hawk tr": [
+      "desert"
+    ],
+    "Igla manpad INS": [
+      "desert"
+    ],
+    "Infantry AK": [
+      "desert"
+    ],
+    "Infantry AK Ins": [
+      "insurgent 1",
+      "insurgent 10",
+      "insurgent 2",
+      "insurgent 3",
+      "insurgent 4",
+      "insurgent 5",
+      "insurgent 6",
+      "insurgent 7",
+      "insurgent 8",
+      "insurgent 9"
+    ],
+    "KAMAZ Truck": [
+      "desert"
+    ],
+    "M-1 Abrams": [
+      "morocco"
+    ],
+    "M1043 HMMWV Armament": [
+      "desert"
+    ],
+    "M1045 HMMWV TOW": [
+      "desert"
+    ],
+    "M-109": [
+      "desert"
+    ],
+    "Grad-URAL": [
+      "desert"
+    ],
+    "M-113": [
+      "desert"
+    ],
+    "M-60": [
+      "desert"
+    ],
+    "Patriot AMG": [
+      "desert"
+    ],
+    "Patriot cp": [
+      "desert"
+    ],
+    "Patriot ECS": [
+      "desert"
+    ],
+    "Patriot EPP": [
+      "desert"
+    ],
+    "Patriot ln": [
+      "desert"
+    ],
+    "Patriot str": [
+      "desert"
+    ],
+    "S-300PS 64H6E TRAILER sr": [
+      "desert"
+    ],
+    "Soldier RPG": [
+      "desert"
+    ],
+    "T-72B": [
+      "desert"
+    ],
+    "T-90": [
+      "desert"
+    ],
+    "Vulcan": [
+      "desert"
+    ],
+    "ZU-23 Emplacement": [
+      "desert"
+    ]
+  },
+  "unrestricted_satnav": false,
+  "requirements": {
+    "VSN F-35 mod": "https://filedn.eu/lry92aiYXwlhFlDghoB2OEp/VSN_html_Links/VSN_MODS.html"
+  },
+  "carriers": {}
+}

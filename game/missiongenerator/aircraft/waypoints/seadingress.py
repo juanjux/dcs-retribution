@@ -1,18 +1,22 @@
 import logging
 import math
+from typing import Optional
 
 from dcs.point import MovingPoint
 from dcs.task import (
     AttackGroup,
-    EngageGroup,
     Expend,
+    OptAlarmState,
     OptECMUsing,
+    OptROE,
+    SetImmortalCommand,
     WeaponType as DcsWeaponType,
     OptRestrictAfterburner,
 )
+from dcs.unittype import ShipType
 
-from game.data.weapons import WeaponType
 from game.theater import TheaterGroundObject
+from game.utils import Distance, nautical_miles
 from .pydcswaypointbuilder import PydcsWaypointBuilder
 
 
@@ -37,6 +41,33 @@ class SeadIngressBuilder(PydcsWaypointBuilder):
         burn_restrict = OptRestrictAfterburner(True)
         waypoint.tasks.append(burn_restrict)
 
+        # Stand-off decoy run (opt-in per flight) ---------------------------------
+        # A decoy (e.g. TALD) is only ever released by an AttackGroup against a real
+        # group, and the AI always closes to the decoy's launch range *from that
+        # group*. Against the real ships that means penetrating the SAM envelope,
+        # where the flight is shot before it releases. So we plant a hidden, unarmed
+        # "bait" group just inside the threat ring and release the decoys at *that*:
+        # the AI closes to launch range from the bait (~just inside the ring), i.e.
+        # it fires from outside the SAM's reach, and the decoys glide the rest of the
+        # way in to draw fire. The bait exists only in the generated mission (never in
+        # the campaign save) and is hidden on the map.
+        threat = target.max_threat_range()
+        bait_id: Optional[int] = None
+        if self.flight.release_at_ingress and threat.meters > 0:
+            bait_id = self._spawn_decoy_bait(target, waypoint, threat)
+        if bait_id is not None:
+            waypoint.tasks.append(
+                AttackGroup(
+                    bait_id,
+                    weapon_type=DcsWeaponType.Decoy,
+                    group_attack=True,
+                    expend=Expend.All,
+                    altitude=round(waypoint.alt * 1.5),  # climb for a longer glide
+                )
+            )
+            waypoint.tasks.append(OptRestrictAfterburner(False))
+            return
+
         for group in target.groups:
             miz_group = self.mission.find_group(group.group_name)
             if miz_group is None:
@@ -46,53 +77,105 @@ class SeadIngressBuilder(PydcsWaypointBuilder):
                 continue
 
             # Use decoys first
-            attack_task = AttackGroup(
-                miz_group.id,
-                weapon_type=DcsWeaponType.Decoy,
-                group_attack=True,
-                expend=Expend.All,
-                altitude=round(waypoint.alt * 1.5),  # 50% increase to force a climb
+            waypoint.tasks.append(
+                AttackGroup(
+                    miz_group.id,
+                    weapon_type=DcsWeaponType.Decoy,
+                    group_attack=True,
+                    expend=Expend.All,
+                    altitude=round(waypoint.alt * 1.5),  # 50% increase to force a climb
+                )
             )
-            waypoint.tasks.append(attack_task)
 
-            attack_task = AttackGroup(
-                miz_group.id,
-                weapon_type=DcsWeaponType.ARM,
-                expend=Expend.All,
-                altitude=waypoint.alt,
-                group_attack=True,
+            waypoint.tasks.append(
+                AttackGroup(
+                    miz_group.id,
+                    weapon_type=DcsWeaponType.ARM,
+                    expend=Expend.All,
+                    altitude=waypoint.alt,
+                    group_attack=True,
+                )
             )
-            waypoint.tasks.append(attack_task)
 
-            attack_task = AttackGroup(
-                miz_group.id,
-                weapon_type=DcsWeaponType.ASM,
-                expend=Expend.All,
-                altitude=waypoint.alt,
-                group_attack=True,
+            waypoint.tasks.append(
+                AttackGroup(
+                    miz_group.id,
+                    weapon_type=DcsWeaponType.ASM,
+                    expend=Expend.All,
+                    altitude=waypoint.alt,
+                    group_attack=True,
+                )
             )
-            waypoint.tasks.append(attack_task)
 
-            attack_task = AttackGroup(
-                miz_group.id,
-                weapon_type=DcsWeaponType.GuidedBombs,
-                expend=Expend.All,
-                altitude=waypoint.alt,
-                group_attack=True,
+            waypoint.tasks.append(
+                AttackGroup(
+                    miz_group.id,
+                    weapon_type=DcsWeaponType.GuidedBombs,
+                    expend=Expend.All,
+                    altitude=waypoint.alt,
+                    group_attack=True,
+                )
             )
-            waypoint.tasks.append(attack_task)
 
             dir = target.position.heading_between_point(waypoint.position)
 
-            attack_task = AttackGroup(
-                miz_group.id,
-                weapon_type=DcsWeaponType.Unguided,
-                attack_limit=1,
-                expend=Expend.All,
-                direction=math.radians(dir),
-                altitude=waypoint.alt,
+            waypoint.tasks.append(
+                AttackGroup(
+                    miz_group.id,
+                    weapon_type=DcsWeaponType.Unguided,
+                    attack_limit=1,
+                    expend=Expend.All,
+                    direction=math.radians(dir),
+                    altitude=waypoint.alt,
+                )
             )
-            waypoint.tasks.append(attack_task)
 
         burn_free = OptRestrictAfterburner(False)
         waypoint.tasks.append(burn_free)
+
+    def _spawn_decoy_bait(
+        self, target: TheaterGroundObject, waypoint: MovingPoint, threat: Distance
+    ) -> Optional[int]:
+        """Plant a hidden enemy radar "bait" ship just inside the target's threat ring,
+        on the ingress->target bearing, and return its group id (or None if we can't
+        build one). The SEAD AI only prosecutes radar emitters, so the bait is a real
+        warship type from the target fleet (a cargo ship, having no radar, was ignored);
+        it holds fire so it can't shoot the attacker, and is immortal so the friendly
+        fleet can't sink it before the SEAD flight releases its decoys at it. The bait
+        lives only in the generated mission, not in the campaign save."""
+        # The target's coalition is by definition the flight's opponent, so its
+        # faction/country make the bait an enemy of the attacking flight (either side).
+        # Any failure here must degrade to the normal decoy attack, never break
+        # mission generation, so swallow and fall back.
+        try:
+            faction = target.control_point.coalition.faction
+            country = self.mission.country(faction.country.name)
+            if country is None:
+                return None
+            # A radar-emitting warship straight from the target fleet; a cargo ship has
+            # no radar and the SEAD AI won't attack it.
+            ship_type = next(
+                (u.type for u in target.units if issubclass(u.type, ShipType)), None
+            )
+            if ship_type is None:
+                return None
+            ingress_dist = target.position.distance_to_point(waypoint.position)
+            # Place the bait ~15 nm ahead of the ingress toward the target -- within the
+            # flight's decoy launch range, so it releases at the ingress instead of
+            # having to penetrate the SAM ring (where it goes defensive and aborts).
+            lead = min(nautical_miles(15).meters, ingress_dist * 0.5)
+            bearing = waypoint.position.heading_between_point(target.position)
+            aim = waypoint.position.point_from_heading(bearing, lead)
+            bait = self.mission.ship_group(
+                country, f"{self.group.name} decoy bait", ship_type, position=aim
+            )
+            bait.hidden = True
+            bait.points[0].tasks.append(OptAlarmState(2))  # red: radar on (SEAD target)
+            bait.points[0].tasks.append(OptROE(OptROE.Values.WeaponHold))  # never fire
+            bait.points[0].tasks.append(
+                SetImmortalCommand(True)
+            )  # survive friendly fire
+            return bait.id
+        except Exception:
+            logging.exception("Could not spawn SEAD decoy bait; using normal attack")
+            return None

@@ -16,6 +16,9 @@ class UnitClass(Enum):
     CRUISER = "Cruiser"
     DESTROYER = "Destroyer"
     EARLY_WARNING_RADAR = "EarlyWarningRadar"
+    # Ground-based radio/navigation jamming. A new member is safe for existing
+    # saves; none of them can reference it.
+    ELECTRONIC_WARFARE = "ElectronicWarfare"
     FORTIFICATION = "Fortification"
     FRIGATE = "Frigate"
     HELICOPTER = "Helicopter"

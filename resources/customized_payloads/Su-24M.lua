@@ -282,35 +282,6 @@ local unitPayloads = {
 				[1] = 32,
 			},
 		},
-		[10] = {
-			["displayName"] = "Retribution Jamming (emulated with L-081 ELINT pod)",
-			["name"] = "Retribution Jamming",
-			["pylons"] = {
-				[1] = {
-					["CLSID"] = "{0519A264-0AB6-11d6-9193-00A0249B6F00}",
-					["num"] = 5,
-				},
-				[2] = {
-					["CLSID"] = "{E86C5AA5-6D49-4F00-AD2E-79A62D6DDE26}",
-					["num"] = 8,
-				},
-				[3] = {
-					["CLSID"] = "{E86C5AA5-6D49-4F00-AD2E-79A62D6DDE26}",
-					["num"] = 1,
-				},
-				[4] = {
-					["CLSID"] = "{7D7EC917-05F6-49D4-8045-61FC587DD019}",
-					["num"] = 7,
-				},
-				[5] = {
-					["CLSID"] = "{7D7EC917-05F6-49D4-8045-61FC587DD019}",
-					["num"] = 2,
-				},
-			},
-			["tasks"] = {
-				[1] = 11,
-			},
-		},
 	},
 	["unitType"] = "Su-24M",
 }

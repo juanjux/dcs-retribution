@@ -3,7 +3,6 @@ from typing import Dict, List
 from PySide6.QtCore import Qt, QLocale
 from PySide6.QtWidgets import (
     QCheckBox,
-    QComboBox,
     QGridLayout,
     QGroupBox,
     QLabel,
@@ -73,20 +72,26 @@ class PluginOptionsBox(QGroupBox):
 
         self.widgets: Dict[str, QWidget] = {}
 
-        for row, option in enumerate(plugin.options):
+        row = 0
+        if plugin.description:
+            description = QLabel(plugin.description)
+            description.setWordWrap(True)
+            font = description.font()
+            font.setItalic(True)
+            description.setFont(font)
+            description.setTextInteractionFlags(
+                Qt.TextInteractionFlag.TextSelectableByMouse
+            )
+            layout.addWidget(description, row, 0, 1, 2)
+            row += 1
+
+        for option in plugin.options:
             label = QLabel(option.name)
             label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
             layout.addWidget(label, row, 0)
 
             val = option.get_value
-            if option.choices:
-                combo = QComboBox()
-                combo.addItems(option.choices)
-                combo.setCurrentText(str(val))
-                combo.currentTextChanged.connect(option.set_value)
-                layout.addWidget(combo, row, 1)
-                self.widgets[option.identifier] = combo
-            elif type(val) == bool:
+            if type(val) == bool:
                 checkbox = QCheckBox()
                 checkbox.setChecked(val)
                 checkbox.toggled.connect(option.set_value)
@@ -106,14 +111,14 @@ class PluginOptionsBox(QGroupBox):
                 layout.addWidget(spinbox, row, 1)
                 self.widgets[option.identifier] = spinbox
 
+            row += 1
+
     def update_from_settings(self, settings: Settings) -> None:
         for identifier in self.widgets:
             value = settings.plugin_option(identifier)
             w = self.widgets[identifier]
             if isinstance(w, QCheckBox):
                 w.setChecked(value)
-            elif isinstance(w, QComboBox):
-                w.setCurrentText(str(value))
             elif isinstance(w, QDoubleSpinBox) or isinstance(w, QSpinBox):
                 w.setValue(value)
 

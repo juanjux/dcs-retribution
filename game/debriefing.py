@@ -11,11 +11,13 @@ from typing import (
     Iterator,
     List,
     Optional,
+    Tuple,
     TYPE_CHECKING,
     Union,
 )
 from uuid import UUID
 
+from game.ato.starttype import StartType
 from game.dcs.aircrafttype import AircraftType
 from game.dcs.groundunittype import GroundUnitType
 from game.theater import Airfield, ControlPoint, Player
@@ -36,6 +38,10 @@ if TYPE_CHECKING:
     )
 
 DEBRIEFING_LOG_EXTENSION = "log"
+
+#: A no-shooter air loss within this many seconds of a flightmate's confirmed
+#: weapon-kill is treated as the same attack (an "indirect kill"), not a crash.
+INDIRECT_KILL_WINDOW_S = 5.0
 
 
 @dataclass(frozen=True)
@@ -67,6 +73,9 @@ class GroundLosses:
     player_front_line: List[FrontLineUnit] = field(default_factory=list)
     enemy_front_line: List[FrontLineUnit] = field(default_factory=list)
 
+    player_motorpool: List[FrontLineUnit] = field(default_factory=list)
+    enemy_motorpool: List[FrontLineUnit] = field(default_factory=list)
+
     player_convoy: List[ConvoyUnit] = field(default_factory=list)
     enemy_convoy: List[ConvoyUnit] = field(default_factory=list)
 
@@ -96,12 +105,14 @@ class BaseCaptureEvent:
 class SideLossCounts:
     aircraft: int
     front_line: int
+    motorpool: int
     convoy: int
     cargo_ships: int
     airlift_cargo: int
     ground_objects: int
     scenery: int
     bases_lost: int
+    runways_destroyed: int
 
 
 @dataclass(frozen=True)
@@ -124,10 +135,32 @@ class StateData:
 
     #: Structured S_EVENT_KILL records ({target, initiator, initiator_type,
     #: initiator_player, weapon}), used to attribute air losses in the UI feed.
-    kill_details: List[Dict[str, Any]] = field(default_factory=list)
+    kill_details: List[Any] = field(default_factory=list)
 
     #: DCS mission model time in seconds (timer.getTime()); None for older states.
     model_time: Optional[float] = None
+
+    #: Unit names (DCS getName) that fired S_EVENT_TAKEOFF. A ground-start unit
+    #: absent from this list was destroyed before it ever left the ground.
+    took_off: List[str] = field(default_factory=list)
+
+    #: Unit name -> first death-event mission time (s), for indirect-kill timing.
+    death_times: Dict[str, float] = field(default_factory=dict)
+
+    #: ``(ship_group_name, fired)`` per ship group that launched cruise missiles this
+    #: mission, mirrored by the cruisemissiles plugin. reconcile_cruise_missiles debits
+    #: the persisted campaign magazine by ``fired`` at the turn boundary -- the only
+    #: debit site, so regenerating a mission never double-charges. Empty when the
+    #: feature is off or the state file predates it.
+    cruise_missiles_state: List[Tuple[str, int]] = field(default_factory=list)
+
+    #: ``(naval_group_name, fired)`` per naval group that fired ANTI-SHIP missiles this
+    #: mission, mirrored by the navalmagazines plugin. reconcile_naval_magazines debits
+    #: the persisted campaign magazine by ``fired`` at the turn boundary -- the only
+    #: debit site, so re-generating a mission never double-counts. The weapon set is
+    #: disjoint from cruise_missiles_state's land-attack families, so a shot is never
+    #: charged to both. Empty on pre-feature state files and when the feature is off.
+    naval_magazines_state: List[Tuple[str, int]] = field(default_factory=list)
 
     @classmethod
     def from_json(cls, data: Dict[str, Any], unit_map: UnitMap) -> StateData:
@@ -161,6 +194,34 @@ class StateData:
             else:
                 killed_ground_units.append(unit)
 
+        # Lua tables serialise as a JSON object, but an empty one encodes as [].
+        raw_took_off = data.get("took_off", {})
+        took_off = (
+            list(raw_took_off.keys())
+            if isinstance(raw_took_off, dict)
+            else list(raw_took_off or [])
+        )
+        raw_death_times = data.get("death_time", {})
+        death_times = raw_death_times if isinstance(raw_death_times, dict) else {}
+
+        def parse_group_fired_state(raw: Any) -> List[Tuple[str, int]]:
+            # The cruisemissiles and navalmagazines plugins both write
+            # {group=, fired=} per launching group;
+            # the Lua JSON encoder yields [] when there were none, and a state file
+            # written before the feature omits the key entirely. Pull the pair
+            # defensively: a malformed or unnamed entry must not break the debrief.
+            if not isinstance(raw, list):
+                return []
+            out: List[Tuple[str, int]] = []
+            for entry in raw:
+                if not isinstance(entry, dict):
+                    continue
+                group = entry.get("group")
+                fired = entry.get("fired")
+                if isinstance(group, str) and group and isinstance(fired, (int, float)):
+                    out.append((group, int(fired)))
+            return out
+
         return cls(
             mission_ended=data.get("mission_ended", False),
             killed_aircraft=killed_aircraft,
@@ -169,6 +230,14 @@ class StateData:
             base_capture_events=data.get("base_capture_events", []),
             kill_details=data.get("kill_details", []),
             model_time=data.get("model_time"),
+            took_off=took_off,
+            death_times=death_times,
+            cruise_missiles_state=parse_group_fired_state(
+                data.get("cruise_missiles_state", [])
+            ),
+            naval_magazines_state=parse_group_fired_state(
+                data.get("naval_magazines_state", [])
+            ),
         )
 
 
@@ -183,6 +252,9 @@ class Debriefing:
         self.player_country = game.blue.faction.country.name
         self.enemy_country = game.red.faction.country.name
 
+        # id(loss) -> its DCS unit name, populated by dead_aircraft(); lets the
+        # indirect-kill logic look up per-loss takeoff/death-time state.
+        self._loss_name_by_id: Dict[int, str] = {}
         self.air_losses = self.dead_aircraft()
         self.ground_losses = self.dead_ground_units()
         self.base_captures = self.base_capture_events()
@@ -190,6 +262,10 @@ class Debriefing:
         # ids of air losses injected by the Retribution sim (no DCS kill record);
         # they are real combat losses, so is_non_combat_loss() must not refund them.
         self._sim_loss_ids: set[int] = set()
+        # ids of air losses with no DCS shooter that are still combat kills:
+        # destroyed parked (never took off) or downed in the same attack as a
+        # confirmed weapon-kill flightmate. Counted, and shown as "indirect kill".
+        self._indirect_loss_ids: set[int] = self._compute_indirect_loss_ids()
 
     def _index_kill_details(self) -> Dict[int, Dict[str, Any]]:
         """Map id(loss object) -> its S_EVENT_KILL detail (killer + weapon), for both
@@ -220,7 +296,7 @@ class Debriefing:
         """Resolve a killed unit name to its loss object, mirroring how
         dead_aircraft/dead_ground_units resolve names, so id() lines up."""
         um = self.unit_map
-        obj = um.flight(name)
+        obj: Optional[Any] = um.flight(name)
         if obj is not None:
             return obj
         obj = um.front_line_unit(name) or um.front_line_unit_from_tic_clone(name)
@@ -237,6 +313,94 @@ class Debriefing:
                 return obj
         return None
 
+    def _has_direct_shooter(self, loss: "FlyingUnit") -> bool:
+        """True if DCS credited a weapon/SAM kill (not a collision) to this loss."""
+        detail = self.kill_info_by_unit_id.get(id(loss))
+        if not detail:
+            return False
+        initiator_type = detail.get("initiator_type")
+        weapon = detail.get("weapon")
+        has_shooter = bool(detail.get("initiator_player") or initiator_type)
+        collision = bool(weapon and weapon == initiator_type)
+        return has_shooter and not collision
+
+    def _compute_indirect_loss_ids(self) -> set[int]:
+        """Air losses with no DCS shooter that are still combat kills, not crashes.
+
+        Both rules require corroborating combat nearby, so genuine AI crashes —
+        including pre-takeoff ground mishaps (a rolling COLD/WARM/RUNWAY start can
+        run off the end or clip another jet) — stay classified as crashes:
+
+        1. Same attack: a loss within INDIRECT_KILL_WINDOW_S of a confirmed
+           weapon-kill in its own flight. DCS dropped the kill attribution, which
+           it does under heavy simultaneous-death load.
+        2. Destroyed parked: a ground-start aircraft that never took off, lost
+           while its own base was under attack (a confirmed weapon-kill from the
+           same departure within the window). A never-took-off loss with no attack
+           on its base is left as a crash.
+
+        DCS-credited kills, and losses with no confirmed kill nearby, are untouched
+        so the 'crashes don't count' doctrine still ignores genuine AI crashes.
+        """
+        indirect: set[int] = set()
+        try:
+            losses = list(self.air_losses.player) + list(self.air_losses.enemy)
+            death_times = self.state_data.death_times or {}
+            took_off = set(self.state_data.took_off or [])
+            # Confirmed-weapon-kill death times, grouped by flight and by the base
+            # they flew from, so a no-shooter loss can be tied to a real attack.
+            direct_times_by_flight: Dict[int, List[float]] = defaultdict(list)
+            direct_times_by_base: Dict[int, List[float]] = defaultdict(list)
+            for loss in losses:
+                if not self._has_direct_shooter(loss):
+                    continue
+                name = self._loss_name_by_id.get(id(loss))
+                flight = getattr(loss, "flight", None)
+                t = death_times.get(name) if name else None
+                if t is None or flight is None:
+                    continue
+                direct_times_by_flight[id(flight)].append(t)
+                departure = getattr(flight, "departure", None)
+                if departure is not None:
+                    direct_times_by_base[id(departure)].append(t)
+
+            def near(t: Optional[float], times: List[float]) -> bool:
+                return t is not None and any(
+                    abs(t - mt) <= INDIRECT_KILL_WINDOW_S for mt in times
+                )
+
+            for loss in losses:
+                if self._has_direct_shooter(loss):
+                    continue
+                name = self._loss_name_by_id.get(id(loss))
+                flight = getattr(loss, "flight", None)
+                if name is None or flight is None:
+                    continue
+                t = death_times.get(name)
+                # 1. Same attack as a confirmed weapon-kill in its own flight.
+                if near(t, direct_times_by_flight.get(id(flight), [])):
+                    indirect.add(id(loss))
+                    continue
+                # 2. Destroyed parked while its base was under attack.
+                start_type = getattr(flight, "start_type", None)
+                departure = getattr(flight, "departure", None)
+                if (
+                    start_type is not None
+                    and start_type is not StartType.IN_FLIGHT
+                    and name not in took_off
+                    and departure is not None
+                    and near(t, direct_times_by_base.get(id(departure), []))
+                ):
+                    indirect.add(id(loss))
+        except Exception:
+            logging.exception("Failed to compute indirect-kill losses")
+        return indirect
+
+    def is_indirect_kill(self, flying_unit: "FlyingUnit") -> bool:
+        """True if this loss is counted as combat via inference (no direct DCS
+        shooter): destroyed parked, or the same attack as a confirmed kill."""
+        return id(flying_unit) in self._indirect_loss_ids
+
     def merge_simulation_results(self, results: SimulationResults) -> None:
         for air_loss in results.air_losses:
             self._sim_loss_ids.add(id(air_loss))
@@ -249,8 +413,11 @@ class Debriefing:
         """True if this air loss was a non-combat write-off: a crash, a collision,
         or a death with no shooter credited by DCS — as opposed to being shot down
         by a weapon or SAM. Retribution-sim combat losses (no DCS kill record) are
-        NOT treated as crashes."""
+        NOT treated as crashes, nor are inferred 'indirect' kills (destroyed
+        parked, or the same attack as a confirmed weapon-kill flightmate)."""
         if id(flying_unit) in self._sim_loss_ids:
+            return False
+        if id(flying_unit) in self._indirect_loss_ids:
             return False
         detail = self.kill_info_by_unit_id.get(id(flying_unit))
         if detail:
@@ -266,6 +433,11 @@ class Debriefing:
     def front_line_losses(self) -> Iterator[FrontLineUnit]:
         yield from self.ground_losses.player_front_line
         yield from self.ground_losses.enemy_front_line
+
+    @property
+    def motorpool_losses(self) -> Iterator[FrontLineUnit]:
+        yield from self.ground_losses.player_motorpool
+        yield from self.ground_losses.enemy_motorpool
 
     @property
     def convoy_losses(self) -> Iterator[ConvoyUnit]:
@@ -316,6 +488,16 @@ class Debriefing:
             losses = self.ground_losses.player_front_line
         else:
             losses = self.ground_losses.enemy_front_line
+        for loss in losses:
+            losses_by_type[loss.unit_type] += 1
+        return losses_by_type
+
+    def motorpool_losses_by_type(self, player: Player) -> dict[GroundUnitType, int]:
+        losses_by_type: dict[GroundUnitType, int] = defaultdict(int)
+        if player.is_blue:
+            losses = self.ground_losses.player_motorpool
+        else:
+            losses = self.ground_losses.enemy_motorpool
         for loss in losses:
             losses_by_type[loss.unit_type] += 1
         return losses_by_type
@@ -377,22 +559,34 @@ class Debriefing:
         if player.is_blue:
             air = self.air_losses.player
             front_line = gl.player_front_line
+            motorpool = gl.player_motorpool
             convoy = gl.player_convoy
             cargo_ships = gl.player_cargo_ships
             airlifts = gl.player_airlifts
             ground_objects = gl.player_ground_objects
             scenery = gl.player_scenery
+            airfields = gl.player_airfields
         else:
             air = self.air_losses.enemy
             front_line = gl.enemy_front_line
+            motorpool = gl.enemy_motorpool
             convoy = gl.enemy_convoy
             cargo_ships = gl.enemy_cargo_ships
             airlifts = gl.enemy_airlifts
             ground_objects = gl.enemy_ground_objects
             scenery = gl.enemy_scenery
+            airfields = gl.enemy_airfields
+        # Match the per-type casualty rows (and the campaign itself): when the
+        # "crashes don't count" doctrine is on, non-combat write-offs are not
+        # applied, so keep them out of the aircraft headline too.
+        if getattr(self.game.settings, "ignore_non_combat_air_losses", False):
+            aircraft_lost = sum(1 for loss in air if not self.is_non_combat_loss(loss))
+        else:
+            aircraft_lost = len(air)
         return SideLossCounts(
-            aircraft=len(air),
+            aircraft=aircraft_lost,
             front_line=len(front_line),
+            motorpool=len(motorpool),
             convoy=len(convoy),
             cargo_ships=len(cargo_ships),
             airlift_cargo=sum(len(loss.cargo) for loss in airlifts),
@@ -403,6 +597,7 @@ class Debriefing:
                 for capture in self.base_captures
                 if capture.captured_by_player == player.opponent
             ),
+            runways_destroyed=len(airfields),
         )
 
     def dead_aircraft(self) -> AirLosses:
@@ -413,6 +608,7 @@ class Debriefing:
             if aircraft is None:
                 logging.error(f"Could not find Flight matching {unit_name}")
                 continue
+            self._loss_name_by_id[id(aircraft)] = unit_name
             if aircraft.flight.departure.captured.is_blue:
                 player_losses.append(aircraft)
             else:
@@ -435,6 +631,14 @@ class Debriefing:
                     losses.player_front_line.append(front_line_unit)
                 else:
                     losses.enemy_front_line.append(front_line_unit)
+                continue
+
+            motorpool_unit = self.unit_map.motorpool_unit(unit_name)
+            if motorpool_unit is not None:
+                if motorpool_unit.origin.captured.is_blue:
+                    losses.player_motorpool.append(motorpool_unit)
+                else:
+                    losses.enemy_motorpool.append(motorpool_unit)
                 continue
 
             convoy_unit = self.unit_map.convoy_unit(unit_name)

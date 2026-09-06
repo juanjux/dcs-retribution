@@ -2,7 +2,9 @@ from .SWPack import *
 from .a4ec import *
 from .a7e import *
 from .a6a import *
+from .atmosx_clouds import *
 from .bandit_clouds import *
+from .weather2_clouds import *
 from .e7a import *
 from .ea6b import *
 from .f9f import *
@@ -37,8 +39,11 @@ from .su15 import *
 from .su30 import *
 from .su35s import *
 from .f15ex import *
+from .f15cge import *
+from .eurofighter import *
 from .su57 import *
 from .swedishmilitaryassetspack import *
+from .iranmilitaryassetspack import *
 from .coldwarassets import *
 from .uh60l import *
 from .vietnamwarvessels import *

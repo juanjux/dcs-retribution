@@ -51,6 +51,44 @@ class SkynetProperties:
 
 
 @dataclass(frozen=True)
+class GpsJammingProperties:
+    """How far this unit type denies GPS, from its ``gps_jamming`` yaml block.
+
+    The block's *presence* is what makes a ground unit a jammer; both fields are
+    optional tuning that falls back to the campaign setting::
+
+        gps_jamming:
+          radius_nm: 45
+          miss_radius_m: 250
+
+    Keeping the reach in the unit's own data file means adding a jammer is a data
+    edit -- register the vehicle, write its yaml, add the block. No id list in
+    Python needs touching, so a unit author never has to land alongside this
+    feature.
+    """
+
+    radius_nm: Optional[float] = None
+    miss_radius_m: Optional[float] = None
+
+    @classmethod
+    def from_data(cls, data: Any) -> Optional[GpsJammingProperties]:
+        """The block, or None when the unit declares none -- the common case. A
+        bare ``true`` is a jammer on the campaign defaults."""
+        if data is None or data is False:
+            return None
+        if data is True:
+            return cls()
+        if not isinstance(data, dict):
+            return None
+
+        def number(key: str) -> Optional[float]:
+            value = data.get(key)
+            return float(value) if isinstance(value, (int, float)) else None
+
+        return cls(radius_nm=number("radius_nm"), miss_radius_m=number("miss_radius_m"))
+
+
+@dataclass(frozen=True)
 class GroundUnitType(UnitType[Type[VehicleType]]):
     spawn_weight: int
     skynet_properties: SkynetProperties
@@ -58,6 +96,9 @@ class GroundUnitType(UnitType[Type[VehicleType]]):
     # Defines if we should place the ground unit with an inverted heading.
     # Some units like few Launchers have to be placed backwards to be able to fire.
     reversed_heading: bool = False
+
+    #: Set only on the handful of unit types that deny GPS. None everywhere else.
+    gps_jamming: Optional[GpsJammingProperties] = None
 
     _by_name: ClassVar[dict[str, GroundUnitType]] = {}
     _by_unit_type: ClassVar[dict[type[VehicleType], list[GroundUnitType]]] = (
@@ -119,6 +160,19 @@ class GroundUnitType(UnitType[Type[VehicleType]]):
             "[CH] Tor M2 SHORAD": 'SAM SA-15 Tor M2 "Gauntlet" [CH]',
             "[CH] Tor M2M SHORAD": 'SAM SA-15 Tor M2 "Gauntlet" [CH]',
             "[CH] Iskander-M SRBM": "SRBM 9K720 Iskander HE [CH]",
+            # CH USA pack 1.5.0: the mod renamed/removed these units and ED shipped
+            # native DCS equivalents (the CHAP-prefixed units). Migrate old saves to the
+            # native CHAP unit where one exists; the HIMARS variants ED didn't add
+            # (GLSDB / PrSM / PrSM-AShM) fall back to the closest native CHAP HIMARS.
+            # Values are the target's DISPLAY NAME (what named() resolves by); the DCS
+            # type id each maps to is noted after the line.
+            "[CH] M142 HIMARS (GLSDB)": "MLRS M142 HIMARS GMLRS HE [CH]",  # CHAP_M142_GMLRS_M31
+            "[CH] M142 HIMARS (ATACMS)": "MLRS M142 HIMARS ATACMS HE [CH]",  # CHAP_M142_ATACMS_M48
+            "[CH] M142 HIMARS (GMLRS)": "MLRS M142 HIMARS GMLRS HE [CH]",  # CHAP_M142_GMLRS_M31
+            "[CH] M142 HIMARS (PrSM)": "MLRS M142 HIMARS ATACMS HE [CH]",  # CHAP_M142_ATACMS_M48
+            "[CH] M142 HIMARS (PrSM AShM)": "MLRS M142 HIMARS ATACMS HE [CH]",  # CHAP_M142_ATACMS_M48
+            "[CH] Oshkosh FMTV M1083": "Truck M1083 A1P2 MTV [CH]",  # CHAP_M1083
+            "[CH] Oshkosh M-ATV MRAP (M2)": "APC MRAP M-ATV [CH]",  # CHAP_MATV
         }
 
     @classmethod
@@ -159,4 +213,5 @@ class GroundUnitType(UnitType[Type[VehicleType]]):
                 data.get("skynet_properties", {})
             ),
             reversed_heading=data.get("reversed_heading", False),
+            gps_jamming=GpsJammingProperties.from_data(data.get("gps_jamming")),
         )
