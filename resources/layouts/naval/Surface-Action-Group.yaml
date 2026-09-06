@@ -1,0 +1,17 @@
+name: Surface Action Group
+description: A heavy escort with two light ones, for a navy built around one capable hull
+tasks:
+  - Navy
+groups:
+  - Naval Group:
+    - name: Naval Group 2
+      unit_count:
+        - 1
+      unit_classes:
+        - Frigate
+    - name: Naval Group 0
+      unit_count:
+        - 2
+      unit_classes:
+        - Destroyer
+layout_file: resources/layouts/naval/Naval-Group.miz

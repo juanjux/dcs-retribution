@@ -1,0 +1,9 @@
+---
+name: Ala 31 - Esc. 311/312
+nickname: Atlas
+country: Spain
+role: Strategic Transport
+aircraft: A400M Atlas
+livery: airbus
+mission_types:
+  - Transport

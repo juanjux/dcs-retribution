@@ -1,0 +1,9 @@
+name: Spain LPD Group
+tasks:
+  - HelicopterCarrier
+units:
+  - L52 Castilla
+  - F105 Cristobal Colon
+  - F100 Álvaro de Bazán
+layouts:
+  - LPD Group

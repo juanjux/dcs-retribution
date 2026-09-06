@@ -12,7 +12,8 @@ from .boundedintoption import bounded_int_option
 from .choicesoption import choices_option
 from .minutesoption import minutes_option
 from .optiondescription import OptionDescription, SETTING_DESCRIPTION_KEY
-from .skilloption import skill_option
+from .skilloption import pilot_skill_option, skill_option
+from .textoption import text_option
 from ..ato.starttype import StartType
 
 Views = ForcedOptions.Views
@@ -93,6 +94,11 @@ PRETENSE_PAGE = "Pretense"
 
 MISSION_GENERATOR_PAGE = "Mission Generator"
 
+LIVE_PILOTS_PAGE = "Live Pilots"
+LIVE_PILOTS_RANKS_SECTION = "Rank Names"
+LIVE_PILOTS_SURVIVAL_SECTION = "Survival Chance"
+
+
 GAMEPLAY_SECTION = "Gameplay"
 KNEEBOARD_SECTION = "Kneeboard"
 
@@ -108,13 +114,13 @@ class Settings:
 
     # Difficulty settings
     # AI Difficulty
-    player_skill: str = skill_option(
+    player_skill: str = pilot_skill_option(
         "Player coalition skill",
         page=DIFFICULTY_PAGE,
         section=AI_DIFFICULTY_SECTION,
         default="High",
     )
-    enemy_skill: str = skill_option(
+    enemy_skill: str = pilot_skill_option(
         "Enemy coalition skill",
         page=DIFFICULTY_PAGE,
         section=AI_DIFFICULTY_SECTION,
@@ -251,6 +257,17 @@ class Settings:
         max=150,
         detail="Implicitly determines the number of BARCAPs planned by taking the mission duration"
         " and dividing it by the desired on-station time.",
+    )
+    desired_tarcap_mission_duration: timedelta = minutes_option(
+        "Desired TARCAP on-station time",
+        page=CAMPAIGN_DOCTRINE_PAGE,
+        section=GENERAL_SECTION,
+        default=timedelta(minutes=30),
+        min=10,
+        max=150,
+        detail="Only applies to a TARCAP nobody asked to escort. When a flight in its"
+        " package has requested an escort, the TARCAP stays for as long as the escorted"
+        " mission does, whatever this says.",
     )
     desired_awacs_mission_duration: timedelta = minutes_option(
         "Desired AWACS on-station time",
@@ -728,6 +745,19 @@ class Settings:
         CAMPAIGN_MANAGEMENT_PAGE,
         HQ_AUTOMATION_SECTION,
         default=False,
+    )
+    weighted_ground_procurement: bool = boolean_option(
+        "AI buys its better ground units more often",
+        CAMPAIGN_MANAGEMENT_PAGE,
+        HQ_AUTOMATION_SECTION,
+        default=True,
+        detail=(
+            "The AI picks a ground unit uniformly at random from everything of the "
+            "right class it can afford, so a faction fielding both a modern MBT and a "
+            "gun truck buys as many of one as the other. With this enabled the roll is "
+            "weighted by price, which is the only capability measure the model has. It "
+            "is a weighting and not a maximum, so cheap units still appear."
+        ),
     )
     automate_ground_object_repairs: bool = boolean_option(
         "Automate ground object repairs",
@@ -1477,6 +1507,84 @@ class Settings:
         GAMEPLAY_SECTION,
         default=True,
     )
+    gps_jamming: bool = boolean_option(
+        "GPS jamming (satellite-guided weapons go long)",
+        page=MISSION_GENERATOR_PAGE,
+        section=GAMEPLAY_SECTION,
+        default=False,
+        detail=(
+            "A JDAM, JSOW or JASSM released against a target inside an "
+            "enemy jamming bubble flies its normal profile and lands off the "
+            "aimpoint -- further off the deeper inside the bubble the target sits. "
+            "Laser, TV and anti-radiation weapons are unaffected, and killing the "
+            "jammer restores accuracy on the very next weapon, in the same mission. "
+            "A jammer is an ordinary bombable ground unit: any unit type whose data "
+            "file carries a `gps_jamming` block. Symmetric -- red eats its own "
+            "medicine wherever blue fields one. Needs the GPS jamming LUA plugin "
+            "enabled or it does nothing."
+        ),
+    )
+    gps_jamming_default_reach_nm: float = bounded_float_option(
+        "GPS jamming: default reach (nm)",
+        page=MISSION_GENERATOR_PAGE,
+        section=GAMEPLAY_SECTION,
+        default=30.0,
+        min=5.0,
+        max=150.0,
+        divisor=1,
+        detail=(
+            "Used by a jammer whose unit definition names no radius. This is the "
+            "size of the GPS-denied TARGET area, not a denied release area: a weapon "
+            "aimed at anything inside the bubble flies through it whatever range it "
+            "was released from, so standing off does not help a covered target."
+        ),
+    )
+    gps_jamming_miss_radius_m: float = bounded_float_option(
+        "GPS jamming: miss distance at full strength (m)",
+        page=MISSION_GENERATOR_PAGE,
+        section=GAMEPLAY_SECTION,
+        default=200.0,
+        min=25.0,
+        max=1000.0,
+        divisor=1,
+        detail=(
+            "How far off the aimpoint a degraded weapon lands when released over the "
+            "emitter. It scales down to zero at the bubble's edge, so a store "
+            "clipping the fringe is nudged and one released overhead is thrown clear."
+        ),
+    )
+    naval_weapon_release_stagger: bool = boolean_option(
+        "Stagger naval weapons release",
+        page=MISSION_GENERATOR_PAGE,
+        section=GAMEPLAY_SECTION,
+        default=False,
+        detail=(
+            "Warships start the mission on return-fire and are released to "
+            "weapons-free one group at a time across a window, instead of every hull "
+            "opening up at once. A modern anti-ship missile out-ranges the whole "
+            "theatre, so without this both fleets are in range from the moment the "
+            "mission loads and the entire naval battle happens in the first five "
+            "minutes. They still defend themselves while they wait -- this delays who "
+            "shoots first, it does not disarm anyone. Symmetric. Needs the naval "
+            "magazines LUA plugin enabled or it does nothing."
+        ),
+    )
+    naval_magazines: bool = boolean_option(
+        "Cross-turn naval magazines (anti-ship missiles do not rearm)",
+        page=MISSION_GENERATOR_PAGE,
+        section=GAMEPLAY_SECTION,
+        default=False,
+        detail=(
+            "Every warship group carries a finite campaign stock of anti-ship "
+            "missiles. A mission is a fresh spawn, so without this a fleet reloads for "
+            "free every turn and empties its tubes again and again; with it, what a "
+            "group fires this mission is gone for the rest of the war. A group that "
+            "runs dry drops back to return-fire -- winchester, not disarmed. "
+            "Land-attack cruise missiles are counted by their own setting, so nothing "
+            "is charged twice. Symmetric. Needs the naval magazines LUA plugin "
+            "enabled or it does nothing."
+        ),
+    )
     cruise_missile_strikes: bool = boolean_option(
         "Ship-launched cruise missile strikes",
         page=MISSION_GENERATOR_PAGE,
@@ -1665,6 +1773,176 @@ class Settings:
         detail=(
             "If enabled, AI flights will de-spawn over their base "
             "if the start-up type was manually changed to 'In-Flight'."
+        ),
+    )
+    live_pilots_enabled: bool = boolean_option(
+        "Enable Live Pilots",
+        page=LIVE_PILOTS_PAGE,
+        section=GENERAL_SECTION,
+        default=False,
+        detail=(
+            "Pilots hold a rank rather than a bare AI skill level, and can be named "
+            "in the mission itself."
+        ),
+    )
+    live_pilots_show_names: bool = boolean_option(
+        "Show pilot names in mission",
+        page=LIVE_PILOTS_PAGE,
+        section=GENERAL_SECTION,
+        default=True,
+        detail='Replaces the "Pilot #2" part of a flight label with the pilot name.',
+    )
+    live_pilots_show_ranks: bool = boolean_option(
+        "Show pilot ranks in mission",
+        page=LIVE_PILOTS_PAGE,
+        section=GENERAL_SECTION,
+        default=True,
+        detail="Prefixes the label with the pilot's abbreviated rank.",
+    )
+    live_pilots_rank_names: str = choices_option(
+        "Rank names",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_RANKS_SECTION,
+        default="country",
+        choices={
+            "Use faction country ranks": "country",
+            "Use generic ranks": "generic",
+            "Use skill names": "skill",
+            "Custom names (define below)": "custom",
+        },
+        detail=(
+            "Country ranks name each squadron in its own service -- FltLt for the "
+            "RAF, Hptm for the Luftwaffe -- falling back to the generic ladder for a "
+            "country with none of its own. Skill names use what DCS calls the level."
+        ),
+    )
+    live_pilots_rank_cadet_short: str = text_option(
+        "Cadet",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_RANKS_SECTION,
+        default="2ndLt",
+        max_length=5,
+    )
+    live_pilots_rank_cadet_full: str = text_option(
+        "Cadet",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_RANKS_SECTION,
+        default="Second Lieutenant",
+    )
+    live_pilots_rank_average_short: str = text_option(
+        "Average",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_RANKS_SECTION,
+        default="1stLt",
+        max_length=5,
+    )
+    live_pilots_rank_average_full: str = text_option(
+        "Average",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_RANKS_SECTION,
+        default="First Lieutenant",
+    )
+    live_pilots_rank_good_short: str = text_option(
+        "Good",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_RANKS_SECTION,
+        default="Capt",
+        max_length=5,
+    )
+    live_pilots_rank_good_full: str = text_option(
+        "Good",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_RANKS_SECTION,
+        default="Captain",
+    )
+    live_pilots_rank_high_short: str = text_option(
+        "High",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_RANKS_SECTION,
+        default="Maj",
+        max_length=5,
+    )
+    live_pilots_rank_high_full: str = text_option(
+        "High",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_RANKS_SECTION,
+        default="Major",
+    )
+    live_pilots_rank_excellent_short: str = text_option(
+        "Excellent",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_RANKS_SECTION,
+        default="LtCol",
+        max_length=5,
+    )
+    live_pilots_rank_excellent_full: str = text_option(
+        "Excellent",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_RANKS_SECTION,
+        default="Lieutenant Colonel",
+    )
+    live_pilots_rank_survival: bool = boolean_option(
+        "Rank decides who survives a loss",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_SURVIVAL_SECTION,
+        default=True,
+        detail=(
+            "Whether a pilot walks away from a crash or a shoot-down is rolled here, "
+            "against his rank, and owes nothing to whether he ejected in DCS -- the "
+            "engine reports neither an ejection nor a rescue. With this off, losing "
+            "the aircraft loses the pilot, as it always did."
+        ),
+    )
+    live_pilots_survival_cadet: int = bounded_int_option(
+        "Cadet (%)",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_SURVIVAL_SECTION,
+        default=20,
+        min=0,
+        max=100,
+    )
+    live_pilots_survival_average: int = bounded_int_option(
+        "Average (%)",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_SURVIVAL_SECTION,
+        default=35,
+        min=0,
+        max=100,
+    )
+    live_pilots_survival_good: int = bounded_int_option(
+        "Good (%)",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_SURVIVAL_SECTION,
+        default=50,
+        min=0,
+        max=100,
+    )
+    live_pilots_survival_high: int = bounded_int_option(
+        "High (%)",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_SURVIVAL_SECTION,
+        default=65,
+        min=0,
+        max=100,
+    )
+    live_pilots_survival_excellent: int = bounded_int_option(
+        "Excellent (%)",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_SURVIVAL_SECTION,
+        default=80,
+        min=0,
+        max=100,
+    )
+    live_pilots_wounded_chance: int = bounded_int_option(
+        "Wounded instead of killed (%)",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_SURVIVAL_SECTION,
+        default=35,
+        min=0,
+        max=100,
+        detail=(
+            "Chance that a pilot who would have died is wounded instead. Wounded "
+            "pilots are unavailable for 1-4 turns."
         ),
     )
     pretense_maxdistfromfront_distance: int = bounded_int_option(

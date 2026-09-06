@@ -27,6 +27,7 @@ from game.ato.flightplans.custom import CustomFlightPlan
 from game.ato.flighttype import FlightType
 from game.ato.flightwaypointtype import FlightWaypointType
 from game.dcs.aircrafttype import AircraftType
+from game.squadrons.experience import turns_phrase
 from game.purchaseadapter import AircraftPurchaseAdapter, TransactionError
 from game.server import EventStream
 from game.sim import GameUpdateEvents
@@ -60,11 +61,17 @@ class PilotDelegate(TwoColumnRowDelegate):
             return f"{flown} {missions} flown"
         elif (row, column) == (1, 0):
             who = "Player" if pilot.player else "AI"
-            skill = self.squadron_model.squadron.pilot_skill(pilot)
-            return f"{who} - Level: {skill.value}"
+            squadron = self.squadron_model.squadron
+            rank = squadron.pilot_rank(pilot)
+            if rank is not None:
+                return f"{who} - {rank.name}"
+            return f"{who} - Level: {squadron.pilot_skill(pilot).value}"
         elif (row, column) == (1, 1):
             # Dead pilots have their own list and living pilots are active by
-            # default, so only the "on leave" state is worth surfacing here.
+            # default, so only the states that keep a pilot off the roster are worth
+            # surfacing here.
+            if pilot.wounded:
+                return f"Wounded for {turns_phrase(pilot.wounded_turns)}"
             return pilot.status.value if pilot.on_leave else ""
         return ""
 
@@ -568,6 +575,11 @@ class SquadronDialog(QDialog):
         pilot = self.squadron_model.pilot_at_index(index)
         if not pilot.alive:
             button.setText("Pilot is dead")
+            button.setDisabled(True)
+            return True
+        if pilot.wounded:
+            # He is already off the roster and comes back on his own schedule.
+            button.setText(f"Wounded for {turns_phrase(pilot.wounded_turns)}")
             button.setDisabled(True)
             return True
         return False

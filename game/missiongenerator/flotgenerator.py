@@ -27,6 +27,8 @@ from dcs.task import (
 )
 from dcs.triggers import Event, TriggerOnce
 from dcs.unit import Skill, Vehicle
+
+from game.dcs.skills import ground_skill
 from dcs.unitgroup import VehicleGroup
 
 from game.callsigns import callsign_for_support_unit
@@ -1131,9 +1133,9 @@ class FlotGenerator:
                 role=group.role,
             )
             if is_player == Player.BLUE:
-                g.set_skill(Skill(self.game.settings.player_skill))
+                g.set_skill(ground_skill(Skill(self.game.settings.player_skill)))
             else:
-                g.set_skill(Skill(self.game.settings.enemy_vehicle_skill))
+                g.set_skill(ground_skill(Skill(self.game.settings.enemy_vehicle_skill)))
             positioned_groups.append((g, group))
 
             if group.role in [CombatGroupRole.APC, CombatGroupRole.IFV]:

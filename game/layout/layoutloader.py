@@ -238,6 +238,7 @@ class LayoutLoader:
                             unit_group.optional = group_mapping.optional
                             unit_group.fill = group_mapping.fill
                             unit_group.sub_task = group_mapping.sub_task
+                            unit_group.mix_unit_types = group_mapping.mix_unit_types
                             tgo_group = None
                             for _tgo_group in layout.groups:
                                 if _tgo_group.group_name == group_name:

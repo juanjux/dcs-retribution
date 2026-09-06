@@ -547,6 +547,14 @@ QLineEdit{
     color: #fff;
 }
 
+/* Without this a disabled box keeps its white text and reads as editable: the rule
+   above hard-codes a colour, so the palette never gets to dim it. #7E8C99 is the
+   muted grey the labels fall back to. */
+QLineEdit:disabled{
+    background: #3B4656;
+    color: #7E8C99;
+}
+
 .tacan-edit {
     background: #1D2731;
     text-transform: uppercase;

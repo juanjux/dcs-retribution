@@ -1,4 +1,4 @@
-# DCS Retribution — juanjux fork
+﻿# DCS Retribution — juanjux fork
 
 A personal fork of [DCS Retribution](https://github.com/dcs-retribution/dcs-retribution)
 that bundles a number of features and fixes which are not (yet) in upstream
@@ -32,6 +32,27 @@ Each item links to the fork PR that implements it. The authoritative, up-to-date
 list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=is%3Apr).
 
 ### Map & UI
+- **Air Wing squadron list, redesigned** — the list painted four blocks of identical
+  12pt text, with the aircraft type right-aligned on the far side of a 1200px row, so
+  finding an airframe meant reading every line. The type is now the only large, bold
+  text and sits on a fixed rail beside the silhouette, with the variant ("Block 135-GR
+  Late") demoted beside it; squadron and nickname drop to a quiet second line. Four
+  fixed columns replace the two ragged edges: type/squadron, base, role and strength.
+  The **primary task** appears for the first time as a colour-coded chip (air-to-air,
+  air-to-ground, support), a **6px diamond** marks carrier-based squadrons, pending
+  transfers get their own amber line instead of doubling the longest string in the row,
+  and the strength line leads with the aircraft count, greys the pilots and shows
+  "n ready" in green only when there is something to fly. A squadron with no aircraft
+  dims instead of shouting. Above the list: a **live filter** over type, squadron or
+  base, a **sort order** (type / squadron / base / aircraft count), **grouping** by
+  aircraft type or by base — the grouped column moves to a section header and the rows
+  lose it, and the choice is remembered next time you open the dialog — and a running
+  count of what is on screen. Design by Claude Design.
+  (branch [`juanjux/airwing-redesign`](https://github.com/juanjux/dcs-retribution/tree/juanjux/airwing-redesign))
+- **"All >>" and "None <<" in the unit transfer dialog** — a base can hold two dozen
+  unit types, and queueing a whole garrison meant clicking every row up to its count.
+  The two buttons sit above the list and move everything at once, or clear it.
+  (branch [`juanjux/transfer-all-none`](https://github.com/juanjux/dcs-retribution/tree/juanjux/transfer-all-none))
 - **Mission dashboard** — an embedded in-progress panel (live clocks, weather,
   per-flight status and a kill feed, with accept / submit-manually / abort)
   that replaces the old modal "waiting for mission result" dialog.
@@ -84,6 +105,16 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   [#20](https://github.com/juanjux/dcs-retribution/pull/20))
 
 ### Missions, AI & tasking
+- **Turn times from the sun** — the four turn slots are derived from the
+  theater's latitude and the campaign date instead of one fixed window per map.
+  Kola's shipped table gives `dawn: [3, 9]` and `day: [9, 18]` all year, so a
+  December dawn turn started at 03:00 in the pitch dark and a day turn could
+  begin after sunset; now dawn sits an hour after sunrise, day at solar noon,
+  dusk an hour before sunset and night two hours after it, each with an hour of
+  slack either side. North of the arctic circle there is no sunrise to anchor to,
+  so the slots hang off solar noon and stay dark — if it is night, it is night.
+  A theater keeps its old table with `daytime_mode: table` in
+  `resources/theaters/<map>/info.yaml`; campaigns saved before this keep theirs.
 - **Campaign Doctrine: "non-combat (crash) air losses don't count"** — AI
   crashes/collisions DCS not credited to a weapon or SAM (which happen a lot because DCS AI is stupid) no longer deplete a
   squadron or kill the pilot; backed by per-loss kill attribution and shown in
@@ -127,6 +158,25 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   installed in DCS (only one active at a time, since the packs reuse the same
   preset keys for different clouds).
   ([#53](https://github.com/juanjux/dcs-retribution/pull/53))
+- **Ferry flights may return fire** — a relocating squadron flew on Weapon Hold, so it
+  would evade a missile without ever shooting at the fighter that launched it and a
+  relocation across contested airspace was a free kill. Ferries now fly Return Fire:
+  still a transit that will not go hunting, but no longer defenceless.
+  ([#99](https://github.com/juanjux/dcs-retribution/pull/99))
+
+### Campaigns
+- **Syria — Invasion of the Canary Islands 2030**, with the **Spain 2030** and
+  **Morocco 2030** factions. A rework of NoGoodNews' original: both sides fly what they
+  are expected to field by 2030 (Spain on Eurofighters plus one Hornet wing, Morocco on
+  F-16s, JF-17s and F-35s), each Spanish wing carries its own livery, and both navies are
+  built from real hulls with pinned compositions -- the Juan Carlos I as an LHA, Castilla
+  and Galicia as L-52 landing docks, and a Moroccan surface group south of the islands.
+  Air defences are roughly a third lighter than the original, mostly duplicates removed
+  from the same field, which shortens the DEAD grind and helps the frame rate. The IADS
+  is fully wired: every command centre, comms tower and power station feeds something
+  local, so striking the network actually degrades it, and every base on a front has a
+  motorpool holding its undeployed armour as a bombable target.
+  ([#98](https://github.com/juanjux/dcs-retribution/pull/98))
 - **IADS infrastructure can be rebuilt** — comms towers, power stations and command
   centres produce no income, so they had no repair price and stayed rubble for the rest
   of the campaign once bombed. A network you can only dismantle is not worth attacking
@@ -159,15 +209,71 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   replaces the stock JSOW-A in place with a 925 km stealthy cruise missile on
   every carrier of that slot (F/A-18C, F-15E, F-16).
   ([#67](https://github.com/juanjux/dcs-retribution/pull/67))
+- **High Digit SAMs updated to 1.4.0 → 2.1.0** — the New Game wizard still offered
+  v1.4.0 while the mod had moved on in both directions. Adds the **SAMP/T battery**
+  (Aster 30 — Block 1/1NT/2 launchers at 120/150/200 km, ARABEL fire control, Ground
+  Fire 300 search radar at 400 km) and the **SA-7/SA-7b Strela-2 MANPADS**, which go to
+  six 1970s-80s factions that fielded no MANPADS at all. Retires what the mod dropped.
+  A unit type DCS cannot resolve is discarded in silence, so a stale preset costs you a
+  site that never spawns while Retribution still counts it: a new test walks every
+  preset and fails on anything that does not exist.
+  ([#96](https://github.com/juanjux/dcs-retribution/pull/96))
 - **CurrentHill China pack synced to 1.1.6** — the New Game wizard label and unit
   data track the latest CH China Military Asset Pack. 1.1.4→1.1.6 added/removed no
   units (only upstream fixes), so this is a version-note sync, not a data migration.
   (branch [`juanjux/ch_china_1.1.6`](https://github.com/juanjux/dcs-retribution/tree/juanjux/ch_china_1.1.6))
 
 ### Fixes
+- **A CAP guarding its own base could vanish the instant the mission started.** DCS
+  deletes an air-started flight on spawn if its route is short enough, without it flying
+  a metre: the engine runs the last waypoint's tasks straight away, and for an
+  air-started AI flight that waypoint carries the script that despawns it over its base.
+  No event, nothing in the debriefing — the flight simply never existed. Measured by
+  editing only the patrol coordinates of one generated mission and flying each: total
+  routes of 35.8 and 42.6 nm died, 46 nm and up flew, whatever the shape. It is the
+  total and not any single leg (a triangle of three 20 nm legs flies). The cold war
+  doctrine can put the end of the track 8 nm from the field with a 12 nm track — a 24 nm
+  round trip — and Retribution's own planner produced a 4.4 nm track start for a BARCAP
+  over Banak. Patrol routes are now lengthened **away from the enemy** until they reach
+  60 nm, so the threat-facing end and the station stay where the planner put them.
+  (branch [`juanjux/min-patrol-route`](https://github.com/juanjux/dcs-retribution/tree/juanjux/min-patrol-route))
+- **A package with an impossible TOT could hold for the whole mission** — flight plans
+  are built backwards from the time on target, so a TOT the flights cannot physically
+  reach puts the push time before the mission even starts. The hold point emitted that
+  as its release timer without a floor, and DCS never fires a trigger scheduled for a
+  negative time. Seen on a DEAD package given TOT +5 min from a base 29 minutes away:
+  four aircraft orbited instead of flying. The release is now clamped to mission start.
+  ([#100](https://github.com/juanjux/dcs-retribution/pull/100))
 - **Take Off died with "Duplicate convoy unit", stranding the campaign** — the name
   counter reset each turn onto a convoy still in transit. Same bug upstream.
   ([#93](https://github.com/juanjux/dcs-retribution/pull/93))
+- **SA-10B/S-300PS sites never spawned and were immortal.** High Digit SAMs 2.1.0 no
+  longer ships the S-300PS family, DCS silently drops unit types it cannot resolve, and
+  Retribution kept the site alive and its threat ring up. Now the stock S-300PS.
+  ([#96](https://github.com/juanjux/dcs-retribution/pull/96))
+- **The LLM planner saw a squadron count where the human sees a base's contents.**
+  Opening an enemy field shows the human "CAP: F-16CM x7, F-5E x2 / CAS: AH-64D x6";
+  the planner got `sqns: 4` and no way to tell a fighter wing worth an OCA package
+  from a couple of transports. `control_points[]` now carries `air`, the same
+  by-role breakdown the Intel tab renders, from the same source.
+  ([#91](https://github.com/juanjux/dcs-retribution/pull/91))
+- **The `/start` doc sent the LLM planner to twelve endpoints that do not exist.**
+  It documented `POST /transfers`, `POST /buy/auto`, `GET /ai_log`, `POST /squadrons`
+  and others the server never served, while omitting nine it does — so the planner
+  404'd on the documented name and never found the real one. Corrected against the
+  router, and a test now fails the build if the two drift apart again.
+  ([#90](https://github.com/juanjux/dcs-retribution/pull/90))
+- **The LLM planner could not see what aircraft cost.** `buyable_ground[]` carried
+  a `price`, but the squadron view did not, so the planner guessed — it assumed an
+  Apache was 5M, tried to buy several, and read the refusal as a broken squadron
+  relocation. `air_wing[]` now carries `price` (cost of ONE aircraft), documented
+  alongside it, and the refusal says "costs 20M **each**".
+  ([#88](https://github.com/juanjux/dcs-retribution/pull/88))
+- **Spanish AAA sites were empty, and then wrong.** The faction listed the WWII 2 cm
+  Flak 38, which needs the WWII Assets Pack; without it DCS discards every gun and the
+  site defends nothing. Spain fields no AAA and no SHORAD, so the Soviet ZU-23 and the
+  US Avenger went too — its point defence is the Stinger standing in for Mistral teams.
+  ([#95](https://github.com/juanjux/dcs-retribution/pull/95))
 - **A refused purchase now says why.** "Cannot buy more X" was the same message
   whether you were short of money, out of parking, or at the squadron's aircraft
   cap — three problems with three different answers. It now names the one that

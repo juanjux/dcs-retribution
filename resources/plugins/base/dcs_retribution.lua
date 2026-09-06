@@ -9,11 +9,15 @@ dead_events = {} -- killed units will be added via S_EVENT_DEAD event
 unit_lost_events = {} -- killed units will be added via S_EVENT_UNIT_LOST
 kill_events = {} -- killed units will be added via S_EVENT_KILL
 kill_details = {} -- structured S_EVENT_KILL records {target, initiator, weapon} for the UI feed
+hit_details = {} -- structured S_EVENT_HIT records, one per attacking aircraft per target, for pilot experience
+hit_seen = {} -- initiator -> {target -> true}, so a strafing pass is recorded once and not once per round
+HIT_DETAIL_LIMIT = 2000 -- a hard stop on the table above; state.json is written every 15 s
 base_capture_events = {}
 destroyed_objects_positions = {} -- will be added via S_EVENT_DEAD event
 took_off = {}   -- unit name -> true (S_EVENT_TAKEOFF); a ground-start unit absent here was destroyed parked
 death_time = {} -- unit name -> first death-event mission time (s), for indirect-kill timing
 cruise_missiles_state = {} -- cruisemissiles plugin appends/updates {group=, fired=} per ship group that launched; Python debits the campaign magazine at the turn boundary
+naval_magazines_state = {} -- navalmagazines plugin appends/updates {group=, fired=} per naval group that fired ANTI-SHIP missiles (a disjoint weapon set from cruise_missiles_state); Python debits the campaign magazine at the turn boundary
 mission_ended = false
 dirty_state = false -- Track if state has changed and needs writing
 
@@ -77,7 +81,7 @@ end
 local function diag_state_sizes()
     return string.format(
         "dead=%d kill=%d details=%d crash=%d lost=%d destroyed=%d took_off=%d death_time=%d",
-        #dead_events, #kill_events, #kill_details, #crash_events, #unit_lost_events,
+        #dead_events, #kill_events, #kill_details, #hit_details, #crash_events, #unit_lost_events,
         #destroyed_objects_positions, diag_count(took_off), diag_count(death_time))
 end
 
@@ -139,12 +143,14 @@ function write_state()
 		["unit_lost_events"] = unit_lost_events,
 		["kill_events"] = kill_events,
 		["kill_details"] = kill_details,
+		["hit_details"] = hit_details,
         ["mission_ended"] = mission_ended,
         ["destroyed_objects_positions"] = destroyed_objects_positions,
         ["model_time"] = timer.getTime(),
         ["took_off"] = took_off,
         ["death_time"] = death_time,
         ["cruise_missiles_state"] = cruise_missiles_state or {},
+        ["naval_magazines_state"] = naval_magazines_state or {},
     }
     local t0 = os.clock()
     local ok, write_error = pcall(function()
@@ -372,6 +378,40 @@ local function onEvent(event)
         end
         kill_details[#kill_details + 1] = detail
         dirty_state = true
+    end
+
+    -- A hit is not a kill, but it is work: a pilot who leaves a destroyer burning
+    -- and does not finish it off has earned something. Only an aircraft's hits are
+    -- recorded, and only the first one it lands on each target: a front line trading
+    -- cannon fire would fill the save, and a strafing pass would otherwise pay by the
+    -- round. The string guard is the scenery lesson again -- getName() returns a
+    -- number for scenery, and a number here would poison the lookup table.
+    if event.id == world.event.S_EVENT_HIT and event.initiator and event.target then
+        pcall(function()
+            if #hit_details >= HIT_DETAIL_LIMIT then return end
+            local category = event.initiator:getDesc().category
+            if category ~= Unit.Category.AIRPLANE and category ~= Unit.Category.HELICOPTER then
+                return
+            end
+            local initiator_name = event.initiator:getName()
+            local target_name = event.target:getName()
+            if type(initiator_name) ~= "string" or type(target_name) ~= "string" then return end
+            local seen = hit_seen[initiator_name]
+            if seen == nil then seen = {}; hit_seen[initiator_name] = seen end
+            if seen[target_name] then return end
+            seen[target_name] = true
+            local detail = { ["target"] = target_name, ["initiator"] = initiator_name }
+            pcall(function() detail["initiator_type"] = event.initiator:getTypeName() end)
+            pcall(function()
+                local pn = event.initiator:getPlayerName()
+                if pn and pn ~= "" then detail["initiator_player"] = pn end
+            end)
+            if event.weapon then
+                pcall(function() detail["weapon"] = event.weapon:getTypeName() end)
+            end
+            hit_details[#hit_details + 1] = detail
+            dirty_state = true
+        end)
     end
 
     if event.id == world.event.S_EVENT_DEAD and event.initiator and event.initiator.getName then

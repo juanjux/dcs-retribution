@@ -117,6 +117,8 @@ class TheaterLoader:
             datetime.timezone(datetime.timedelta(hours=data["timezone"])),
             self._load_seasonal_conditions(data["climate"]),
             self._load_daytime_map(data["daytime"]),
+            # Turn times come from the sun unless a theater asks for its table.
+            daytime_from_table=data.get("daytime_mode", "solar") == "table",
         )
 
     def _load_daytime_map(self, daytime_data: dict[str, list[int]]) -> DaytimeMap:

@@ -1,0 +1,19 @@
+name: LPD Group
+description: A landing platform dock leading two frigates, for a navy whose amphibious
+  ships are not full helicopter carriers
+tasks:
+  - HelicopterCarrier
+groups:
+  - LHA:
+    - name: LHA Group 0
+      unit_count:
+        - 1
+      unit_types:
+        - L52
+  - Escort:
+    - name: LHA Group 1
+      unit_count:
+        - 2
+      unit_classes:
+        - Frigate
+layout_file: resources/layouts/naval/LHA_Group.miz

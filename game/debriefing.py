@@ -20,6 +20,7 @@ from uuid import UUID
 from game.ato.starttype import StartType
 from game.dcs.aircrafttype import AircraftType
 from game.dcs.groundunittype import GroundUnitType
+from game.squadrons.experience import PilotOutcomes
 from game.theater import Airfield, ControlPoint, Player
 
 if TYPE_CHECKING:
@@ -137,6 +138,10 @@ class StateData:
     #: initiator_player, weapon}), used to attribute air losses in the UI feed.
     kill_details: List[Any] = field(default_factory=list)
 
+    #: One record per attacking aircraft per target it hit, whether or not the
+    #: target died. Written by the base plugin for pilot experience.
+    hit_details: List[Any] = field(default_factory=list)
+
     #: DCS mission model time in seconds (timer.getTime()); None for older states.
     model_time: Optional[float] = None
 
@@ -153,6 +158,14 @@ class StateData:
     #: debit site, so regenerating a mission never double-charges. Empty when the
     #: feature is off or the state file predates it.
     cruise_missiles_state: List[Tuple[str, int]] = field(default_factory=list)
+
+    #: ``(naval_group_name, fired)`` per naval group that fired ANTI-SHIP missiles this
+    #: mission, mirrored by the navalmagazines plugin. reconcile_naval_magazines debits
+    #: the persisted campaign magazine by ``fired`` at the turn boundary -- the only
+    #: debit site, so re-generating a mission never double-counts. The weapon set is
+    #: disjoint from cruise_missiles_state's land-attack families, so a shot is never
+    #: charged to both. Empty on pre-feature state files and when the feature is off.
+    naval_magazines_state: List[Tuple[str, int]] = field(default_factory=list)
 
     @classmethod
     def from_json(cls, data: Dict[str, Any], unit_map: UnitMap) -> StateData:
@@ -196,8 +209,9 @@ class StateData:
         raw_death_times = data.get("death_time", {})
         death_times = raw_death_times if isinstance(raw_death_times, dict) else {}
 
-        def parse_cruise_missiles_state(raw: Any) -> List[Tuple[str, int]]:
-            # The cruisemissiles plugin writes {group=, fired=} per launching group;
+        def parse_group_fired_state(raw: Any) -> List[Tuple[str, int]]:
+            # The cruisemissiles and navalmagazines plugins both write
+            # {group=, fired=} per launching group;
             # the Lua JSON encoder yields [] when there were none, and a state file
             # written before the feature omits the key entirely. Pull the pair
             # defensively: a malformed or unnamed entry must not break the debrief.
@@ -220,11 +234,15 @@ class StateData:
             destroyed_statics=data.get("destroyed_objects_positions", []),
             base_capture_events=data.get("base_capture_events", []),
             kill_details=data.get("kill_details", []),
+            hit_details=data.get("hit_details", []),
             model_time=data.get("model_time"),
             took_off=took_off,
             death_times=death_times,
-            cruise_missiles_state=parse_cruise_missiles_state(
+            cruise_missiles_state=parse_group_fired_state(
                 data.get("cruise_missiles_state", [])
+            ),
+            naval_magazines_state=parse_group_fired_state(
+                data.get("naval_magazines_state", [])
             ),
         )
 
@@ -243,6 +261,9 @@ class Debriefing:
         # id(loss) -> its DCS unit name, populated by dead_aircraft(); lets the
         # indirect-kill logic look up per-loss takeoff/death-time state.
         self._loss_name_by_id: Dict[int, str] = {}
+        #: What became of the aircrew, filled in by the results processor as it
+        #: commits losses and experience, and read by the debriefing window.
+        self.pilot_outcomes = PilotOutcomes()
         self.air_losses = self.dead_aircraft()
         self.ground_losses = self.dead_ground_units()
         self.base_captures = self.base_capture_events()
@@ -280,6 +301,11 @@ class Debriefing:
             logging.exception("Failed to index kill details; killer attribution off")
         return index
 
+    def resolve_killed_object(self, name: str) -> Optional[Any]:
+        """Public face of the name -> loss-object resolution, for callers that start
+        from a kill detail rather than from a loss."""
+        return self._resolve_killed_object(name)
+
     def _resolve_killed_object(self, name: str) -> Optional[Any]:
         """Resolve a killed unit name to its loss object, mirroring how
         dead_aircraft/dead_ground_units resolve names, so id() lines up."""
@@ -295,10 +321,16 @@ class Debriefing:
             um.cargo_ship,
             um.theater_units,
             um.scenery_object,
+            um.motorpool_unit,
+            um.airfield,
         ):
             obj = getter(name)
             if obj is not None:
                 return obj
+        # dead_ground_units retries statics under a " object" suffix; a kill detail for
+        # one of those used to be resolved here as nothing and quietly dropped.
+        if not name.endswith(" object"):
+            return self._resolve_killed_object(f"{name} object")
         return None
 
     def _has_direct_shooter(self, loss: "FlyingUnit") -> bool:
