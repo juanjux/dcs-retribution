@@ -78,11 +78,11 @@ class MissionResultsProcessor:
                         continue
                     before = pilot.morale
                     for event in events:
-                        pilot.morale = morale_rules.apply(
-                            pilot.morale,
+                        pilot.move_morale(
                             event,
                             squadron.pilot_skill(pilot),
                             self.game.settings,
+                            self.game.turn,
                         )
                     if pilot.morale != before:
                         reasons = [e.reason for e in events]

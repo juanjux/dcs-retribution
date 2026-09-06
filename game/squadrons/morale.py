@@ -12,6 +12,7 @@ the survival odds.
 
 from __future__ import annotations
 
+import random
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Optional
 
@@ -312,9 +313,29 @@ def survival_modifier(morale: int) -> float:
     return (morale - MORALE_START) / 500.0  # +/- 10 points at the extremes
 
 
-#: The turns of leave the dialog offers by default when the player grants one.
+#: The turns of leave the dialog offers when a pilot has not named a number, and the
+#: most the player can ever grant at once.
 DEFAULT_LEAVE_TURNS = 2
 MAX_LEAVE_TURNS = 6
+
+#: How long a man asks for, by how he is holding up. Nobody asks for leave in the
+#: abstract: he asks for a morning, a day, a week. The player can then grant less.
+LEAVE_ASKED_FOR: tuple[tuple[int, int, int], ...] = (
+    (40, 1, 2),  # Normal and better: a couple of days
+    (15, 2, 3),  # Shaken
+    (MORALE_MIN, 3, 4),  # Shattered or Broken: he wants out for a while
+)
+
+
+def requested_leave_turns(morale: int, roll: Optional[float] = None) -> int:
+    """The number of turns this pilot asks for."""
+    for floor, low, high in LEAVE_ASKED_FOR:
+        if morale >= floor:
+            span = high - low
+            if roll is None:
+                roll = random.random()
+            return min(MAX_LEAVE_TURNS, low + int(roll * (span + 1)))
+    return DEFAULT_LEAVE_TURNS
 
 
 def leave_request_chance(morale: int, base_percent: int) -> float:
@@ -331,8 +352,37 @@ def leave_request_chance(morale: int, base_percent: int) -> float:
 #: ones are the ordinary churn of a campaign and only go to the ledger.
 MORALE_WORTH_REPORTING = 10
 
-#: Turns at rock bottom before a pilot walks away for good.
-DESERTION_AFTER_TURNS = 3
+#: The chance, per turn spent at rock bottom, that a pilot simply stops coming --
+#: one entry per rung of the ladder, from cadet to squadron leader. Rank is what keeps
+#: a man in his seat when nothing else does, so the veteran is the last to go.
+DESERTION_CHANCE_BY_RUNG: tuple[float, ...] = (0.09, 0.07, 0.05, 0.03, 0.01)
+
+
+def desertion_chance(skill: Skill) -> float:
+    """How likely this pilot is to walk away this turn, 0 to 1."""
+    try:
+        rung = SKILL_LADDER.index(skill)
+    except ValueError:
+        rung = 0
+    return DESERTION_CHANCE_BY_RUNG[min(rung, len(DESERTION_CHANCE_BY_RUNG) - 1)]
+
+
+@dataclass(frozen=True)
+class MoraleLogEntry:
+    """One thing that moved a pilot, kept so it can be shown back to the player.
+
+    The pilot dialog is where this is read; nothing in the campaign depends on it.
+    """
+
+    turn: int
+    amount: int
+    reason: str
+    morale_after: int
+
+
+#: How many entries a pilot carries. Enough for the dialog to show a campaign's worth
+#: of a man's ups and downs without the roll of them bloating every save.
+MORALE_HISTORY_LIMIT = 60
 
 #: At or below this he will not fly at all.
 REFUSES_TO_FLY_AT = 0

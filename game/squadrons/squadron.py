@@ -353,19 +353,22 @@ class Squadron:
         for pilot in list(self.current_roster):
             if not pilot.alive:
                 continue
+
+            # What he had at this point one turn ago, so the next turn can say whether
+            # he is sliding. Taken before anything moves him.
+            was = pilot.morale
+            pilot.morale_last_turn = was
+
             if pilot.on_leave:
-                pilot.morale = morale_rules.apply(
-                    pilot.morale,
-                    morale_rules.ON_LEAVE,
-                    self.pilot_skill(pilot),
-                    self.settings,
+                pilot.move_morale(
+                    morale_rules.ON_LEAVE, self.pilot_skill(pilot), self.settings, turn
                 )
                 pilot.serve_a_turn_of_leave(turn)
                 continue
 
-            # Judged on the state he arrived in. The drift below always lifts a man off
-            # rock bottom, so asking afterwards would mean nobody ever deserts.
-            was_at_rock_bottom = pilot.morale <= morale_rules.REFUSES_TO_FLY_AT
+            # Judged on the state he arrived in. The drift below lifts a man who is
+            # merely low, so asking afterwards would read the wrong number.
+            was_at_rock_bottom = was <= morale_rules.REFUSES_TO_FLY_AT
 
             pilot.turns_since_leave += 1
             if pilot.turns_since_leave > TURNS_BEFORE_LEAVE_IS_MISSED:
@@ -373,20 +376,29 @@ class Squadron:
                 # fifth, so the eighth turn costs three times the sixth.
                 overdue = pilot.turns_since_leave - TURNS_BEFORE_LEAVE_IS_MISSED
                 for _ in range(overdue):
-                    pilot.morale = morale_rules.apply(
-                        pilot.morale,
+                    pilot.move_morale(
                         morale_rules.NO_LEAVE,
                         self.pilot_skill(pilot),
                         self.settings,
+                        turn,
                     )
+            before_drift = pilot.morale
             pilot.morale = morale_rules.clamp(
                 pilot.morale + morale_rules.drift(pilot.morale)
             )
+            pilot.note_morale_change(before_drift, "time passing", turn)
 
             if was_at_rock_bottom:
                 pilot.turns_at_zero += 1
-                if pilot.turns_at_zero >= morale_rules.DESERTION_AFTER_TURNS:
-                    logging.info(f"{pilot.name} has deserted {self}")
+                # A roll, not a countdown: every turn a man is left at the bottom is a
+                # turn he might not come back from, and rank is what holds him there.
+                if random.random() < morale_rules.desertion_chance(
+                    self.pilot_skill(pilot)
+                ):
+                    logging.info(
+                        f"{pilot.name} has deserted {self} after "
+                        f"{pilot.turns_at_zero} turns at rock bottom"
+                    )
                     pilot.desert()
                     continue
             else:
@@ -399,6 +411,9 @@ class Squadron:
                 )
             ):
                 pilot.wants_leave = True
+                pilot.leave_turns_requested = morale_rules.requested_leave_turns(
+                    pilot.morale
+                )
 
     def tend_the_wounded(self) -> None:
         """One turn of every wound served; the last one puts the pilot back to work."""
