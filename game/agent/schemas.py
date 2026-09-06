@@ -153,6 +153,13 @@ class WaypointEditRequest(BaseModel):
     alt_m: float | None = None  # new altitude in metres (optional)
 
 
+class FlightCrewRequest(BaseModel):
+    side: str = "red"
+    flight_id: str
+    seat: int  # 0-based, as listed by GET /flights/{id}/crew
+    pilot_name: str | None = None  # null empties the seat
+
+
 class FlightLoadoutRequest(BaseModel):
     side: str = "red"
     flight_id: str

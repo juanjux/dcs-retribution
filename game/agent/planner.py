@@ -1639,3 +1639,140 @@ def package_of(game: Game, side: str, flight):
         if flight in package.flights:
             return package
     return None
+
+
+def _pilot_view(squadron: Any, pilot: Any) -> dict[str, Any]:
+    """One pilot as the Air Wing shows him."""
+    rank = squadron.pilot_rank(pilot)
+    view: dict[str, Any] = {
+        "name": pilot.name,
+        "skill": squadron.pilot_skill(pilot).value,
+        "missions_flown": pilot.record.missions_flown,
+        "xp": pilot.record.xp,
+        "status": pilot.status.value,
+    }
+    if rank is not None:
+        view["rank"] = rank.abbreviation
+        view["rank_full"] = rank.name
+    if pilot.wounded:
+        view["wounded_turns_remaining"] = pilot.wounded_turns
+    if pilot.player:
+        view["player"] = True
+    return view
+
+
+def squadron_pilots(game: Game, side: str, squadron_id: str) -> dict[str, Any]:
+    """Every pilot on a squadron's books, and where each one is.
+
+    The Air Wing dialog's roster, in other words: rank, experience, what he is flying at,
+    and whether he is dead, on leave, in hospital or ready. ``assigned_to`` names the
+    flight he is already crewing, so the free ones are the entries without it.
+    """
+    from game.ato import FlightType  # noqa: F401  (kept for symmetry with callers)
+
+    for coalition in (game.blue, game.red):
+        if (coalition.player.name.lower() == "blue") != (side.lower() == "blue"):
+            continue
+        for squadron in coalition.air_wing.iter_squadrons():
+            if str(squadron.id) != squadron_id and squadron.name != squadron_id:
+                continue
+            flying = {}
+            for package in coalition.ato.packages:
+                for flight in package.flights:
+                    for pilot in flight.roster.iter_pilots():
+                        if pilot is not None:
+                            flying[id(pilot)] = (
+                                f"{flight.flight_type.value} on "
+                                f"{flight.package.target.name}"
+                            )
+            pilots = []
+            for pilot in squadron.current_roster:
+                view = _pilot_view(squadron, pilot)
+                if id(pilot) in flying:
+                    view["assigned_to"] = flying[id(pilot)]
+                pilots.append(view)
+            # Senior first, the same order the Air Wing lists them in.
+            pilots.sort(key=lambda v: (-v.get("xp", 0), v["name"]))
+            return {
+                "squadron": str(squadron),
+                "aircraft": str(squadron.aircraft),
+                "base": squadron.location.name,
+                "pilots": pilots,
+            }
+    return {"error": f"no squadron {squadron_id!r} on {side}"}
+
+
+def flight_crew(game: Game, side: str, flight_id: str) -> dict[str, Any]:
+    """Who is in each seat of a flight, and who else could be.
+
+    ``seats`` is indexed the way ``set_flight_crew`` expects. ``available`` lists the
+    squadron's pilots who are not flying anything yet, most senior first.
+    """
+    flight = flight_for_side(game, side, flight_id)
+    if flight is None:
+        return {"error": f"no flight with id {flight_id!r}"}
+    squadron = flight.squadron
+    seats = []
+    for idx, pilot in enumerate(flight.roster.iter_pilots()):
+        seat: dict[str, Any] = {"seat": idx}
+        if pilot is None:
+            seat["empty"] = True
+        else:
+            seat.update(_pilot_view(squadron, pilot))
+        seats.append(seat)
+    available = [_pilot_view(squadron, p) for p in squadron.available_pilots]
+    available.sort(key=lambda v: (-v.get("xp", 0), v["name"]))
+    return {
+        "flight_id": str(flight.id),
+        "squadron": str(squadron),
+        "seats": seats,
+        "available": available,
+    }
+
+
+def set_flight_crew(
+    game: Game, side: str, flight_id: str, seat: int, pilot_name: str | None
+) -> schemas.OpResult:
+    """Put a named pilot in a seat, or empty it with a null name.
+
+    The same move as the dropdown in Edit Flight. A pilot who is dead, in hospital, on
+    leave or already crewing something else is refused, because the squadron only counts
+    him once and the alternative is the same man flying two missions at once.
+    """
+    flight = flight_for_side(game, side, flight_id)
+    if flight is None:
+        return schemas.OpResult(ok=False, error=f"no flight with id {flight_id!r}")
+    squadron = flight.squadron
+    if not 0 <= seat < flight.roster.max_size:
+        return schemas.OpResult(
+            ok=False,
+            error=f"seat {seat} does not exist; this flight has "
+            f"{flight.roster.max_size}",
+        )
+    if pilot_name is None:
+        current = flight.roster.pilot_at(seat)
+        flight.roster.set_pilot(seat, None)
+        who = current.name if current is not None else "nobody"
+        return schemas.OpResult(ok=True, detail=f"seat {seat} emptied (was {who})")
+
+    if flight.roster.pilot_at(seat) is not None and (
+        flight.roster.pilot_at(seat).name == pilot_name
+    ):
+        return schemas.OpResult(ok=True, detail=f"{pilot_name} already has seat {seat}")
+
+    matches = [p for p in squadron.available_pilots if p.name == pilot_name]
+    if not matches:
+        known = any(p.name == pilot_name for p in squadron.current_roster)
+        reason = (
+            "he is dead, wounded, on leave or already flying something else"
+            if known
+            else f"nobody of that name is on {squadron}'s books"
+        )
+        return schemas.OpResult(
+            ok=False, error=f"cannot put {pilot_name} in seat {seat}: {reason}"
+        )
+    try:
+        flight.roster.set_pilot(seat, matches[0])
+    except ValueError as exc:
+        return schemas.OpResult(ok=False, error=str(exc))
+    return schemas.OpResult(ok=True, detail=f"{pilot_name} takes seat {seat}")

@@ -200,6 +200,8 @@ def capabilities() -> dict:
             "aircraft/pylons (weapons each pylon accepts, to build a custom payload)",
             "aircraft/loadouts (named ready-made loadouts for an airframe)",
             "waypoints/{flight_id} (a flight's waypoints, to adjust its route)",
+            "squadrons/{squadron_id}/pilots (rank, experience, skill, wounds, and who is already flying)",
+            "flights/{flight_id}/crew (who is in each seat, and which pilots are free)",
             "ground/mine (YOUR OWN ground objects with their ids -- turn_context.targets is the enemy's, so this is the only place to get an id to rebuild/upgrade one of yours)",
             "ground/options/{tgo_id} (what a SAM/EWR/armor/ship site can be rebuilt into + costs)",
             "validate",
@@ -213,6 +215,7 @@ def capabilities() -> dict:
             "packages/evaluate (dry-run a package's TOT, no commit)",
             "payload/validate (check a {pylon: clsid} loadout is valid for an airframe)",
             "waypoints/edit (move/adjust a flight waypoint — never deletes)",
+            "flights/crew (put a named pilot in a seat, or empty it)",
             "flights/loadout (re-arm a flight that already exists — ferries launch empty)",
             "flights/tot_offset (shift ONE flight's TOT off its package's — negative puts escorts over the target ahead of the strikers)",
             "packages/{index} (delete)",
@@ -256,6 +259,30 @@ def edit_waypoint(side, flight_id, waypoint_idx, lat=None, lng=None, alt_m=None)
     return planner.edit_waypoint(
         _require_game(), side, flight_id, waypoint_idx, lat, lng, alt_m
     )
+
+
+@opfor_only
+def squadron_pilots(side: str, squadron_id: str) -> dict:
+    """A squadron's roster: rank, experience, skill, and who is already flying."""
+    from game.agent import planner
+
+    return planner.squadron_pilots(_require_game(), side, squadron_id)
+
+
+@opfor_only
+def flight_crew(side: str, flight_id: str) -> dict:
+    """Who is in each seat of a flight, and which pilots are still free."""
+    from game.agent import planner
+
+    return planner.flight_crew(_require_game(), side, flight_id)
+
+
+@opfor_only
+def set_flight_crew(side: str, flight_id: str, seat: int, pilot_name):
+    """Put a named pilot in a seat, or empty it."""
+    from game.agent import planner
+
+    return planner.set_flight_crew(_require_game(), side, flight_id, seat, pilot_name)
 
 
 @opfor_only

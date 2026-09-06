@@ -113,6 +113,31 @@ def validate_payload(
 
 
 @_tool()
+def squadron_pilots(squadron_id: str, side: str = "red") -> dict:
+    """A squadron's roster: each pilot's rank, experience, skill, wounds and the flight he
+    is already crewing. Pilots without `assigned_to` are the ones free to task. Squadron
+    ids come from turn_context."""
+    return service.squadron_pilots(side, squadron_id)
+
+
+@_tool()
+def flight_crew(flight_id: str, side: str = "red") -> dict:
+    """Who is in each seat of a flight, and which of the squadron's pilots are still free.
+    Seat numbers are what set_flight_crew expects."""
+    return service.flight_crew(side, flight_id)
+
+
+@_tool()
+def set_flight_crew(
+    flight_id: str, seat: int, pilot_name: str | None = None, side: str = "red"
+) -> dict:
+    """Put a named pilot in a seat of a flight, or empty it by leaving pilot_name out.
+    Refuses anyone dead, wounded, on leave or already flying -- a pilot can only be in one
+    place. Read flight_crew first for the seat numbers and the free pilots."""
+    return service.set_flight_crew(side, flight_id, seat, pilot_name).model_dump()
+
+
+@_tool()
 def get_waypoints(flight_id: str, side: str = "red") -> dict:
     """A flight's waypoints (idx, type, pos [lat,lng], alt_m) — read them before editing a
     route with edit_waypoint. Waypoint 0 is takeoff (immovable); none can be deleted."""

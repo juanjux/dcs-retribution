@@ -141,6 +141,28 @@ def edit_waypoint(body: schemas.WaypointEditRequest) -> schemas.OpResult:
     )
 
 
+@router.get("/squadrons/{squadron_id}/pilots", operation_id="ai_get_squadron_pilots")
+def squadron_pilots(squadron_id: str, side: str = "red") -> dict:
+    """A squadron's roster: each pilot's rank, experience, skill, wounds, and the flight
+    he is already crewing. The ones without `assigned_to` are the ones you can task."""
+    return service.squadron_pilots(side, squadron_id)
+
+
+@router.get("/flights/{flight_id}/crew", operation_id="ai_get_flight_crew")
+def flight_crew(flight_id: str, side: str = "red") -> dict:
+    """Who is in each seat of a flight, and which of the squadron's pilots are free."""
+    return service.flight_crew(side, flight_id)
+
+
+@router.post("/flights/crew", operation_id="ai_set_flight_crew")
+def set_flight_crew(body: schemas.FlightCrewRequest) -> schemas.OpResult:
+    """Put a named pilot in a seat, or empty it with a null name. Refuses a pilot who is
+    dead, wounded, on leave or already flying: he can only be in one place."""
+    return service.set_flight_crew(
+        body.side, body.flight_id, body.seat, body.pilot_name
+    )
+
+
 @router.post("/flights/loadout", operation_id="ai_set_flight_loadout")
 def set_flight_loadout(body: schemas.FlightLoadoutRequest) -> schemas.OpResult:
     """Re-arm a flight that already exists, like the player's Payload tab. Takes a name
