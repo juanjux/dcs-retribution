@@ -40,16 +40,20 @@ def test_unlocks_speed_locked_waypoint_trapped_between_tots() -> None:
 
     _generator(points)._resolve_locked_speed_time_conflicts()
 
-    # Only JOIN is unlocked; the spawn (nothing before it) and the SPLIT/RTB legs
-    # (no TOT-locked waypoint after them) keep their locked speed.
-    assert [p.speed_locked for p in points] == [True, False, False, True, True, True]
+    # JOIN and the spawn are unlocked -- this fork also drops the speed lock on ANY
+    # TOT-locked waypoint (not just a trapped one), because a carrier CAP clamps every
+    # waypoint to ETA == 0 and DCS rejects the speed+time pair even on the first one.
+    # The SPLIT/RTB legs (no TOT-locked waypoint after them) keep their locked speed.
+    assert [p.speed_locked for p in points] == [False, False, False, True, True, True]
     # Times are untouched.
     assert all(p.ETA_locked for p in points[:3])
 
 
 def test_leaves_untrapped_speed_locks_alone() -> None:
-    """A normal escort (JOIN has a real TOT, so no speed lock there) is unchanged:
-    the split/RTB legs are not trapped (no TOT-locked waypoint follows them)."""
+    """A normal escort (JOIN has a real TOT, so no speed lock there): the split/RTB
+    legs are not trapped (no TOT-locked waypoint follows them) and keep their locked
+    speed. The spawn still loses its speed lock -- it is TOT-locked, and this fork
+    never leaves speed and time locked on the same waypoint."""
     points = [
         _wp(eta_locked=True, speed_locked=True, name="spawn"),
         _wp(eta_locked=True, speed_locked=False, name="JOIN"),
@@ -61,7 +65,7 @@ def test_leaves_untrapped_speed_locks_alone() -> None:
 
     _generator(points)._resolve_locked_speed_time_conflicts()
 
-    assert [p.speed_locked for p in points] == [True, False, False, True, True, True]
+    assert [p.speed_locked for p in points] == [False, False, False, True, True, True]
 
 
 def test_unlocks_a_run_of_trapped_speed_locked_waypoints() -> None:

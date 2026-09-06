@@ -39,8 +39,8 @@ def test_generate_flight_kneeboard_calls_generate_recon_pages() -> None:
         return_value=MagicMock(),
     ), patch(
         "game.missiongenerator.kneeboard.SupportPage",
-        return_value=MagicMock(),
-    ):
+    ) as support_page:
+        support_page.paginate.return_value = []
         gen = KneeboardGenerator.__new__(KneeboardGenerator)
         gen.mission = MagicMock()
         gen.game = game
@@ -90,8 +90,8 @@ def test_generate_flight_kneeboard_passes_dark_mode_when_enabled() -> None:
         return_value=MagicMock(),
     ), patch(
         "game.missiongenerator.kneeboard.SupportPage",
-        return_value=MagicMock(),
-    ):
+    ) as support_page:
+        support_page.paginate.return_value = []
         gen = KneeboardGenerator.__new__(KneeboardGenerator)
         gen.mission = MagicMock()
         gen.game = game
@@ -136,8 +136,8 @@ def test_generate_flight_kneeboard_skips_recon_when_setting_off() -> None:
         return_value=MagicMock(),
     ), patch(
         "game.missiongenerator.kneeboard.SupportPage",
-        return_value=MagicMock(),
-    ):
+    ) as support_page:
+        support_page.paginate.return_value = []
         gen = KneeboardGenerator.__new__(KneeboardGenerator)
         gen.mission = MagicMock()
         gen.game = game

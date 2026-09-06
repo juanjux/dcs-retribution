@@ -4,7 +4,7 @@
     "defaultValue": false,
     "specificOptions": [
         {
-            "nameInUI": "Enable ship artillery",
+            "nameInUI": "Allow ships to provide gunfire support",
             "mnemonic": "shipArtilleryEnable",
             "defaultValue": true
         }

@@ -414,6 +414,7 @@ export type ControlPoint = {
   units: string[];
   threat_ranges: number[];
   detection_ranges: number[];
+  dead?: boolean;
 };
 export type ValidationError = {
   loc: (string | number)[];
@@ -478,6 +479,7 @@ export type Tgo = {
   detection_ranges: number[];
   dead: boolean;
   purchasable: boolean;
+  repairing?: boolean;
   sidc: string;
   task?: string[];
   mobile: boolean;

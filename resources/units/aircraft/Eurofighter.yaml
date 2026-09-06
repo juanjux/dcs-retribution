@@ -4,7 +4,8 @@ description:
   Aeronautica Militare, Ejercito del Aire and others. Highly agile and equipped with
   the CAPTOR radar and a modern defensive-aids suite, it excels at air superiority with
   AIM-120, IRIS-T and ASRAAM, and is fully multirole: precision strike (Paveway, JDAM),
-  defence suppression (ALARM/HARM), anti-ship (RBS-15) and close air support."
+  defence suppression (ALARM/HARM) and close air support. The real aircraft also carries
+  anti-ship missiles, but the mod does not model one, so it is not tasked with it here."
 introduced: 2003
 manufacturer: Airbus / BAE Systems / Leonardo
 origin: Combined Joint Task Force Blue
@@ -28,6 +29,5 @@ tasks:
   DEAD: 520
   SEAD: 520
   SEAD Escort: 520
-  Anti-ship: 500
   BAI: 480
   CAS: 460

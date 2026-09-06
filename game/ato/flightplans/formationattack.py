@@ -197,7 +197,11 @@ class FormationAttackBuilder(IBuilder[FlightPlanT, LayoutT], ABC):
 
         initial = None
         if ingress_type == FlightWaypointType.INGRESS_SEAD:
-            initial = builder.sead_search(self.package.target)
+            # The SEAD Search anchor is a stand-off loiter for HARM shooters; a decoy
+            # stand-off run (release_at_ingress) releases at the ingress, so the anchor
+            # only drags the flight past its release point -- drop it for those.
+            if not self.flight.release_at_ingress:
+                initial = builder.sead_search(self.package.target)
         elif ingress_type == FlightWaypointType.INGRESS_SEAD_SWEEP:
             initial = builder.sead_sweep(self.package.target)
 

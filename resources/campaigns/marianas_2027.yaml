@@ -1,0 +1,536 @@
+---
+name: Marianas - Second Island Chain (2027)
+theater: MarianaIslands
+authors: 414th Joint Fighter Group (laydown forked from Fuzzle's Pacific Repartee)
+description: <p>The modern-day China fight, on the one DCS map that needs no fiction to host it. Guam is the Second Island Chain, and Andersen AFB is the target set the PLA Rocket Force was built around.</p><p><strong>Backstory:</strong> A Taiwan-strait crisis went kinetic. In the opening hours the PLARF salvoed Guam - cratering ramps at Andersen and Won Pat and putting the carrier group on the back foot - while PLAN amphibious groups took Rota, Tinian and Saipan and pushed marines up the northern chain. Guam held. Now the coalition has to hold the ramp it has left, kill the launchers that are still ranging it, and fight its way back up the island chain to relieve the Marine detachment still holding out on Farallon de Pajaros.</p><p><strong>How this plays:</strong> the islands are not connected, so ground fronts never form - captures are made with Air Assault packages (transport helicopters off Olf Orote and the LHA, or C-130J paradrops), and the war between them is an anti-ship and long-range strike fight. Hunt the road-mobile PLARF launchers before they scoot; put the carrier's Prowlers in front of the strike packages; and remember that the enemy's fleet shoots back with cruise missiles.</p>
+version: "10.9"
+recommended_player_faction: USA 2020
+recommended_enemy_faction: China 2027
+miz: marianas_2027.miz
+performance: 1
+recommended_start_date: 2027-04-12
+recommended_player_money: 1600
+recommended_enemy_money: 1400
+recommended_player_income_multiplier: 1.2
+recommended_enemy_income_multiplier: 0.8
+
+settings:
+  # §86 GPS jamming: red EW companies deny satellite guidance within 15 nm of two sites
+  # (see ground_forces). A JDAM/JSOW/JASSM aimed at anything inside a bubble lands off the
+  # aimpoint -- standing off does not help, because the weapon flies through the bubble
+  # whatever range it was released from. Change delivery (laser/TV are untouched) or kill the
+  # jammer, which restores accuracy at once. Runs via the 'GPS jamming' LUA plugin, preseeded
+  # below -- the setting does NOTHING without it.
+  gps_jamming: true
+  # Saved plugin defaults layer UNDER campaign preseeds, so a host whose defaults have
+  # these unticked would otherwise silently lose the runtime half of each feature
+  # (the §36 lesson). Preseed every plugin the settings in this block depend on.
+  #
+  # This map MUST stay nested under `settings:`. Campaign reads only
+  # data["settings"] (game/campaignloader/campaign.py), so a top-level `plugins:`
+  # block parses as valid YAML and is then silently discarded -- which is exactly
+  # what happened to four of these five from 2026-06 until 2026-08-08.
+  plugins:
+    gpsjamming: true            # §86 runtime -- the setting does nothing without it
+    mobilemissiles: true        # §49 shoot-and-scoot theatre-missile sites
+    cruisemissiles: true        # §63 ship-launched raids + the call-for-fire menu
+    aisleep: true               # §59 rear ground-AI sleep
+    rednet: true                # §70 audible red UHF net
+  # Every squadron fields its full authored strength on turn 1. This is a come-as-you-
+  # are fight -- the war opened with a missile salvo on Guam, nobody spins up a training
+  # pipeline first -- and with no land front the player cannot trade time for mass.
+  # NOTE the key is `squadron_start_full` (singular), not the wizard's field name
+  # `squadrons_start_full`; the Theater page reads the singular form and a typo here
+  # silently does nothing.
+  squadron_start_full: true
+
+  # -- Mod packs. Campaign settings re-seed the New Game "Mods" checkboxes
+  # (QGeneratorSettings.update_settings), so these arrive ticked. The China pack is a
+  # hard requirement -- without it the PLA ground/naval kit degrades to Soviet legacy
+  # hardware -- and the USA pack backs the modern blue air-defense presets.
+  chinesemilitaryassetspack: true
+  usamilitaryassetspack: true
+  # High Digit SAMs is a HARD requirement, not a nicety: it is what puts the S-300PMU
+  # family in PLA hands, and the enemy faction's long-range belt is built on it. With
+  # the mod off, those presets silently disappear and red loses its top SAM tier.
+  high_digit_sams: true
+  # The CJS Super Hornet pack. The US Navy retired the EA-6B in 2015 (USMC 2019), so a
+  # Prowler on a 2027 deck is the same anachronism as red flying a J-7B -- the carrier's
+  # electronic-attack det is an EA-18G, and the organic tanker is a Super Hornet. Both
+  # drop silently on a mod-less install, which is why the air wing deliberately keeps a
+  # legacy F/A-18C squadron: a pilot without the mod still has a carrier ride.
+  fa_18efg: true
+  fa18ef_tanker: true
+  # The F-22A det at Andersen. Guam is where Raptors actually rotate, and they are the
+  # only blue airframe that outclasses a J-11A/J-15 outright. The F-15C squadron stays
+  # alongside them on purpose: the Raptor is a mod, so without it blue would lose its
+  # air-superiority arm entirely.
+  f22_raptor: true
+
+  # -- The PLARF hunt (§49). Three road-mobile theatre-missile sites on Rota, Tinian
+  # and Saipan shoot and scoot during the mission, so a launcher is never quite
+  # where the last photo froze it.
+  mobile_missile_relocation: true
+
+  # -- The missile exchange at sea (§63). Both fleets carry real, finite magazines;
+  # sinking a shooter ends its raids, and nothing rearms.
+  cruise_missile_strikes: true
+  cruise_missile_auto_raids: true
+
+  # -- Island logistics (§78). Sea shipments sail as multi-hull convoys that can be
+  # attrited proportionally, and the Silkworm batteries actually engage them.
+  cargo_ship_convoys: true
+  coastal_batteries_engage_ships: true
+
+  # -- Guam's rear (§50). Two blue road corridors on the island give the ambient
+  # convoys somewhere to run and the ambush roll something to hide beside. Red holds
+  # no two bases on one island, so red convoys are a deliberate geography no-op.
+  ambient_supply_convoys: true
+  convoy_ambush: true
+
+  # -- Blue COMINT off the PLA net (§70), and the net being audible to home on (C1).
+  comint_collection: true
+  red_comms_net: true
+
+  # -- Performance. This is a heavy maritime laydown (a three-carrier PLAN order of
+  # battle plus the island garrisons); rear ground AI sleeps until something is near.
+  perf_ground_ai_sleep: true
+  perf_aaa_site_sleep: true
+
+  # -- Making the auto-planner fight. Measured on a flown turn-1 save whose ATO came
+  # out 100% defensive: 33 packages, 28 of them BARCAP, and ZERO strike/SEAD/DEAD/
+  # anti-ship. Two independent causes compounded, and BOTH of these lines are needed
+  # -- either one alone leaves the offensive ATO empty.
+  #
+  # 1. BARCAP was eating the entire fighter force. Rounds per objective are
+  #    ceil(desired_player_mission_duration / (desired_barcap_mission_duration -
+  #    barcap_overlap_time)), so the 60-minute mission against the stock 45-minute
+  #    station needed TWO rounds over each of 7 objectives = 28 BARCAP flights = all
+  #    66 fighters in the wing. Every offensive package then scrubbed for want of its
+  #    mandatory escort (modern doctrine has plan_strikes_without_full_escort=False
+  #    and strike_escort_reserve=0, and neither is campaign-authorable). Holding the
+  #    station for the full mission drops it to ONE round -- 14 BARCAP flights -- and
+  #    frees ~28 fighters to escort the shooters. This is not a fudge: a 60-minute
+  #    CAP vulnerability window is exactly how carrier BARCAP is flown, and this wing
+  #    has the KC-135s plus organic Super Hornet tankers to hold it.
+  desired_barcap_mission_duration: 60
+  # 2. The 150 NM default cannot serve this theatre. Guam to Uracus is 780 km (421 NM)
+  #    and the PLAN groups are spread the length of the chain, so at 150 NM the deep
+  #    half of the enemy order of battle was not merely unattacked, it was unreachable
+  #    -- the range gate rejected every squadron before the target was considered.
+  #    (Raising this ALONE changed nothing, because BARCAP still held every fighter;
+  #    it is what decides how much of red you can reach once they are free.) Same
+  #    campaign-preseed precedent as Enduring Resolve's 800 km carrier stand-off.
+  max_mission_range_planes: 400
+
+# Red SAM placement. The enemy is the fork faction "China 2027" (= China 2020 with the
+# obsolete HQ-2 retired and the S-300PMU-1/PMU-2 added), so nothing era-wrong can roll
+# in the first place; these pins decide WHERE the heavy batteries stand.
+#
+# Two hard-won rules live in this block:
+#   1. Overrides reach AUTHORED MARKERS ONLY. A base's own generated air defences roll
+#      from the faction roster and cannot be pinned -- which is why the faction itself
+#      had to be fixed. Pinning alone still let SA-2 and HQ-2 spawn as base defences.
+#   2. The preset's task must match the marker's band, or the override is silently
+#      DISCARDED and the site rolls normally (StartGenerator.get_unit_group_for_task).
+# --- §86 GPS jamming: two jamming sites, pinned onto existing EWR markers.
+#     A standalone `GPS Jamming Site` deliberately, NOT a jamming-equipped SAM battery: it adds
+#     no SAM coverage, so it changes this campaign's air-defence balance as little as a jamming
+#     site can. The marker still generates a radar site (the ST-68U emits, so it stays on RWR
+#     and HARM-able and still feeds the IADS) -- it just also denies GPS within 15 nm.
+#     Two sites, the most widely separated free RED-owned EWR markers, so the bubbles cannot
+#     overlap (effects do not stack, so overlap would buy redundancy rather than depth).
+#     RED-owned matters: the override gate checks the units against the OWNING control
+#     point's faction, so a marker that binds to a blue CP is silently discarded and an
+#     ordinary EWR generates there instead.
+#     China's EW companies deploy with the PLARF/PLAAF belt on the northern islands.
+ground_forces:
+  Ground-20: GPS Jamming Site (Red)
+  FOB Bandar-e-Jask-1: GPS Jamming Site (Red)
+  # Tinian: the long-range anchor, and the northern edge of what the player can be
+  # allowed to face on turn 1. Tinian is 175 km from Andersen and the HQ-22 reaches
+  # 170 km, so the envelope stops just short of Guam -- it dominates the Rota approach
+  # without putting the airfield itself under a SAM. (The S-300PMU-2 reaches 200 km:
+  # there is NO site in the Guam-Saipan corridor where it does not cover Andersen, so
+  # it is left to the northern bases' own defences rather than authored here.)
+  Ground-1: HQ-22
+  # Rota is 75 km from Andersen -- close enough that ANY long-range system here covers
+  # Guam. It gets point defence only; its marker is authored SHORT to match.
+  Rota SAM Site: HQ-7
+  # NAVAL PLACEMENT. Six screens survive the cull (see the build tool); the rest of
+  # Repartee's 21 ship markers are deleted outright, because every marker becomes a
+  # whole naval group and hull count is what produced the 374-launch opening salvo. The HHQ-9 reaches 250 km and Guam-to-Saipan is only 205 km, so one
+  # heavy group covers a third of the theatre. EVERY scattered surface marker is an
+  # inshore escort; the area-defence destroyers stay concentrated with the three carrier
+  # groups, which draw them from the roster. Eight extra 250 km rings did not make the
+  # campaign harder, it made the map unreadable (measured: 13 of 30 rings were 250 km).
+  Naval-16: Chinese Navy 2027 Escort
+  Naval-24: Chinese Navy 2027 Escort
+  Naval-9: Chinese Navy 2027 Escort
+  Naval-13: Chinese Navy 2027 Escort
+  Naval-12: Chinese Navy 2027 Escort
+  Naval-10: Chinese Navy 2027 Escort
+  Naval-8: Chinese Navy 2027 Escort
+  Naval-19: Chinese Navy 2027 Escort
+
+  # Point defence on the occupied islands: HQ-7, the PLA's own short-range system.
+  Ground-3: HQ-7
+  Ground-7: HQ-7
+  Ground-10: HQ-7
+  Ground-15: HQ-7
+  Ground-17: HQ-7
+  Ground-19: HQ-7
+  Ground-21: HQ-7
+  Ground-22: HQ-7
+  # NOT pinned, deliberately: the remaining medium markers (Ground-4/5/11/12/14/16).
+  # China 2027's only MERAD preset is the SA-11 (its HQ-16 analogue), so the roll can
+  # only produce that one system anyway and a pin would be pure decoration.
+
+squadrons:
+  # ==================== BLUE -- Guam ====================
+  # Andersen AFB is the only field on the map with the ramp for a heavy wing
+  # (194 parking slots); every big-iron squadron is based here.
+  Andersen AFB:
+    # The air-superiority det. Andersen is the real-world Raptor rotation base, and
+    # the F-22A is the one blue airframe that beats a Flanker on merit rather than on
+    # numbers. Deliberately a det (8), not a full squadron.
+    - primary: BARCAP
+      secondary: air-to-air
+      aircraft:
+        - F-22A Raptor
+      size: 8
+    # Kept alongside the Raptors, not replaced by them: the F-22 is a mod, and if it is
+    # not installed this is the squadron that still holds the air over Guam.
+    - primary: BARCAP
+      secondary: air-to-air
+      aircraft:
+        - F-15C Eagle
+      size: 10
+    - primary: Strike
+      secondary: air-to-ground
+      aircraft:
+        - F-15E Strike Eagle (Suite 4+)
+      size: 12
+    - primary: SEAD
+      secondary: air-to-ground
+      aircraft:
+        - F-16CM Fighting Falcon (Block 50)
+      size: 12
+    # The long-range anti-ship arm. The PLAN surface groups are the campaign's
+    # centre of gravity and nothing else blue owns can reach them with mass.
+    - primary: Anti-ship
+      secondary: air-to-ground
+      aircraft:
+        - B-1B Lancer
+      size: 6
+    - primary: AEW&C
+      aircraft:
+        - E-3A
+      size: 3
+    # The boom tanker for the land-based wing. EVERY jet at Andersen and Won Pat is a
+    # boom receiver (F-15C/E, F-16CM, B-1B, A-10C), and the KC-135 MPRS is
+    # `tanker_refuel_types: probe` -- a drogue tanker -- so the MPRS alone would leave
+    # the whole USAF wing unable to tank. Both are based here on purpose.
+    - primary: Refueling
+      aircraft:
+        - KC-135 Stratotanker
+      size: 4
+    # The drogue det: the Harriers off Olf Orote and the LHA, and the carrier air when
+    # the boat's own organic tanker is busy.
+    - primary: Refueling
+      aircraft:
+        - KC-135 Stratotanker MPRS
+      size: 2
+    # Air Assault is how islands change hands here, and the C-130J drops sticks by
+    # parachute (§76) -- the fixed-wing half of the capture game.
+    - primary: Transport
+      aircraft:
+        - C-130J-30
+      size: 4
+
+  Antonio B. Won Pat Intl:
+    - primary: BARCAP
+      secondary: any
+      aircraft:
+        - F/A-18C Hornet (Lot 20)
+      size: 12
+    - primary: CAS
+      secondary: air-to-ground
+      aircraft:
+        - A-10C Thunderbolt II (Suite 7)
+      size: 8
+
+  # Orote has four parking slots. It gets exactly one small detachment.
+  Olf Orote:
+    - primary: BAI
+      secondary: air-to-ground
+      aircraft:
+        - AV-8B Harrier II Night Attack
+      size: 4
+
+  # ==================== BLUE -- the carrier group ====================
+  # A transitional 2027 air wing: Super Hornets and a Growler det, with one legacy
+  # F/A-18C squadron deliberately retained so a pilot who has not installed the CJS
+  # Super Hornet mod still has a carrier jet to slot into.
+  Naval-1:
+    - primary: BARCAP
+      secondary: any
+      aircraft:
+        - F/A-18E Super Hornet
+      size: 12
+    # The mod-free ride. Do not remove without also dropping the fa_18efg preseed.
+    - primary: BARCAP
+      secondary: any
+      aircraft:
+        - F/A-18C Hornet (Lot 20)
+      size: 12
+    # The Rhino is the wing's anti-ship shooter, and the PLAN surface groups are the
+    # campaign's centre of gravity.
+    - primary: Anti-ship
+      secondary: air-to-ground
+      aircraft:
+        - F/A-18F Super Hornet
+      size: 10
+    - primary: SEAD
+      secondary: air-to-ground
+      aircraft:
+        - F/A-18E Super Hornet
+      size: 8
+    # VAQ-136 "Gauntlets" -- a real Growler squadron. Authored SEAD, but the Escort
+    # Jammer role is offered to every capable squadron automatically
+    # (SquadronConfig.auto_assignable) and the EA-18G outranks every other airframe
+    # for it (800), so the det also flies the §77 escort-jamming slot in front of the
+    # strike packages.
+    - primary: SEAD
+      secondary: [SEAD Escort]
+      name: VAQ-136
+      nickname: Gauntlets
+      aircraft:
+        - EA-18G Growler
+      size: 5
+    # The organic recovery tanker. Probe-and-drogue, like the whole air wing it feeds
+    # (Hornets, Super Hornets, Growlers, Harriers). It cannot service Andersen's boom
+    # receivers -- that is the plain KC-135's job.
+    - primary: Refueling
+      aircraft:
+        - F/A-18E Tanker
+      size: 4
+    - primary: AEW&C
+      aircraft:
+        - E-2D Advanced Hawkeye
+      size: 4
+    - primary: Transport
+      aircraft:
+        - SH-60B Seahawk
+      size: 4
+
+  # The second US carrier. A single CVN could not both cover Guam and push north, and
+  # with the PLAN spread from Saipan to Uracus the coalition needs two decks.
+  Naval-30:
+    - primary: BARCAP
+      secondary: any
+      aircraft:
+        - F/A-18E Super Hornet
+      size: 12
+    - primary: Strike
+      secondary: air-to-ground
+      aircraft:
+        - F/A-18F Super Hornet
+      size: 10
+    - primary: SEAD
+      secondary: air-to-ground
+      aircraft:
+        - F/A-18C Hornet (Lot 20)
+      size: 10
+    - primary: AEW&C
+      aircraft:
+        - E-2D Advanced Hawkeye
+      size: 3
+    - primary: Refueling
+      aircraft:
+        - F/A-18E Tanker
+      size: 3
+    - primary: Transport
+      aircraft:
+        - SH-60B Seahawk
+      size: 3
+
+  # The Royal Navy amphibious group. DCS has no RN amphib, so this is a Tarawa hull with
+  # a UK-countried air group -- the §23 country pin gives it British comms and pilot
+  # names, the same substitution the campaign already makes for the PLAN's Kuznetsov.
+  Naval-31:
+    - primary: BAI
+      secondary: air-to-ground
+      country: UK
+      aircraft:
+        - AV-8B Harrier II Night Attack
+      size: 8
+    - primary: CAS
+      secondary: air-to-ground
+      country: UK
+      aircraft:
+        - AH-64D Apache Longbow
+      size: 4
+    - primary: Transport
+      country: UK
+      aircraft:
+        - UH-60A
+      size: 4
+
+  Naval-2:
+    - primary: BAI
+      secondary: air-to-ground
+      aircraft:
+        - AV-8B Harrier II Night Attack
+      size: 8
+    - primary: CAS
+      secondary: air-to-ground
+      aircraft:
+        - AH-64D Apache Longbow
+      size: 6
+    - primary: Transport
+      secondary: air-to-ground
+      aircraft:
+        - UH-60A
+      size: 6
+
+  # ==================== RED -- the occupied chain ====================
+  # Saipan is the PLA's main field on the chain (19 slots): the fighter regiment,
+  # the AEW&C det, and the Badger anti-ship regiment that ranges the carrier group.
+  Saipan Intl:
+    - primary: BARCAP
+      secondary: air-to-air
+      aircraft:
+        - J-11A Flanker-L
+      size: 10
+    - primary: AEW&C
+      aircraft:
+        - KJ-2000
+      size: 2
+    - primary: Anti-ship
+      secondary: air-to-ground
+      aircraft:
+        - H-6J Badger
+      size: 6
+
+  # Rota is 90 km off Guam -- the strike field pointed at Andersen.
+  Rota Intl:
+    - primary: Strike
+      secondary: air-to-ground
+      aircraft:
+        - Su-30MKK Flanker-G
+      size: 6
+    - primary: Refueling
+      aircraft:
+        - IL-78M
+      size: 2
+
+  Tinian Intl:
+    - primary: BARCAP
+      secondary: any
+      aircraft:
+        - FC-1 Fierce Dragon
+      size: 4
+
+  Pagan Airstrip:
+    - primary: Transport
+      aircraft:
+        - IL-76MD
+      size: 2
+
+  # ==================== RED -- the PLAN carrier groups ====================
+  Naval-3:
+    - primary: BARCAP
+      secondary: air-to-air
+      aircraft:
+        - J-15 Flanker X-2
+      size: 14
+    - primary: Strike
+      secondary: air-to-ground
+      aircraft:
+        - J-15 Flanker X-2
+      size: 12
+  Naval-4:
+    - primary: BARCAP
+      secondary: air-to-air
+      aircraft:
+        - J-15 Flanker X-2
+      size: 14
+    - primary: Anti-ship
+      secondary: air-to-ground
+      aircraft:
+        - J-15 Flanker X-2
+      size: 12
+  Naval-28:
+    - primary: TARCAP
+      secondary: air-to-air
+      aircraft:
+        - J-15 Flanker X-2
+      size: 14
+    - primary: Strike
+      secondary: air-to-ground
+      aircraft:
+        - J-15 Flanker X-2
+      size: 12
+
+  # ==================== RED -- the amphibious groups ====================
+  OPLHA:
+    - primary: CAS
+      secondary: air-to-ground
+      aircraft:
+        - Mi-24P Hind-F
+      size: 10
+  OPLHA-1:
+    - primary: Transport
+      aircraft:
+        - Mi-8MTV2 Hip
+      size: 10
+
+  # The northern chain garrisons. Blue now fields two carriers and an RN group across a
+  # 760 km frontage; the far-north islands were holding it with nothing but ground troops.
+  # FOBs are helipads, so these are rotary -- which is also what an island garrison flies.
+  FOB Agrihan:
+    - primary: Transport
+      secondary: air-to-ground
+      aircraft:
+        - Mi-8MTV2 Hip
+      size: 6
+  FOB Anatahan:
+    - primary: CAS
+      secondary: air-to-ground
+      aircraft:
+        - Mi-24P Hind-F
+      size: 6
+  FOB Uracus:
+    - primary: Transport
+      secondary: air-to-ground
+      aircraft:
+        - Mi-8MTV2 Hip
+      size: 6
+  FOB Pagan:
+    - primary: CAS
+      secondary: air-to-ground
+      aircraft:
+        - Mi-24P Hind-F
+      size: 4
+
+supply_routes:
+  # Guam, Route 1 / Marine Corps Drive north through Dededo and Yigo. Inherited from
+  # the §50 batch-2 corridor pass; both ends are blue now, so it is the blue rear road.
+  # Won Pat Intl -> Andersen AFB
+  - waypoints:
+      - [-24, -78]
+      - [2948, 4516]
+      - [5666, 10062]
+      - [10575, 14549]
+  # Guam, Route 1 south along the west coast then Route 2A onto the Orote peninsula.
+  # Traced from the real road's lat/lon (Hagatna - Asan - Piti - Sumay) per the
+  # driveable-corridor standard.
+  # Won Pat Intl -> Olf Orote
+  - waypoints:
+      - [-24, -78]
+      - [-1116, -5116]
+      - [-1634, -8955]
+      - [-2331, -11345]
+      - [-4506, -15374]
+      - [-5023, -16869]

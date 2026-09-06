@@ -41,6 +41,7 @@
   "missiles": [],
   "preset_groups": [
     "SA-2/S-75",
+    "SA-2/SA-3 Mixed Site",
     "SA-3/S-125",
     "Cold-War-Flak",
     "KS-19/SON-9"
@@ -49,7 +50,7 @@
     "Corvette 1124.4 Grish"
   ],
   "air_defense_units": [
-    "SAM P19 \"Flat Face\" SR (SA-2/3)",
+    "EWR 1L13",
     "ZSU-57-2 'Sparka'",
     "AAA ZU-23 Closed Emplacement",
     "ZU-23 on Ural-375",
@@ -67,3 +68,4 @@
     "R-60": 1980
   }
 }
+

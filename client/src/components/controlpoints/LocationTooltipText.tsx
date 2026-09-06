@@ -2,9 +2,9 @@ import SplitLines from "../splitlines/SplitLines";
 
 interface LocationTooltipTextProps {
   name: string;
+  units?: string[];
   tacan?: string | null;
   atcFrequency?: string | null;
-  units?: string[];
 }
 
 export const LocationTooltipText = (props: LocationTooltipTextProps) => {

@@ -532,7 +532,7 @@ local unitPayloads = {
 					["num"] = 1,
 				},
 				[2] = {
-					["CLSID"] = "{aargm_er}",
+					["CLSID"] = "{B06DD79A-F21E-4EB9-BD9D-AB3844618C93}",
 					["num"] = 2,
 				},
 				[3] = {
@@ -564,7 +564,7 @@ local unitPayloads = {
 					["num"] = 9,
 				},
 				[10] = {
-					["CLSID"] = "{aargm_er}",
+					["CLSID"] = "{B06DD79A-F21E-4EB9-BD9D-AB3844618C93}",
 					["num"] = 10,
 				},
 				[11] = {
@@ -744,7 +744,7 @@ local unitPayloads = {
 					["num"] = 1,
 				},
 				[2] = {
-					["CLSID"] = "{aargm_er}",
+					["CLSID"] = "{B06DD79A-F21E-4EB9-BD9D-AB3844618C93}",
 					["num"] = 2,
 				},
 				[3] = {
@@ -776,7 +776,7 @@ local unitPayloads = {
 					["num"] = 9,
 				},
 				[10] = {
-					["CLSID"] = "{aargm_er}",
+					["CLSID"] = "{B06DD79A-F21E-4EB9-BD9D-AB3844618C93}",
 					["num"] = 10,
 				},
 				[11] = {
