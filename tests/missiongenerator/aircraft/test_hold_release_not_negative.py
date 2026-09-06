@@ -32,7 +32,7 @@ def emitted(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
     def fake_stop_after_time(self: ControlledTask, seconds: int) -> None:
         seen["stop_after_time"] = seconds
 
-    def fake_trigger(orbit: Any, package: Any, mission: Any, elapsed: int) -> None:
+    def fake_trigger(orbit: Any, group_id: int, mission: Any, elapsed: int) -> None:
         seen["trigger"] = elapsed
 
     monkeypatch.setattr(ControlledTask, "stop_after_time", fake_stop_after_time)
@@ -74,6 +74,9 @@ def _build(push_offset_minutes: float, emitted: dict[str, Any]) -> dict[str, Any
     dummy: Any = object()
     builder.package = dummy
     builder.mission = dummy
+    # The trigger hotfix names the group by id now, so the stub needs one.
+    group: Any = SimpleNamespace(id=1)
+    builder.group = group
     waypoint: Any = SimpleNamespace(alt=6400, tasks=[], add_task=lambda t: None)
     builder.waypoint = waypoint
     builder.add_tasks(waypoint)
