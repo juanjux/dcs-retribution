@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import random
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Iterator, Type, Optional
+from typing import TYPE_CHECKING, Iterator, Sequence, Type, Optional
 
 from dcs import Point
 from dcs.unit import Unit
@@ -35,6 +35,35 @@ if TYPE_CHECKING:
 
 class LayoutException(Exception):
     pass
+
+
+# Unit classes that plausibly sail (or drive) together inside a single slot of a
+# layout. Hull variety inside a group is drawn from the lead unit's family, so a
+# 4-ship carrier screen can mix destroyers, frigates and a cruiser, but a
+# speedboat never turns up in a cruiser's slot and a submarine never surfaces in
+# a surface action group. Any class not listed here is its own family, so the
+# rule degrades to "same class only" for everything it does not know about.
+UNIT_FAMILIES: tuple[frozenset[UnitClass], ...] = (
+    frozenset(
+        {
+            UnitClass.FRIGATE,
+            UnitClass.DESTROYER,
+            UnitClass.CRUISER,
+        }
+    ),
+)
+
+# How many distinct types a single mixed slot may field. Without a cap, a navy
+# with a deep roster generates a one-of-everything zoo instead of a task group.
+MAX_MIXED_UNIT_TYPES = 3
+
+
+def unit_family(unit_class: UnitClass) -> frozenset[UnitClass]:
+    """The set of unit classes that may share a mixed layout slot."""
+    for family in UNIT_FAMILIES:
+        if unit_class in family:
+            return family
+    return frozenset({unit_class})
 
 
 @dataclass
@@ -119,6 +148,11 @@ class TgoLayoutUnitGroup:
     # Should this be filled by accessible units if optional or not
     fill: bool = True
 
+    # May the slot field more than one type of unit? None defers to the layout's
+    # own default (naval layouts mix, everything else does not), so a layout
+    # YAML only has to say anything when it wants to opt a single slot out.
+    mix_unit_types: Optional[bool] = None
+
     def possible_types_for_faction(self, faction: Faction) -> list[Type[DcsUnitType]]:
         """Determine the possible dcs unit types for the TgoLayoutGroup and the given faction"""
         unit_types = [t for t in self.unit_types if faction.has_access_to_dcs_type(t)]
@@ -154,15 +188,20 @@ class TgoLayoutUnitGroup:
     def generate_units(
         self,
         go: TheaterGroundObject,
-        unit_type: Type[DcsUnitType],
-        amount: int,
+        unit_types: Sequence[Type[DcsUnitType]],
         fixed_pos: bool,
         fixed_hdg: bool,
     ) -> list[TheaterUnit]:
-        """Generate units of the given unit type and amount for the TgoLayoutGroup"""
-        if amount > len(self.layout_units):
+        """Generate one unit per given type, in the TgoLayoutGroup's own slots.
+
+        ``unit_types`` carries one entry per slot to fill, so a slot that mixes
+        types (a mixed ship screen) hands over a list of different types while a
+        uniform slot hands over the same type repeated.
+        """
+        if len(unit_types) > len(self.layout_units):
             raise LayoutException(
-                f"{self.name} has incorrect unit_count for {unit_type.id}"
+                f"{self.name} has incorrect unit_count for "
+                f"{unit_types[0].id if unit_types else '<none>'}"
             )
         return [
             TheaterUnit.from_template(
@@ -173,7 +212,7 @@ class TgoLayoutUnitGroup:
                 fixed_pos,
                 fixed_hdg,
             )
-            for i in range(amount)
+            for i, unit_type in enumerate(unit_types)
         ]
 
 
@@ -196,6 +235,11 @@ class TgoLayout:
     specialized classes inherit from this base class. For example there is a special
     AiDefenseLayout which will be used to create the SamGroundObject from it.
     """
+
+    # Whether a slot of this layout may field more than one type of unit when it
+    # generates several. Overridden per layout kind (naval mixes hull types) and
+    # per slot with the TgoLayoutUnitGroup's own mix_unit_types.
+    mix_unit_types: bool = False
 
     def __init__(self, name: str, description: str = "") -> None:
         self.name = name
@@ -245,6 +289,12 @@ class TgoLayout:
     def all_unit_groups(self) -> Iterator[TgoLayoutUnitGroup]:
         for group in self.groups:
             yield from group.unit_groups
+
+    def mixes_unit_types(self, unit_group: TgoLayoutUnitGroup) -> bool:
+        """Whether the given slot of this layout may field several unit types."""
+        if unit_group.mix_unit_types is None:
+            return self.mix_unit_types
+        return unit_group.mix_unit_types
 
 
 class AntiAirLayout(TgoLayout):
@@ -296,6 +346,12 @@ class BuildingLayout(TgoLayout):
 
 
 class NavalLayout(TgoLayout):
+    # A task group is a mix of hulls, not four copies of one destroyer. Every
+    # naval slot that generates more than one ship mixes by default; a slot with
+    # a single-type pool (an explicit unit_types list, or a faction that only
+    # fields one hull of the class) still generates uniformly.
+    mix_unit_types = True
+
     def create_ground_object(
         self,
         name: str,

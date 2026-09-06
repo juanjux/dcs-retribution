@@ -252,6 +252,17 @@ class Settings:
         detail="Implicitly determines the number of BARCAPs planned by taking the mission duration"
         " and dividing it by the desired on-station time.",
     )
+    desired_tarcap_mission_duration: timedelta = minutes_option(
+        "Desired TARCAP on-station time",
+        page=CAMPAIGN_DOCTRINE_PAGE,
+        section=GENERAL_SECTION,
+        default=timedelta(minutes=30),
+        min=10,
+        max=150,
+        detail="Only applies to a TARCAP nobody asked to escort. When a flight in its"
+        " package has requested an escort, the TARCAP stays for as long as the escorted"
+        " mission does, whatever this says.",
+    )
     desired_awacs_mission_duration: timedelta = minutes_option(
         "Desired AWACS on-station time",
         page=CAMPAIGN_DOCTRINE_PAGE,
@@ -728,6 +739,19 @@ class Settings:
         CAMPAIGN_MANAGEMENT_PAGE,
         HQ_AUTOMATION_SECTION,
         default=False,
+    )
+    weighted_ground_procurement: bool = boolean_option(
+        "AI buys its better ground units more often",
+        CAMPAIGN_MANAGEMENT_PAGE,
+        HQ_AUTOMATION_SECTION,
+        default=True,
+        detail=(
+            "The AI picks a ground unit uniformly at random from everything of the "
+            "right class it can afford, so a faction fielding both a modern MBT and a "
+            "gun truck buys as many of one as the other. With this enabled the roll is "
+            "weighted by price, which is the only capability measure the model has. It "
+            "is a weighting and not a maximum, so cheap units still appear."
+        ),
     )
     automate_ground_object_repairs: bool = boolean_option(
         "Automate ground object repairs",
@@ -1476,6 +1500,84 @@ class Settings:
         MISSION_GENERATOR_PAGE,
         GAMEPLAY_SECTION,
         default=True,
+    )
+    gps_jamming: bool = boolean_option(
+        "GPS jamming (satellite-guided weapons go long)",
+        page=MISSION_GENERATOR_PAGE,
+        section=GAMEPLAY_SECTION,
+        default=False,
+        detail=(
+            "A JDAM, JSOW or JASSM released against a target inside an "
+            "enemy jamming bubble flies its normal profile and lands off the "
+            "aimpoint -- further off the deeper inside the bubble the target sits. "
+            "Laser, TV and anti-radiation weapons are unaffected, and killing the "
+            "jammer restores accuracy on the very next weapon, in the same mission. "
+            "A jammer is an ordinary bombable ground unit: any unit type whose data "
+            "file carries a `gps_jamming` block. Symmetric -- red eats its own "
+            "medicine wherever blue fields one. Needs the GPS jamming LUA plugin "
+            "enabled or it does nothing."
+        ),
+    )
+    gps_jamming_default_reach_nm: float = bounded_float_option(
+        "GPS jamming: default reach (nm)",
+        page=MISSION_GENERATOR_PAGE,
+        section=GAMEPLAY_SECTION,
+        default=30.0,
+        min=5.0,
+        max=150.0,
+        divisor=1,
+        detail=(
+            "Used by a jammer whose unit definition names no radius. This is the "
+            "size of the GPS-denied TARGET area, not a denied release area: a weapon "
+            "aimed at anything inside the bubble flies through it whatever range it "
+            "was released from, so standing off does not help a covered target."
+        ),
+    )
+    gps_jamming_miss_radius_m: float = bounded_float_option(
+        "GPS jamming: miss distance at full strength (m)",
+        page=MISSION_GENERATOR_PAGE,
+        section=GAMEPLAY_SECTION,
+        default=200.0,
+        min=25.0,
+        max=1000.0,
+        divisor=1,
+        detail=(
+            "How far off the aimpoint a degraded weapon lands when released over the "
+            "emitter. It scales down to zero at the bubble's edge, so a store "
+            "clipping the fringe is nudged and one released overhead is thrown clear."
+        ),
+    )
+    naval_weapon_release_stagger: bool = boolean_option(
+        "Stagger naval weapons release",
+        page=MISSION_GENERATOR_PAGE,
+        section=GAMEPLAY_SECTION,
+        default=False,
+        detail=(
+            "Warships start the mission on return-fire and are released to "
+            "weapons-free one group at a time across a window, instead of every hull "
+            "opening up at once. A modern anti-ship missile out-ranges the whole "
+            "theatre, so without this both fleets are in range from the moment the "
+            "mission loads and the entire naval battle happens in the first five "
+            "minutes. They still defend themselves while they wait -- this delays who "
+            "shoots first, it does not disarm anyone. Symmetric. Needs the naval "
+            "magazines LUA plugin enabled or it does nothing."
+        ),
+    )
+    naval_magazines: bool = boolean_option(
+        "Cross-turn naval magazines (anti-ship missiles do not rearm)",
+        page=MISSION_GENERATOR_PAGE,
+        section=GAMEPLAY_SECTION,
+        default=False,
+        detail=(
+            "Every warship group carries a finite campaign stock of anti-ship "
+            "missiles. A mission is a fresh spawn, so without this a fleet reloads for "
+            "free every turn and empties its tubes again and again; with it, what a "
+            "group fires this mission is gone for the rest of the war. A group that "
+            "runs dry drops back to return-fire -- winchester, not disarmed. "
+            "Land-attack cruise missiles are counted by their own setting, so nothing "
+            "is charged twice. Symmetric. Needs the naval magazines LUA plugin "
+            "enabled or it does nothing."
+        ),
     )
     cruise_missile_strikes: bool = boolean_option(
         "Ship-launched cruise missile strikes",

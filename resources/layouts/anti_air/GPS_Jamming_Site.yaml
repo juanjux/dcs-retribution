@@ -1,0 +1,55 @@
+# 414th -- a standalone GPS jamming site.
+#
+# A first-class placeable site, not a modifier on some other layout: author an
+# air-defence marker wherever the jamming should bite (beside a SAM belt, on an
+# objective, guarding a bridge) and pin one of the `GPS Jamming Site (Red)` /
+# `(Blue)` presets to it in the campaign's `ground_forces` block. Nothing else in
+# the theater changes -- no existing layout is touched, and a campaign that does
+# not pin the preset never sees one.
+#
+# IT CARRIES NO RADAR, ON PURPOSE (DM call 2026-08-05). An earlier cut paired the
+# jammer with an ARM-flagged acquisition radar so SEAD could prosecute the site.
+# That was dropped: a real GPS jammer transmits in L-band, which no RWR covers
+# and no HARM homes on, so making it HARM-able was the unrealistic option. It is
+# also what forced a second radar into every site and a radar into the faction
+# roster (where it leaked into unrelated SAM sites).
+#
+# So the site is a STRIKE target, not a SEAD target: you find it with recon (the
+# fog surfaces it, and the kneeboard briefs it once scouted) and you kill it
+# with bombs. Its point defence is what stops that being free.
+#
+# TASK. EarlyWarningRadar, because `IadsRole.for_task` maps it to `EWR` -- the
+# ONE air-defence role MANTIS never holds dark under EMCON. A site tasked
+# MERAD/LORAD/SHORAD would be held dark until cued, so it would be off the RWR
+# and un-HARM-able most of the mission, which is exactly the thing this layout
+# exists to avoid. The site therefore also contributes to its side's IADS
+# detection, which is a fair price and reads correctly (it IS a radar site).
+#
+# NOT generic: this layout is only ever used through its presets, so it can never
+# be rolled at an ordinary air-defence marker by accident.
+name: GPS Jamming Site
+generic: false
+tasks:
+  - EarlyWarningRadar
+groups:
+  - GPS Jamming Site:
+    # The jamming section. unit_count [1, 2] so a site is one or two emitters --
+    # the runtime tracks each jammer's liveness PER UNIT, so killing the trucks
+    # is what stops the jamming, not killing the site.
+    - name: GPS Jammer
+      unit_count:
+        - 1
+        - 2
+      unit_types:
+        - GPS_Spoofer_Red
+        - GPS_Spoofer_Blue
+    # Point defence, so the site is not a free pass for anything that wanders
+    # overhead. Optional: a faction with no SHORAD simply fields none.
+    - name: GPS Jammer Security
+      optional: true
+      sub_task: PointDefense
+      unit_count:
+        - 1
+      unit_classes:
+        - SHORAD
+        - AAA

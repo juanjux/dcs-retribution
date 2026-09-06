@@ -1,0 +1,107 @@
+{
+  "country": "China",
+  "name": "China 2027",
+  "authors": "Eclipse (China 2020); 414th Joint Fighter Group (2027 IADS)",
+  "description": "<p>The PLA of the late 2020s. Identical to China 2020 except for the strategic SAM belt: the obsolete HQ-2 is retired and the <strong>S-300PMU-1 and S-300PMU-2</strong> (SA-20/SA-20B) join the roster, so the air-defence network is a modern layered IADS rather than a Cold War one. <strong>Requires High Digit SAMs</strong> for the S-300PMU family; without it those presets drop and the faction degrades to the China 2020 belt. The surface fleet is built on the <strong>Type 055 and Type 052D</strong> (HHQ-9, 250 km) via the <code>Chinese Navy 2027</code> preset; the littoral Type 022 and Type 056A and the superseded Type 052B are dropped so a task group is never screened by 4-8 km hulls. The <strong>Type 055 is deliberately absent</strong>: it is the only hull carrying the <strong>YJ-21</strong> anti-ship ballistic missile, which cannot realistically be intercepted -- a flown mission had ten of them airborne inside 99 seconds and the carrier dead before the player was. The Type 052D keeps the fleet's long-range punch with the YJ-18, which Standard missiles do defeat.</p>",
+  "locales": [
+    "zh_CN"
+  ],
+  "aircrafts": [
+    "FC-1 Fierce Dragon",
+    "IL-76MD",
+    "J-11A Flanker-L",
+    "J-15 Flanker X-2",
+    "J-7B",
+    "Mi-24P Hind-F",
+    "Mi-8MTV2 Hip",
+    "Su-30MKK Flanker-G",
+    "H-6J Badger"
+  ],
+  "awacs": [
+    "KJ-2000"
+  ],
+  "tankers": [
+    "IL-78M"
+  ],
+  "frontline_units": [
+    "[CH] ZBL-09 IFV",
+    "[CH] ZBD-04A AT SPATGM",
+    "MT Type 59",
+    "Type 04A (ZBD-04A)",
+    "Type 96B (ZTZ-96B)",
+    "[CH] ZTL-11 AFV",
+    "[CH] ZTZ-99A2 MBT"
+  ],
+  "artillery_units": [
+    "[CH] PCL-181 SPG 155 HE",
+    "[CH] PCL-181 SPG GP155",
+    "[CH] PHL-11 SPMRL (DPICM)",
+    "[CH] PHL-11 SPMRL (HE)",
+    "[CH] PHL-16 SPMRL (FD280)",
+    "[CH] PLZ-07 SPG",
+    "PLZ-05"
+  ],
+  "logistics_units": [
+    "LUV UAZ-469 Jeep",
+    "Truck Ural-375",
+    "[CH] SX2190 Truck"
+  ],
+  "infantry_units": [
+    "Infantry AK-74 Rus",
+    "MANPADS SA-18 Igla-S \"Grouse\"",
+    "Paratrooper AKS",
+    "Paratrooper RPG-16"
+  ],
+  "missiles": [
+    "[CH] DF-21D LBASBM",
+    "[CH] CJ-10 GLCM",
+    "[CH] YJ-12B LBASM"
+  ],
+  "preset_groups": [
+    "SA-11",
+    "HQ-7",
+    "HQ-22",
+    "Silkworm",
+    "SA-20/S-300PMU-1",
+    "SA-20B/S-300PMU-2",
+    "Chinese Navy 2027 Escort"
+  ],
+  "naval_units": [
+    "Type 052B Destroyer",
+    "Type 054A Frigate",
+    "CV 1143.5 Admiral Kuznetsov",
+    "Type 093 Attack Submarine",
+    "Type 071 Amphibious Transport Dock",
+    "[CH] Type 054B Frigate",
+    "[CH] Type 052D Destroyer"
+  ],
+  "air_defense_units": [
+    "EWR 1L13",
+    "EWR 55G6",
+    "AAA ZU-23 Closed Emplacement",
+    "[CH] LD-3000 C-RAM Mobile",
+    "[CH] LD-3000 C-RAM Stationary",
+    "[CH] PGZ-09 SPAAG",
+    "[CH] PGZ-95 SPAAG",
+    "[CH] HQ-17A SHORAD"
+  ],
+  "carrier_names": [
+    "001 Liaoning",
+    "002 Shandong"
+  ],
+  "helicopter_carrier_names": [
+    "Kunlun Shan",
+    "Jinggang Shan",
+    "Changbai Shan",
+    "Yimeng Shan",
+    "Longhu Shan",
+    "Wuzhi Shan",
+    "Wudang Shan"
+  ],
+  "requirements": {
+    "Chinese Military Assets for DCS by Currenthill": "https://www.currenthill.com/china",
+    "High Digit SAMs (Ultimate Compilation)": "https://github.com/dcs-sams/HighDigitSAMs-Ultimate-Compilation"
+  },
+  "has_jtac": true,
+  "jtac_unit": "WingLoong-I"
+}
