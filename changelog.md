@@ -1,10 +1,12 @@
 ﻿# Retribution v1.6.3 (414th)
 
 ## Features/Improvements
+* **[UI]** The Air Wing squadron list was redesigned: the aircraft type is now the one large, bold thing on a fixed rail so you can scan for an airframe, the primary task shows as a colour-coded chip, and the list gained a live filter, a sort order, grouping by aircraft type or base, and a running count.
 * **[UI]** The unit transfer dialog gets "All >>" and "None <<" buttons, so a whole garrison no longer has to be queued one unit type at a time.
 * **[FIX]** A CAP guarding its own base could be given a patrol route so short that DCS deleted the flight the moment it spawned, without it flying a metre. Patrol routes are now lengthened away from the enemy until they are long enough to be flown.
 * **[FIX]** Every orbit in a package ended at the same time, whichever flight's time was generated first, so an AWACS or a tanker packaged with a shorter-lived BARCAP left station early — up to two hours in one case.
 * **[FIX]** A payload with an empty pylon was thrown away whole and the aircraft was planned carrying nothing at all: the Tornado IDS strike fit leaves four stations free, so a Tornado sent on a strike flew with no bombs.
+* **[Mission Generation]** Turn times now come from the theater's latitude and the campaign date instead of one fixed window per map.
 * **[OPFOR AI]** A ground object being rebuilt now reports `rebuild: {force_group, turns_remaining}` instead of reading as destroyed, so an external planner sees the works on the map the same way the player does.
 * **[FIX]** Editing a faction from the Air Wing dialog (Faction OWNFOR / OPFOR) now rebuilds that side's forces, so the change reaches the buy menus in the campaign you are playing. Only preset-group changes did before: adding a unit -- an early-warning radar, say -- left every site still offering whatever it had fallen back to at campaign start.
 * **[Mission Generation]** New option "GPS jamming" (off by default): a JDAM, JSOW, JASSM or SLAM-ER released against a target inside an enemy jamming bubble flies its normal profile and lands off the aimpoint, further off the deeper in. Laser, TV and anti-radiation weapons are unaffected, and killing the jammer restores accuracy on the next weapon in the same mission. A jammer is an ordinary bombable ground unit -- any type whose data file carries a `gps_jamming` block, shipped on DCS's own GPS spoofer vehicles (adapted from the 414Ret fork).

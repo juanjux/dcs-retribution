@@ -270,6 +270,23 @@ class GroundUnitAllocations:
     ordered: dict[GroundUnitType, int]
     transferring: dict[GroundUnitType, int]
 
+    #: Units this base has been ordered to send away but which have found no lift
+    #: yet. They are part of ``present``: still here, still deployable, still
+    #: counted in the ground war, and they leave only when a transport turns up.
+    pending_transfer: dict[GroundUnitType, int] = field(default_factory=dict)
+
+    #: Units that have left this base under a transport this turn. No longer part of
+    #: ``present`` -- they were debited when they departed.
+    transferring_out: dict[GroundUnitType, int] = field(default_factory=dict)
+
+    @property
+    def total_pending_transfer(self) -> int:
+        return sum(self.pending_transfer.values())
+
+    @property
+    def total_transferring_out(self) -> int:
+        return sum(self.transferring_out.values())
+
     @property
     def all(self) -> dict[GroundUnitType, int]:
         combined: dict[GroundUnitType, int] = defaultdict(int)
@@ -1288,15 +1305,24 @@ class ControlPoint(MissionTarget, SidcDescribable, ABC):
                 on_order[unit_bought] = count
 
         transferring: dict[GroundUnitType, int] = defaultdict(int)
+        pending_transfer: dict[GroundUnitType, int] = defaultdict(int)
+        transferring_out: dict[GroundUnitType, int] = defaultdict(int)
         for transfer in transfers:
             if transfer.destination == self:
                 for unit_type, count in transfer.units.items():
                     transferring[unit_type] += count
+            if transfer.origin == self:
+                # Still here until a lift exists; gone once one does.
+                bucket = transferring_out if transfer.departed else pending_transfer
+                for unit_type, count in transfer.units.items():
+                    bucket[unit_type] += count
 
         return GroundUnitAllocations(
             self.base.armor,
             on_order,
             transferring,
+            dict(pending_transfer),
+            dict(transferring_out),
         )
 
     @property

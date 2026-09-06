@@ -176,86 +176,93 @@ class PackageFulfiller:
             self.default_start_type,
             mission.asap,
         )
-
-        # Attempt to plan all the main elements of the mission first. Escorts
-        # will be planned separately so we can prune escorts for packages that
-        # are not expected to encounter that type of threat.
-        missing_types: Set[FlightType] = set()
-        escorts = []
-        for proposed_flight in mission.flights:
-            if proposed_flight.escort_type is not None:
-                # Escorts are planned after the primary elements of the package.
-                # If the package does not need escorts they may be pruned.
-                escorts.append(proposed_flight)
-                continue
-            if not self.air_wing_can_plan(proposed_flight.task):
-                # This air wing can never plan this mission type because they do not
-                # have compatible aircraft or squadrons. Skip fulfillment so that we
-                # don't place the purchase request.
-                missing_types.add(proposed_flight.task)
-                break
-            with tracer.trace("Flight planning"):
-                self.plan_flight(
-                    mission,
-                    proposed_flight,
-                    builder,
-                    missing_types,
-                    purchase_multiplier,
-                    ignore_range,
-                )
-
-        if missing_types:
-            self.scrub_mission_missing_aircraft(
-                mission, builder, missing_types, escorts, purchase_multiplier
-            )
-            return None
-
-        if not builder.package.flights:
-            # The non-escort part of this mission is unplannable by this faction. Scrub
-            # the mission and do not attempt planning escorts because there's no reason
-            # to buy them because this mission will never be planned.
-            return None
-
-        # Create flight plans for the main flights of the package so we can
-        # determine threats. This is done *after* creating all of the flights
-        # rather than as each flight is added because the flight plan for
-        # flights that will rendezvous with their package will be affected by
-        # the other flights in the package. Escorts will not be able to
-        # contribute to this.
-        for flight in builder.package.flights:
-            with tracer.trace("Flight plan population"):
-                flight.recreate_flight_plan()
-
-        needed_escorts = self.check_needed_escorts(builder)
-        for escort in escorts:
-            # This list was generated from the not None set, so this should be
-            # impossible.
-            assert escort.escort_type is not None
-            if needed_escorts[escort.escort_type] and self.can_plan_escort(
-                escort.escort_type
-            ):
+        try:
+            # Attempt to plan all the main elements of the mission first. Escorts
+            # will be planned separately so we can prune escorts for packages that
+            # are not expected to encounter that type of threat.
+            missing_types: Set[FlightType] = set()
+            escorts = []
+            for proposed_flight in mission.flights:
+                if proposed_flight.escort_type is not None:
+                    # Escorts are planned after the primary elements of the package.
+                    # If the package does not need escorts they may be pruned.
+                    escorts.append(proposed_flight)
+                    continue
+                if not self.air_wing_can_plan(proposed_flight.task):
+                    # This air wing can never plan this mission type because they do not
+                    # have compatible aircraft or squadrons. Skip fulfillment so that we
+                    # don't place the purchase request.
+                    missing_types.add(proposed_flight.task)
+                    break
                 with tracer.trace("Flight planning"):
                     self.plan_flight(
-                        mission, escort, builder, missing_types, purchase_multiplier
+                        mission,
+                        proposed_flight,
+                        builder,
+                        missing_types,
+                        purchase_multiplier,
+                        ignore_range,
                     )
 
-        # Check again for unavailable aircraft. If the escort was required and
-        # none were found, scrub the mission.
-        if missing_types:
-            self.scrub_mission_missing_aircraft(
-                mission, builder, missing_types, escorts, purchase_multiplier
-            )
-            return None
+            if missing_types:
+                self.scrub_mission_missing_aircraft(
+                    mission, builder, missing_types, escorts, purchase_multiplier
+                )
+                return None
 
-        package = builder.build()
-        # Add flight plans for escorts.
-        for flight in package.flights:
-            if not flight.flight_plan.waypoints:
+            if not builder.package.flights:
+                # The non-escort part of this mission is unplannable by this faction. Scrub
+                # the mission and do not attempt planning escorts because there's no reason
+                # to buy them because this mission will never be planned.
+                return None
+
+            # Create flight plans for the main flights of the package so we can
+            # determine threats. This is done *after* creating all of the flights
+            # rather than as each flight is added because the flight plan for
+            # flights that will rendezvous with their package will be affected by
+            # the other flights in the package. Escorts will not be able to
+            # contribute to this.
+            for flight in builder.package.flights:
                 with tracer.trace("Flight plan population"):
                     flight.recreate_flight_plan()
 
-        if package.has_players and self.player_missions_asap:
-            package.auto_asap = True
-            package.set_tot_asap(now)
+            needed_escorts = self.check_needed_escorts(builder)
+            for escort in escorts:
+                # This list was generated from the not None set, so this should be
+                # impossible.
+                assert escort.escort_type is not None
+                if needed_escorts[escort.escort_type] and self.can_plan_escort(
+                    escort.escort_type
+                ):
+                    with tracer.trace("Flight planning"):
+                        self.plan_flight(
+                            mission, escort, builder, missing_types, purchase_multiplier
+                        )
 
-        return package
+            # Check again for unavailable aircraft. If the escort was required and
+            # none were found, scrub the mission.
+            if missing_types:
+                self.scrub_mission_missing_aircraft(
+                    mission, builder, missing_types, escorts, purchase_multiplier
+                )
+                return None
+
+            package = builder.build()
+            # Add flight plans for escorts.
+            for flight in package.flights:
+                if not flight.flight_plan.waypoints:
+                    with tracer.trace("Flight plan population"):
+                        flight.recreate_flight_plan()
+
+            if package.has_players and self.player_missions_asap:
+                package.auto_asap = True
+                package.set_tot_asap(now)
+
+            return package
+        except Exception:
+            # A claim outlives the exception that interrupted planning: the aircraft
+            # stay marked as tasked and nothing gives them back, so the squadron reads
+            # as fully committed to a package that never existed. The dry-run endpoint
+            # hits this every time it probes a task the target does not accept.
+            builder.release_planned_aircraft()
+            raise
