@@ -6,7 +6,7 @@ local unitPayloads = {
 			["name"] = "Retribution Intercept",
 			["pylons"] = {
 				[1] = {
-					["CLSID"] = "{aim132}",
+					["CLSID"] = "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}",
 					["num"] = 1,
 				},
 				[2] = {
@@ -46,7 +46,7 @@ local unitPayloads = {
 					["num"] = 12,
 				},
 				[11] = {
-					["CLSID"] = "{aim132}",
+					["CLSID"] = "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}",
 					["num"] = 13,
 				},
 			},
@@ -59,11 +59,11 @@ local unitPayloads = {
 			["name"] = "Retribution Fighter sweep",
 			["pylons"] = {
 				[1] = {
-					["CLSID"] = "{aim132}",
+					["CLSID"] = "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}",
 					["num"] = 1,
 				},
 				[2] = {
-					["CLSID"] = "{irist}",
+					["CLSID"] = "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}",
 					["num"] = 2,
 				},
 				[3] = {
@@ -95,11 +95,11 @@ local unitPayloads = {
 					["num"] = 11,
 				},
 				[10] = {
-					["CLSID"] = "{irist}",
+					["CLSID"] = "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}",
 					["num"] = 12,
 				},
 				[11] = {
-					["CLSID"] = "{aim132}",
+					["CLSID"] = "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}",
 					["num"] = 13,
 				},
 			},
@@ -112,7 +112,7 @@ local unitPayloads = {
 			["name"] = "Retribution BARCAP",
 			["pylons"] = {
 				[1] = {
-					["CLSID"] = "{aim132}",
+					["CLSID"] = "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}",
 					["num"] = 1,
 				},
 				[2] = {
@@ -152,7 +152,7 @@ local unitPayloads = {
 					["num"] = 12,
 				},
 				[11] = {
-					["CLSID"] = "{aim132}",
+					["CLSID"] = "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}",
 					["num"] = 13,
 				},
 			},
@@ -165,7 +165,7 @@ local unitPayloads = {
 			["name"] = "Retribution TARCAP",
 			["pylons"] = {
 				[1] = {
-					["CLSID"] = "{aim132}",
+					["CLSID"] = "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}",
 					["num"] = 1,
 				},
 				[2] = {
@@ -205,7 +205,7 @@ local unitPayloads = {
 					["num"] = 12,
 				},
 				[11] = {
-					["CLSID"] = "{aim132}",
+					["CLSID"] = "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}",
 					["num"] = 13,
 				},
 			},
@@ -218,7 +218,7 @@ local unitPayloads = {
 			["name"] = "Retribution Escort",
 			["pylons"] = {
 				[1] = {
-					["CLSID"] = "{aim132}",
+					["CLSID"] = "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}",
 					["num"] = 1,
 				},
 				[2] = {
@@ -258,7 +258,7 @@ local unitPayloads = {
 					["num"] = 12,
 				},
 				[11] = {
-					["CLSID"] = "{aim132}",
+					["CLSID"] = "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}",
 					["num"] = 13,
 				},
 			},
@@ -271,7 +271,7 @@ local unitPayloads = {
 			["name"] = "Retribution OCA/Aircraft",
 			["pylons"] = {
 				[1] = {
-					["CLSID"] = "{aim132}",
+					["CLSID"] = "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}",
 					["num"] = 1,
 				},
 				[2] = {
@@ -319,7 +319,7 @@ local unitPayloads = {
 					["num"] = 12,
 				},
 				[13] = {
-					["CLSID"] = "{aim132}",
+					["CLSID"] = "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}",
 					["num"] = 13,
 				},
 			},
@@ -332,7 +332,7 @@ local unitPayloads = {
 			["name"] = "Retribution Strike",
 			["pylons"] = {
 				[1] = {
-					["CLSID"] = "{aim132}",
+					["CLSID"] = "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}",
 					["num"] = 1,
 				},
 				[2] = {
@@ -380,7 +380,7 @@ local unitPayloads = {
 					["num"] = 12,
 				},
 				[13] = {
-					["CLSID"] = "{aim132}",
+					["CLSID"] = "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}",
 					["num"] = 13,
 				},
 			},
@@ -393,7 +393,7 @@ local unitPayloads = {
 			["name"] = "Retribution OCA/Runway",
 			["pylons"] = {
 				[1] = {
-					["CLSID"] = "{aim132}",
+					["CLSID"] = "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}",
 					["num"] = 1,
 				},
 				[2] = {
@@ -441,7 +441,7 @@ local unitPayloads = {
 					["num"] = 12,
 				},
 				[13] = {
-					["CLSID"] = "{aim132}",
+					["CLSID"] = "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}",
 					["num"] = 13,
 				},
 			},
@@ -454,7 +454,7 @@ local unitPayloads = {
 			["name"] = "Retribution DEAD",
 			["pylons"] = {
 				[1] = {
-					["CLSID"] = "{aim132}",
+					["CLSID"] = "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}",
 					["num"] = 1,
 				},
 				[2] = {
@@ -502,7 +502,7 @@ local unitPayloads = {
 					["num"] = 12,
 				},
 				[13] = {
-					["CLSID"] = "{aim132}",
+					["CLSID"] = "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}",
 					["num"] = 13,
 				},
 			},
@@ -515,7 +515,7 @@ local unitPayloads = {
 			["name"] = "Retribution SEAD",
 			["pylons"] = {
 				[1] = {
-					["CLSID"] = "{aim132}",
+					["CLSID"] = "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}",
 					["num"] = 1,
 				},
 				[2] = {
@@ -563,7 +563,7 @@ local unitPayloads = {
 					["num"] = 12,
 				},
 				[13] = {
-					["CLSID"] = "{aim132}",
+					["CLSID"] = "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}",
 					["num"] = 13,
 				},
 			},
@@ -576,7 +576,7 @@ local unitPayloads = {
 			["name"] = "Retribution SEAD Escort",
 			["pylons"] = {
 				[1] = {
-					["CLSID"] = "{aim132}",
+					["CLSID"] = "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}",
 					["num"] = 1,
 				},
 				[2] = {
@@ -624,7 +624,7 @@ local unitPayloads = {
 					["num"] = 12,
 				},
 				[13] = {
-					["CLSID"] = "{aim132}",
+					["CLSID"] = "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}",
 					["num"] = 13,
 				},
 			},
@@ -637,7 +637,7 @@ local unitPayloads = {
 			["name"] = "Retribution Anti-ship",
 			["pylons"] = {
 				[1] = {
-					["CLSID"] = "{aim132}",
+					["CLSID"] = "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}",
 					["num"] = 1,
 				},
 				[2] = {
@@ -685,7 +685,7 @@ local unitPayloads = {
 					["num"] = 12,
 				},
 				[13] = {
-					["CLSID"] = "{aim132}",
+					["CLSID"] = "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}",
 					["num"] = 13,
 				},
 			},
@@ -698,7 +698,7 @@ local unitPayloads = {
 			["name"] = "Retribution BAI",
 			["pylons"] = {
 				[1] = {
-					["CLSID"] = "{aim132}",
+					["CLSID"] = "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}",
 					["num"] = 1,
 				},
 				[2] = {
@@ -746,7 +746,7 @@ local unitPayloads = {
 					["num"] = 12,
 				},
 				[13] = {
-					["CLSID"] = "{aim132}",
+					["CLSID"] = "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}",
 					["num"] = 13,
 				},
 			},
@@ -759,7 +759,7 @@ local unitPayloads = {
 			["name"] = "Retribution CAS",
 			["pylons"] = {
 				[1] = {
-					["CLSID"] = "{aim132}",
+					["CLSID"] = "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}",
 					["num"] = 1,
 				},
 				[2] = {
@@ -807,7 +807,7 @@ local unitPayloads = {
 					["num"] = 12,
 				},
 				[13] = {
-					["CLSID"] = "{aim132}",
+					["CLSID"] = "{6CEB49FC-DED8-4DED-B053-E1F033FF72D3}",
 					["num"] = 13,
 				},
 			},
