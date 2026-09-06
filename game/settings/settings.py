@@ -12,7 +12,8 @@ from .boundedintoption import bounded_int_option
 from .choicesoption import choices_option
 from .minutesoption import minutes_option
 from .optiondescription import OptionDescription, SETTING_DESCRIPTION_KEY
-from .skilloption import skill_option
+from .skilloption import pilot_skill_option, skill_option
+from .textoption import text_option
 from ..ato.starttype import StartType
 
 Views = ForcedOptions.Views
@@ -93,6 +94,11 @@ PRETENSE_PAGE = "Pretense"
 
 MISSION_GENERATOR_PAGE = "Mission Generator"
 
+LIVE_PILOTS_PAGE = "Live Pilots"
+LIVE_PILOTS_RANKS_SECTION = "Rank Names"
+LIVE_PILOTS_SURVIVAL_SECTION = "Survival Chance"
+
+
 GAMEPLAY_SECTION = "Gameplay"
 KNEEBOARD_SECTION = "Kneeboard"
 
@@ -108,13 +114,13 @@ class Settings:
 
     # Difficulty settings
     # AI Difficulty
-    player_skill: str = skill_option(
+    player_skill: str = pilot_skill_option(
         "Player coalition skill",
         page=DIFFICULTY_PAGE,
         section=AI_DIFFICULTY_SECTION,
         default="High",
     )
-    enemy_skill: str = skill_option(
+    enemy_skill: str = pilot_skill_option(
         "Enemy coalition skill",
         page=DIFFICULTY_PAGE,
         section=AI_DIFFICULTY_SECTION,
@@ -1767,6 +1773,176 @@ class Settings:
         detail=(
             "If enabled, AI flights will de-spawn over their base "
             "if the start-up type was manually changed to 'In-Flight'."
+        ),
+    )
+    live_pilots_enabled: bool = boolean_option(
+        "Enable Live Pilots",
+        page=LIVE_PILOTS_PAGE,
+        section=GENERAL_SECTION,
+        default=False,
+        detail=(
+            "Pilots hold a rank rather than a bare AI skill level, and can be named "
+            "in the mission itself."
+        ),
+    )
+    live_pilots_show_names: bool = boolean_option(
+        "Show pilot names in mission",
+        page=LIVE_PILOTS_PAGE,
+        section=GENERAL_SECTION,
+        default=True,
+        detail='Replaces the "Pilot #2" part of a flight label with the pilot name.',
+    )
+    live_pilots_show_ranks: bool = boolean_option(
+        "Show pilot ranks in mission",
+        page=LIVE_PILOTS_PAGE,
+        section=GENERAL_SECTION,
+        default=True,
+        detail="Prefixes the label with the pilot's abbreviated rank.",
+    )
+    live_pilots_rank_names: str = choices_option(
+        "Rank names",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_RANKS_SECTION,
+        default="country",
+        choices={
+            "Use faction country ranks": "country",
+            "Use generic ranks": "generic",
+            "Use skill names": "skill",
+            "Custom names (define below)": "custom",
+        },
+        detail=(
+            "Country ranks name each squadron in its own service -- FltLt for the "
+            "RAF, Hptm for the Luftwaffe -- falling back to the generic ladder for a "
+            "country with none of its own. Skill names use what DCS calls the level."
+        ),
+    )
+    live_pilots_rank_cadet_short: str = text_option(
+        "Cadet",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_RANKS_SECTION,
+        default="2ndLt",
+        max_length=5,
+    )
+    live_pilots_rank_cadet_full: str = text_option(
+        "Cadet",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_RANKS_SECTION,
+        default="Second Lieutenant",
+    )
+    live_pilots_rank_average_short: str = text_option(
+        "Average",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_RANKS_SECTION,
+        default="1stLt",
+        max_length=5,
+    )
+    live_pilots_rank_average_full: str = text_option(
+        "Average",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_RANKS_SECTION,
+        default="First Lieutenant",
+    )
+    live_pilots_rank_good_short: str = text_option(
+        "Good",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_RANKS_SECTION,
+        default="Capt",
+        max_length=5,
+    )
+    live_pilots_rank_good_full: str = text_option(
+        "Good",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_RANKS_SECTION,
+        default="Captain",
+    )
+    live_pilots_rank_high_short: str = text_option(
+        "High",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_RANKS_SECTION,
+        default="Maj",
+        max_length=5,
+    )
+    live_pilots_rank_high_full: str = text_option(
+        "High",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_RANKS_SECTION,
+        default="Major",
+    )
+    live_pilots_rank_excellent_short: str = text_option(
+        "Excellent",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_RANKS_SECTION,
+        default="LtCol",
+        max_length=5,
+    )
+    live_pilots_rank_excellent_full: str = text_option(
+        "Excellent",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_RANKS_SECTION,
+        default="Lieutenant Colonel",
+    )
+    live_pilots_rank_survival: bool = boolean_option(
+        "Rank decides who survives a loss",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_SURVIVAL_SECTION,
+        default=True,
+        detail=(
+            "Whether a pilot walks away from a crash or a shoot-down is rolled here, "
+            "against his rank, and owes nothing to whether he ejected in DCS -- the "
+            "engine reports neither an ejection nor a rescue. With this off, losing "
+            "the aircraft loses the pilot, as it always did."
+        ),
+    )
+    live_pilots_survival_cadet: int = bounded_int_option(
+        "Cadet (%)",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_SURVIVAL_SECTION,
+        default=20,
+        min=0,
+        max=100,
+    )
+    live_pilots_survival_average: int = bounded_int_option(
+        "Average (%)",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_SURVIVAL_SECTION,
+        default=35,
+        min=0,
+        max=100,
+    )
+    live_pilots_survival_good: int = bounded_int_option(
+        "Good (%)",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_SURVIVAL_SECTION,
+        default=50,
+        min=0,
+        max=100,
+    )
+    live_pilots_survival_high: int = bounded_int_option(
+        "High (%)",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_SURVIVAL_SECTION,
+        default=65,
+        min=0,
+        max=100,
+    )
+    live_pilots_survival_excellent: int = bounded_int_option(
+        "Excellent (%)",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_SURVIVAL_SECTION,
+        default=80,
+        min=0,
+        max=100,
+    )
+    live_pilots_wounded_chance: int = bounded_int_option(
+        "Wounded instead of killed (%)",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_SURVIVAL_SECTION,
+        default=35,
+        min=0,
+        max=100,
+        detail=(
+            "Chance that a pilot who would have died is wounded instead. Wounded "
+            "pilots are unavailable for 1-4 turns."
         ),
     )
     pretense_maxdistfromfront_distance: int = bounded_int_option(

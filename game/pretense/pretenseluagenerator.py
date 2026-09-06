@@ -9,6 +9,9 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Optional, List, Type
 
 from dcs import Mission
+from dcs.unit import Skill
+
+from game.dcs.skills import ground_skill
 from dcs.action import DoScript, DoScriptFile
 from dcs.ships import Stennis, CVN_71, CVN_72, CVN_73, CVN_75, Forrestal
 from dcs.translation import String
@@ -963,7 +966,7 @@ class PretenseLuaGenerator(LuaGenerator):
     def generate_pretense_ground_groups(self, side: int) -> str:
         if side == PRETENSE_BLUE_SIDE:
             side_str = "blue"
-            skill_str = self.game.settings.player_skill
+            skill_str = ground_skill(Skill(self.game.settings.player_skill)).value
             coalition = self.game.blue
         else:
             side_str = "red"
