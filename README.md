@@ -212,8 +212,9 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   gone. **Leave** answers that, and gains a length: a pilot asks -- more often the worse
   he is holding up, but a contented man asks now and then too -- and a dialog after the
   debriefing lists them with the turns to grant, per man, or a refusal that costs him.
-  His row in the Air Wing carries the figure and turns yellow, then red, in time to do
-  something about it. Fifteen settings, and a campaign in progress starts even: old saves
+  His row in the Air Wing names it -- Triumphant, Confident, Normal, Shaken, Shattered,
+  Broken, the way a rank names a skill level rather than showing the number behind it --
+  and turns yellow, then red, in time to do something about it. Fifteen settings, and a campaign in progress starts even: old saves
   read as morale 50 with no leave owing.
   ([#142](https://github.com/juanjux/dcs-retribution/pull/142))
 - **Switching Live Pilots on demoted one coalition and not the other.** Starting the
