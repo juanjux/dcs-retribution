@@ -63,7 +63,10 @@ class PilotSelector(QComboBox):
         self.addItem("Unassigned", None)
         choices = list(self.squadron.available_pilots)
         current_pilot = self.roster.pilot_at(self.pilot_index)
-        if current_pilot is not None:
+        if current_pilot is not None and not any(p is current_pilot for p in choices):
+            # Only if he is not in the pool already. A save written while rosters gave
+            # their crews back without letting go of them has pilots in both places, and
+            # the list showed those men twice.
             choices.append(current_pilot)
         # Players first, then by rank, then alphabetically. Squadron.rank_order is the
         # same rule the Air Wing roster sorts by, and it flattens to nothing while Live
