@@ -637,6 +637,7 @@ class Game:
                 gplanner = GroundPlanner(cp, self)
                 gplanner.plan_groundwar()
                 self.ground_planners[cp.id] = gplanner
+
     def begin_live_pilots(self) -> None:
         """Start the career ladder, once, when Live Pilots is switched on.
 
