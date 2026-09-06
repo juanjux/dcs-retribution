@@ -2079,6 +2079,18 @@ class Settings:
         max=0,
         detail=("He asked, and was told no."),
     )
+    morale_leave_cancelled: int = bounded_int_option(
+        "Leave cut short",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_MORALE_SECTION,
+        default=-10,
+        min=-50,
+        max=0,
+        detail=(
+            "What it costs a pilot to be called back before his leave is up. Worse"
+            " than never being granted it: he had it in his hand."
+        ),
+    )
     morale_air_kill: int = bounded_int_option(
         "Shot one down",
         page=LIVE_PILOTS_PAGE,

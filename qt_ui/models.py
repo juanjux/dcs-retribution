@@ -545,9 +545,16 @@ class SquadronModel(QAbstractListModel):
         pilot = self.pilot_at_index(index)
         self.beginResetModel()
         if pilot.on_leave:
-            self.squadron.return_from_leave(pilot)
+            # Calling a man back early costs him; leave that simply ran out does not.
+            self.squadron.cancel_leave(pilot)
         else:
             self.squadron.send_on_leave(pilot)
+        self.endResetModel()
+
+    def discharge_pilot(self, index: QModelIndex) -> None:
+        pilot = self.pilot_at_index(index)
+        self.beginResetModel()
+        self.squadron.discharge(pilot)
         self.endResetModel()
 
     def is_auto_assignable(self, task: FlightType) -> bool:

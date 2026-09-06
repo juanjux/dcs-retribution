@@ -45,6 +45,9 @@ class PilotStatus(Enum):
     #: He has had enough and walked away. Counted with the dead rather than the living:
     #: gone is gone, and the squadron has to replace him either way.
     Deserted = "Deserted"
+    #: Thrown out by the player. The value is the save format: never rename one of
+    #: these, only add.
+    Discharged = "Discharged"
 
 
 @dataclass
@@ -111,7 +114,11 @@ class Pilot:
 
     @property
     def alive(self) -> bool:
-        return self.status not in (PilotStatus.Dead, PilotStatus.Deserted)
+        return self.status not in (
+            PilotStatus.Dead,
+            PilotStatus.Deserted,
+            PilotStatus.Discharged,
+        )
 
     @property
     def deserted(self) -> bool:
@@ -216,6 +223,13 @@ class Pilot:
         self.status = PilotStatus.Dead
         self.wounded_turns = 0
         self.wounded_on_turn = -1
+
+    def discharge(self) -> None:
+        """Thrown out. He keeps his place in the roll below, and nothing else."""
+        self.status = PilotStatus.Discharged
+        self.wants_leave = False
+        self.leave_turns = 0
+        self.leave_turns_requested = 0
 
     def desert(self) -> None:
         """He has had enough."""
