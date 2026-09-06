@@ -9,9 +9,12 @@ groups:
         - 1
       unit_classes:
         - AircraftCarrier
+  # The light-screen variant: frigate-led, no cruiser. Hulls inside the slot
+  # are still mixed, so this is a lighter screen rather than four of one ship.
   - Escort:
     - name: Carrier Group 1
       unit_count:
         - 4
       unit_classes:
         - Frigate
+        - Destroyer
