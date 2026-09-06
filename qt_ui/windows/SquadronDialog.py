@@ -72,6 +72,10 @@ class PilotDelegate(TwoColumnRowDelegate):
             # default, so only the states that keep a pilot off the roster are worth
             # surfacing here -- and how he is holding up, which is the one thing the
             # player can still do something about.
+            if not pilot.alive:
+                # He is in the roll of the dead below, where how he went is the only
+                # thing left to say about him. Morale died with him.
+                return pilot.status.value
             if pilot.wounded:
                 return f"Wounded for {turns_phrase(pilot.wounded_turns)}"
             if pilot.on_leave:
