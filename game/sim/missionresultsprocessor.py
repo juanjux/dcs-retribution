@@ -8,6 +8,7 @@ from game.debriefing import Debriefing
 from game.squadrons.experience import (
     PilotDeath,
     PilotPromotion,
+    MoraleShift,
     PilotWound,
     WOUNDED_TURNS,
     XP_AIR_KILL,
@@ -23,6 +24,8 @@ from game.squadrons.experience import (
 )
 from game.dcs.skills import one_promotion_at_most
 from game.ground_forces.combat_stance import CombatStance
+from game.dcs.skills import SKILL_LADDER
+from game.squadrons import morale as morale_rules
 from game.squadrons.pilot import Pilot
 from game.squadrons.xplog import XpLog
 from game.profiling import logged_duration
@@ -48,6 +51,86 @@ class MissionResultsProcessor:
         self.game = game
         # TEMPORARY: see game.squadrons.xplog. Remove with the rest of it.
         self._xp_log: Optional[XpLog] = None
+        #: Morale movements collected during the pass, applied once it is over.
+        self._morale_events: dict[int, list[Any]] = {}
+
+    def _note_morale(self, pilot: Any, event: Any, times: int = 1) -> None:
+        """Remember that something happened to a pilot; it is applied at the end.
+
+        Collected rather than applied on the spot because the experience multiplier
+        reads the morale he *flew* the sortie with, not the morale the sortie left him
+        with.
+        """
+        if times > 0:
+            self._morale_events.setdefault(id(pilot), []).extend([event] * times)
+
+    def _commit_morale(self, debriefing: Debriefing) -> None:
+        """Spend the tally, once the experience has been paid at the old morale."""
+        if not self.game.settings.live_pilots_enabled:
+            return
+        if not getattr(self.game.settings, "morale_enabled", True):
+            return
+        for coalition in (self.game.blue, self.game.red):
+            for squadron in coalition.air_wing.iter_squadrons():
+                for pilot in squadron.current_roster:
+                    events = self._morale_events.get(id(pilot))
+                    if not events:
+                        continue
+                    before = pilot.morale
+                    for event in events:
+                        pilot.morale = morale_rules.apply(
+                            pilot.morale,
+                            event,
+                            squadron.pilot_skill(pilot),
+                            self.game.settings,
+                        )
+                    if pilot.morale != before:
+                        reasons = [e.reason for e in events]
+                        self.xp_log.morale(
+                            pilot, squadron, before, pilot.morale, reasons
+                        )
+                        if (
+                            abs(pilot.morale - before)
+                            >= morale_rules.MORALE_WORTH_REPORTING
+                        ):
+                            debriefing.pilot_outcomes.morale_shifts.append(
+                                MoraleShift(
+                                    pilot_name=pilot.name,
+                                    squadron=str(squadron),
+                                    before=before,
+                                    after=pilot.morale,
+                                    reasons=sorted(set(reasons)),
+                                )
+                            )
+        self._morale_events = {}
+
+    def _note_shared_morale(self, debriefing: Debriefing) -> None:
+        """What the whole squadron or the whole coalition felt.
+
+        A death is felt by everyone who flew with the man, and a base changing hands is
+        felt by everyone on that side.
+        """
+        dead_by_squadron: dict[str, int] = {}
+        for death in debriefing.pilot_outcomes.deaths:
+            dead_by_squadron[death.squadron] = (
+                dead_by_squadron.get(death.squadron, 0) + 1
+            )
+
+        for coalition in (self.game.blue, self.game.red):
+            lost = sum(
+                1
+                for capture in debriefing.base_captures
+                if capture.captured_by_player.is_blue != coalition.player.is_blue
+            )
+            for squadron in coalition.air_wing.iter_squadrons():
+                deaths = dead_by_squadron.get(str(squadron), 0)
+                for pilot in squadron.current_roster:
+                    if not pilot.alive:
+                        continue
+                    # A man does not mourn himself; the dead are already out of the
+                    # living roster by the time this runs.
+                    self._note_morale(pilot, morale_rules.SQUADRON_DEATH, deaths)
+                    self._note_morale(pilot, morale_rules.BASE_LOST, lost)
 
     @property
     def xp_log(self) -> XpLog:
@@ -255,6 +338,11 @@ class MissionResultsProcessor:
         chance = (
             survival_chance(squadron.pilot_skill(pilot), settings) if rolls else 0.0
         )
+        if rolls and getattr(settings, "morale_enabled", True):
+            # The steady man gets out of the aircraft; the hollow one does not.
+            chance = max(
+                0.0, min(1.0, chance + morale_rules.survival_modifier(pilot.morale))
+            )
         survived = rolls and random.random() < chance
 
         def note(outcome: str) -> None:
@@ -283,6 +371,8 @@ class MissionResultsProcessor:
             random.random() < settings.live_pilots_wounded_chance / 100
         ):
             turns = random.randint(*WOUNDED_TURNS)
+            if getattr(settings, "morale_enabled", True):
+                turns = morale_rules.recovery_turns(turns, pilot.morale)
             pilot.wound(turns, self.game.turn)
             debriefing.pilot_outcomes.wounded.append(
                 PilotWound(pilot.name, str(squadron), turns)
@@ -406,8 +496,8 @@ class MissionResultsProcessor:
 
     def _credited_events(
         self, details: Any, debriefing: Debriefing
-    ) -> Iterator[tuple[Pilot, str, Any]]:
-        """(pilot, target name, target) for every record naming an aircrew and a victim.
+    ) -> Iterator[tuple[Pilot, str, Any, Any]]:
+        """(pilot, target name, target, the killer's flight) for every credited record.
 
         Shared by kills and hits, which the plugin writes in the same shape. Anything
         that cannot be resolved to a roster pilot is dropped, as is anything he did to
@@ -429,7 +519,7 @@ class MissionResultsProcessor:
                 victim_blue == killer.flight.squadron.player.is_blue
             ):
                 continue  # nobody is paid for shooting his own side
-            yield killer.pilot, str(target), victim
+            yield killer.pilot, str(target), victim, killer.flight
 
     def _experience_from_kills(
         self, debriefing: Debriefing
@@ -441,7 +531,7 @@ class MissionResultsProcessor:
         """
         earned: dict[int, int] = {}
         credited: set[tuple[int, str]] = set()
-        for pilot, target, victim in self._credited_events(
+        for pilot, target, victim, flight in self._credited_events(
             debriefing.state_data.kill_details, debriefing
         ):
             credited.add((id(pilot), target))
@@ -449,7 +539,31 @@ class MissionResultsProcessor:
             if xp:
                 earned[id(pilot)] = earned.get(id(pilot), 0) + xp
                 self.xp_log.award(pilot, xp, "destroyed", victim, target)
+            if getattr(victim, "flight", None) is not None:
+                self._note_morale(pilot, morale_rules.AIR_KILL)
+            elif not self._was_the_assigned_target(victim, flight):
+                self._note_morale(pilot, morale_rules.UNPLANNED_KILL)
         return earned, credited
+
+    @staticmethod
+    def _was_the_assigned_target(victim: Any, flight: Any) -> bool:
+        """Whether this is what the package was sent for.
+
+        Anything else is a target of opportunity, which is worth something to a pilot
+        even when it is worth little to the campaign. The engine cannot tell us whose
+        idea it was -- his, or an order the player gave on the F10 map -- so both read
+        the same here.
+        """
+        target = getattr(getattr(flight, "package", None), "target", None)
+        if target is None:
+            return True  # nothing to compare against; assume he did as he was told
+        unit = getattr(victim, "theater_unit", None) or getattr(
+            victim, "ground_unit", None
+        )
+        objective = getattr(unit, "ground_object", None)
+        if objective is None:
+            return True
+        return getattr(objective, "name", None) == getattr(target, "name", None)
 
     def _experience_from_damage(
         self, debriefing: Debriefing, credited: set[tuple[int, str]]
@@ -462,7 +576,7 @@ class MissionResultsProcessor:
         it. The pilot credited with the kill is skipped -- that kill already paid him.
         """
         earned: dict[int, int] = {}
-        for pilot, target, victim in self._credited_events(
+        for pilot, target, victim, _flight in self._credited_events(
             debriefing.state_data.hit_details, debriefing
         ):
             if (id(pilot), target) in credited:
@@ -487,6 +601,9 @@ class MissionResultsProcessor:
                         )
                         continue
                     pilot.record.missions_flown += 1
+                    self._note_mission_morale(
+                        flight, squadron, pilot, debriefing, earned
+                    )
                     if not pilot.alive:
                         # Losses are committed before this runs. He earned it and did
                         # not live to collect it.
@@ -519,7 +636,22 @@ class MissionResultsProcessor:
                     # The same floor pilot_skill measures against, or the rungs
                     # would be counted from the difficulty setting Live Pilots
                     # replaces.
-                    raw = had + earned.get(id(pilot), 0) + sum(x for _, _, x in extras)
+                    multiplier = self._xp_multiplier(flight, squadron, pilot)
+                    paid = round(
+                        (earned.get(id(pilot), 0) + sum(x for _, _, x in extras))
+                        * multiplier
+                    )
+                    if multiplier != 1.0:
+                        extras.append(
+                            (
+                                "x%.1f" % multiplier,
+                                "morale and the company he flew in",
+                                paid
+                                - earned.get(id(pilot), 0)
+                                - sum(x for _, _, x in extras),
+                            )
+                        )
+                    raw = had + paid
                     pilot.record.xp = one_promotion_at_most(
                         had, raw, squadron.base_skill
                     )
@@ -535,6 +667,7 @@ class MissionResultsProcessor:
                     promotion = None
                     if before is not None and after is not None and after != before:
                         promotion = f"{before.abbreviation} -> {after.abbreviation}"
+                        self._note_morale(pilot, morale_rules.PROMOTED)
                         debriefing.pilot_outcomes.promotions.append(
                             PilotPromotion(
                                 pilot_name=pilot.name,
@@ -555,12 +688,63 @@ class MissionResultsProcessor:
                         promotion,
                     )
 
+    def _xp_multiplier(self, flight: Any, squadron: Any, pilot: Any) -> float:
+        """What this sortie was worth to this man, and to nobody else in the flight.
+
+        Two things move it: how he is holding up, and who he flew with. Only the best
+        pilot in the formation teaches, and only the ones below him learn -- he gets
+        nothing out of it himself.
+        """
+        settings = self.game.settings
+        if not settings.live_pilots_enabled or not getattr(
+            settings, "morale_enabled", True
+        ):
+            return 1.0
+        best = squadron.pilot_skill(pilot)
+        for other in flight.roster.iter_pilots():
+            if other is None:
+                continue
+            skill = (
+                other.squadron.pilot_skill(other)
+                if hasattr(other, "squadron")
+                else (squadron.pilot_skill(other))
+            )
+            if SKILL_LADDER.index(skill) > SKILL_LADDER.index(best):
+                best = skill
+        return morale_rules.xp_multiplier(pilot.morale) + morale_rules.learning_bonus(
+            squadron.pilot_skill(pilot), best
+        )
+
+    def _note_mission_morale(
+        self,
+        flight: Any,
+        squadron: Any,
+        pilot: Any,
+        debriefing: Debriefing,
+        earned: dict[int, int],
+    ) -> None:
+        """What his own sortie did to him."""
+        outcomes = debriefing.pilot_outcomes
+        if id(pilot) in outcomes.lost_aircraft:
+            if pilot.alive:
+                self._note_morale(pilot, morale_rules.LOST_AIRCRAFT)
+            return
+        self._note_morale(pilot, morale_rules.MISSION_COMPLETE)
+        if flight.flight_type.name in morale_rules.STRIKE_TASKS and not earned.get(
+            id(pilot)
+        ):
+            # He was sent to destroy something and destroyed nothing. A CAP that saw
+            # nobody has not failed at anything, so those are left out of it.
+            self._note_morale(pilot, morale_rules.ACHIEVED_NOTHING)
+
     def commit_pilot_experience(self, debriefing: Debriefing) -> None:
         earned, credited = self._experience_from_kills(debriefing)
         for pilot_id, xp in self._experience_from_damage(debriefing, credited).items():
             earned[pilot_id] = earned.get(pilot_id, 0) + xp
         self._commit_pilot_experience(self.game.blue.ato, debriefing, earned)
         self._commit_pilot_experience(self.game.red.ato, debriefing, earned)
+        self._note_shared_morale(debriefing)
+        self._commit_morale(debriefing)
         self.xp_log.write()
         self._xp_log = None
 

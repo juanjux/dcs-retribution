@@ -27,6 +27,7 @@ from game.ato.flightplans.custom import CustomFlightPlan
 from game.ato.flighttype import FlightType
 from game.ato.flightwaypointtype import FlightWaypointType
 from game.dcs.aircrafttype import AircraftType
+from game.squadrons import morale as morale_rules
 from game.squadrons.experience import turns_phrase
 from game.purchaseadapter import AircraftPurchaseAdapter, TransactionError
 from game.server import EventStream
@@ -69,11 +70,47 @@ class PilotDelegate(TwoColumnRowDelegate):
         elif (row, column) == (1, 1):
             # Dead pilots have their own list and living pilots are active by
             # default, so only the states that keep a pilot off the roster are worth
-            # surfacing here.
+            # surfacing here -- and how he is holding up, which is the one thing the
+            # player can still do something about.
             if pilot.wounded:
                 return f"Wounded for {turns_phrase(pilot.wounded_turns)}"
-            return pilot.status.value if pilot.on_leave else ""
+            if pilot.on_leave:
+                if pilot.leave_turns:
+                    return f"On leave, {turns_phrase(pilot.leave_turns)} left"
+                return pilot.status.value
+            return self._morale_text(pilot)
         return ""
+
+    def _morale_text(self, pilot: Pilot) -> str:
+        """Morale, and what he wants doing about it."""
+        squadron = self.squadron_model.squadron
+        if not squadron.settings.live_pilots_enabled or not getattr(
+            squadron.settings, "morale_enabled", True
+        ):
+            return ""
+        if pilot.wants_leave:
+            return f"Morale {pilot.morale} — asking for leave"
+        if pilot.morale < morale_rules.SHAKEN_BELOW:
+            return f"Morale {pilot.morale} — at breaking point"
+        return f"Morale {pilot.morale}"
+
+    def colour_for(self, index: QModelIndex, row: int, column: int) -> Optional[QColor]:
+        """Red for a man who is about to be no use, amber for one asking to rest."""
+        if (row, column) != (1, 1):
+            return None
+        pilot = self.squadron_model.pilot_at_index(index)
+        if pilot.wounded or pilot.on_leave or not pilot.alive:
+            return None
+        squadron = self.squadron_model.squadron
+        if not squadron.settings.live_pilots_enabled or not getattr(
+            squadron.settings, "morale_enabled", True
+        ):
+            return None
+        if pilot.morale < morale_rules.BROKEN_BELOW:
+            return QColor("#E06C6C")
+        if pilot.morale < morale_rules.SHAKEN_BELOW or pilot.wants_leave:
+            return QColor("#E0C36C")
+        return None
 
 
 class PilotList(QListView):

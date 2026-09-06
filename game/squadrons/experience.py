@@ -145,6 +145,17 @@ class PilotPromotion:
 
 
 @dataclass
+class MoraleShift:
+    """A pilot the turn moved a long way, in either direction."""
+
+    pilot_name: str
+    squadron: str
+    before: int
+    after: int
+    reasons: list[str]
+
+
+@dataclass
 class PilotOutcomes:
     """What became of the aircrew this mission, for the debriefing to read.
 
@@ -157,6 +168,7 @@ class PilotOutcomes:
     survivors: list[PilotDeath] = field(default_factory=list)
     wounded: list[PilotWound] = field(default_factory=list)
     deaths: list[PilotDeath] = field(default_factory=list)
+    morale_shifts: list[MoraleShift] = field(default_factory=list)
 
     #: ``id()`` of every pilot who lost his aircraft, however it ended for him. He did
     #: not complete the mission, so he is not paid for completing it.
@@ -164,4 +176,10 @@ class PilotOutcomes:
 
     @property
     def empty(self) -> bool:
-        return not (self.promotions or self.survivors or self.wounded or self.deaths)
+        return not (
+            self.promotions
+            or self.survivors
+            or self.wounded
+            or self.deaths
+            or self.morale_shifts
+        )

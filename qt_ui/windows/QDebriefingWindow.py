@@ -315,6 +315,16 @@ class QDebriefingWindow(QDialog):
                     f"{turns_phrase(wound.turns)} — {wound.squadron}",
                 )
 
+        if outcomes.morale_shifts:
+            line("<b>Morale</b>")
+            for shift in outcomes.morale_shifts:
+                direction = "up" if shift.after > shift.before else "down"
+                line(
+                    shift.pilot_name,
+                    f"{direction} from {shift.before} to {shift.after} — "
+                    f"{', '.join(shift.reasons)}",
+                )
+
         if outcomes.deaths:
             line("<b>Killed in action</b>")
             for death in outcomes.deaths:
@@ -334,8 +344,30 @@ class QDebriefingWindow(QDialog):
         # Queued rather than shown here: this dialog is modal and still closing, and a
         # second modal raised inside its own close handler does not always come up.
         QTimer.singleShot(0, self._congratulate_the_player)
+        QTimer.singleShot(0, self._answer_leave_requests)
         state = self.debriefing.game.check_win_loss()
         GameUpdateSignal.get_instance().gameStateChanged(state)
+
+    def _answer_leave_requests(self) -> None:
+        """Whoever asked for a rest this turn, and your answer.
+
+        Queued after the promotion box so the good news comes first.
+        """
+        from qt_ui.windows.LeaveRequestsDialog import (
+            LeaveRequestsDialog,
+            pending_leave_requests,
+        )
+
+        game = self.debriefing.game
+        if not game.settings.live_pilots_enabled or not getattr(
+            game.settings, "morale_enabled", True
+        ):
+            return
+        requests = pending_leave_requests(game)
+        if not requests:
+            return
+        self._leave_dialog = LeaveRequestsDialog(game, requests)
+        self._leave_dialog.exec()
 
     def _congratulate_the_player(self) -> None:
         """Tell the player he has been promoted. Nobody else gets a parade."""

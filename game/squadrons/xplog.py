@@ -59,6 +59,29 @@ class XpLog:
             f"{chance:.0%} to walk away -- {outcome}"
         )
 
+    def morale(
+        self,
+        pilot: Any,
+        squadron: Any,
+        before: int,
+        after: int,
+        reasons: Iterable[str],
+    ) -> None:
+        """Where a pilot's morale went this turn, and what moved it.
+
+        Counted like the experience above, and here for the same reason: promotions and
+        refusals are decided from a number nobody can see.
+        """
+        tally: dict[str, int] = {}
+        for reason in reasons:
+            tally[reason] = tally.get(reason, 0) + 1
+        detail = ", ".join(
+            reason if n == 1 else f"{reason} x{n}" for reason, n in tally.items()
+        )
+        self._lines.append(
+            f"  {pilot.name} ({squadron}) morale {before} -> {after} ({detail})"
+        )
+
     def collected(
         self,
         pilot: Any,

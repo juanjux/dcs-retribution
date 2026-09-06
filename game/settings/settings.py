@@ -99,6 +99,7 @@ MISSION_GENERATOR_PAGE = "Mission Generator"
 LIVE_PILOTS_PAGE = "Live Pilots"
 LIVE_PILOTS_RANKS_SECTION = "Rank Names"
 LIVE_PILOTS_SURVIVAL_SECTION = "Survival Chance"
+LIVE_PILOTS_MORALE_SECTION = "Morale"
 
 
 GAMEPLAY_SECTION = "Gameplay"
@@ -1979,6 +1980,160 @@ class Settings:
         default=80,
         min=0,
         max=100,
+    )
+    morale_enabled: bool = boolean_option(
+        "Enable morale",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_MORALE_SECTION,
+        default=True,
+        detail=(
+            "Pilots hold up or wear down, 0 to 100 from a starting 50. It decides what"
+            " a sortie is worth to them, how steady the flight is under fire, and"
+            " whether a man asks for leave -- or stops turning up at all. Needs Live"
+            " Pilots."
+        ),
+    )
+    morale_skill_high: int = bounded_int_option(
+        "Flies a rank better above",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_MORALE_SECTION,
+        default=85,
+        min=50,
+        max=100,
+        detail=(
+            "A pilot above this flies one rung above the rank he holds, up to Ace. His"
+            " rank does not change: this is how he is flying this week, not what he has"
+            " earned."
+        ),
+    )
+    morale_skill_low: int = bounded_int_option(
+        "Flies a rank worse below",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_MORALE_SECTION,
+        default=15,
+        min=0,
+        max=50,
+        detail=(
+            "And below this, one rung worse. Worth knowing what that costs: the height"
+            " an aircraft will attack from belongs to the pilot, so a rung down can"
+            " leave a flight overflying its target without firing."
+        ),
+    )
+    morale_lost_aircraft: int = bounded_int_option(
+        "Lost his aircraft",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_MORALE_SECTION,
+        default=-15,
+        min=-50,
+        max=0,
+        detail=(
+            "He came home without it. The engine reports no ejections, but a pilot who lost the aircraft and lived is the same man in the same parachute."
+        ),
+    )
+    morale_achieved_nothing: int = bounded_int_option(
+        "Came home empty",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_MORALE_SECTION,
+        default=-5,
+        min=-50,
+        max=0,
+        detail=(
+            "Flew a strike, a CAS or a SEAD and destroyed nothing at all. A CAP that saw no one does not count -- there was nothing to fail at."
+        ),
+    )
+    morale_squadron_death: int = bounded_int_option(
+        "A squadron mate killed",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_MORALE_SECTION,
+        default=-8,
+        min=-50,
+        max=0,
+        detail=("Applied to everyone else in his squadron, once per man lost."),
+    )
+    morale_base_lost: int = bounded_int_option(
+        "A base lost",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_MORALE_SECTION,
+        default=-6,
+        min=-50,
+        max=0,
+        detail=("Any base of his coalition changing hands."),
+    )
+    morale_no_leave: int = bounded_int_option(
+        "Each turn overdue leave",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_MORALE_SECTION,
+        default=-2,
+        min=-50,
+        max=0,
+        detail=(
+            "From the sixth turn without leave, and it compounds: the eighth turn costs three times what the sixth did."
+        ),
+    )
+    morale_leave_refused: int = bounded_int_option(
+        "Leave refused",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_MORALE_SECTION,
+        default=-6,
+        min=-50,
+        max=0,
+        detail=("He asked, and was told no."),
+    )
+    morale_air_kill: int = bounded_int_option(
+        "Shot one down",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_MORALE_SECTION,
+        default=10,
+        min=0,
+        max=50,
+        detail=("Per enemy aircraft."),
+    )
+    morale_unplanned_kill: int = bounded_int_option(
+        "Target of opportunity",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_MORALE_SECTION,
+        default=3,
+        min=0,
+        max=50,
+        detail=("Per thing destroyed that was not what his package was sent for."),
+    )
+    morale_mission_complete: int = bounded_int_option(
+        "Flew the mission",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_MORALE_SECTION,
+        default=4,
+        min=0,
+        max=50,
+        detail=("He went, and he brought the aircraft home."),
+    )
+    morale_promoted: int = bounded_int_option(
+        "Promoted",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_MORALE_SECTION,
+        default=12,
+        min=0,
+        max=50,
+    )
+    morale_on_leave: int = bounded_int_option(
+        "Each turn of leave",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_MORALE_SECTION,
+        default=8,
+        min=0,
+        max=50,
+    )
+    morale_leave_request_chance: int = bounded_int_option(
+        "Chance of asking for leave (%)",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_MORALE_SECTION,
+        default=8,
+        min=0,
+        max=100,
+        detail=(
+            "Per pilot per turn at middling morale. It rises as he wears down and falls"
+            " as he picks up, so a contented man asks now and then and a hollow one"
+            " asks often. You answer at the end of the turn."
+        ),
     )
     live_pilots_wounded_chance: int = bounded_int_option(
         "Wounded instead of killed (%)",
