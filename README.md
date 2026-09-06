@@ -103,6 +103,16 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   [#20](https://github.com/juanjux/dcs-retribution/pull/20))
 
 ### Missions, AI & tasking
+- **The LLM can see and choose its pilots, and read every setting.** Two parity gaps the
+  OPFOR agent reported: it could see a flight's uncrewed count and nothing else about the
+  people in it, and `/settings` was a hand-written subset that happened not to include
+  mission durations. Now `GET /squadrons/{id}/pilots` is the Air Wing roster -- rank,
+  experience, skill, wounds and the flight each man is already crewing -- `GET
+  /flights/{id}/crew` shows one flight's seats and who is free, and `POST /flights/crew`
+  seats a named pilot or empties a seat, refusing anyone dead, wounded, on leave or
+  already flying. `/settings` keeps its curated fields and gains `all_settings`: every box
+  on the settings pages with its label, value and explanation.
+  ([#139](https://github.com/juanjux/dcs-retribution/pull/139))
 - **The same pilot could fly two missions in one turn.** Clearing a roster handed its crew
   back to the squadron and then went on holding them, so a pilot could be flying one
   mission and be offered for the next at the same time. Measured in a save: El Jefe and
