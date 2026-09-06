@@ -103,6 +103,36 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   [#20](https://github.com/juanjux/dcs-retribution/pull/20))
 
 ### Missions, AI & tasking
+- **The same pilot could fly two missions in one turn.** Clearing a roster handed its crew
+  back to the squadron and then went on holding them, so a pilot could be flying one
+  mission and be offered for the next at the same time. Measured in a save: El Jefe and
+  Yayo each flew a BARCAP over Kirkuk *and* a DEAD on BONGO, the same pilot objects in
+  both, with the squadron's books reading fifteen active, eleven available and four
+  claimed seats between two people.
+  ([#138](https://github.com/juanjux/dcs-retribution/pull/138))
+- **The Su-25 was planned to fight from a height it will not shoot from.** Neither
+  Frogfoot declared a combat altitude -- no aircraft in the fork did -- so both fell back
+  to the estimate made from their top speed, 20,000 ft clamped to the doctrine ceiling,
+  and from up there the AI never attacks: a pair tasked at 5,000 m crossed a front full of
+  armour unopposed and came home without firing, correctly armed and tasked with 65 enemy
+  vehicles in the zone. The ceiling is the pilot's rather than the weapon's -- a cadet
+  shoots to about 3,000 m and an average pilot to about 4,500 -- and Live Pilots starts
+  everyone a cadet. The 5,000 m was deliberate, to stay above MANPADS; there is no
+  altitude that does both.
+  ([#135](https://github.com/juanjux/dcs-retribution/pull/135))
+- **A TARCAP gets its own on-station time.** It read `doctrine.cap_duration`, a flat 30
+  minutes in all three doctrines. `Doctrine.from_settings` maps the BARCAP setting onto
+  that field and nothing has ever called it, so the number a player typed reached BARCAPs
+  and never TARCAPs. They are different jobs anyway: one guards a base for hours, the
+  other covers an attack. Defaults to the 30 minutes it always was, and still gives way
+  to the escorted mission when a flight in the package asked for an escort. The pilot
+  selector also addresses pilots by rank now and orders them by seniority.
+  ([#137](https://github.com/juanjux/dcs-retribution/pull/137))
+- **The LLM is warned when it sends a CAS flight higher than it will shoot from.** Height
+  is not free the way distance is, and where the line sits depends on the airframe, the
+  load and the pilot -- so the warning claims no ceiling, only that the flight is above
+  what its own aircraft is planned to fight from. The edit is applied regardless.
+  ([#136](https://github.com/juanjux/dcs-retribution/pull/136))
 - **Bombing the parking killed the pilots who were not in the aircraft.** Every reserve
   on the apron is given a stand-in flight so the debriefing can account for the airframe,
   and that flight claims a real pilot from the roster. Nobody is sitting in one. An
