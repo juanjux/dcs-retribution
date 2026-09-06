@@ -75,6 +75,10 @@ NO_LEAVE = MoraleEvent("morale_no_leave", -2, "no leave in a long time")
 #: He asked for leave and was told no.
 LEAVE_REFUSED = MoraleEvent("morale_leave_refused", -6, "leave refused")
 
+#: He was on leave and was called back before it was up. Worse than never getting it:
+#: he had it in his hand.
+LEAVE_CANCELLED = MoraleEvent("morale_leave_cancelled", -10, "leave cut short")
+
 # --- what builds him up -----------------------------------------------------
 
 #: Per enemy aircraft shot down.
@@ -100,6 +104,7 @@ MORALE_EVENTS: tuple[MoraleEvent, ...] = (
     BASE_LOST,
     NO_LEAVE,
     LEAVE_REFUSED,
+    LEAVE_CANCELLED,
     AIR_KILL,
     UNPLANNED_KILL,
     MISSION_COMPLETE,
@@ -129,6 +134,18 @@ def drift(morale: int) -> int:
     if morale < MORALE_START:
         return 1
     return 0
+
+
+#: The rungs of the ladder, and so the number of stars a pilot can wear.
+RANK_LEVELS = len(SKILL_LADDER)
+
+
+def rank_level(skill: Skill) -> int:
+    """Which rung he stands on, 1 to 5, for the stars on his row."""
+    try:
+        return SKILL_LADDER.index(skill) + 1
+    except ValueError:
+        return 1
 
 
 def resistance(skill: Skill) -> float:

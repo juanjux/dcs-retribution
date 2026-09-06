@@ -415,6 +415,29 @@ class Squadron:
                     pilot.morale
                 )
 
+    def cancel_leave(self, pilot: Pilot) -> None:
+        """Call a man back before his leave is up, and pay for it.
+
+        The cost hangs on this, not on :meth:`Pilot.return_from_leave` -- a pilot whose
+        leave simply ran out has had his rest and owes nothing.
+        """
+        if not pilot.on_leave:
+            raise RuntimeError("Only pilots on leave may have it cancelled")
+        # Goes through the ordinary return, which refuses when the squadron is full.
+        self.return_from_leave(pilot)
+        if self.morale_in_play:
+            pilot.move_morale(
+                morale_rules.LEAVE_CANCELLED,
+                self.pilot_skill(pilot),
+                self.settings,
+                self.coalition.game.turn,
+            )
+
+    def discharge(self, pilot: Pilot) -> None:
+        """Throw a pilot out. He leaves the roster and joins the roll below it."""
+        pilot.discharge()
+        logging.info(f"{pilot.name} was discharged from {self}")
+
     def tend_the_wounded(self) -> None:
         """One turn of every wound served; the last one puts the pilot back to work."""
         turn = self.coalition.game.turn
