@@ -102,6 +102,13 @@ class ControlPointView(BaseModel):
         # in ground above -- they are on the road or in the air and will not defend
         # this base or its front
     )
+    air: dict[str, dict[str, int]] | None = (
+        None  # aircraft based here, grouped by role: {"CAP": {"F-16CM …": 7}, …}. The
+        # same breakdown the human reads on a base's Intel tab, for both sides — on an
+        # enemy field it is what tells an OCA/Aircraft strike apart from a waste of a
+        # package: seven fighters is worth hitting, two transports is not. Counts are
+        # aircraft PRESENT (not ordered or in transit). Omitted when the base is empty.
+    )
     motorpool: int | None = (
         None  # vehicles of this base's UNDEPLOYED reserve that spawn in a strikeable
         # motorpool depot — what an enemy BAI strike here can destroy (and what you
@@ -530,6 +537,7 @@ def build_control_point(game: Game, cp: ControlPoint) -> ControlPointView:
         ground=ground or None,
         ground_pending_transfer=pending_out,
         ground_transferring_out=moving_out,
+        air=_air_intel(cp),
         can_launch=(False if not operational else None),
         runway_repair_turns_remaining=repair_turns,
     )
@@ -1315,3 +1323,29 @@ def build_iads(game: Game, side: str) -> IadsView:
             )
         )
     return IadsView(advanced=network.advanced_iads, nodes=nodes)
+
+
+def _air_intel(cp) -> dict[str, dict[str, int]] | None:
+    """Aircraft based here grouped by role, as the human's Intel tab shows them.
+
+    Deliberately the same source and grouping as qt_ui's QIntelInfo — allocated
+    aircraft PRESENT, keyed by the airframe's default DCS task — so the planner reads
+    exactly what the player reads about a base. Without it an enemy field is just a
+    number, and there is no way to tell a fighter wing worth an OCA package from a
+    couple of transports that is not.
+    """
+    from game.theater.controlpoint import ParkingType
+
+    try:
+        allocations = cp.allocated_aircraft(
+            ParkingType(fixed_wing=True, fixed_wing_stol=True, rotary_wing=True)
+        )
+    except Exception:
+        return None  # off-map spawns and the like have nothing to allocate
+    by_role: dict[str, dict[str, int]] = {}
+    for unit_type, count in allocations.present.items():
+        if not count:
+            continue
+        role = unit_type.dcs_unit_type.task_default.name
+        by_role.setdefault(role, {})[unit_type.display_name] = count
+    return by_role or None

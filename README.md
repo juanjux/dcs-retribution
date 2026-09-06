@@ -243,6 +243,12 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   longer ships the S-300PS family, DCS silently drops unit types it cannot resolve, and
   Retribution kept the site alive and its threat ring up. Now the stock S-300PS.
   ([#96](https://github.com/juanjux/dcs-retribution/pull/96))
+- **The LLM planner saw a squadron count where the human sees a base's contents.**
+  Opening an enemy field shows the human "CAP: F-16CM x7, F-5E x2 / CAS: AH-64D x6";
+  the planner got `sqns: 4` and no way to tell a fighter wing worth an OCA package
+  from a couple of transports. `control_points[]` now carries `air`, the same
+  by-role breakdown the Intel tab renders, from the same source.
+  ([#91](https://github.com/juanjux/dcs-retribution/pull/91))
 - **The `/start` doc sent the LLM planner to twelve endpoints that do not exist.**
   It documented `POST /transfers`, `POST /buy/auto`, `GET /ai_log`, `POST /squadrons`
   and others the server never served, while omitting nine it does — so the planner
