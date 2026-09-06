@@ -243,6 +243,13 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   longer ships the S-300PS family, DCS silently drops unit types it cannot resolve, and
   Retribution kept the site alive and its threat ring up. Now the stock S-300PS.
   ([#96](https://github.com/juanjux/dcs-retribution/pull/96))
+- **A FOB with no helipads was reported to the LLM planner as a cratered runway.**
+  `Fob.runway_is_operational()` really means "has somewhere to launch from", so a FOB
+  without helipads or ground spawns surfaced as `can_launch:false` documented as
+  "runway cratered/under repair" — inviting an OCA/Runway package against a base that
+  has no runway to crater and a wait for a repair that never comes. The API now says
+  which of the three it is: `runway_damaged`, `hull_sunk` or `no_launch_facilities`.
+  ([#92](https://github.com/juanjux/dcs-retribution/pull/92))
 - **The LLM planner saw a squadron count where the human sees a base's contents.**
   Opening an enemy field shows the human "CAP: F-16CM x7, F-5E x2 / CAS: AH-64D x6";
   the planner got `sqns: 4` and no way to tell a fighter wing worth an OCA package

@@ -117,11 +117,20 @@ class ControlPointView(BaseModel):
         # cheap attrition target (see also targets[] kind:motorpool)
     )
     can_launch: bool | None = (
-        None  # False = this base CANNOT launch aircraft this turn (runway cratered/under
-        # repair, or carrier hull sunk); omitted when it can. IMPORTANT: a base being
-        # repaired does NOT appear in turn_context.repairs (already paid for) yet still
-        # can't sortie until runway_repair_turns_remaining hits 0 — do NOT plan flights
-        # from a base with can_launch:false.
+        None  # False = this base CANNOT launch aircraft this turn; omitted when it can.
+        # Do NOT plan flights from a base with can_launch:false. WHY it cannot is in
+        # no_launch_reason, and the three reasons call for three different responses.
+    )
+    no_launch_reason: str | None = (
+        None  # why can_launch is false, omitted when it can launch:
+        # "runway_damaged" — cratered or under repair. Repairable, and worth CRATERING
+        #   on an enemy field: see runway_repair_turns_remaining. A base being repaired
+        #   does NOT appear in turn_context.repairs (already paid for) yet still cannot
+        #   sortie until that counter hits 0.
+        # "hull_sunk" — a carrier/LHA whose hull is dead. Nothing to repair.
+        # "no_launch_facilities" — a FOB with no helipads or ground spawns. It has no
+        #   runway at all: there is NOTHING to crater here, an OCA/Runway package
+        #   against it is wasted, and no repair will ever change it.
     )
     runway_repair_turns_remaining: int | None = (
         None  # turns until a repairing runway is operational again (omitted when the base
@@ -539,6 +548,7 @@ def build_control_point(game: Game, cp: ControlPoint) -> ControlPointView:
         ground_transferring_out=moving_out,
         air=_air_intel(cp),
         can_launch=(False if not operational else None),
+        no_launch_reason=(None if operational else _no_launch_reason(cp)),
         runway_repair_turns_remaining=repair_turns,
     )
 
@@ -1349,3 +1359,22 @@ def _air_intel(cp) -> dict[str, dict[str, int]] | None:
         role = unit_type.dcs_unit_type.task_default.name
         by_role.setdefault(role, {})[unit_type.display_name] = count
     return by_role or None
+
+
+def _no_launch_reason(cp) -> str | None:
+    """Why a base cannot launch, when it cannot. Called only for those.
+
+    The three cases need three different answers from the planner, and lumping them
+    under "runway cratered" was actively misleading: a FOB with no helipads reports
+    "cannot launch" forever, has no runway to crater and no repair to wait for, so
+    telling the planner its runway is damaged invites a wasted OCA/Runway package.
+    """
+    from game.theater.controlpoint import Fob
+
+    if isinstance(cp, Fob):
+        # Fob.runway_is_operational() is really "has somewhere to launch from"
+        # (helipads or ground spawns), not a runway state -- Fobs are not destroyable.
+        return "no_launch_facilities"
+    if not cp.runway_is_destroyable():
+        return "hull_sunk"  # carrier/LHA: the ship itself is dead
+    return "runway_damaged"

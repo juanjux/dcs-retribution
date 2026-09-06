@@ -602,13 +602,17 @@ means none/empty** (stated once so the per-turn payloads stay small).
   sit **undeployed in a bombable depot**: on YOUR base that is what a blue BAI strike can
   destroy and force you to repurchase — deploy it or defend it; on an enemy base it sizes
   the prize behind a `kind:motorpool` target. Omitted when the base has no motorpool or
-  nothing in reserve), `can_launch`? (**present only when
-  FALSE** = this base cannot launch aircraft this turn: runway cratered/under repair, or
-  carrier hull sunk — do NOT plan flights from it), `runway_repair_turns_remaining`?
-  (turns until a repairing runway is back). **BLIND-SPOT WARNING:** a base whose runway
-  is being repaired does NOT appear in `repairs` (you already paid for it) but STILL
-  can't sortie — trust `can_launch:false` / `runway_repair_turns_remaining`, not the
-  absence from `repairs`, to know a base is down};
+  nothing in reserve), `can_launch`? (**present only when FALSE** = this base cannot
+  launch aircraft this turn — do NOT plan flights from it), `no_launch_reason`? (why,
+  and the three cases need different answers: **`runway_damaged`** cratered or under
+  repair — repairable, and the reason cratering an enemy field is worth a package;
+  **`hull_sunk`** a dead carrier/LHA, nothing to repair; **`no_launch_facilities`** a
+  FOB with no helipads or ground spawns — it has **no runway at all**, so there is
+  NOTHING to crater and an OCA/Runway package against it is wasted),
+  `runway_repair_turns_remaining`? (turns until a repairing runway is back; only ever
+  set alongside `runway_damaged`). **BLIND-SPOT WARNING:** a base whose runway is being
+  repaired does NOT appear in `repairs` (you already paid for it) but STILL can't
+  sortie — trust `can_launch:false`, not the absence from `repairs`};
 - `air_wing[]` — your squadrons — {`id`, `name`, `aircraft`, `base`, `owned`?,
   `untasked`?, `flyable`? (**the number to plan with**: aircraft you can actually
   LAUNCH this turn = `min(untasked, pilots)`, or 0 if grounded — `untasked` can exceed
