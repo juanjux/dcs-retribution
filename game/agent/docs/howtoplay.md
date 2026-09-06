@@ -170,6 +170,13 @@ The DCS AI that actually flies these missions is limited. Plan robustly around i
   large number here is a standing order going nowhere -- cancel it, or buy the lift.
   `ground_transferring_out` is the opposite: gone this turn, and they will not defend
   that base or its front.
+- **At night, a flight whose only air-to-ground weapons are unguided will not attack.**
+  Dumb bombs and unguided rockets are aimed by eye. Without a targeting pod the AI reaches
+  the target in the dark, finds nothing it can aim at, and turns for home with a full load —
+  observed with Hornets carrying Mk-8x bombs, which flew all the way to the target and came
+  back without dropping. For a night mission, send aircraft carrying **guided** weapons, or
+  one that carries **its own pod**; otherwise put that strike in daylight. Check
+  `turn_context` for the mission time before you commit a package to dumb bombs.
 - **Match the INGRESS to the weapon's range — for ANY stand-off attack, this is the big one.**
   The auto-planned **INGRESS** waypoint (where the attack *begins*) is placed close to the
   target (~45 nm) for EVERY attack type. That's fine for short-range / direct-attack weapons
