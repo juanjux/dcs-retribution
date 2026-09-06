@@ -170,6 +170,17 @@ class Squadron:
             rung = 0
         return -rung, -pilot.record.xp
 
+    @property
+    def morale_in_play(self) -> bool:
+        """Morale rides on Live Pilots and can be switched off on its own.
+
+        Switched off it does nothing at all: no drift, no leave running down, and
+        nobody grounded for a figure the player cannot see.
+        """
+        return self.settings.live_pilots_enabled and getattr(
+            self.settings, "morale_enabled", True
+        )
+
     def mission_skill(self, pilot: Pilot) -> Skill:
         """The rung he will actually fly at, once his state of mind is counted.
 
@@ -177,7 +188,7 @@ class Squadron:
         so shifting it for morale would demote a Major to Captain on a bad week and
         promote him back on a good one. Only the mission file reads this.
         """
-        if not self.settings.live_pilots_enabled:
+        if not self.morale_in_play:
             return self.pilot_skill(pilot)
         return shifted_skill(self.pilot_skill(pilot), pilot.morale, self.settings)
 
@@ -337,7 +348,7 @@ class Squadron:
         Everything that happens *to* a pilot in a mission is applied by the results
         processor. This is only what the passage of time does.
         """
-        if not self.settings.live_pilots_enabled:
+        if not self.morale_in_play:
             return
         for pilot in list(self.current_roster):
             if not pilot.alive:
@@ -402,7 +413,12 @@ class Squadron:
     def return_all_pilots_and_aircraft(self) -> None:
         # A man at rock bottom is not offered, the same way a wounded one is not. He is
         # still on the books and still counts against the squadron's establishment.
-        self.available_pilots = [p for p in self.active_pilots if not p.refuses_to_fly]
+        if self.morale_in_play:
+            self.available_pilots = [
+                p for p in self.active_pilots if not p.refuses_to_fly
+            ]
+        else:
+            self.available_pilots = list(self.active_pilots)
         # Aircraft already sold this turn (negative pending) must not return to the
         # taskable pool; otherwise a turn re-initialisation would let the same units
         # be sold (and flown) again, refunding their price every time.
