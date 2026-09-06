@@ -1,10 +1,30 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
+import random
+from typing import Any, Iterator, Optional, TYPE_CHECKING
 
 from game.debriefing import Debriefing
+from game.squadrons.experience import (
+    PilotDeath,
+    PilotPromotion,
+    PilotWound,
+    WOUNDED_TURNS,
+    XP_AIR_KILL,
+    XP_DAMAGE_SHARE,
+    XP_GROUND_KILL,
+    XP_MISSION_COMPLETE,
+    XP_SHIP_KILL,
+    XP_UNKNOWN_KILL,
+    XP_WOUNDED,
+    building_xp,
+    turns_phrase,
+    survival_chance,
+)
+from game.dcs.skills import one_promotion_at_most
 from game.ground_forces.combat_stance import CombatStance
+from game.squadrons.pilot import Pilot
+from game.squadrons.xplog import XpLog
 from game.profiling import logged_duration
 from game.theater import ControlPoint
 from .gameupdateevents import GameUpdateEvents
@@ -26,13 +46,22 @@ STRONG_DEFEAT_INFLUENCE = 0.5
 class MissionResultsProcessor:
     def __init__(self, game: Game) -> None:
         self.game = game
+        # TEMPORARY: see game.squadrons.xplog. Remove with the rest of it.
+        self._xp_log: Optional[XpLog] = None
+
+    @property
+    def xp_log(self) -> XpLog:
+        """TEMPORARY: the turn's experience ledger, written out at the end of it."""
+        if self._xp_log is None:
+            self._xp_log = XpLog(getattr(self.game, "turn", "?"))
+        return self._xp_log
 
     def commit(self, debriefing: Debriefing, events: GameUpdateEvents) -> None:
         with logged_duration("Committing mission results"):
             with logged_duration("commit_air_losses"):
                 self.commit_air_losses(debriefing)
             with logged_duration("commit_pilot_experience"):
-                self.commit_pilot_experience()
+                self.commit_pilot_experience(debriefing)
             with logged_duration("commit_front_line_losses"):
                 self.commit_front_line_losses(debriefing)
             with logged_duration("commit_motorpool_losses"):
@@ -80,11 +109,21 @@ class MissionResultsProcessor:
                     f"{loss.flight.squadron}"
                 )
                 continue
-            if loss.pilot is not None and (
+            if getattr(loss.flight, "parked_reserve", False):
+                # An aircraft caught on the ramp. It is still an airframe lost, and
+                # the count below takes it, but there was nobody in the cockpit --
+                # every reserve on the apron is assigned a pilot so the debriefing
+                # can account for it, and an attack on the parking used to kill them
+                # all.
+                logging.info(
+                    f"{loss.flight.unit_type} destroyed on the ground at "
+                    f"{loss.flight.squadron}; its pilot was not in it"
+                )
+            elif loss.pilot is not None and (
                 not loss.pilot.player
                 or not self.game.settings.invulnerable_player_pilots
             ):
-                loss.pilot.kill()
+                self._resolve_pilot_fate(loss, debriefing)
             squadron = loss.flight.squadron
             aircraft = loss.flight.unit_type
             available = squadron.owned_aircraft
@@ -197,10 +236,249 @@ class MissionResultsProcessor:
         squadron.owned_aircraft = count
         coalition.air_wing.add_squadron(squadron)
 
-    @staticmethod
-    def _commit_pilot_experience(ato: AirTaskingOrder) -> None:
+    def _resolve_pilot_fate(self, loss: Any, debriefing: Debriefing) -> None:
+        """Kill the pilot, or let his rank save him, or let the medics reach him.
+
+        Two rolls, in that order. The first is bought with rank and needs both Live
+        Pilots and the rank survival switch; the second is flat and needs only Live
+        Pilots, so a wound can still spare a pilot in a campaign that does not want
+        rank deciding who lives. Neither switched on means losing the aircraft loses
+        the pilot, exactly as before.
+        """
+        settings = self.game.settings
+        pilot = loss.pilot
+        squadron = loss.flight.squadron
+        record = self._describe_loss(loss, debriefing)
+        # However this ends for him, he did not bring the aircraft home.
+        debriefing.pilot_outcomes.lost_aircraft.add(id(pilot))
+        rolls = settings.live_pilots_enabled and settings.live_pilots_rank_survival
+        chance = (
+            survival_chance(squadron.pilot_skill(pilot), settings) if rolls else 0.0
+        )
+        survived = rolls and random.random() < chance
+
+        def note(outcome: str) -> None:
+            """One line per loss, written once both rolls are settled.
+
+            Recording the first roll on its own said "died" about pilots the medics
+            then saved two lines later.
+            """
+            if rolls or settings.live_pilots_enabled:
+                self.xp_log.fate(
+                    pilot,
+                    squadron,
+                    loss.flight.unit_type,
+                    squadron.pilot_rank(pilot),
+                    chance,
+                    outcome,
+                )
+
+        if survived:
+            note("walked away")
+            debriefing.pilot_outcomes.survivors.append(record)
+            logging.info(f"{pilot.name} survived the loss of his aircraft")
+            return
+
+        if settings.live_pilots_enabled and (
+            random.random() < settings.live_pilots_wounded_chance / 100
+        ):
+            turns = random.randint(*WOUNDED_TURNS)
+            pilot.wound(turns, self.game.turn)
+            debriefing.pilot_outcomes.wounded.append(
+                PilotWound(pilot.name, str(squadron), turns)
+            )
+            note(f"wounded, out for {turns_phrase(turns)}")
+            logging.info(
+                f"{pilot.name} was wounded and is out for {turns_phrase(turns)}"
+            )
+            return
+
+        note("died")
+        pilot.kill()
+        debriefing.pilot_outcomes.deaths.append(record)
+
+    def _describe_loss(self, loss: Any, debriefing: Debriefing) -> PilotDeath:
+        squadron = loss.flight.squadron
+        detail = debriefing.kill_info_by_unit_id.get(id(loss))
+        killer, friendly = self._describe_killer(
+            detail, debriefing, squadron.player.is_blue
+        )
+        return PilotDeath(
+            pilot_name=loss.pilot.name if loss.pilot is not None else "Unknown pilot",
+            squadron=str(squadron),
+            aircraft=str(loss.flight.unit_type),
+            killed_by=killer,
+            friendly_fire=friendly,
+        )
+
+    def _describe_killer(
+        self,
+        detail: Optional[dict[str, Any]],
+        debriefing: Debriefing,
+        victim_is_blue: bool,
+    ) -> tuple[Optional[str], bool]:
+        """Name whoever did it, as precisely as the data allows.
+
+        DCS credits exactly one initiator per kill and has no notion of an assist, so
+        this is whoever landed the killing blow. In order of preference: the roster
+        pilot behind the killing aircraft, the human's own name, the airframe or
+        vehicle type. No initiator at all means nobody shot him down.
+        """
+        if not detail:
+            return "a crash", False
+
+        name: Optional[str] = None
+        friendly = False
+        initiator = detail.get("initiator")
+        if initiator:
+            killer = debriefing.unit_map.flight(str(initiator))
+            if killer is not None:
+                friendly = killer.flight.squadron.player.is_blue == victim_is_blue
+                if killer.pilot is not None:
+                    name = killer.pilot.name
+
+        if name is None:
+            name = detail.get("initiator_player") or detail.get("initiator_type")
+        if name is None:
+            return None, friendly
+
+        airframe = detail.get("initiator_type")
+        if airframe and airframe != name:
+            name = f"{name} ({airframe})"
+        weapon = detail.get("weapon")
+        if weapon and weapon != airframe:
+            name = f"{name} with {weapon}"
+        return name, friendly
+
+    def _victim_is_blue(self, victim: Any) -> Optional[bool]:
+        """Which side the destroyed thing belonged to, where that can be established."""
+        flight = getattr(victim, "flight", None)
+        if flight is not None:
+            return bool(flight.squadron.player.is_blue)
+        for attr in ("origin", "airfield"):
+            origin = getattr(victim, attr, None)
+            if origin is not None and hasattr(origin, "captured"):
+                return bool(origin.captured.is_blue)
+        for attr in ("theater_unit", "ground_unit"):
+            unit = getattr(victim, attr, None)
+            tgo = getattr(unit, "ground_object", None)
+            if tgo is not None:
+                return bool(tgo.control_point.captured.is_blue)
+        convoy = getattr(victim, "convoy", None)
+        if convoy is not None:
+            return bool(convoy.player_owned.is_blue)
+        return None
+
+    def _kill_xp(self, victim: Any) -> int:
+        """What destroying this was worth.
+
+        Proportionality comes from the pieces: a refinery is four platforms, each with
+        its own death, so two of them is half a refinery. DCS reports no damage
+        magnitude anywhere, so nothing divides an element any finer -- hurting one
+        without destroying it is paid as an assist instead, at XP_DAMAGE_SHARE.
+        """
+        if victim is None:
+            return 0
+        if getattr(victim, "flight", None) is not None:
+            return XP_AIR_KILL
+        if getattr(victim, "convoy", None) is not None:
+            return XP_GROUND_KILL
+        if hasattr(victim, "unit_type") and getattr(victim, "origin", None) is not None:
+            return XP_GROUND_KILL  # front line and motorpool vehicles
+
+        unit = getattr(victim, "theater_unit", None) or getattr(
+            victim, "ground_unit", None
+        )
+        if unit is None:
+            return 0
+        unit_type = getattr(unit, "unit_type", None)
+        if unit_type is not None:
+            from game.dcs.shipunittype import ShipUnitType
+
+            if isinstance(unit_type, ShipUnitType):
+                return XP_SHIP_KILL
+            return XP_GROUND_KILL
+        # No unit type: a static or a scenery objective, paid by what it is worth.
+        tgo = getattr(unit, "ground_object", None)
+        if tgo is None:
+            return XP_UNKNOWN_KILL
+        return building_xp(getattr(tgo, "category", None))
+
+    def _credited_events(
+        self, details: Any, debriefing: Debriefing
+    ) -> Iterator[tuple[Pilot, str, Any]]:
+        """(pilot, target name, target) for every record naming an aircrew and a victim.
+
+        Shared by kills and hits, which the plugin writes in the same shape. Anything
+        that cannot be resolved to a roster pilot is dropped, as is anything he did to
+        his own side.
+        """
+        for detail in details:
+            if not isinstance(detail, dict):
+                continue
+            initiator = detail.get("initiator")
+            target = detail.get("target")
+            if not initiator or not target:
+                continue
+            killer = debriefing.unit_map.flight(str(initiator))
+            if killer is None or killer.pilot is None:
+                continue
+            victim = debriefing.resolve_killed_object(str(target))
+            victim_blue = self._victim_is_blue(victim)
+            if victim_blue is not None and (
+                victim_blue == killer.flight.squadron.player.is_blue
+            ):
+                continue  # nobody is paid for shooting his own side
+            yield killer.pilot, str(target), victim
+
+    def _experience_from_kills(
+        self, debriefing: Debriefing
+    ) -> tuple[dict[int, int], set[tuple[int, str]]]:
+        """What each pilot earned for what he destroyed, keyed by pilot identity.
+
+        Also returns the (pilot, target) pairs it paid for, so the damage pass does not
+        pay a second time for the hit that finished the job.
+        """
+        earned: dict[int, int] = {}
+        credited: set[tuple[int, str]] = set()
+        for pilot, target, victim in self._credited_events(
+            debriefing.state_data.kill_details, debriefing
+        ):
+            credited.add((id(pilot), target))
+            xp = self._kill_xp(victim)
+            if xp:
+                earned[id(pilot)] = earned.get(id(pilot), 0) + xp
+                self.xp_log.award(pilot, xp, "destroyed", victim, target)
+        return earned, credited
+
+    def _experience_from_damage(
+        self, debriefing: Debriefing, credited: set[tuple[int, str]]
+    ) -> dict[int, int]:
+        """A share of the kill for hurting something without finishing it.
+
+        This is a real assist rather than a guess: DCS names the shooter on every hit,
+        and the plugin records the first one each aircraft lands on each target, so a
+        pilot is paid once for the destroyer he left burning however long he worked on
+        it. The pilot credited with the kill is skipped -- that kill already paid him.
+        """
+        earned: dict[int, int] = {}
+        for pilot, target, victim in self._credited_events(
+            debriefing.state_data.hit_details, debriefing
+        ):
+            if (id(pilot), target) in credited:
+                continue
+            xp = int(self._kill_xp(victim) * XP_DAMAGE_SHARE)
+            if xp:
+                earned[id(pilot)] = earned.get(id(pilot), 0) + xp
+                self.xp_log.award(pilot, xp, "damaged", victim, target)
+        return earned
+
+    def _commit_pilot_experience(
+        self, ato: AirTaskingOrder, debriefing: Debriefing, earned: dict[int, int]
+    ) -> None:
         for package in ato.packages:
             for flight in package.flights:
+                squadron = flight.squadron
                 for idx, pilot in enumerate(flight.roster.iter_pilots()):
                     if pilot is None:
                         logging.error(
@@ -209,10 +487,82 @@ class MissionResultsProcessor:
                         )
                         continue
                     pilot.record.missions_flown += 1
+                    if not pilot.alive:
+                        # Losses are committed before this runs. He earned it and did
+                        # not live to collect it.
+                        self.xp_log.uncollected(
+                            pilot,
+                            squadron,
+                            flight.unit_type,
+                            earned.get(id(pilot), 0),
+                        )
+                        continue
 
-    def commit_pilot_experience(self) -> None:
-        self._commit_pilot_experience(self.game.blue.ato)
-        self._commit_pilot_experience(self.game.red.ato)
+                    before = squadron.pilot_rank(pilot)
+                    had = pilot.record.xp
+                    # A pilot who lost the aircraft did not complete the mission. If
+                    # the medics reached him, the wound is his consolation -- smaller
+                    # than the sortie, so being shot down is never the better outcome.
+                    extras = []
+                    if id(pilot) not in debriefing.pilot_outcomes.lost_aircraft:
+                        extras.append(
+                            ("returned", "mission complete", XP_MISSION_COMPLETE)
+                        )
+                    if pilot.wounded:
+                        extras.append(
+                            (
+                                "wounded",
+                                f"out for {turns_phrase(pilot.wounded_turns)}",
+                                XP_WOUNDED,
+                            )
+                        )
+                    # The same floor pilot_skill measures against, or the rungs
+                    # would be counted from the difficulty setting Live Pilots
+                    # replaces.
+                    raw = had + earned.get(id(pilot), 0) + sum(x for _, _, x in extras)
+                    pilot.record.xp = one_promotion_at_most(
+                        had, raw, squadron.base_skill
+                    )
+                    if pilot.record.xp < raw:
+                        extras.append(
+                            (
+                                "forfeit",
+                                "no more than one promotion a mission",
+                                pilot.record.xp - raw,
+                            )
+                        )
+                    after = squadron.pilot_rank(pilot)
+                    promotion = None
+                    if before is not None and after is not None and after != before:
+                        promotion = f"{before.abbreviation} -> {after.abbreviation}"
+                        debriefing.pilot_outcomes.promotions.append(
+                            PilotPromotion(
+                                pilot_name=pilot.name,
+                                squadron=str(squadron),
+                                from_rank=before.abbreviation,
+                                to_rank=after.abbreviation,
+                                to_rank_full=after.name,
+                                player=pilot.player,
+                            )
+                        )
+                    self.xp_log.collected(
+                        pilot,
+                        squadron,
+                        flight.unit_type,
+                        had,
+                        pilot.record.xp,
+                        extras,
+                        promotion,
+                    )
+
+    def commit_pilot_experience(self, debriefing: Debriefing) -> None:
+        earned, credited = self._experience_from_kills(debriefing)
+        for pilot_id, xp in self._experience_from_damage(debriefing, credited).items():
+            earned[pilot_id] = earned.get(pilot_id, 0) + xp
+        self._commit_pilot_experience(self.game.blue.ato, debriefing, earned)
+        self._commit_pilot_experience(self.game.red.ato, debriefing, earned)
+        self.xp_log.write()
+        self._xp_log = None
 
     @staticmethod
     def commit_front_line_losses(debriefing: Debriefing) -> None:
