@@ -55,4 +55,10 @@ class FlightRoster(IFlightRoster):
         self.pilots[index] = pilot
 
     def clear(self) -> None:
+        """Give the crew back to the squadron, and stop holding on to them.
+
+        See FlightMembers.clear: a roster that hands its pilots back but keeps them
+        has them claimed twice the next time anyone asks.
+        """
         self.squadron.return_pilots([p for p in self.pilots if p is not None])
+        self.pilots = [None] * len(self.pilots)

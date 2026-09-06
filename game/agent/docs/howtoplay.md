@@ -164,6 +164,12 @@ The DCS AI that actually flies these missions is limited. Plan robustly around i
   huge blob. The defense can't suppress them all at once, so more flights reach their launch
   range before reacting to fire. Saturation works by **dispersion in space and time**, not by
   one big formation (which all aborts together).
+- **`ground_pending_transfer` means an army you have decided to move and cannot.** Those
+  vehicles are *included* in `ground`: still parked at that base, still deploying to its
+  front, still counted in the ground war. They leave only when a transport turns up, so a
+  large number here is a standing order going nowhere -- cancel it, or buy the lift.
+  `ground_transferring_out` is the opposite: gone this turn, and they will not defend
+  that base or its front.
 - **Match the INGRESS to the weapon's range — for ANY stand-off attack, this is the big one.**
   The auto-planned **INGRESS** waypoint (where the attack *begins*) is placed close to the
   target (~45 nm) for EVERY attack type. That's fine for short-range / direct-attack weapons
@@ -199,6 +205,32 @@ The DCS AI that actually flies these missions is limited. Plan robustly around i
     same move used for a jamming/EWAR escort.
   Read `GET /waypoints/{flight_id}` and reposition these with `/waypoints/edit` (move, never
   delete), exactly like the strike ingress above.
+
+- **Raising a CAS or BAI flight's altitude can stop it attacking altogether.** Height is
+  not free the way distance is: past a point the AI flies over the target and never fires,
+  and where that point sits depends on the airframe, on the weapons it is carrying, and on
+  how experienced the pilot is. There is no rule to read it off; it is found by flying it.
+  Worked example, measured in game: a pair of **Su-25T** with Vikhr and Kh-29T crossed a
+  front full of armour at 5,000 m unopposed and came home without firing a shot. Flown
+  again lower, the same pair attacked — a cadet down to about 3,000 m, an average pilot to
+  about 4,500. **Those numbers are that aircraft's with that load, and nothing else's.**
+
+  `/waypoints/edit` answers with a warning when `alt_m` puts a CAS or BAI flight above the
+  altitude its own aircraft is planned to fight from. The edit is applied either way, so
+  the warning is yours to weigh: flying high is how you stay out of MANPADS, and there is
+  no altitude that does both.
+
+  **Moving the INGRESS alone is not enough, and this is the single most repeated planning
+  miss.** After every DEAD/SEAD package, walk the whole list per flight:
+
+  1. `INGRESS_*` on every flight that shoots.
+  2. `ESCORT HOLD` (type `CUSTOM`) — the planner parks it a few miles off the target, so
+     the escort orbits inside the ring while the strikers stand off.
+  3. The escort's `TARGET_GROUP_LOC` — it points at the SAM itself.
+  4. `NAV/SEAD Sweep` on the sweep flight.
+
+  `JOIN` can stay where it is. If you moved the ingress to 90 nm and left HOLD at 7 nm,
+  you have not moved the package: you have split it.
 - **Don't mix short-legged flights into a stand-off bomber package.** The package
   synchronises on its shortest-ranged member: a short-range SEAD/strike flight in the same
   package drags the bombers to ITS attack distance — into the SAM ring, abort included.

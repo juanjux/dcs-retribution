@@ -258,6 +258,17 @@ class Settings:
         detail="Implicitly determines the number of BARCAPs planned by taking the mission duration"
         " and dividing it by the desired on-station time.",
     )
+    desired_tarcap_mission_duration: timedelta = minutes_option(
+        "Desired TARCAP on-station time",
+        page=CAMPAIGN_DOCTRINE_PAGE,
+        section=GENERAL_SECTION,
+        default=timedelta(minutes=30),
+        min=10,
+        max=150,
+        detail="Only applies to a TARCAP nobody asked to escort. When a flight in its"
+        " package has requested an escort, the TARCAP stays for as long as the escorted"
+        " mission does, whatever this says.",
+    )
     desired_awacs_mission_duration: timedelta = minutes_option(
         "Desired AWACS on-station time",
         page=CAMPAIGN_DOCTRINE_PAGE,
