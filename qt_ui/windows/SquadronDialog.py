@@ -82,17 +82,20 @@ class PilotDelegate(TwoColumnRowDelegate):
         return ""
 
     def _morale_text(self, pilot: Pilot) -> str:
-        """Morale, and what he wants doing about it."""
+        """How he is holding up, and what he wants doing about it.
+
+        Named rather than numbered, the way a rank stands in for a skill level. The
+        figure itself belongs in the pilot dialog, where there is room to explain it.
+        """
         squadron = self.squadron_model.squadron
         if not squadron.settings.live_pilots_enabled or not getattr(
             squadron.settings, "morale_enabled", True
         ):
             return ""
+        state = morale_rules.morale_state(pilot.morale).name
         if pilot.wants_leave:
-            return f"Morale {pilot.morale} — asking for leave"
-        if pilot.morale < morale_rules.SHAKEN_BELOW:
-            return f"Morale {pilot.morale} — at breaking point"
-        return f"Morale {pilot.morale}"
+            return f"{state} — asking for leave"
+        return state
 
     def colour_for(self, index: QModelIndex, row: int, column: int) -> Optional[QColor]:
         """Red for a man who is about to be no use, amber for one asking to rest."""
@@ -106,9 +109,10 @@ class PilotDelegate(TwoColumnRowDelegate):
             squadron.settings, "morale_enabled", True
         ):
             return None
-        if pilot.morale < morale_rules.BROKEN_BELOW:
+        severity = morale_rules.morale_state(pilot.morale).severity
+        if severity > 1:
             return QColor("#E06C6C")
-        if pilot.morale < morale_rules.SHAKEN_BELOW or pilot.wants_leave:
+        if severity or pilot.wants_leave:
             return QColor("#E0C36C")
         return None
 

@@ -104,6 +104,42 @@ def test_nobody_learns_from_somebody_worse_than_them() -> None:
     assert morale_rules.learning_bonus(Skill.Excellent, CADET_SKILL) == 0.0
 
 
+# --- what the player is told ------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "morale,name",
+    [
+        (100, "Triumphant"),
+        (85, "Triumphant"),
+        (84, "Confident"),
+        (60, "Confident"),
+        (59, "Normal"),
+        (40, "Normal"),
+        (39, "Shaken"),
+        (15, "Shaken"),
+        (14, "Shattered"),
+        (1, "Shattered"),
+        (0, "Broken"),
+    ],
+)
+def test_the_player_is_told_a_word_and_never_a_number(morale: int, name: str) -> None:
+    assert morale_rules.morale_state(morale).name == name
+
+
+def test_the_warning_the_word_carries() -> None:
+    """Shaken is worth an eye; below it the player has to do something."""
+    assert morale_rules.morale_state(50).severity == 0
+    assert morale_rules.morale_state(20).severity == 1
+    assert morale_rules.morale_state(5).severity == 2
+    assert morale_rules.morale_state(0).severity == 2
+
+
+def test_every_point_has_a_word() -> None:
+    for morale in range(morale_rules.MORALE_MIN, morale_rules.MORALE_MAX + 1):
+        assert morale_rules.morale_state(morale).name
+
+
 # --- how he flies -----------------------------------------------------------
 
 

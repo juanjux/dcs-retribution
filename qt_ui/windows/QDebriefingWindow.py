@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
 from game.cruise_raids import debrief_expenditures
 from game.debriefing import Debriefing
 from game.squadrons.experience import turns_phrase
+from game.squadrons.morale import morale_state
 from game.theater import Player
 from qt_ui.windows.GameUpdateSignal import GameUpdateSignal
 
@@ -318,10 +319,10 @@ class QDebriefingWindow(QDialog):
             line("<b>Morale</b>")
             for shift in outcomes.morale_shifts:
                 direction = "up" if shift.after > shift.before else "down"
+                state = morale_state(shift.after).name
                 line(
                     shift.pilot_name,
-                    f"{direction} from {shift.before} to {shift.after} — "
-                    f"{', '.join(shift.reasons)}",
+                    f"{direction} to {state} — {', '.join(shift.reasons)}",
                 )
 
         if outcomes.deaths:
