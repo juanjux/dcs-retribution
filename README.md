@@ -281,6 +281,10 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   site defends nothing. Spain fields no AAA and no SHORAD, so the Soviet ZU-23 and the
   US Avenger went too — its point defence is the Stinger standing in for Mistral teams.
   ([#95](https://github.com/juanjux/dcs-retribution/pull/95))
+- **SA-10B/S-300PS sites never spawned and were immortal.** High Digit SAMs 2.1.0 no
+  longer ships the S-300PS family, DCS silently drops unit types it cannot resolve, and
+  Retribution kept the site alive and its threat ring up. Now the stock S-300PS.
+  ([#94](https://github.com/juanjux/dcs-retribution/pull/94))
 - **A refused purchase now says why.** "Cannot buy more X" was the same message
   whether you were short of money, out of parking, or at the squadron's aircraft
   cap — three problems with three different answers. It now names the one that
