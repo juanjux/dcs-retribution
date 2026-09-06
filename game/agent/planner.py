@@ -687,6 +687,30 @@ def _too_high_to_attack(flight: Any, alt_m: float) -> str:
     )
 
 
+def flight_for_side(game, side: str, flight_id):
+    """The flight with this id, but only if it belongs to ``side``.
+
+    game.db.flights is a GLOBAL registry keyed by uuid, so looking a flight up by id
+    alone reaches the human player's flights too. Reading their route would be a fog
+    breach; editing their waypoints would be sabotage of the plan they are flying.
+    Returns None when the id is unknown OR belongs to the other coalition -- the two
+    are deliberately indistinguishable, so this cannot be used to probe for ids.
+    """
+    from uuid import UUID
+
+    from game.agent.views import player_for_side
+
+    try:
+        flight = game.db.flights.get(UUID(str(flight_id)))
+    except Exception:
+        return None
+    if flight is None:
+        return None
+    if flight.coalition.player is not player_for_side(side):
+        return None
+    return flight
+
+
 def set_flight_loadout(
     game: Game, side: str, flight_id: str, loadout: str | dict[int, str]
 ) -> schemas.OpResult:
