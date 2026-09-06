@@ -7,7 +7,7 @@ from typing import Iterator, List, Optional, TYPE_CHECKING, Tuple
 
 from dcs import Point
 
-from game.config import REWARDS, RUNWAY_REPAIR_COST
+from game.config import IADS_REPAIR_COST, REWARDS, RUNWAY_REPAIR_COST
 from game.data.radar_db import LAUNCHER_TRACKER_PAIRS, TELARS, TRACK_RADARS
 from game.data.units import UnitClass
 from game.dcs.groundunittype import GroundUnitType
@@ -456,6 +456,10 @@ class ProcurementAi:
         income_score = min(income / 2.0, 2.0)
         ammo_bonus = 1.0 if ground_object.is_ammo_depot else 0.0
         factory_bonus = 1.0 if ground_object.is_factory else 0.0
+        # Scores here are income-shaped, and IADS infrastructure earns nothing, so
+        # without a bonus a side would rebuild every oil derrick before its own air
+        # defence network. Rank it with the ammo depots.
+        iads_bonus = 1.0 if ground_object.category in IADS_REPAIR_COST else 0.0
 
         settings = self.game.settings
         return (
@@ -464,6 +468,7 @@ class ProcurementAi:
             + ammo_frontline_score * settings.building_repair_weight_ammo_frontline
             + ammo_bonus
             + factory_bonus
+            + iads_bonus
         )
 
     def distance_to_nearest_enemy_control_point(
