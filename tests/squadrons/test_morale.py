@@ -7,6 +7,7 @@ tuned later without anyone having to rediscover what it was supposed to do.
 
 from __future__ import annotations
 
+import random
 from types import SimpleNamespace
 from typing import Any
 
@@ -14,7 +15,7 @@ import pytest
 from dcs.task import OptReactOnThreat
 from dcs.unit import Skill
 
-from game.dcs.skills import CADET_SKILL
+from game.dcs.skills import CADET_SKILL, SKILL_LADDER
 from game.settings import Settings
 from game.squadrons import morale as morale_rules
 from game.squadrons.pilot import Pilot, PilotStatus
@@ -264,18 +265,89 @@ def test_at_the_bottom_he_will_not_fly() -> None:
     assert not pilot.refuses_to_fly
 
 
-def test_held_at_the_bottom_he_walks_away() -> None:
+def test_rank_is_what_keeps_a_man_in_his_seat() -> None:
+    """Desertion is a roll each turn at the bottom, and the veteran is the last to go."""
+    chances = [morale_rules.desertion_chance(s) for s in SKILL_LADDER]
+    assert chances == sorted(chances, reverse=True)
+    assert all(0 < c < 0.5 for c in chances)
+
+
+def test_left_at_the_bottom_he_eventually_walks_away() -> None:
     settings = _live_settings()
+    settings.morale_leave_request_chance = 0
     squadron = _squadron(settings)
     pilot = Pilot("Vega")
     pilot.morale = 0
     squadron.current_roster = [pilot]
 
-    for turn in range(morale_rules.DESERTION_AFTER_TURNS):
+    random.seed(4)  # a run in which the roll comes up
+    for turn in range(200):
         squadron.tend_morale(turn)
+        if pilot.deserted:
+            break
 
     assert pilot.deserted
     assert not pilot.alive, "gone is gone; the squadron has to replace him"
+    assert pilot.turns_at_zero > 1, "he did not go on the first turn every time"
+
+
+def test_a_man_who_is_not_at_the_bottom_never_deserts() -> None:
+    settings = _live_settings()
+    settings.morale_leave_request_chance = 0
+    squadron = _squadron(settings)
+    pilot = Pilot("Vega")
+    squadron.current_roster = [pilot]
+
+    random.seed(1)
+    for turn in range(50):
+        pilot.morale = 50  # held there against the no-leave penalty
+        squadron.tend_morale(turn)
+
+    assert not pilot.deserted
+
+
+def test_he_asks_for_a_number_of_turns_and_the_worse_he_is_the_longer() -> None:
+    """Nobody asks for leave in the abstract: he asks for a morning, a day, a week."""
+    steady = morale_rules.requested_leave_turns(50, roll=0.0)
+    shaken = morale_rules.requested_leave_turns(20, roll=0.0)
+    broken = morale_rules.requested_leave_turns(0, roll=0.0)
+    assert steady < shaken < broken
+    assert all(
+        1 <= morale_rules.requested_leave_turns(m) <= morale_rules.MAX_LEAVE_TURNS
+        for m in range(0, 101)
+    )
+
+
+def test_what_moved_him_is_written_down() -> None:
+    """The pilot dialog reads this back; nothing in the campaign depends on it."""
+    pilot = Pilot("Vega")
+    pilot.move_morale(morale_rules.AIR_KILL, CADET_SKILL, turn=3)
+    pilot.move_morale(morale_rules.LOST_AIRCRAFT, CADET_SKILL, turn=4)
+
+    assert [e.reason for e in pilot.morale_log] == [
+        "shot one down",
+        "lost his aircraft",
+    ]
+    assert [e.turn for e in pilot.morale_log] == [3, 4]
+    assert pilot.morale_log[0].amount > 0 and pilot.morale_log[1].amount < 0
+    assert pilot.morale_log[-1].morale_after == pilot.morale
+
+
+def test_a_move_that_changes_nothing_is_not_worth_writing_down() -> None:
+    pilot = Pilot("Vega")
+    pilot.morale = morale_rules.MORALE_MAX
+    pilot.move_morale(morale_rules.AIR_KILL, CADET_SKILL, turn=1)
+    assert pilot.morale_log == []
+
+
+def test_the_log_does_not_grow_without_end() -> None:
+    """It rides in every save, so a long campaign must not fill one with a man's week."""
+    pilot = Pilot("Vega")
+    for turn in range(morale_rules.MORALE_HISTORY_LIMIT * 3):
+        pilot.morale = 50
+        pilot.move_morale(morale_rules.LOST_AIRCRAFT, CADET_SKILL, turn=turn)
+    assert len(pilot.morale_log) == morale_rules.MORALE_HISTORY_LIMIT
+    assert pilot.morale_log[-1].turn == morale_rules.MORALE_HISTORY_LIMIT * 3 - 1
 
 
 def test_going_without_leave_gets_worse_the_longer_it_lasts() -> None:

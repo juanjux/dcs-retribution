@@ -75,7 +75,7 @@ class LeaveRequestsDialog(QDialog):
         outer.addWidget(scroll, 1)
 
         for column, heading in enumerate(
-            ("Pilot", "Squadron", "Aircraft", "Holding up", "Turns", "Grant")
+            ("Pilot", "Squadron", "Aircraft", "Holding up", "Asked", "Grant")
         ):
             grid.addWidget(QLabel(f"<b>{heading}</b>"), 0, column)
 
@@ -93,9 +93,13 @@ class LeaveRequestsDialog(QDialog):
                 morale.setToolTip("He is close to being no use to you at all.")
             grid.addWidget(morale, row, 3)
 
+            # He asked for a number; the player may hand him less. The box opens on
+            # what he asked for so saying yes is one click.
+            asked = pilot.leave_turns_requested or morale_rules.DEFAULT_LEAVE_TURNS
             turns = QSpinBox()
             turns.setRange(1, morale_rules.MAX_LEAVE_TURNS)
-            turns.setValue(morale_rules.DEFAULT_LEAVE_TURNS)
+            turns.setValue(min(asked, morale_rules.MAX_LEAVE_TURNS))
+            turns.setToolTip(f"He asked for {asked}.")
             grid.addWidget(turns, row, 4)
 
             grant = QCheckBox()
@@ -121,11 +125,12 @@ class LeaveRequestsDialog(QDialog):
                 except RuntimeError:
                     logging.exception(f"Could not send {pilot.name} on leave")
                 continue
-            pilot.morale = morale_rules.apply(
-                pilot.morale,
+            pilot.leave_turns_requested = 0
+            pilot.move_morale(
                 morale_rules.LEAVE_REFUSED,
                 squadron.pilot_skill(pilot),
                 self.game.settings,
+                turn,
             )
             logging.info(f"{pilot.name} was refused leave")
         self.accept()

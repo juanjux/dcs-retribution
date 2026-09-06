@@ -6,7 +6,16 @@ from typing import Any
 
 from faker import Faker
 
-from game.squadrons.morale import MORALE_START, REFUSES_TO_FLY_AT
+from dcs.unit import Skill
+
+from game.squadrons.morale import (
+    MORALE_HISTORY_LIMIT,
+    MORALE_START,
+    REFUSES_TO_FLY_AT,
+    MoraleEvent,
+    MoraleLogEntry,
+    apply as apply_morale,
+)
 
 
 @dataclass
@@ -71,8 +80,20 @@ class Pilot:
     #: He has asked, and is waiting to be told yes or no.
     wants_leave: bool = field(default=False)
 
-    #: Turns he has spent at rock bottom, before he stops coming back.
+    #: Turns he has spent at rock bottom. Nothing depends on it any more -- desertion
+    #: is a roll now -- but it is worth showing a player who left a man there.
     turns_at_zero: int = field(default=0)
+
+    #: How many turns of leave he asked for. Nobody asks in the abstract: he asks for a
+    #: morning, a day, a week, and the player may grant him less.
+    leave_turns_requested: int = field(default=0)
+
+    #: What his morale was a turn ago, so "he is sliding" can be said at all.
+    morale_last_turn: int = field(default=MORALE_START)
+
+    #: Everything that has moved him, most recent last. Read by the pilot dialog; the
+    #: campaign never depends on it.
+    morale_log: list[MoraleLogEntry] = field(default_factory=list)
 
     def __setstate__(self, state: dict[str, Any]) -> None:
         state.setdefault("wounded_turns", 0)
@@ -83,6 +104,9 @@ class Pilot:
         state.setdefault("turns_since_leave", 0)
         state.setdefault("wants_leave", False)
         state.setdefault("turns_at_zero", 0)
+        state.setdefault("leave_turns_requested", 0)
+        state.setdefault("morale_last_turn", MORALE_START)
+        state.setdefault("morale_log", [])
         self.__dict__.update(state)
 
     @property
@@ -106,6 +130,36 @@ class Pilot:
     def wounded(self) -> bool:
         return self.status is PilotStatus.Wounded
 
+    def move_morale(
+        self,
+        event: MoraleEvent,
+        skill: Skill,
+        settings: Any = None,
+        turn: int = -1,
+    ) -> int:
+        """Apply one event to him and remember it. Returns how far he moved.
+
+        Every morale change goes through here so that nothing can move a pilot without
+        it being written down -- the log is what the pilot dialog reads back.
+        """
+        before = self.morale
+        self.morale = apply_morale(before, event, skill, settings)
+        return self.note_morale_change(before, event.reason, turn)
+
+    def note_morale_change(self, before: int, reason: str, turn: int = -1) -> int:
+        """Write down a change already made to :attr:`morale`."""
+        moved = self.morale - before
+        if not moved:
+            return 0
+        self.morale_log.append(
+            MoraleLogEntry(
+                turn=turn, amount=moved, reason=reason, morale_after=self.morale
+            )
+        )
+        if len(self.morale_log) > MORALE_HISTORY_LIMIT:
+            del self.morale_log[:-MORALE_HISTORY_LIMIT]
+        return moved
+
     def send_on_leave(self, turns: int = 0, turn: int = -1) -> None:
         """Grant leave, for ``turns`` of them or open-ended when that is zero.
 
@@ -119,6 +173,7 @@ class Pilot:
         self.leave_turns = turns
         self.leave_on_turn = turn
         self.wants_leave = False
+        self.leave_turns_requested = 0
 
     def serve_a_turn_of_leave(self, turn: int) -> None:
         """One turn of leave used up. Open-ended leave never runs out on its own."""
