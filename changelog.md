@@ -2,6 +2,7 @@
 
 ## Features/Improvements
 * **[UI]** The Air Wing squadron list was redesigned: the aircraft type is now the one large, bold thing on a fixed rail so you can scan for an airframe, the primary task shows as a colour-coded chip, and the list gained a live filter, a sort order, grouping by aircraft type or base, and a running count.
+* **[UI]** The unit transfer dialog gets "All >>" and "None <<" buttons, so a whole garrison no longer has to be queued one unit type at a time.
 * **[FIX]** A CAP guarding its own base could be given a patrol route so short that DCS deleted the flight the moment it spawned, without it flying a metre. Patrol routes are now lengthened away from the enemy until they are long enough to be flown.
 * **[FIX]** Every orbit in a package ended at the same time, whichever flight's time was generated first, so an AWACS or a tanker packaged with a shorter-lived BARCAP left station early — up to two hours in one case.
 * **[FIX]** A payload with an empty pylon was thrown away whole and the aircraft was planned carrying nothing at all: the Tornado IDS strike fit leaves four stations free, so a Tornado sent on a strike flew with no bombs.
@@ -172,6 +173,7 @@
 * **[Data]** Fix the modern Spain faction's air defence: the WWII 2 cm Flak 38 needs the WWII Assets Pack, so without it DCS discarded every gun and the sites came up empty while Retribution counted them as defended. Spain operates neither the Soviet ZU-23 nor the US Avenger either, so its point defence is now the Stinger alone.
 * **[Data]** The F-14A-135-GR Early's payload file declared the wrong unitType, so the Early Tomcat flew every tasking unarmed; its loadouts now resolve (with a guard test pinning the payload to the airframe). (#889)
 * **[Mission Generator]** EWR sites now get the DCS "EWR" enroute task and come up on RED alarm, so their radars actually scan and report contacts (previously they could sit inert, especially with the "red alert state" performance option off). Works with or without the Skynet IADS plugin.
+* **[Map]** Right-clicking a front line under a blue flight-plan route now opens the new-package dialog instead of the browser context menu (the route's invisible hover overlay swallowed the click).
 * **[Plugins]** Fix the escort leash never running (DCS has no `Group.getByID`; look the group up by name via mist), so escorts are actually held to their engagement range.
 * **[Mission Planning]** Carrier/LHA targets now offer SEAD in the flight-task list and no longer list SEAD Escort twice (their escorts are SAM platforms, so they can be suppressed directly like any other naval group).
 * **[App]** Retribution no longer stays alive in the background after its window is closed: the API server's graceful shutdown is now bounded (uvicorn otherwise waited forever on the long-lived event-stream websocket and the join hung).

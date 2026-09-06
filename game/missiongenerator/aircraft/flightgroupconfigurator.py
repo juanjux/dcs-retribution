@@ -54,6 +54,11 @@ if TYPE_CHECKING:
     from game import Game
 
 
+# pydcs names the units of a flight group "<group name> Pilot #1", "... #2" and
+# so on. Everything before this separator is what keeps the name unique.
+PILOT_NAME_SEPARATOR = " Pilot #"
+
+
 class FlightGroupConfigurator:
     def __init__(
         self,
@@ -94,6 +99,8 @@ class FlightGroupConfigurator:
         laser_codes: list[Optional[int]] = []
         for unit, member in zip(self.group.units, self.flight.iter_members()):
             self.configure_flight_member(unit, member, laser_codes)
+
+        self.name_pilots()
 
         divert = None
         if self.flight.divert is not None:
@@ -343,6 +350,52 @@ class FlightGroupConfigurator:
             logging.error(f"Cannot determine skill level: {unit.name} has not pilot")
             return squadron.base_skill
         return squadron.pilot_skill(pilot)
+
+    def name_pilots(self) -> None:
+        """Put the rank and name of the pilot where the label reads "Pilot #2".
+
+        Only the tail is replaced. The rest of the unit name carries the group
+        counter that makes it unique, and UnitMap.add_aircraft raises on a
+        duplicate, so keeping that prefix is what stops two pilots of the same
+        name from killing mission generation outright.
+
+        Has to run after every member is configured: set_skill decides player
+        versus client by looking for "Pilot #1" in the name, and would quietly
+        hand the player a client slot if the string were gone by then.
+        """
+        settings = self.game.settings
+        if not settings.live_pilots_enabled:
+            return
+        show_ranks = settings.live_pilots_show_ranks
+        show_names = settings.live_pilots_show_names
+        if not show_ranks and not show_names:
+            return
+
+        squadron = self.flight.squadron
+        used: set[str] = set()
+        for index, (unit, member) in enumerate(
+            zip(self.group.units, self.flight.iter_members()), start=1
+        ):
+            pilot = member.pilot
+            if pilot is None:
+                continue
+            parts: list[str] = []
+            if show_ranks:
+                rank = squadron.pilot_rank(pilot)
+                if rank is not None:
+                    parts.append(rank.abbreviation)
+            if show_names:
+                parts.append(pilot.name)
+            if not parts:
+                continue
+            head, separator, _ = str(unit.name).rpartition(PILOT_NAME_SEPARATOR)
+            if not separator:
+                continue
+            name = f"{head} {' '.join(parts)}"
+            if name in used:
+                name = f"{name} #{index}"
+            used.add(name)
+            unit.name = name
 
     def setup_props(self) -> None:
         unit: FlyingUnit

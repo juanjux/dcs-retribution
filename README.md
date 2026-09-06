@@ -49,6 +49,10 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   lose it, and the choice is remembered next time you open the dialog — and a running
   count of what is on screen. Design by Claude Design.
   (branch [`juanjux/airwing-redesign`](https://github.com/juanjux/dcs-retribution/tree/juanjux/airwing-redesign))
+- **"All >>" and "None <<" in the unit transfer dialog** — a base can hold two dozen
+  unit types, and queueing a whole garrison meant clicking every row up to its count.
+  The two buttons sit above the list and move everything at once, or clear it.
+  (branch [`juanjux/transfer-all-none`](https://github.com/juanjux/dcs-retribution/tree/juanjux/transfer-all-none))
 - **Mission dashboard** — an embedded in-progress panel (live clocks, weather,
   per-flight status and a kill feed, with accept / submit-manually / abort)
   that replaces the old modal "waiting for mission result" dialog.
@@ -225,6 +229,13 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   over Banak. Patrol routes are now lengthened **away from the enemy** until they reach
   60 nm, so the threat-facing end and the station stay where the planner put them.
   (branch [`juanjux/min-patrol-route`](https://github.com/juanjux/dcs-retribution/tree/juanjux/min-patrol-route))
+- **A package with an impossible TOT could hold for the whole mission** — flight plans
+  are built backwards from the time on target, so a TOT the flights cannot physically
+  reach puts the push time before the mission even starts. The hold point emitted that
+  as its release timer without a floor, and DCS never fires a trigger scheduled for a
+  negative time. Seen on a DEAD package given TOT +5 min from a base 29 minutes away:
+  four aircraft orbited instead of flying. The release is now clamped to mission start.
+  ([#100](https://github.com/juanjux/dcs-retribution/pull/100))
 - **Take Off died with "Duplicate convoy unit", stranding the campaign** — the name
   counter reset each turn onto a convoy still in transit. Same bug upstream.
   ([#93](https://github.com/juanjux/dcs-retribution/pull/93))
@@ -232,6 +243,18 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   longer ships the S-300PS family, DCS silently drops unit types it cannot resolve, and
   Retribution kept the site alive and its threat ring up. Now the stock S-300PS.
   ([#96](https://github.com/juanjux/dcs-retribution/pull/96))
+- **The `/start` doc sent the LLM planner to twelve endpoints that do not exist.**
+  It documented `POST /transfers`, `POST /buy/auto`, `GET /ai_log`, `POST /squadrons`
+  and others the server never served, while omitting nine it does — so the planner
+  404'd on the documented name and never found the real one. Corrected against the
+  router, and a test now fails the build if the two drift apart again.
+  ([#90](https://github.com/juanjux/dcs-retribution/pull/90))
+- **The LLM planner could not see what aircraft cost.** `buyable_ground[]` carried
+  a `price`, but the squadron view did not, so the planner guessed — it assumed an
+  Apache was 5M, tried to buy several, and read the refusal as a broken squadron
+  relocation. `air_wing[]` now carries `price` (cost of ONE aircraft), documented
+  alongside it, and the refusal says "costs 20M **each**".
+  ([#88](https://github.com/juanjux/dcs-retribution/pull/88))
 - **Spanish AAA sites were empty, and then wrong.** The faction listed the WWII 2 cm
   Flak 38, which needs the WWII Assets Pack; without it DCS discards every gun and the
   site defends nothing. Spain fields no AAA and no SHORAD, so the Soviet ZU-23 and the
