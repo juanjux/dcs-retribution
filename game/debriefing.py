@@ -154,6 +154,14 @@ class StateData:
     #: feature is off or the state file predates it.
     cruise_missiles_state: List[Tuple[str, int]] = field(default_factory=list)
 
+    #: ``(naval_group_name, fired)`` per naval group that fired ANTI-SHIP missiles this
+    #: mission, mirrored by the navalmagazines plugin. reconcile_naval_magazines debits
+    #: the persisted campaign magazine by ``fired`` at the turn boundary -- the only
+    #: debit site, so re-generating a mission never double-counts. The weapon set is
+    #: disjoint from cruise_missiles_state's land-attack families, so a shot is never
+    #: charged to both. Empty on pre-feature state files and when the feature is off.
+    naval_magazines_state: List[Tuple[str, int]] = field(default_factory=list)
+
     @classmethod
     def from_json(cls, data: Dict[str, Any], unit_map: UnitMap) -> StateData:
         def clean_unit_list(unit_list: List[Any]) -> List[str]:
@@ -196,8 +204,9 @@ class StateData:
         raw_death_times = data.get("death_time", {})
         death_times = raw_death_times if isinstance(raw_death_times, dict) else {}
 
-        def parse_cruise_missiles_state(raw: Any) -> List[Tuple[str, int]]:
-            # The cruisemissiles plugin writes {group=, fired=} per launching group;
+        def parse_group_fired_state(raw: Any) -> List[Tuple[str, int]]:
+            # The cruisemissiles and navalmagazines plugins both write
+            # {group=, fired=} per launching group;
             # the Lua JSON encoder yields [] when there were none, and a state file
             # written before the feature omits the key entirely. Pull the pair
             # defensively: a malformed or unnamed entry must not break the debrief.
@@ -223,8 +232,11 @@ class StateData:
             model_time=data.get("model_time"),
             took_off=took_off,
             death_times=death_times,
-            cruise_missiles_state=parse_cruise_missiles_state(
+            cruise_missiles_state=parse_group_fired_state(
                 data.get("cruise_missiles_state", [])
+            ),
+            naval_magazines_state=parse_group_fired_state(
+                data.get("naval_magazines_state", [])
             ),
         )
 

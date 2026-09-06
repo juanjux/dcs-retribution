@@ -496,7 +496,13 @@ class AircraftBehavior:
             flight,
             group,
             react_on_threat=OptReactOnThreat.Values.EvadeFire,
-            roe=OptROE.Values.WeaponHold,
+            # ReturnFire, not WeaponHold: a ferry is a transit, not a patrol, but held
+            # weapons made it a free kill -- it would evade a missile all the way into
+            # the ground without ever shooting at the fighter that launched it, and a
+            # relocation crossing contested airspace lost the whole squadron for free.
+            # ReturnFire keeps it out of fights it is not sent to pick while letting it
+            # answer the one it did not choose.
+            roe=OptROE.Values.ReturnFire,
             restrict_jettison=True,
             rtb_on_bingo=False,
         )
