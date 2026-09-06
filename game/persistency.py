@@ -407,6 +407,19 @@ def tile_cache_dir() -> Path:
     return _create_dir_if_needed(path)
 
 
+def mission_archive_dir() -> Path:
+    """Directory holding the archived copy of each generated mission.
+
+    A subfolder of ``Missions`` rather than the Retribution tree, so DCS's own
+    mission browser lists it and an archived turn opens straight from the game.
+    """
+    return _create_dir_if_needed(base_path() / "Missions" / "Retribution Archive")
+
+
+def payload_backups_dir() -> Path:
+    return _create_dir_if_needed(base_path() / "Retribution" / "PayloadBackups")
+
+
 def payloads_dir(backup: bool = False) -> Path:
     payloads = base_path() / "MissionEditor" / "UnitPayloads"
     if backup:

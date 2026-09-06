@@ -2,7 +2,7 @@
   "country": "Combined Joint Task Forces Red",
   "name": "Redfor Current",
   "authors": "Starfire",
-  "description": "<p>Combined Redfor in the 2020s intended for use with CurrentHill's Russia and China asset packs.",
+  "description": "<p>Combined Redfor in the 2020s intended for use with CurrentHill's Russia, China, and Iran asset packs.",
   "locales": [
     "ru_RU"
   ],
@@ -108,7 +108,8 @@
     "SRBM 9K720 Iskander HE [CH]",
     "SRBM 9K720 Iskander CM [CH]",
     "[CH] CJ-10 GLCM",
-    "[CH] YJ-12B LBASM"
+    "[CH] YJ-12B LBASM",
+    "[CH] Shahed 136 LM"
   ],
   "preset_groups": [
     "SA-2/S-75",
@@ -158,7 +159,9 @@
     "[CH] Type 054B Frigate",
     "[CH] Type 056A Corvette",
     "[CH] Type 052D Destroyer",
-    "[CH] Type 055 Destroyer"
+    "[CH] Type 055 Destroyer",
+    "[CH] IRGCN FAC AShM",
+    "[CH] IRGCN FAC MANPADS"
   ],
   "air_defense_units": [
     "EWR 1L13",
@@ -195,7 +198,8 @@
   ],
   "requirements": {
     "CurrentHill Russia Asset Pack": "https://www.currenthill.com/russia",
-    "CurrentHill China Asset Pack": "https://www.currenthill.com/china"
+    "CurrentHill China Asset Pack": "https://www.currenthill.com/china",
+    "CurrentHill Iran Asset Pack": "https://www.currenthill.com/iran"
   },
   "carrier_names": [
     "Admiral Kuznetsov",

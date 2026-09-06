@@ -1,0 +1,9 @@
+name: Spain LHA Group
+tasks:
+  - HelicopterCarrier
+units:
+  - L61 Juan Carlos I
+  - F105 Cristobal Colon
+  - F100 Álvaro de Bazán
+layouts:
+  - LHA Group with Frigate escort

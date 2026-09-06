@@ -789,6 +789,10 @@ class MissionProgressPanel(QFrame):
             self.prepend_event(ICON_AIR, base, "CRASHED", side, now)
         else:
             killer = self._format_killer(detail)
+            if killer is None:
+                is_indirect = getattr(debriefing, "is_indirect_kill", None)
+                if is_indirect and is_indirect(loss):
+                    killer = "indirect kill"
             text = f"{base} — {killer}" if killer else base
             self.prepend_event(ICON_AIR, text, killed_verb, side, now)
 

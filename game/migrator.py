@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import typing
 from datetime import timedelta
 from typing import TYPE_CHECKING, Any
@@ -42,8 +43,12 @@ class Migrator:
         self._update_squadrons()
         self._update_transfers()
         self._release_untasked_flights()
+        self._release_pilots_who_are_flying()
         self._update_weather()
         self._update_tgos()
+        try_set_attr(self.game.settings, "motorpool_enabled", True)
+        try_set_attr(self.game.settings, "motorpool_spawn_cap", 10)
+        self._ensure_motorpool_tgos()
         self._reload_terrain()
         self._update_theater()
         self._update_campaign_name()
@@ -74,6 +79,8 @@ class Migrator:
             for p in c.ato.packages:
                 if p.waypoints and not hasattr(p.waypoints, "initial"):
                     p.waypoints = PackageWaypoints.create(p, c, False)
+                if p.waypoints:
+                    try_set_attr(p.waypoints, "standoff_range")
 
     def _update_package_attributes(self) -> None:
         for c in self.game.coalitions:
@@ -107,6 +114,7 @@ class Migrator:
             try_set_attr(cp, "helipads_quad", [])
             try_set_attr(cp, "helipads_invisible", [])
             try_set_attr(cp, "ground_spawns_large", [])
+            try_set_attr(cp.preset_locations, "motorpools", [])
             if (
                 cp.dcs_airport and is_sinai and cp.dcs_airport.id == 20
             ):  # fix for Hatzor
@@ -159,6 +167,40 @@ class Migrator:
                 s.claim_inventory(new_claim)
                 for i in range(new_claim):
                     s.claim_available_pilot()
+
+    def _release_pilots_who_are_flying(self) -> None:
+        """A pilot in a cockpit is not available, whatever the save says.
+
+        Clearing a roster used to hand its crew back to the squadron without letting go
+        of them, so a pilot could be sitting in a flight and in the pool at the same
+        time: the Edit Flight dropdown listed him twice and the next flight could claim
+        him again, and the same man flew two missions in one turn.
+        _release_untasked_flights just above rebuilds the pool from the active roster and
+        then claims an arbitrary pilot per tasked aircraft, which leaves whoever is
+        actually crewing a flight back in it. This has the last word.
+        """
+        for coalition in (self.game.blue, self.game.red):
+            assigned = {
+                id(pilot)
+                for package in coalition.ato.packages
+                for flight in package.flights
+                for pilot in flight.roster.iter_pilots()
+                if pilot is not None
+            }
+            for squadron in coalition.air_wing.iter_squadrons():
+                seen: set[int] = set()
+                free = []
+                for pilot in squadron.available_pilots:
+                    if id(pilot) in assigned or id(pilot) in seen:
+                        continue  # flying, or listed twice by the same old fault
+                    seen.add(id(pilot))
+                    free.append(pilot)
+                if len(free) != len(squadron.available_pilots):
+                    logging.info(
+                        f"{squadron}: {len(squadron.available_pilots) - len(free)} "
+                        "pilot(s) were available and flying at once; corrected"
+                    )
+                    squadron.available_pilots = free
 
     def _update_squadrons(self) -> None:
         country_dict = {
@@ -288,6 +330,34 @@ class Migrator:
             # raises AttributeError on pre-feature saves.
             if isinstance(go, ShipGroundObject):
                 try_set_attr(go, "target_position", None)
+
+    def _ensure_motorpool_tgos(self) -> None:
+        from game.data.groups import GroupTask
+        from game.naming import namegen
+        from game.theater.controlpoint import warn_if_motorpool_inside_capture_zone
+        from game.theater.theatergroundobject import MotorpoolGroundObject
+
+        if not self.game.settings.motorpool_enabled:
+            return
+        for cp in self.game.theater.controlpoints:
+            locations = getattr(cp.preset_locations, "motorpools", [])
+            if not locations:
+                continue
+            if any(isinstance(go, MotorpoolGroundObject) for go in cp.ground_objects):
+                continue
+            for location in locations:
+                name = namegen.random_objective_name()
+                warn_if_motorpool_inside_capture_zone(name, location, cp)
+                cp.connected_objectives.append(
+                    MotorpoolGroundObject(
+                        # Codename like every other TGO; the "motorpool" category
+                        # label already says what it is.
+                        name,
+                        location,
+                        cp,
+                        GroupTask.MOTORPOOL,
+                    )
+                )
 
     def _reload_terrain(self) -> None:
         t = self.game.theater.terrain

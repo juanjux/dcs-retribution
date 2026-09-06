@@ -283,7 +283,7 @@ local unitPayloads = {
 					["num"] = 3,
 				},
 				[4] = {
-					["CLSID"] = "{brimstone}",
+					["CLSID"] = "{BRU33_2X_GBU-12}",
 					["num"] = 4,
 				},
 				[5] = {
@@ -307,7 +307,7 @@ local unitPayloads = {
 					["num"] = 9,
 				},
 				[10] = {
-					["CLSID"] = "{brimstone}",
+					["CLSID"] = "{BRU33_2X_GBU-12}",
 					["num"] = 10,
 				},
 				[11] = {
@@ -462,11 +462,11 @@ local unitPayloads = {
 					["num"] = 2,
 				},
 				[3] = {
-					["CLSID"] = "{EF_rb15_antiship}",
+					["CLSID"] = "{B06DD79A-F21E-4EB9-BD9D-AB3844618C9C}",
 					["num"] = 3,
 				},
 				[4] = {
-					["CLSID"] = "{EF_rb15_antiship}",
+					["CLSID"] = "{B06DD79A-F21E-4EB9-BD9D-AB3844618C9C}",
 					["num"] = 4,
 				},
 				[5] = {
@@ -490,11 +490,11 @@ local unitPayloads = {
 					["num"] = 9,
 				},
 				[10] = {
-					["CLSID"] = "{EF_rb15_antiship}",
+					["CLSID"] = "{B06DD79A-F21E-4EB9-BD9D-AB3844618C9C}",
 					["num"] = 10,
 				},
 				[11] = {
-					["CLSID"] = "{EF_rb15_antiship}",
+					["CLSID"] = "{B06DD79A-F21E-4EB9-BD9D-AB3844618C9C}",
 					["num"] = 11,
 				},
 				[12] = {
@@ -645,11 +645,11 @@ local unitPayloads = {
 					["num"] = 2,
 				},
 				[3] = {
-					["CLSID"] = "{EF_rb15_antiship}",
+					["CLSID"] = "{GBU-31}",
 					["num"] = 3,
 				},
 				[4] = {
-					["CLSID"] = "{EF_rb15_antiship}",
+					["CLSID"] = "{GBU-31}",
 					["num"] = 4,
 				},
 				[5] = {
@@ -673,11 +673,11 @@ local unitPayloads = {
 					["num"] = 9,
 				},
 				[10] = {
-					["CLSID"] = "{EF_rb15_antiship}",
+					["CLSID"] = "{GBU-31}",
 					["num"] = 10,
 				},
 				[11] = {
-					["CLSID"] = "{EF_rb15_antiship}",
+					["CLSID"] = "{GBU-31}",
 					["num"] = 11,
 				},
 				[12] = {
@@ -702,7 +702,7 @@ local unitPayloads = {
 					["num"] = 1,
 				},
 				[2] = {
-					["CLSID"] = "{brimstone}",
+					["CLSID"] = "{BRU33_2X_GBU-12}",
 					["num"] = 2,
 				},
 				[3] = {
@@ -710,7 +710,7 @@ local unitPayloads = {
 					["num"] = 3,
 				},
 				[4] = {
-					["CLSID"] = "{brimstone}",
+					["CLSID"] = "{BRU33_2X_GBU-12}",
 					["num"] = 4,
 				},
 				[5] = {
@@ -734,7 +734,7 @@ local unitPayloads = {
 					["num"] = 9,
 				},
 				[10] = {
-					["CLSID"] = "{brimstone}",
+					["CLSID"] = "{BRU33_2X_GBU-12}",
 					["num"] = 10,
 				},
 				[11] = {
@@ -742,7 +742,7 @@ local unitPayloads = {
 					["num"] = 11,
 				},
 				[12] = {
-					["CLSID"] = "{brimstone}",
+					["CLSID"] = "{BRU33_2X_GBU-12}",
 					["num"] = 12,
 				},
 				[13] = {
@@ -763,7 +763,7 @@ local unitPayloads = {
 					["num"] = 1,
 				},
 				[2] = {
-					["CLSID"] = "{brimstone}",
+					["CLSID"] = "{BRU33_2X_GBU-12}",
 					["num"] = 2,
 				},
 				[3] = {
@@ -771,7 +771,7 @@ local unitPayloads = {
 					["num"] = 3,
 				},
 				[4] = {
-					["CLSID"] = "{brimstone}",
+					["CLSID"] = "{BRU33_2X_GBU-12}",
 					["num"] = 4,
 				},
 				[5] = {
@@ -795,7 +795,7 @@ local unitPayloads = {
 					["num"] = 9,
 				},
 				[10] = {
-					["CLSID"] = "{brimstone}",
+					["CLSID"] = "{BRU33_2X_GBU-12}",
 					["num"] = 10,
 				},
 				[11] = {
@@ -803,7 +803,7 @@ local unitPayloads = {
 					["num"] = 11,
 				},
 				[12] = {
-					["CLSID"] = "{brimstone}",
+					["CLSID"] = "{BRU33_2X_GBU-12}",
 					["num"] = 12,
 				},
 				[13] = {

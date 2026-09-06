@@ -23,6 +23,7 @@
     "CH-47D",
     "CH-47F Block I",
     "F-14B Tomcat",
+    "F-14B(U) Tomcat",
     "F-15C Eagle",
     "F-15D Baz",
     "F-15E Strike Eagle (AI)",
@@ -118,7 +119,8 @@
   "preset_groups": [
     "Hawk",
     "Patriot",
-    "NASAMS AIM-120C"
+    "NASAMS AIM-120C",
+    "SAMP/T"
   ],
   "naval_units": [
     "DDG Arleigh Burke IIa",

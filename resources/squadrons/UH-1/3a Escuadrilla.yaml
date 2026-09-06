@@ -1,0 +1,14 @@
+---
+name: 3a Escuadrilla
+nickname: Flotilla de Aeronaves
+country: Spain
+role: Utility Transport
+aircraft: UH-1H Iroquois
+livery: spanish army
+bases:
+  shore: false
+  carrier: false
+  lha: true
+mission_types:
+  - Transport
+  - Air Assault

@@ -35,6 +35,8 @@ class MissionResultsProcessor:
                 self.commit_pilot_experience()
             with logged_duration("commit_front_line_losses"):
                 self.commit_front_line_losses(debriefing)
+            with logged_duration("commit_motorpool_losses"):
+                self.commit_motorpool_losses(debriefing)
             with logged_duration("commit_convoy_losses"):
                 self.commit_convoy_losses(debriefing)
             with logged_duration("commit_cargo_ship_losses"):
@@ -45,6 +47,10 @@ class MissionResultsProcessor:
                 self.commit_ground_losses(debriefing, events)
             with logged_duration("commit_damaged_runways"):
                 self.commit_damaged_runways(debriefing)
+            with logged_duration("commit_cruise_missiles"):
+                self.commit_cruise_missiles(debriefing)
+            with logged_duration("commit_naval_magazines"):
+                self.commit_naval_magazines(debriefing)
             # Score the front line before capturing bases: casualty_count
             # attributes a dead front-line unit to its origin CP regardless of
             # side, so a base's defenders (origin == that base) would be
@@ -60,6 +66,7 @@ class MissionResultsProcessor:
                 self.commit_air_assault_remain(debriefing)
             with logged_duration("record_carcasses"):
                 self.record_carcasses(debriefing)
+            self.game.record_debrief(debriefing)
 
     def commit_air_losses(self, debriefing: Debriefing) -> None:
         for loss in debriefing.air_losses.losses:
@@ -224,6 +231,21 @@ class MissionResultsProcessor:
             control_point.base.armor[unit_type] -= 1
 
     @staticmethod
+    def commit_motorpool_losses(debriefing: Debriefing) -> None:
+        for loss in debriefing.motorpool_losses:
+            unit_type = loss.unit_type
+            control_point = loss.origin
+            available = control_point.base.total_units_of_type(unit_type)
+            if available <= 0:
+                logging.error(
+                    f"Found killed motorpool {unit_type} from {control_point} but "
+                    "that base has none available."
+                )
+                continue
+            logging.info(f"Motorpool {unit_type} destroyed from {control_point}")
+            control_point.base.armor[unit_type] -= 1
+
+    @staticmethod
     def commit_convoy_losses(debriefing: Debriefing) -> None:
         for loss in debriefing.convoy_losses:
             unit_type = loss.unit_type
@@ -275,6 +297,24 @@ class MissionResultsProcessor:
     def commit_damaged_runways(debriefing: Debriefing) -> None:
         for damaged_runway in debriefing.damaged_runways:
             damaged_runway.damage_runway()
+
+    def commit_cruise_missiles(self, debriefing: Debriefing) -> None:
+        # Debit each launching ship group's campaign magazine by what the cruisemissiles
+        # plugin reported fired. The only debit site in the feature, which is what makes
+        # regenerating a mission free of charge. No-op when nothing was reported.
+        from game.cruise_raids import reconcile_cruise_missiles
+
+        reconcile_cruise_missiles(self.game, debriefing)
+
+    def commit_naval_magazines(self, debriefing: Debriefing) -> None:
+        # Debit each naval group's persisted anti-ship magazine by what the
+        # navalmagazines plugin reported fired. The only debit site, so re-generating
+        # a mission never double-counts, and the weapon set is disjoint from the
+        # cruise-missile magazine's so a shot is never charged twice. No-op when
+        # nothing was reported.
+        from game.naval_magazines import reconcile_naval_magazines
+
+        reconcile_naval_magazines(self.game, debriefing)
 
     def commit_captures(self, debriefing: Debriefing, events: GameUpdateEvents) -> None:
         for captured in debriefing.base_captures:

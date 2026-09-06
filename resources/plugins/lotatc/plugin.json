@@ -4,17 +4,17 @@
     "defaultValue": false,
     "specificOptions": [
         {
-            "nameInUI": "Export RED AA",
+            "nameInUI": "Export RED anti-air",
             "mnemonic": "exportRedAA",
             "defaultValue": true
         },
         {
-            "nameInUI": "Export BLUE AA",
+            "nameInUI": "Export BLUE anti-air",
             "mnemonic": "exportBlueAA",
             "defaultValue": false
         },
         {
-            "nameInUI": "Export AA Symbols",
+            "nameInUI": "Export anti-air symbols",
             "mnemonic": "exportSymbols",
             "defaultValue": true
         }
