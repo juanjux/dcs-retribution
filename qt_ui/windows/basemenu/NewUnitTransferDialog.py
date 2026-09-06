@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from collections import defaultdict
-from typing import Callable, Dict, Type
+from typing import Callable, Dict, List, Tuple, Type
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
@@ -168,6 +168,10 @@ class ScrollingUnitTransferGrid(QFrame):
         self.cp = cp
         self.game_model = game_model
         self.transfers: Dict[Type[UnitType, int]] = defaultdict(int)
+        # One (send everything, send nothing) pair per unit row. A row owns its own
+        # remaining-inventory count, so the bulk buttons drive the rows rather than
+        # reaching into their state.
+        self.rows: List[Tuple[Callable[[], None], Callable[[], None]]] = []
 
         main_layout = QVBoxLayout()
 
@@ -188,6 +192,21 @@ class ScrollingUnitTransferGrid(QFrame):
         task_box_layout.addLayout(stretch, task_box_layout.count(), 0)
 
         scroll_content.setLayout(task_box_layout)
+
+        # A base can hold two dozen unit types, and clicking each one up to its full
+        # count is the slowest part of moving a garrison.
+        bulk = QHBoxLayout()
+        bulk.addStretch()
+        select_none = QPushButton("None <<")
+        select_none.setProperty("style", "btn-sell")
+        select_none.clicked.connect(self.transfer_none)
+        bulk.addWidget(select_none)
+        select_all = QPushButton("All >>")
+        select_all.setProperty("style", "btn-buy")
+        select_all.clicked.connect(self.transfer_all)
+        bulk.addWidget(select_all)
+        main_layout.addLayout(bulk)
+
         scroll = QScrollArea()
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
@@ -263,6 +282,26 @@ class ScrollingUnitTransferGrid(QFrame):
 
         transfer_controls = TransferControls("->", increase, "<-", decrease)
 
+        def send_everything() -> None:
+            nonlocal origin_inventory
+            if not origin_inventory:
+                return
+            self.transfers[unit_type] += origin_inventory
+            origin_inventory = 0
+            transfer_controls.set_quantity(self.transfers[unit_type])
+            origin_inventory_label.setText(str(origin_inventory))
+
+        def send_nothing() -> None:
+            nonlocal origin_inventory
+            if not self.transfers[unit_type]:
+                return
+            origin_inventory += self.transfers[unit_type]
+            self.transfers[unit_type] = 0
+            transfer_controls.set_quantity(0)
+            origin_inventory_label.setText(str(origin_inventory))
+
+        self.rows.append((send_everything, send_nothing))
+
         origin_inventory_layout.addWidget(unit_name)
         origin_inventory_layout.addItem(
             QSpacerItem(20, 0, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
@@ -274,6 +313,17 @@ class ScrollingUnitTransferGrid(QFrame):
 
         layout.addWidget(exist, row, 1)
         layout.addWidget(transfer_controls, row, 2)
+
+    def transfer_all(self) -> None:
+        for send_everything, _ in self.rows:
+            send_everything()
+        # Once at the end: the dialog only needs to know whether anything is queued.
+        self.transfer_quantity_changed.emit()
+
+    def transfer_none(self) -> None:
+        for _, send_nothing in self.rows:
+            send_nothing()
+        self.transfer_quantity_changed.emit()
 
 
 class NewUnitTransferDialog(QDialog):
