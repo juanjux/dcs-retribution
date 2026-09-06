@@ -268,6 +268,11 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   relocation. `air_wing[]` now carries `price` (cost of ONE aircraft), documented
   alongside it, and the refusal says "costs 20M **each**".
   ([#88](https://github.com/juanjux/dcs-retribution/pull/88))
+- **Spanish AAA sites were empty, and then wrong.** The faction listed the WWII 2 cm
+  Flak 38, which needs the WWII Assets Pack; without it DCS discards every gun and the
+  site defends nothing. Spain fields no AAA and no SHORAD, so the Soviet ZU-23 and the
+  US Avenger went too — its point defence is the Stinger standing in for Mistral teams.
+  ([#95](https://github.com/juanjux/dcs-retribution/pull/95))
 - **A refused purchase now says why.** "Cannot buy more X" was the same message
   whether you were short of money, out of parking, or at the squadron's aircraft
   cap — three problems with three different answers. It now names the one that
