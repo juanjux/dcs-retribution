@@ -18,11 +18,13 @@ Here's a quick rundown of the file's components :
  
 - `skipUI` : if *true*, this plugin will not appear in the plugins selection user interface. Useful to force a plugin ON or OFF (see the *base* plugin)
 - `nameInUI` : the title of the plugin as it will appear in the plugins selection user interface.
+- `descriptionInUI` : *optional*. A one-line summary of what the plugin does, rendered (italic, word-wrapped) under the plugin's group-box header on the *LUA Plugins Options* page. Omit it (or leave it empty) to render no description.
 - `defaultValue` : the selection value of the plugin, when first installed ; if true, plugin is selected.
 - `specificOptions` : a list of specific plugin options
   - `nameInUI` : the title of the option as it will appear in the plugins specific options user interface.
   - `mnemonic` : the short, technical name of the option. It's the name of the LUA variable passed to the configuration script, and the name of the option in the application's settings 
-  - `defaultValue` : the selection value of the option, when first installed ; if true, option is selected.
+  - `defaultValue` : the selection value of the option, when first installed ; if true, option is selected. A boolean renders a checkbox; an int or float renders a spin box.
+  - `minimumValue` / `maximumValue` : *optional*, numeric options only. The spin-box bounds (default 0 and 10000 if omitted).
 - `scriptsWorkOrders` : a list of work orders that can be used to load or disable loading a specific LUA script
   - `file` : the name of the LUA file in the plugin folder.
   - `mnemonic` : the technical name of the LUA component. The filename may be more precise than needed (e.g. include a version number) ; this is used to load each file only once, and also to disable loading a file

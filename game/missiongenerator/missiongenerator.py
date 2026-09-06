@@ -254,6 +254,10 @@ class MissionGenerator:
 
     def generate_ground_conflicts(self) -> None:
         """Generate FLOTs and JTACs for each active front line."""
+        # Re-planned here rather than reused from the start of the turn: anything the
+        # player did since -- a transfer, most of all -- has already changed what each
+        # base owns, and the mission must deploy what is actually there.
+        self.game.plan_ground_war()
         for front_line in self.game.theater.conflicts():
             player_cp = front_line.blue_cp
             enemy_cp = front_line.red_cp

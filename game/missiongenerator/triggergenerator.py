@@ -27,6 +27,8 @@ from dcs.translation import String
 from dcs.triggers import Event, TriggerCondition, TriggerOnce
 from dcs.unit import Skill
 
+from game.dcs.skills import ground_skill
+
 from game.theater import Airfield
 from game.theater.controlpoint import Fob, TRIGGER_RADIUS_CAPTURE
 
@@ -112,9 +114,11 @@ class TriggerGenerator:
         """
         for coalition_name, coalition in self.mission.coalition.items():
             if coalition_name == player_coalition:
-                skill_level = Skill(self.game.settings.player_skill)
+                skill_level = ground_skill(Skill(self.game.settings.player_skill))
             elif coalition_name == enemy_coalition:
-                skill_level = Skill(self.game.settings.enemy_vehicle_skill)
+                skill_level = ground_skill(
+                    Skill(self.game.settings.enemy_vehicle_skill)
+                )
             else:
                 continue
 
@@ -189,19 +193,29 @@ class TriggerGenerator:
         capturing_coalition_int: int,
         cp: ControlPoint,
         flag_condition_true: bool = False,
+        require_capturing_in_zone: bool = True,
     ) -> TriggerCondition:
-        """Helper method to create a single capture trigger with the given parameters."""
+        """Helper method to create a single capture trigger with the given parameters.
+
+        When ``require_capturing_in_zone`` is False the trigger fires as soon as the
+        losing coalition has no ground units left in the zone, without requiring the
+        capturing coalition to have a ground unit there. This is used for the
+        recapture (revert) trigger so a base reverts to its original owner once the
+        attackers leave or are destroyed -- e.g. wiped out from the air -- instead of
+        staying "captured" until a friendly ground unit happens to re-enter the zone.
+        """
         trigger = TriggerCondition(Event.NoEvent, "Capture Trigger")
         trigger.add_condition(
             AllOfCoalitionOutsideZone(
                 losing_coalition, trigger_zone_id, unit_type="GROUND"
             )
         )
-        trigger.add_condition(
-            PartOfCoalitionInZone(
-                capturing_coalition, trigger_zone_id, unit_type="GROUND"
+        if require_capturing_in_zone:
+            trigger.add_condition(
+                PartOfCoalitionInZone(
+                    capturing_coalition, trigger_zone_id, unit_type="GROUND"
+                )
             )
-        )
 
         if flag_condition_true:
             trigger.add_condition(FlagIsTrue(flag=flag))
@@ -246,6 +260,10 @@ class TriggerGenerator:
                     attack_coalition_int,
                     cp,
                 )
+                # Revert as soon as the attackers are gone from the zone (dead or
+                # withdrawn), without waiting for a friendly ground unit to enter --
+                # otherwise a base stays "captured" even after the intruders are
+                # wiped out from the air.
                 recapture = self._create_capture_trigger(
                     trigger_zone.id,
                     flag,
@@ -254,6 +272,7 @@ class TriggerGenerator:
                     defend_coalition_int,
                     cp,
                     flag_condition_true=True,
+                    require_capturing_in_zone=False,
                 )
                 self.mission.triggerrules.triggers.extend([capture, recapture])
 

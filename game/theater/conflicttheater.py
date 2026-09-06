@@ -1,16 +1,18 @@
 from __future__ import annotations
 
+import datetime
 import math
 from datetime import timezone
 from pathlib import Path
 from typing import Iterator, List, Optional, TYPE_CHECKING, Tuple, Any
 from uuid import UUID
 
-from dcs.mapping import Point
+from dcs.mapping import LatLng, Point
 from dcs.terrain.terrain import Terrain
 from dcs.triggers import TriggerZone
 from shapely import geometry, ops
 
+from .daytimecalculator import solar_daytime_map
 from .daytimemap import DaytimeMap
 from .frontline import FrontLine
 from .iadsnetwork.iadsnetwork import IadsNetwork
@@ -37,6 +39,7 @@ class ConflictTheater:
         time_zone: timezone,
         seasonal_conditions: SeasonalConditions,
         daytime_map: DaytimeMap,
+        daytime_from_table: bool = False,
     ) -> None:
         self.terrain = terrain
         self.landmap_path = landmap_path
@@ -44,6 +47,7 @@ class ConflictTheater:
         self.timezone = time_zone
         self.seasonal_conditions = seasonal_conditions
         self.daytime_map = daytime_map
+        self.daytime_from_table = daytime_from_table
         self.controlpoints: list[ControlPoint] = []
         self.rebel_zones: list[TriggerZone] = []
 
@@ -52,6 +56,9 @@ class ConflictTheater:
             state["landmap_path"] = self.landmap_path_for_terrain_name(
                 state["terrain"].name
             )
+        # Campaigns saved before turn times were derived from the sun keep their
+        # table, so a game in progress does not have its clock moved underneath it.
+        state.setdefault("daytime_from_table", True)
         self.__dict__ = state
         self.landmap = load_landmap(self.landmap_path)
 
@@ -87,6 +94,33 @@ class ConflictTheater:
                 k: v for k, v in rz.color.items() if k in [1, 2, 3]
             }:
                 yield rz
+
+    @property
+    def reference_position(self) -> LatLng:
+        """Where the theater is, for anything that needs a latitude.
+
+        The campaign's own control points beat the terrain's full airport list:
+        a Kola campaign fought entirely in the north should not have its sunrise
+        averaged with Sweden.
+        """
+        points = [cp.position for cp in self.controlpoints]
+        if not points:
+            points = [airport.position for airport in self.terrain.airport_list()]
+        latlngs = [p.latlng() for p in points]
+        return LatLng(
+            sum(ll.lat for ll in latlngs) / len(latlngs),
+            sum(ll.lng for ll in latlngs) / len(latlngs),
+        )
+
+    def daytime_map_for(self, date: datetime.date) -> DaytimeMap:
+        """The turn slots for a given date.
+
+        Derived from the sun unless the theater asked for its table with
+        `daytime_mode: table`, or the campaign predates this being computed.
+        """
+        if self.daytime_from_table:
+            return self.daytime_map
+        return solar_daytime_map(self.reference_position, self.timezone, date)
 
     def add_controlpoint(self, point: ControlPoint) -> None:
         self.controlpoints.append(point)

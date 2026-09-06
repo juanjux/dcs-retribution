@@ -53,8 +53,9 @@
   ],
   "preset_groups": [
     "SA-5/S-200",
-    "SA-2/S-75",
     "SA-2/S-75 V-759/5V23",
+    "SA-2/S-75",
+    "SA-2/SA-3 Mixed Site",
     "SA-3/S-125",
     "SA-3/S-125 V-601P/5V27",
     "SA-6",
@@ -73,7 +74,8 @@
     "ZSU-57-2 'Sparka'",
     "AAA ZU-23 Closed Emplacement",
     "ZU-23 on Ural-375",
-    "ZSU-23-4 Shilka"
+    "ZSU-23-4 Shilka",
+    "MANPADS SA-7b Strela-2M"
   ],
   "helicopter_carrier_names": [],
   "missiles": [
@@ -84,3 +86,4 @@
   "has_jtac": false,
   "doctrine": "coldwar"
 }
+

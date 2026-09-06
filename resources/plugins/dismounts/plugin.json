@@ -1,14 +1,15 @@
 {
     "nameInUI": "DCS Dismounts (FPS-killer)",
+    "descriptionInUI": "Spawns extra infantry around ground groups for visual density. Performance-heavy — expect a frame-rate hit, especially on large fronts.",
     "defaultValue": false,
     "specificOptions": [
         {
-            "nameInUI": "Use WWII Assets",
+            "nameInUI": "Use WWII asset infantry",
             "mnemonic": "WWIIAssets",
             "defaultValue": false
         },
         {
-            "nameInUI": "Use FrenchPack",
+            "nameInUI": "Use FrenchPack mod infantry",
             "mnemonic": "FrenchPack",
             "defaultValue": false
         },
@@ -18,7 +19,7 @@
             "defaultValue": false
         },
         {
-            "nameInUI": "Disable manpads",
+            "nameInUI": "Disable MANPADS among dismounts",
             "mnemonic": "NoManpads",
             "defaultValue": false
         }

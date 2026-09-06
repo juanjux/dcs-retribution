@@ -9,7 +9,7 @@ from PySide6.QtCore import Qt
 from game import Game
 from game.ato.flight import Flight
 from game.ato.flightmember import FlightMember
-from game.ato.loadouts import Loadout
+from game.ato.loadouts import Loadout, aargm_er_active
 from game.data.weapons import Pylon, Weapon
 from .QWeaponSettingsDialog import QWeaponSettingsDialog
 
@@ -41,9 +41,9 @@ class QPylonEditor(QWidget):
             )
         else:
             weapons = pylon.allowed
-        allowed = sorted(weapons, key=operator.attrgetter("name"))
+        allowed = self._with_aargm_er(sorted(weapons, key=operator.attrgetter("name")))
         for i, weapon in enumerate(allowed):
-            self.weapon_combo.addItem(weapon.name, weapon)
+            self.weapon_combo.addItem(self._weapon_label(weapon), weapon)
             if current == weapon:
                 self.weapon_combo.setCurrentIndex(i + 1)
 
@@ -61,6 +61,37 @@ class QPylonEditor(QWidget):
         layout.addWidget(self.settings_button)
 
         self.update_settings_button_visibility()
+
+    def _with_aargm_er(self, allowed: list[Weapon]) -> list[Weapon]:
+        # The SYNTAX AARGM-ER mod only wires {PPC_AGM-88G} onto the F/A-18C's pylons; when
+        # it also applies to a Super Hornet, offer it on that airframe's HARM-capable
+        # pylons too so it shows in the dropdown (the default loadout already mounts it).
+        mods = getattr(self.flight.squadron.coalition.faction, "mod_settings", None)
+        if not aargm_er_active(mods, self.flight.unit_type.dcs_unit_type.id):
+            return allowed
+        aargm = Weapon.with_clsid("{PPC_AGM-88G}")
+        if aargm is None or aargm in allowed:
+            return allowed
+        if not any(w.weapon_group.name == "AGM-88C HARM" for w in allowed):
+            return allowed
+        return allowed + [aargm]
+
+    def _weapon_label(self, weapon: Weapon) -> str:
+        mods = getattr(self.flight.squadron.coalition.faction, "mod_settings", None)
+        aircraft_id = self.flight.unit_type.dcs_unit_type.id
+        # SYNTAX AGM-88G AARGM-ER mod: clear mod-attributed name on any F/A-18 the mod
+        # applies to (base toggle = all Hornets, realistic toggle = Super Hornets only).
+        if weapon.clsid == "{PPC_AGM-88G}" and aargm_er_active(mods, aircraft_id):
+            return "AGM-88G AARGM-ER High Speed Anti-Radiation Missile (SYNTAX mod)"
+        # SYNTAX AGM-158C LRASM mod: it redefines the {AGM_84D} Harpoon in place, so any
+        # {AGM_84D} carrier (the Hornet family) now fires a LRASM -- label it as such.
+        if weapon.clsid == "{AGM_84D}" and getattr(mods, "fa18c_lrasm", False):
+            return "AGM-158C LRASM Long Range Anti-Ship Missile (SYNTAX mod)"
+        # SYNTAX AGM-158B JASSM-ER mod: it redefines the {AGM-154A} JSOW-A in place, so any
+        # {AGM-154A} carrier (F/A-18C, F-15E, F-16) now fires a JASSM-ER -- label it so.
+        if weapon.clsid == "{AGM-154A}" and getattr(mods, "fa18c_jassm", False):
+            return "AGM-158B JASSM-ER Long Range Cruise Missile (SYNTAX mod)"
+        return weapon.name
 
     def update_settings_button_visibility(self) -> None:
         """Show/hide settings button based on whether current weapon has settings."""
@@ -141,7 +172,7 @@ class QPylonEditor(QWidget):
         weapon = self.weapon_from_loadout(loadout)
         if weapon is None:
             return "None"
-        return weapon.name
+        return self._weapon_label(weapon)
 
     def set_flight_member(self, flight_member: FlightMember) -> None:
         self.flight_member = flight_member

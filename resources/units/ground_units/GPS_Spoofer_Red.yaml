@@ -1,0 +1,23 @@
+class: ElectronicWarfare
+description: Ground-based radio/navigation jammer. DCS lists it as a Radio jammer with
+  a 50 km detection range. Retribution drives the GPS-denial effect itself
+  rather than relying on that unverified in-sim behaviour - the `gps_jamming` block
+  below makes this unit deny satellite guidance over an area around itself, so a
+  JDAM/JSOW/JASSM aimed at anything inside that area lands off the aimpoint.
+  Killing it restores accuracy immediately.
+introduced: 2010
+origin: Multinational
+price: 8
+role: Ground Radio / Navigation Jammer
+# GPS jamming. 15 nm, deliberately BELOW the unit's own DCS-declared
+# detection range (50 km / 27 nm): the bubble is a GPS-denied TARGET area, not a
+# denied release area -- a weapon aimed at anything inside it flies through it
+# whatever the release range -- so the radius IS the size of the target set that
+# loses satellite guidance. At 27 nm one site denied a large share of a medium
+# map; 15 nm denies a target cluster, so several can coexist and most of the
+# theatre stays GPS-usable. miss_radius_m is unset, so it rides the campaign
+# setting.
+gps_jamming:
+  radius_nm: 15
+variants:
+  "EW Radio Jammer (Red)": null

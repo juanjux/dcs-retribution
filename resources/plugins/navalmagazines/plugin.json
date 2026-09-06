@@ -1,0 +1,34 @@
+{
+    "nameInUI": "Naval magazines & weapons release",
+    "descriptionInUI": "Runtime for the fleet's finite anti-ship missiles. Inert unless the mission generator emits dcsRetribution.navalMagazines (the 'Stagger naval weapons release' or 'Cross-turn naval magazines' setting is on and a naval group exists). With the stagger on, warships spawn on ReturnFire and are released to weapons-free one group at a time across a window, so a modern fleet -- whose missiles out-range the whole theatre -- develops the exchange instead of emptying its tubes in the opening minute; ReturnFire, never weapons-hold, so a ship still defends itself while it waits. With magazines on, every anti-ship missile actually fired is counted against that group's campaign stock, a group that runs dry drops back to ReturnFire (winchester, not disarmed), and the expenditure is reported so the turn boundary can debit the persisted magazine -- there is no rearm. The land-attack weapons the cruise-missile plugin meters are excluded, so the two magazines never charge the same shot. Sets ROE and counts real weapon releases only: no spawns, no kills.",
+    "defaultValue": true,
+    "specificOptions": [
+        {
+            "nameInUI": "Weapons-release window opens (s after mission start)",
+            "mnemonic": "releaseMinS",
+            "defaultValue": 120
+        },
+        {
+            "nameInUI": "Weapons-release window closes (s after mission start)",
+            "mnemonic": "releaseMaxS",
+            "defaultValue": 900
+        },
+        {
+            "nameInUI": "Announce when a ship group goes winchester",
+            "mnemonic": "announceWinchester",
+            "defaultValue": true
+        },
+        {
+            "nameInUI": "Anti-ship weapon name patterns (comma separated, matched inside the DCS weapon type name)",
+            "mnemonic": "ashmWeaponPatterns",
+            "defaultValue": "HARPOON,RGM_84,AGM_84,EXOCET,MM_38,MM_40,YJ,C_802,C_602,P_500,P_700,P_270,P_1000,KH_35,3M24,3M54,SS_N,NSM,RBS15,OTOMAT"
+        }
+    ],
+    "scriptsWorkOrders": [],
+    "configurationWorkOrders": [
+        {
+            "file": "navalmagazines-config.lua",
+            "mnemonic": "navalmagazines-config"
+        }
+    ]
+}

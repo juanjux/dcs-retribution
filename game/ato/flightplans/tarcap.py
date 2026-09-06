@@ -44,11 +44,16 @@ class TarCapLayout(PatrollingLayout):
 class TarCapFlightPlan(PatrollingFlightPlan[TarCapLayout]):
     @property
     def patrol_duration(self) -> timedelta:
-        # Note that this duration only has an effect if there are no
-        # flights in the package that have requested escort. If the package
-        # requests an escort the CAP self.flight will remain on station for the
-        # duration of the escorted mission, or until it is winchester/bingo.
-        return self.flight.coalition.doctrine.cap_duration
+        # Only has an effect when no flight in the package has requested an escort. If
+        # one has, the CAP stays for as long as the escorted mission does, or until it
+        # is winchester or bingo.
+        #
+        # Its own setting rather than the BARCAP one: a BARCAP guards a base for hours
+        # and a TARCAP covers an attack. It used to read doctrine.cap_duration, which is
+        # a flat 30 minutes in all three doctrines -- Doctrine.from_settings does map
+        # the BARCAP setting onto it, but nothing has ever called that method, so the
+        # number a player typed never reached a TARCAP.
+        return self.flight.coalition.game.settings.desired_tarcap_mission_duration
 
     @property
     def patrol_speed(self) -> Speed:

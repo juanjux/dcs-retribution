@@ -24,6 +24,8 @@ from dcs.terrain.syria.airports import Damascus, Khalkhalah
 from dcs.translation import String
 from dcs.triggers import Event, TriggerCondition, TriggerOnce
 from dcs.unit import Skill
+
+from game.dcs.skills import ground_skill
 from shapely import MultiPolygon, Point as ShapelyPoint
 
 from game.naming import ALPHA_MILITARY
@@ -121,9 +123,11 @@ class PretenseTriggerGenerator:
         """
         for coalition_name, coalition in self.mission.coalition.items():
             if coalition_name == player_coalition:
-                skill_level = Skill(self.game.settings.player_skill)
+                skill_level = ground_skill(Skill(self.game.settings.player_skill))
             elif coalition_name == enemy_coalition:
-                skill_level = Skill(self.game.settings.enemy_vehicle_skill)
+                skill_level = ground_skill(
+                    Skill(self.game.settings.enemy_vehicle_skill)
+                )
             else:
                 continue
 

@@ -2,13 +2,14 @@ import json
 import logging
 import textwrap
 import zipfile
-from typing import Callable, Optional, Dict
+from typing import Callable, Dict, Iterable, List, Optional, Tuple
 
 from PySide6 import QtWidgets
 from PySide6.QtCore import QItemSelectionModel, QPoint, QSize, Qt
 from PySide6.QtGui import QStandardItem, QStandardItemModel, QCloseEvent
 from PySide6.QtWidgets import (
     QAbstractItemView,
+    QApplication,
     QCheckBox,
     QComboBox,
     QDialog,
@@ -44,7 +45,14 @@ from game.settings import (
     TextOption,
 )
 from game.settings.ISettingsContainer import SettingsContainer
-from game.settings.settings import CloudPresetPack
+from game.settings.settings import (
+    CloudPresetPack,
+    LIVE_PILOTS_RANKS_SECTION,
+    LIVE_PILOTS_SURVIVAL_SECTION,
+    LIVE_PILOTS_PAGE,
+    OPFOR_AI_SECTION,
+)
+from game.squadrons.pilotranks import RANK_NAMES_CUSTOM, ranks_for
 from game.sim import GameUpdateEvents
 from pydcs_extensions import AtmosXClouds, BanditClouds, Weather2Clouds
 from qt_ui.widgets.QLabeledWidget import QLabeledWidget
@@ -162,10 +170,22 @@ class AutoSettingsLayout(QGridLayout):
         self.write_full_settings = write_full_settings
         self.settings_map: Dict[str, QWidget] = {}
         self.label_map: Dict[str, QWidget] = {}
+        #: Set by the page once every group exists. A setting can hide one in
+        #: another group, so a change here has to re-evaluate the whole page.
+        self.on_settings_changed: Optional[Callable[[], None]] = None
+        #: Extra work a hand-built section needs doing whenever a value changes.
+        self.refresh_hooks: List[Callable[[], None]] = []
+        self._rank_rows: List[Tuple[QLineEdit, QLineEdit]] = []
+        self._rank_names: List[Tuple[str, str]] = []
+        self._rank_labels: List[QLabel] = []
+        self._rank_combo_label: Optional[QLabel] = None
 
         self.init_ui()
 
     def init_ui(self):
+        if self.section == LIVE_PILOTS_RANKS_SECTION:
+            self._build_rank_grid()
+            return
         for row, (name, description) in enumerate(
             Settings.fields(self.page, self.section)
         ):
@@ -185,6 +205,278 @@ class AutoSettingsLayout(QGridLayout):
             else:
                 raise TypeError(f"Unhandled option type: {description}")
         self.apply_visibility()
+        if self.section == OPFOR_AI_SECTION:
+            self._wire_opfor_ai()
+        if self.page == LIVE_PILOTS_PAGE:
+            self._wire_dependents(
+                "live_pilots_enabled",
+                (
+                    "live_pilots_show_names",
+                    "live_pilots_show_ranks",
+                ),
+            )
+        if self.section == LIVE_PILOTS_SURVIVAL_SECTION:
+            self._wire_survival_odds()
+
+    def _build_rank_grid(self) -> None:
+        """The rank ladder: five rungs, short and full form side by side.
+
+        Not one setting per row like every other section. Ten rows reading "Cadet
+        (short)", "Cadet (full)" is a form to fill in; a rung per row under two column
+        headings is a ladder you can read down.
+        """
+        row = 0
+        for name, description in Settings.fields(self.page, self.section):
+            if isinstance(description, ChoicesOption):
+                # The naming choice belongs at the head of the ladder it names.
+                self._rank_combo_label = self.add_label(row, description)
+                self.label_map[name] = self._rank_combo_label
+                self.add_combobox_for(row, name, description)
+                self._rank_combo = self.settings_map[name]
+                self.removeWidget(self._rank_combo)
+                self.addWidget(self._rank_combo, row, 1, 1, 2)
+                row += 1
+                continue
+            if not name.endswith("_short"):
+                continue
+            if not self._rank_rows:
+                for column, heading in ((1, "Short"), (2, "Full")):
+                    header = QLabel(f"<b>{heading}</b>")
+                    self.addWidget(header, row, column)
+                    self._rank_labels.append(header)
+                row += 1
+            full_name = name[: -len("_short")] + "_full"
+            label = QLabel(f"<strong>{description.text}</strong>")
+            self.addWidget(label, row, 0)
+            # One label serves both boxes, so both names have to find it.
+            self.label_map[name] = label
+            self.label_map[full_name] = label
+            self._rank_labels.append(label)
+
+            max_length = getattr(description, "max_length", None)
+            short = self._rank_edit(name, 60, max_length)
+            full = self._rank_edit(full_name, 156)
+            self.addWidget(short, row, 1)
+            self.addWidget(full, row, 2)
+            self._rank_rows.append((short, full))
+            self._rank_names.append((name, full_name))
+            row += 1
+
+        self.setColumnStretch(3, 1)
+        self.refresh_hooks.append(self._sync_rank_boxes)
+        self._sync_rank_boxes()
+
+    def _rank_edit(
+        self, name: str, width: int, max_length: Optional[int] = None
+    ) -> QLineEdit:
+        edit = QLineEdit(self.sc.settings.__dict__[name])
+        if max_length is not None:
+            edit.setMaxLength(max_length)
+        edit.setFixedWidth(width)
+
+        def on_changed(value: str) -> None:
+            self.sc.settings.__dict__[name] = value.strip()
+
+        edit.textChanged.connect(on_changed)
+        self.settings_map[name] = edit
+        return edit
+
+    def _sync_rank_boxes(self) -> None:
+        """Show the ladder the chosen naming produces, editable only when it is custom.
+
+        The other namings write nothing back: their values are a preview, the boxes are
+        read-only while one is on display, and switching to Custom restores whatever the
+        player last typed -- blanks included, which is how a rung asks for its generic
+        name.
+        """
+        settings = self.sc.settings
+        editable = (
+            bool(settings.live_pilots_enabled)
+            and settings.live_pilots_rank_names == RANK_NAMES_CUSTOM
+        )
+        if editable:
+            pairs = [
+                (settings.__dict__[short], settings.__dict__[full])
+                for short, full in self._rank_names
+            ]
+        else:
+            # The container is the settings window, which knows the campaign; country
+            # ranks are per squadron, so the player faction is the honest preview.
+            faction = getattr(getattr(self.sc, "game", None), "blue", None)
+            country = getattr(getattr(faction, "faction", None), "country", None)
+            ladder = ranks_for(settings.live_pilots_rank_names, country)
+            pairs = [(rank.abbreviation, rank.name) for rank in ladder]
+
+        # The choice follows the master switch; the ladder follows the choice.
+        master_on = bool(settings.live_pilots_enabled)
+        combo = getattr(self, "_rank_combo", None)
+        if combo is not None:
+            combo.setEnabled(master_on)
+        if self._rank_combo_label is not None:
+            self._rank_combo_label.setEnabled(master_on)
+        for rank_label in self._rank_labels:
+            rank_label.setEnabled(editable)
+        for (short_edit, full_edit), (short_text, full_text) in zip(
+            self._rank_rows, pairs
+        ):
+            for edit, text in ((short_edit, short_text), (full_edit, full_text)):
+                # Disabled, not read-only: the greyed-out tone is what a player reads
+                # as "you cannot type here", and it comes from the theme rather than
+                # from a colour hard-coded here.
+                edit.setEnabled(editable)
+                if edit.text() != text:
+                    edit.blockSignals(True)
+                    edit.setText(text)
+                    edit.blockSignals(False)
+
+    def add_line_edit_for(self, row: int, name: str, description: TextOption) -> None:
+        edit = QLineEdit(self.sc.settings.__dict__[name])
+        if description.placeholder is not None:
+            edit.setPlaceholderText(description.placeholder)
+
+        def on_changed(value: str) -> None:
+            self.sc.settings.__dict__[name] = value.strip()
+
+        edit.textChanged.connect(on_changed)
+        if description.max_length is not None:
+            edit.setMaxLength(description.max_length)
+            edit.setMinimumWidth(90)
+        else:
+            edit.setMinimumWidth(260)
+        self.addWidget(edit, row, 1, Qt.AlignmentFlag.AlignRight)
+        self.settings_map[name] = edit
+
+    def settings_changed(self) -> None:
+        """A value changed: re-evaluate visibility, page-wide when the page said how."""
+        if self.on_settings_changed is not None:
+            self.on_settings_changed()
+        else:
+            self.apply_visibility()
+
+    def apply_visibility(self) -> bool:
+        """Hide the settings whose visible_when says they do not apply right now.
+
+        Returns whether anything is left showing, so a section whose every setting is
+        conditional can hide its own group box instead of leaving an empty frame.
+        """
+        any_visible = False
+        for name, description in Settings.fields(self.page, self.section):
+            if description.visible_when is None:
+                any_visible = True
+                continue
+            visible = bool(description.visible_when(self.sc.settings))
+            any_visible = any_visible or visible
+            self.label_map[name].setVisible(visible)
+            entry = self.settings_map[name]
+            # The spinner and time options register a layout rather than a widget,
+            # and a layout cannot be hidden -- its contents can.
+            if isinstance(entry, QLayout):
+                for i in range(entry.count()):
+                    if (child := entry.itemAt(i).widget()) is not None:
+                        child.setVisible(visible)
+            else:
+                entry.setVisible(visible)
+        for hook in self.refresh_hooks:
+            hook()
+        return any_visible
+
+    def _wire_dependents(
+        self, master_name: str, dependent_names: Iterable[str]
+    ) -> None:
+        """Grey out the settings that mean nothing while their master is off."""
+        master = self.settings_map.get(master_name)
+        if not isinstance(master, QCheckBox):
+            return
+        dependents = [
+            (self.settings_map.get(name), self.label_map.get(name))
+            for name in dependent_names
+        ]
+
+        def refresh() -> None:
+            enabled = master.isChecked()
+            for widget, label in dependents:
+                for target in (widget, label):
+                    if target is not None:
+                        target.setEnabled(enabled)
+
+        master.toggled.connect(lambda _=None: refresh())
+        refresh()
+
+    def _wire_survival_odds(self) -> None:
+        """The odds follow their own switch, and the switch follows Live Pilots.
+
+        Two masters and one of them lives in another section, so this refreshes from
+        the settings rather than from the checkbox: the page re-runs every group when
+        any of them changes.
+        """
+        master = self.settings_map.get("live_pilots_rank_survival")
+        rungs = [
+            name
+            for name, _ in Settings.fields(self.page, self.section)
+            if name.startswith("live_pilots_survival_")
+        ]
+
+        def refresh() -> None:
+            live = bool(self.sc.settings.live_pilots_enabled)
+            rolling = live and bool(self.sc.settings.live_pilots_rank_survival)
+            # The wound roll is flat and rank-free, so it follows the master switch
+            # rather than the rank one: it still applies with rank survival off.
+            for name, enabled in [
+                ("live_pilots_rank_survival", live),
+                ("live_pilots_wounded_chance", live),
+            ] + [(rung, rolling) for rung in rungs]:
+                for target in (self.settings_map.get(name), self.label_map.get(name)):
+                    if isinstance(target, QWidget):
+                        target.setEnabled(enabled)
+
+        if isinstance(master, QCheckBox):
+            master.toggled.connect(lambda _=None: refresh())
+        self.refresh_hooks.append(refresh)
+        refresh()
+
+    def _wire_opfor_ai(self) -> None:
+        """Show the REST/MCP connect URLs when OPFOR AI control is enabled."""
+        master = self.settings_map.get("opfor_ai_enabled")
+
+        box = QWidget()
+        v = QVBoxLayout(box)
+        v.setContentsMargins(0, 4, 0, 0)
+        v.addWidget(QLabel("<b>Connect your LLM (paste a URL):</b>"))
+        self._opfor_ai_rest = self._url_row(v, "REST — any HTTP/REST client or curl")
+        self._opfor_ai_mcp = self._url_row(v, "MCP — any MCP-compatible client")
+        self.addWidget(box, self.rowCount(), 0, 1, 2)
+        self._opfor_ai_box = box
+
+        def refresh() -> None:
+            show = bool(master and master.isChecked())
+            self._opfor_ai_box.setVisible(show)
+            if show:
+                try:
+                    from game.agent import service
+
+                    self._opfor_ai_rest.setText(service.connect_url())
+                    self._opfor_ai_mcp.setText(service.mcp_url())
+                except Exception:
+                    self._opfor_ai_rest.setText(
+                        "(start a campaign to generate the URL)"
+                    )
+                    self._opfor_ai_mcp.setText("")
+
+        if master is not None:
+            master.toggled.connect(lambda _=None: refresh())
+        refresh()
+
+    def _url_row(self, parent_layout: QVBoxLayout, label: str) -> QLineEdit:
+        h = QHBoxLayout()
+        h.addWidget(QLabel(label + ":"))
+        field = QLineEdit()
+        field.setReadOnly(True)
+        h.addWidget(field, 1)
+        copy = QPushButton("Copy")
+        copy.clicked.connect(lambda: QApplication.clipboard().setText(field.text()))
+        h.addWidget(copy)
+        parent_layout.addLayout(h)
+        return field
 
     def add_label(self, row: int, description: OptionDescription) -> QLabel:
         wrapped_title = "<br />".join(textwrap.wrap(description.text, width=55))
@@ -204,7 +496,7 @@ class AutoSettingsLayout(QGridLayout):
             if description.invert:
                 value = not value
             self.sc.settings.__dict__[name] = value
-            self.apply_visibility()
+            self.settings_changed()
             if description.causes_expensive_game_update:
                 self.write_full_settings()
 
@@ -222,7 +514,7 @@ class AutoSettingsLayout(QGridLayout):
 
         def on_changed(index: int) -> None:
             self.sc.settings.__dict__[name] = combobox.itemData(index)
-            self.apply_visibility()
+            self.settings_changed()
 
         for text, value in description.choices.items():
             combobox.addItem(text, value)
@@ -312,6 +604,8 @@ class AutoSettingsLayout(QGridLayout):
                 entry.setVisible(visible)
 
     def update_from_settings(self) -> None:
+        for hook in self.refresh_hooks:
+            hook()
         for name, description in Settings.fields(self.page, self.section):
             widget = self.settings_map[name]
             value = self.sc.settings.__dict__[name]
@@ -347,8 +641,12 @@ class AutoSettingsGroup(QGroupBox):
         self.layout = AutoSettingsLayout(page, section, sc, write_full_settings)
         self.setLayout(self.layout)
 
+    def apply_visibility(self) -> None:
+        self.setVisible(self.layout.apply_visibility())
+
     def update_from_settings(self) -> None:
         self.layout.update_from_settings()
+        self.apply_visibility()
 
 
 class AutoSettingsPageLayout(QVBoxLayout):
@@ -368,6 +666,20 @@ class AutoSettingsPageLayout(QVBoxLayout):
             )
             self.addWidget(self.widgets[-1])
 
+        for group in self.widgets:
+            group.layout.on_settings_changed = self.refresh_page
+
+    def refresh_page(self) -> None:
+        """Re-evaluate every group, since one section can hide another's settings.
+
+        Never call this while the layout is still being built. A group box added to
+        a layout that is not yet installed on a widget has no parent, and showing a
+        parentless widget in Qt makes it a window: the settings dialog flashed a
+        handful of white frames that resized and vanished as the real parent
+        arrived. The page calls it once its layout is in place."""
+        for group in self.widgets:
+            group.apply_visibility()
+
     def update_from_settings(self) -> None:
         for w in self.widgets:
             w.update_from_settings()
@@ -383,6 +695,9 @@ class AutoSettingsPage(QWidget):
         super().__init__()
         self.layout = AutoSettingsPageLayout(page, sc, write_full_settings)
         self.setLayout(self.layout)
+        # Only now do the group boxes have a parent, and only now is hiding one of
+        # them a layout change rather than a stray window.
+        self.layout.refresh_page()
 
     def update_from_settings(self) -> None:
         self.layout.update_from_settings()
@@ -401,6 +716,10 @@ class QSettingsWindow(QDialog):
 
     def closeEvent(self, event: QCloseEvent) -> None:
         self._handle_mod_settings()
+        if self.game is not None and self.game.settings.live_pilots_enabled:
+            # Idempotent: it starts the ladder the first time and does nothing after,
+            # so the player is free to raise the coalition skills again afterwards.
+            self.game.begin_live_pilots()
         super().closeEvent(event)
 
     def _handle_mod_settings(self) -> None:
@@ -429,9 +748,10 @@ class QSettingsWidget(QtWidgets.QWizardPage, SettingsContainer):
         self.settings = game.settings if game else settings
         self.game = game
 
+        #: Only the pages the player has actually looked at. See _ensure_page.
         self.pages: dict[str, AutoSettingsPage] = {}
-        for page in Settings.pages():
-            self.pages[page] = AutoSettingsPage(page, self, self.applySettings)
+        self._page_names: list[str] = list(Settings.pages())
+        self._page_scrolls: dict[int, QScrollArea] = {}
 
         self.pluginsPage = PluginsPage(self)
         self.pluginsOptionsPage = PluginOptionsPage(self)
@@ -452,7 +772,7 @@ class QSettingsWidget(QtWidgets.QWizardPage, SettingsContainer):
 
         self.categoryList.setIconSize(QSize(32, 32))
 
-        for name, page in self.pages.items():
+        for index, name in enumerate(self._page_names):
             page_item = QStandardItem(name)
             if name in CONST.ICONS:
                 page_item.setIcon(CONST.ICONS[name])
@@ -462,8 +782,8 @@ class QSettingsWidget(QtWidgets.QWizardPage, SettingsContainer):
             page_item.setSelectable(True)
             self.categoryModel.appendRow(page_item)
             scroll = QScrollArea()
-            scroll.setWidget(page)
             scroll.setWidgetResizable(True)
+            self._page_scrolls[index] = scroll
             self.right_layout.addWidget(scroll)
 
         self.initCheatLayout()
@@ -499,6 +819,9 @@ class QSettingsWidget(QtWidgets.QWizardPage, SettingsContainer):
             self.categoryList.indexAt(QPoint(1, 1)),
             QItemSelectionModel.SelectionFlag.Select,
         )
+        # The default selection is set before the signal is connected, so nothing
+        # would build the page the dialog opens on.
+        self._ensure_page(0)
         self.categoryList.selectionModel().selectionChanged.connect(
             self.onSelectionChanged
         )
@@ -582,8 +905,24 @@ class QSettingsWidget(QtWidgets.QWizardPage, SettingsContainer):
             EventStream.put_nowait(events)
             GameUpdateSignal.get_instance().updateGame(self.game)
 
+    def _ensure_page(self, index: int) -> None:
+        """Build a settings page the first time it is looked at.
+
+        The seven pages together are 192 settings and some six hundred widgets, and
+        the dialog is rebuilt from scratch on every open -- it used to build all of
+        them to show one, which is the couple of seconds before the window appears.
+        """
+        scroll = self._page_scrolls.get(index)
+        if scroll is None or scroll.widget() is not None:
+            return
+        name = self._page_names[index]
+        page = AutoSettingsPage(name, self, self.applySettings)
+        self.pages[name] = page
+        scroll.setWidget(page)
+
     def onSelectionChanged(self) -> None:
         index = self.categoryList.selectionModel().currentIndex().row()
+        self._ensure_page(index)
         self.right_layout.setCurrentIndex(index)
 
     def update_from_settings(self) -> None:

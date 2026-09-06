@@ -3,6 +3,7 @@ from __future__ import annotations
 import itertools
 import logging
 import math
+import secrets
 from collections.abc import Iterator
 from copy import deepcopy
 from datetime import date, datetime, time, timedelta
@@ -22,6 +23,7 @@ from dcs.task import CAP, CAS, PinpointStrike
 from dcs.vehicles import AirDefence
 
 from game.ato.closestairfields import ObjectiveDistanceCache
+from game.dcs.skills import experience_for_skill
 from game.ground_forces.ai_ground_planner import GroundPlanner
 from game.models.game_stats import GameStats
 from game.plugins import LuaPluginManager
@@ -97,6 +99,24 @@ class TurnState(Enum):
     CONTINUE = 2
 
 
+def time_of_day_offset(
+    theater: ConflictTheater, start_date: datetime, start_time: time | None
+) -> int:
+    """Which turn slot a campaign beginning at this date and time starts in.
+
+    The date and the time are two values and are not interchangeable: the slots
+    themselves are computed from the sun, so the map is chosen by the date, and the
+    time of day is then looked up inside it. Only one shipped campaign carries a time
+    in its start date, so confusing the two crashed exactly that campaign and nothing
+    else.
+    """
+    if start_time is None:
+        return list(TimeOfDay).index(TimeOfDay.Day)
+    return list(TimeOfDay).index(
+        theater.daytime_map_for(start_date.date()).best_guess_time_of_day_at(start_time)
+    )
+
+
 class Game:
     scenery_clear_zones: List[Point]
 
@@ -121,11 +141,30 @@ class Game:
         self.date = date(start_date.year, start_date.month, start_date.day)
         self.game_stats = GameStats()
         self.notes = ""
+        # Free-form scratchpad for the OPFOR-AI commander (persisted per campaign).
+        self.stored_context: dict[str, str] = {}
+        # Per-turn loss summaries for the OPFOR-AI prev_turns after-action.
+        self.debrief_history: list[dict[str, int]] = []
         # Opaque JSON blob with the web client's map-layer panel state (which layers
         # are visible, base map, which groups are open). The client owns the
         # (de)serialization; the game just stores it so the choices travel with the
         # save instead of being lost on reload.
         self.client_map_layers: Optional[str] = None
+        # OPFOR-AI API token, persisted so a campaign keeps the same connect URL across
+        # restarts of this save (an LLM reconnects without a new token each session).
+        self.opfor_ai_token: str = secrets.token_urlsafe()
+        # Missiles left per cruise-missile ship group, keyed by TheaterGroup.group_name.
+        # Only groups that have fired appear here; game.cruise_raids reads the stock of
+        # the rest from their living hulls. Written solely at the turn boundary, so
+        # regenerating a mission can never charge for the same salvo twice.
+        self.cruise_missile_magazines: dict[str, int] = {}
+        # Each naval group's remaining ANTI-SHIP missile stock, keyed by the same
+        # stable group name. Seeded on first sight and debited only at the turn
+        # boundary from what the plugin reports fired, never at generation, so
+        # re-generating a mission cannot charge for the same salvo twice. A disjoint
+        # weapon set from the cruise-missile magazine above, so the two never
+        # double-charge the same shot. There is no rearm.
+        self.naval_magazines: dict[str, int] = {}
         self.ground_planners: dict[UUID, GroundPlanner] = {}
         self.informations: list[Information] = []
         self.message("Game Start", "-" * 40)
@@ -140,14 +179,9 @@ class Game:
 
         self.db = GameDb()
 
-        if start_time is None:
-            self.time_of_day_offset_for_start_time = list(TimeOfDay).index(
-                TimeOfDay.Day
-            )
-        else:
-            self.time_of_day_offset_for_start_time = list(TimeOfDay).index(
-                self.theater.daytime_map.best_guess_time_of_day_at(start_time)
-            )
+        self.time_of_day_offset_for_start_time = time_of_day_offset(
+            self.theater, start_date, start_time
+        )
         self.conditions = self.generate_conditions(forced_time=start_time)
 
         self.sanitize_sides(player_faction, enemy_faction)
@@ -188,10 +222,149 @@ class Game:
             self.laser_code_registry = LaserCodeRegistry()
             for front_line in self.theater.conflicts():
                 front_line.laser_code = self.laser_code_registry.alloc_laser_code()
+        if not hasattr(self, "stored_context"):
+            self.stored_context = {}
+        if not hasattr(self, "debrief_history"):
+            self.debrief_history = []
         if not hasattr(self, "client_map_layers"):
             self.client_map_layers = None
+        if not hasattr(self, "cruise_missile_magazines"):
+            self.cruise_missile_magazines = {}
+        if not hasattr(self, "naval_magazines"):
+            self.naval_magazines = {}
+        if not getattr(self, "opfor_ai_token", None):
+            # Pre-feature save: mint a token now; it sticks once this save is written.
+            self.opfor_ai_token = secrets.token_urlsafe()
         # Regenerate any state that was not persisted.
         self.on_load()
+
+    def record_debrief(self, debriefing: Any) -> None:
+        """Capture a concise per-turn loss summary (counts + who-killed-what) for the
+        OPFOR-AI prev_turns after-action (best-effort; must never break the commit)."""
+        from collections import Counter
+        from game.theater.player import Player
+
+        if not hasattr(self, "debrief_history"):
+            self.debrief_history = []
+
+        def lost_by_type(player: Player) -> dict[str, int]:
+            """What died, by airframe. "30 aircraft" does not tell a planner whether it
+            lost its Hinds or its Frogfoots; this does, in about twenty keys."""
+            try:
+                return {
+                    unit_type.name: count
+                    for unit_type, count in debriefing.air_losses.by_type(
+                        player
+                    ).items()
+                }
+            except Exception:
+                return {}
+
+        def kills_by_weapon(losses: Any) -> dict[str, int]:
+            """What did the killing, by weapon. Deliberately the weapon alone, unlike
+            `killers` below, which falls back from the shooter to the weapon and so
+            mixes the two in one dict -- a loadout cannot be judged from a number that
+            might be an airframe."""
+            try:
+                index = getattr(debriefing, "kill_info_by_unit_id", {}) or {}
+                counts: Counter[str] = Counter()
+                for loss in losses:
+                    detail = index.get(id(loss))
+                    weapon = detail.get("weapon") if detail else None
+                    if weapon:
+                        counts[str(weapon)] += 1
+                return dict(counts)
+            except Exception:
+                return {}
+
+        def kills_by_victim(losses: Any) -> dict[str, dict[str, int]]:
+            """Which airframe killed which, one nesting deep: {victim: {killer: n}}.
+            Aggregated, so it grows with the number of TYPES in the fight rather than
+            with the number of kills."""
+            try:
+                index = getattr(debriefing, "kill_info_by_unit_id", {}) or {}
+                out: dict[str, Counter[str]] = {}
+                for loss in losses:
+                    detail = index.get(id(loss))
+                    killer = detail.get("initiator_type") if detail else None
+                    if not killer:
+                        continue
+                    victim = getattr(
+                        getattr(getattr(loss, "flight", None), "unit_type", None),
+                        "name",
+                        None,
+                    )
+                    if not victim:
+                        continue
+                    out.setdefault(str(victim), Counter())[str(killer)] += 1
+                return {victim: dict(c) for victim, c in out.items()}
+            except Exception:
+                return {}
+
+        def killers(losses: Any) -> dict[str, int]:
+            try:
+                index = getattr(debriefing, "kill_info_by_unit_id", {}) or {}
+                counts: Counter[str] = Counter()
+                for loss in losses:
+                    detail = index.get(id(loss))
+                    if detail:
+                        who = detail.get("initiator_type") or detail.get("weapon")
+                        if who:
+                            counts[str(who)] += 1
+                return dict(counts)
+            except Exception:
+                return {}
+
+        try:
+            summary = {
+                "turn": self.turn,
+                "blue_air_lost": len(debriefing.air_losses.player),
+                "red_air_lost": len(debriefing.air_losses.enemy),
+                "blue_air_crashed": sum(
+                    debriefing.is_non_combat_loss(u)
+                    for u in debriefing.air_losses.player
+                ),
+                "red_air_crashed": sum(
+                    debriefing.is_non_combat_loss(u)
+                    for u in debriefing.air_losses.enemy
+                ),
+                "blue_ground_lost": sum(
+                    debriefing.front_line_losses_by_type(Player.BLUE).values()
+                ),
+                "red_ground_lost": sum(
+                    debriefing.front_line_losses_by_type(Player.RED).values()
+                ),
+                "red_air_killers": killers(debriefing.air_losses.enemy),
+                "blue_air_killers": killers(debriefing.air_losses.player),
+                # The three that let a planner judge an airframe and a loadout rather
+                # than a headline number. All aggregates, so they scale with the number
+                # of types in the fight, not with the number of events.
+                "red_air_lost_by_type": lost_by_type(Player.RED),
+                "blue_air_lost_by_type": lost_by_type(Player.BLUE),
+                "red_air_kills_by_weapon": kills_by_weapon(debriefing.air_losses.enemy),
+                "blue_air_kills_by_weapon": kills_by_weapon(
+                    debriefing.air_losses.player
+                ),
+                "red_air_kills_by_victim": kills_by_victim(debriefing.air_losses.enemy),
+                "blue_air_kills_by_victim": kills_by_victim(
+                    debriefing.air_losses.player
+                ),
+                # Per-type site/naval unit losses this turn (ships by class, SAM
+                # launchers/radars, etc.) — the concrete result of each side's strikes:
+                # what actually died, not just "target damaged". e.g. {"Type_052C": 1}.
+                "blue_sites_lost": dict(
+                    debriefing.ground_object_losses_by_type(Player.BLUE)
+                ),
+                "red_sites_lost": dict(
+                    debriefing.ground_object_losses_by_type(Player.RED)
+                ),
+            }
+        except Exception:
+            logging.exception("OPFOR-AI: failed to record debrief summary")
+            return
+        self.debrief_history.append(summary)
+        if len(self.debrief_history) > 20:
+            self.debrief_history = self.debrief_history[-20:]
 
     @property
     def coalitions(self) -> Iterator[Coalition]:
@@ -448,6 +621,46 @@ class Game:
         self.blue.bullseye = Bullseye(enemy_cp.position)
         self.red.bullseye = Bullseye(player_cp.position)
 
+    def plan_ground_war(self) -> None:
+        """Decide which of each base's vehicles deploy to which front.
+
+        Planned from ``base.armor`` as it stands *now*, and deliberately not cached
+        across the turn: ordering a transfer debits the origin the moment it is
+        created, so a plan made at the start of the turn deploys units the campaign
+        no longer owns. That is not a cosmetic disagreement -- the front line battle
+        is resolved from the books, so a player who moved his army mid-turn watched
+        it hold the line on the map and lose the ground war for being absent.
+        """
+        self.ground_planners = {}
+        for cp in self.theater.controlpoints:
+            if cp.has_frontline:
+                gplanner = GroundPlanner(cp, self)
+                gplanner.plan_groundwar()
+                self.ground_planners[cp.id] = gplanner
+
+    def begin_live_pilots(self) -> None:
+        """Start the career ladder, once, when Live Pilots is switched on.
+
+        Every pilot already in the campaign keeps the rank he has, seeded with what
+        that rank costs. Nobody is demoted and nobody gets a windfall; the next
+        promotion is paid for in full.
+
+        The rank is read from the difficulty page rather than from what the pilot
+        currently flies at, because the moment the feature is switched on the floor
+        under him is the bottom rung. Seeding from the floor instead would hand
+        every wing whose coalition was already at Cadet a career starting from zero
+        while the other side kept its rank -- which is what it did.
+        """
+        if getattr(self, "live_pilots_initialized", False):
+            return
+        for coalition in (self.blue, self.red):
+            for squadron in coalition.air_wing.iter_squadrons():
+                earned = experience_for_skill(squadron.difficulty_skill)
+                for pilot in list(squadron.pilot_pool) + list(squadron.current_roster):
+                    pilot.record.xp = max(pilot.record.xp, earned)
+        self.live_pilots_initialized = True
+        logging.info("Live Pilots started: every pilot seeded with his rank")
+
     def initialize_turn(
         self,
         events: GameUpdateEvents,
@@ -511,13 +724,7 @@ class Game:
         if for_red:
             self.red.initialize_turn(self.turn == 0 and squadrons_start_full)
 
-        # Plan GroundWar
-        self.ground_planners = {}
-        for cp in self.theater.controlpoints:
-            if cp.has_frontline:
-                gplanner = GroundPlanner(cp, self)
-                gplanner.plan_groundwar()
-                self.ground_planners[cp.id] = gplanner
+        self.plan_ground_war()
 
         # Update cull zones
         with logged_duration("Computing culling positions"):
@@ -628,6 +835,21 @@ class Game:
                 # FlightType.AEWC & FlightType.REFUELING mission targets.
                 continue
             zones.append(package.target.position)
+
+        # A cruise missile raid hits whatever the planner picked, which is usually a
+        # rear-area object no package is fragged against, so nothing else keeps it out
+        # of the cull. Culled, the target TGO is never generated and the missiles
+        # visibly demolish the map's bare scenery at those coordinates while the
+        # campaign records nothing at all. Un-cull every planned raid target, and every
+        # launching ship group so a standalone shooter is there for the F10
+        # call-for-fire (carrier groups are already covered above).
+        if self.settings.cruise_missile_strikes:
+            from game.cruise_raids import lacm_ships, plan_cruise_raids
+
+            for raid in plan_cruise_raids(self):
+                zones.append(Point(raid.target_x, raid.target_y, self.theater.terrain))
+            for lacm_ship in lacm_ships(self):
+                zones.append(lacm_ship.position)
 
         self.__culling_zones = zones
         events.update_unculled_zones(zones)

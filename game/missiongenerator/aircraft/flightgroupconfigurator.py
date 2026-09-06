@@ -17,7 +17,7 @@ from dcs.unitgroup import FlyingGroup
 from game.ato import Flight, FlightType
 from game.ato.flightplans.shiprecoverytanker import RecoveryTankerFlightPlan
 from game.callsigns import callsign_for_support_unit
-from game.data.weapons import Pylon, WeaponType
+from game.data.weapons import Pylon, Weapon, WeaponType
 from game.lasercodes.lasercode import LaserCode
 from game.missiongenerator.logisticsgenerator import LogisticsGenerator
 from game.missiongenerator.missiondata import MissionData, AwacsInfo, TankerInfo
@@ -54,13 +54,9 @@ if TYPE_CHECKING:
     from game import Game
 
 
-#: Mod weapon CLSIDs that crash DCS when dropped or cooked off. The Anubis C-130
-#: airdrop weapons are class ``wAmmunitionBallute``; since the official C-130J
-#: sound update they resolve a sound scheme without the ``suppress_ballute``
-#: input port ("No input port in scheme: suppress_ballute" -> unhandled
-#: exception -> DCS closes). Strip them when equipping pylons so even loadouts
-#: stored in an old save never carry them.
-_CRASHY_BALLUTE_CLSIDS = frozenset({"Herc_Soldier_Squad"})
+# pydcs names the units of a flight group "<group name> Pilot #1", "... #2" and
+# so on. Everything before this separator is what keeps the name unique.
+PILOT_NAME_SEPARATOR = " Pilot #"
 
 
 class FlightGroupConfigurator:
@@ -103,6 +99,8 @@ class FlightGroupConfigurator:
         laser_codes: list[Optional[int]] = []
         for unit, member in zip(self.group.units, self.flight.iter_members()):
             self.configure_flight_member(unit, member, laser_codes)
+
+        self.name_pilots()
 
         divert = None
         if self.flight.divert is not None:
@@ -353,6 +351,52 @@ class FlightGroupConfigurator:
             return squadron.base_skill
         return squadron.pilot_skill(pilot)
 
+    def name_pilots(self) -> None:
+        """Put the rank and name of the pilot where the label reads "Pilot #2".
+
+        Only the tail is replaced. The rest of the unit name carries the group
+        counter that makes it unique, and UnitMap.add_aircraft raises on a
+        duplicate, so keeping that prefix is what stops two pilots of the same
+        name from killing mission generation outright.
+
+        Has to run after every member is configured: set_skill decides player
+        versus client by looking for "Pilot #1" in the name, and would quietly
+        hand the player a client slot if the string were gone by then.
+        """
+        settings = self.game.settings
+        if not settings.live_pilots_enabled:
+            return
+        show_ranks = settings.live_pilots_show_ranks
+        show_names = settings.live_pilots_show_names
+        if not show_ranks and not show_names:
+            return
+
+        squadron = self.flight.squadron
+        used: set[str] = set()
+        for index, (unit, member) in enumerate(
+            zip(self.group.units, self.flight.iter_members()), start=1
+        ):
+            pilot = member.pilot
+            if pilot is None:
+                continue
+            parts: list[str] = []
+            if show_ranks:
+                rank = squadron.pilot_rank(pilot)
+                if rank is not None:
+                    parts.append(rank.abbreviation)
+            if show_names:
+                parts.append(pilot.name)
+            if not parts:
+                continue
+            head, separator, _ = str(unit.name).rpartition(PILOT_NAME_SEPARATOR)
+            if not separator:
+                continue
+            name = f"{head} {' '.join(parts)}"
+            if name in used:
+                name = f"{name} #{index}"
+            used.add(name)
+            unit.name = name
+
     def setup_props(self) -> None:
         unit: FlyingUnit
         member: FlightMember
@@ -446,14 +490,10 @@ class FlightGroupConfigurator:
         for pylon_number, weapon in loadout.pylons.items():
             if weapon is None:
                 continue
-            if weapon.clsid in _CRASHY_BALLUTE_CLSIDS:
-                # Drop the crash-prone mod airdrop weapon even if a stored
-                # loadout still carries it; air-assault troops come from CTLD.
-                continue
             pylon = Pylon.for_aircraft(self.flight.unit_type, pylon_number)
             settings = self._merge_laser_code(
                 loadout.pylon_settings.get(pylon_number),
-                weapon.accepts_laser_code(),
+                weapon,
                 member.weapon_laser_code,
             )
             pylon.equip(unit, weapon, settings)
@@ -461,14 +501,22 @@ class FlightGroupConfigurator:
     @staticmethod
     def _merge_laser_code(
         base: Optional[dict[str, Any]],
-        accepts_laser_code: bool,
+        weapon: Weapon,
         laser_code: Optional[LaserCode],
     ) -> Optional[dict[str, Any]]:
-        if laser_code is None or not accepts_laser_code:
+        """Settings to write for this pylon, laser code included.
+
+        DCS reads a weapon's settings table as the whole truth: a key that is absent
+        is not fitted, and a bomb's fuze lives in that table. Start from the weapon's
+        own defaults, which is what DCS applies when no table is written at all.
+        """
+        if laser_code is None or not weapon.accepts_laser_code():
             return base
-        settings = dict(base or {})
-        settings["laser_code"] = laser_code.code
-        return settings
+        settings = weapon.create_settings()
+        defaults = settings.to_dict() if settings is not None else {}
+        merged = {**defaults, **(base or {})}
+        merged["laser_code"] = laser_code.code
+        return merged
 
     def setup_fuel(self) -> None:
         fuel = self.flight.state.estimate_fuel()

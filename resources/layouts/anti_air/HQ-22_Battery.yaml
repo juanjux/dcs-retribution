@@ -20,7 +20,7 @@ groups:
         - CH_SX2190
     - name: S-300 Site TR
       unit_count:
-        - 1
+        - 2  # guidance-radar redundancy: one ARM hit must not blind the whole site
       unit_types:
         - CH_HQ22_STR
     - name: S-300 Site LN1

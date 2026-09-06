@@ -11,6 +11,7 @@ from dcs.planes import C_101CC, C_101EB, Su_33, FA_18C_hornet, C_130J_30
 
 from game.dcs.aircrafttype import AircraftType
 from game.theater import ControlPoint, MissionTarget
+from game.utils import max_optional_distance
 from pydcs_extensions.hercules.hercules import Hercules
 from .flightmembers import FlightMembers
 from .flightroster import FlightRoster
@@ -43,6 +44,7 @@ if TYPE_CHECKING:
     from .flightwaypoint import FlightWaypoint
     from .package import Package
     from .starttype import StartType
+    from game.utils import Distance
 
 F18_TGP_PYLON: int = 4
 
@@ -82,6 +84,18 @@ class Flight(
         self.start_type = start_type
         self.custom_name = custom_name
         self.group_id: int = 0
+
+        # When True, weapons that don't need a locked target (decoys, unguided) are
+        # released at the ingress point regardless of range instead of the AI closing
+        # to weapon range, so a stand-off decoy/harassment run can bait SAMs from
+        # outside their reach. Player/planner toggled; honored by SEAD ingress.
+        self.release_at_ingress = False
+
+        # True for the stand-in flights that represent aircraft parked on the ramp.
+        # They are given a squadron and a pilot so the debriefing code can account for
+        # the airframe, but nobody is sitting in one: bombing the ramp costs aircraft,
+        # not aircrew. A plain default, so an older save reads False.
+        self.parked_reserve = False
 
         # When set on an AIR_ASSAULT helicopter flight, the helos land at the
         # objective and do NOT return home: at turn end they redeploy to the base
@@ -141,7 +155,7 @@ class Flight(
         # altitude offset for planes
         offset_factor = self.coalition.game.settings.max_plane_altitude_offset
         offset_factor = random.randint(0, offset_factor)
-        self.plane_altitude_offset = 1000 * offset_factor * random.choice([-1, 1])
+        self.plane_altitude_offset: int = 1000 * offset_factor * random.choice([-1, 1])
 
     @property
     def available_callsigns(self) -> List[str]:
@@ -186,6 +200,7 @@ class Flight(
         if "use_same_loadout_for_all_members" not in state:
             state["use_same_loadout_for_all_members"] = True
         state.setdefault("halt_sim_on_spawn", False)
+        state.setdefault("release_at_ingress", False)
         state.setdefault("remain_at_destination", False)
         self.__dict__.update(state)
         if isinstance(self.roster, FlightRoster):
@@ -304,6 +319,12 @@ class Flight(
     def any_member_has_weapon_of_type(self, weapon_type: WeaponType) -> bool:
         return any(
             m.loadout.has_weapon_of_type(weapon_type) for m in self.iter_members()
+        )
+
+    def max_standoff_range(self) -> Optional[Distance]:
+        """The longest stand-off launch range across the flight's members, if any."""
+        return max_optional_distance(
+            m.loadout.max_standoff_range() for m in self.iter_members()
         )
 
     def __repr__(self) -> str:

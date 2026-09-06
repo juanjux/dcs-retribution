@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Optional, TYPE_CHECKING
 
 from game.debriefing import Debriefing
+from game.missionarchive import archive_mission
 from game.missiongenerator import MissionGenerator
 from game.settings.settings import FastForwardStopCondition, CombatResolutionMethod
 from game.unitmap import UnitMap
@@ -34,6 +35,9 @@ class MissionSimulation:
         self.aircraft_simulation = AircraftSimulation(self.game)
         self.completed = False
         self.time = self.game.conditions.start_time
+        #: Wall-clock time the playable .miz was generated. Any state.json
+        #: written after this belongs to the current mission; older files are
+        #: stale leftovers and must be ignored by end-of-mission detection.
         self.miz_generated_at: float = 0.0
 
     def begin_simulation(self) -> None:
@@ -80,6 +84,9 @@ class MissionSimulation:
         with logged_duration("Mission generation"):
             self.unit_map = MissionGenerator(self.game, self.time).generate_miz(output)
         self.miz_generated_at = time.time()
+        # Keep a named copy: `output` is a fixed path the next generation overwrites.
+        # Best-effort, never raises -- the mission itself is already written.
+        archive_mission(self.game, output)
 
     def debrief_current_state(
         self, state_path: Path, force_end: bool = False
