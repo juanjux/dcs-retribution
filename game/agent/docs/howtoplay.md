@@ -81,12 +81,35 @@ you lose if they capture yours. Think in terms of a campaign, not a single turn.
 - **Pilots matter**: every aircraft in a flight needs a pilot. A flight with empty
   seats will **block the turn from starting** — always crew your flights (the API
   assigns pilots automatically and refuses pilotless flights).
+- **Pilots are people, and you can pick them.** `GET /squadrons/{squadron_id}/pilots`
+  is the squadron's roster: each pilot's **rank**, **experience**, the **skill** he
+  actually flies at, whether he is **wounded** (and for how many more turns), and
+  `assigned_to` naming the flight he is already crewing. The entries **without**
+  `assigned_to` are the ones you can task.
+
+  `GET /flights/{flight_id}/crew` shows who is in each seat of one flight plus the free
+  pilots, and `POST /flights/crew` `{flight_id, seat, pilot_name}` puts a named pilot in
+  a seat — the same move as the player's Edit Flight dropdown. A null `pilot_name`
+  empties the seat. It refuses anyone dead, wounded, on leave or already flying: a pilot
+  can only be in one place.
+
+  Worth doing when experience matters to the sortie. With the campaign's Live Pilots
+  setting on, a pilot's rank *is* his DCS skill level, so putting the veterans in the
+  flight that has to succeed and the cadets on the quiet BARCAP is a real decision — and
+  an inexperienced pilot will not attack from as high up (see the altitude warning under
+  waypoints). Without that setting every pilot flies the same, and crewing is only about
+  keeping your named people alive.
 - **Ground forces**: vehicle groups at your bases and along the front. You buy them,
   move them between bases (transfers), and commit them via front-line stance.
 - **Money**: you earn income each turn and spend it on aircraft and ground units.
   Bought aircraft arrive **next turn**. You cannot conjure money or units — buy
   within budget. (Income multipliers etc. are fixed campaign settings; you read
   them, you don't change them.)
+- **Every setting is readable.** `GET /settings` carries the handful worth planning
+  around as named fields, and `all_settings` beneath them: every box on the campaign's
+  settings pages with its page, section, label, current value and the explanation the
+  player reads — mission durations, doctrine distances, difficulty, all of it. Read it
+  **once at the start of a campaign**, not every turn: it is around two hundred entries.
 
 ## 4. Missions: packages, flights, and roles
 

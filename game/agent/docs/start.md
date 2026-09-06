@@ -61,6 +61,9 @@ tool/resource of the same name.
 - `GET /prev_turns?n=1` — after-action of prior turns (losses, who-killed-what, captures)
 - `GET /packages?side=red` — current packages/flights (each with `id` + pilots + waypoints)
 - `GET /waypoints/{flight_id}` — a flight's waypoints
+- `GET /squadrons/{squadron_id}/pilots` — the squadron's roster: rank, experience,
+  skill, wounds, and `assigned_to` for anyone already crewing a flight
+- `GET /flights/{flight_id}/crew` — who is in each seat, plus the pilots still free
 - `GET /map/image?side=red[&bbox=s,w,n,e]` — rendered PNG strategic map (control points, front lines, threat umbrellas, your naval) for visual analysis; `bbox` (lat/lng south,west,north,east) zooms in
 - `GET /iads?side=red` — the enemy air-defense network as a graph: each site's role
   (`PowerSource`/`ConnectionNode`/`CommandCenter`/`Ewr`/`Sam`) and what feeds it
@@ -77,6 +80,8 @@ tool/resource of the same name.
 - `POST /payload/validate` — check a custom `{pylon: clsid}` payload is valid for an airframe.
 - `POST /waypoints/edit` — move/adjust a flight waypoint (position/altitude); never deletes
   (waypoint 0 immovable). Read them first with `GET /waypoints/{flight_id}`.
+- `POST /flights/crew` — put a named pilot in a seat (`{flight_id, seat, pilot_name}`),
+  or empty it with a null name. Refuses anyone dead, wounded, on leave or already flying.
 - `POST /flights/loadout` — re-arm a flight that already exists (`flight_id` + a `loadout`
   name or `{pylon: clsid}` map). For flights the engine made for you, not you for it:
   a squadron relocation launches its ferries with an **Empty** loadout.

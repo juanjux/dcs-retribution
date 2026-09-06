@@ -18,7 +18,7 @@ from typing import Any, TYPE_CHECKING
 
 from dcs.mapping import Point as DcsPoint
 from dcs.weather import Weather as PydcsWeather, Wind
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from game.income import Income
 from game.theater.player import Player
@@ -483,6 +483,23 @@ class SettingsView(BaseModel):
         False  # each turn, both sides automatically commit one cruise missile raid at
         # their best reachable enemy ground object. Spends YOUR magazine without asking
     )
+    all_settings: list[SettingView] = Field(default_factory=list)
+    # Every setting on the campaign's settings pages, in the order they appear there,
+    # with the label and explanation the player reads. The named fields above are the
+    # ones worth planning around and are repeated here; everything else -- mission
+    # durations, doctrine distances, difficulty, the lot -- is only here. Read it once
+    # at the start of a campaign rather than every turn: it is long.
+
+
+class SettingView(BaseModel):
+    """One setting exactly as the player sees it on the settings page."""
+
+    key: str  # what it is called in the code, e.g. desired_tarcap_mission_duration
+    page: str
+    section: str
+    label: str  # the text beside the box
+    value: Any  # its current value, as a number, a bool or a string
+    detail: str | None = None  # the explanation under the box, when it has one
 
 
 class UnitTypeOption(BaseModel):
@@ -1308,7 +1325,50 @@ def build_settings(game: Game) -> SettingsView:
         runway_repair_turns=RUNWAY_REPAIR_TURNS,
         cruise_missile_strikes=s.cruise_missile_strikes,
         cruise_missile_auto_raids=s.cruise_missile_auto_raids,
+        all_settings=_all_settings(s),
     )
+
+
+def _all_settings(s: Any) -> list[SettingView]:
+    """Every setting on the pages, in the order the player reads them.
+
+    The curated fields above cover what the planner usually needs; this is for
+    everything else, and it is how a question like "how long is a mission?" gets
+    answered without someone adding a field for it first.
+    """
+    from game.settings import Settings
+
+    out: list[SettingView] = []
+    for page in Settings.pages():
+        for section in Settings.sections(page):
+            for key, description in Settings.fields(page, section):
+                if (
+                    description.visible_when is not None
+                    and not description.visible_when(s)
+                ):
+                    continue  # a setting the campaign is not offering right now
+                out.append(
+                    SettingView(
+                        key=key,
+                        page=page,
+                        section=section,
+                        label=description.text,
+                        value=_setting_value(getattr(s, key, None)),
+                        detail=description.detail,
+                    )
+                )
+    return out
+
+
+def _setting_value(value: Any) -> Any:
+    """Whatever JSON can carry: minutes for a duration, the name for an enum."""
+    from datetime import timedelta
+
+    if isinstance(value, timedelta):
+        return int(value.total_seconds() // 60)
+    if isinstance(value, (bool, int, float, str)) or value is None:
+        return value
+    return getattr(value, "name", str(value))
 
 
 def _flight_loadout(flight):
