@@ -1,0 +1,16 @@
+name: Ala 46 - Esc. 462
+nickname: Halcones
+country: Spain
+role: Multirole Fighter
+aircraft: Eurofighter Typhoon
+livery: Spanish Eurofighter Typhoon 11-24
+mission_types:
+- BARCAP
+- TARCAP
+- Escort
+- Fighter sweep
+- Intercept
+- CAS
+- BAI
+- Strike
+- Armed Recon

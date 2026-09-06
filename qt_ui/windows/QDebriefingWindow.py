@@ -1,12 +1,15 @@
 import logging
-from typing import Callable, Dict, TypeVar
+from typing import Callable, Dict, Optional, TypeVar
 
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QIcon, QPixmap, QCloseEvent
 from PySide6.QtWidgets import (
     QDialog,
     QGridLayout,
     QGroupBox,
     QLabel,
+    QFrame,
+    QMessageBox,
     QPushButton,
     QScrollArea,
     QVBoxLayout,
@@ -15,6 +18,7 @@ from PySide6.QtWidgets import (
 
 from game.cruise_raids import debrief_expenditures
 from game.debriefing import Debriefing
+from game.squadrons.experience import turns_phrase
 from game.theater import Player
 from qt_ui.windows.GameUpdateSignal import GameUpdateSignal
 
@@ -100,19 +104,20 @@ class LossGrid(QGridLayout):
                 )
 
 
-class ScrollingCasualtyReportContainer(QGroupBox):
+class CasualtyReportContainer(QGroupBox):
+    """The list of what one side lost.
+
+    It used to be a scroll area of its own, from when the window did not scroll. Now
+    that the whole report does, a second bar inside it only makes two lines of losses
+    look like a list too long to fit.
+    """
+
     def __init__(self, debriefing: Debriefing, player: Player) -> None:
         country = (
             debriefing.player_country if player.is_blue else debriefing.enemy_country
         )
         super().__init__(f"{country}'s lost units:")
-        scroll_content = QWidget()
-        scroll_content.setLayout(LossGrid(debriefing, player))
-        scroll_area = QScrollArea()
-        scroll_area.setWidget(scroll_content)
-        layout = QVBoxLayout()
-        layout.addWidget(scroll_area)
-        self.setLayout(layout)
+        self.setLayout(LossGrid(debriefing, player))
 
 
 class MissionImpactGrid(QGridLayout):
@@ -191,8 +196,23 @@ class QDebriefingWindow(QDialog):
         self.setMinimumSize(300, 200)
         self.setWindowIcon(QIcon("./resources/icon.png"))
 
+        # The report scrolls as a whole. It used not to, and a mission with a busy
+        # Pilots box squeezed every section until the lines overlapped each other:
+        # the window can only grow to the height of the screen, and the layout took
+        # the difference out of whatever was longest.
+        outer = QVBoxLayout()
+        self.setLayout(outer)
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        outer.addWidget(scroll, 1)
+
+        body = QWidget()
+        scroll.setWidget(body)
         layout = QVBoxLayout()
-        self.setLayout(layout)
+        body.setLayout(layout)
 
         header = QLabel(self)
         header.setGeometry(0, 0, 655, 106)
@@ -206,15 +226,11 @@ class QDebriefingWindow(QDialog):
         impact = MissionImpactContainer(debriefing)
         layout.addWidget(impact)
 
-        player_lost_units = ScrollingCasualtyReportContainer(
-            debriefing, player=Player.BLUE
-        )
+        player_lost_units = CasualtyReportContainer(debriefing, player=Player.BLUE)
         layout.addWidget(player_lost_units)
 
-        enemy_lost_units = ScrollingCasualtyReportContainer(
-            debriefing, player=Player.RED
-        )
-        layout.addWidget(enemy_lost_units, 1)
+        enemy_lost_units = CasualtyReportContainer(debriefing, player=Player.RED)
+        layout.addWidget(enemy_lost_units)
 
         # Shown after the turn-boundary debit, so "remaining" is the magazine sailing
         # into next turn. Enemy remainders stay hidden.
@@ -232,11 +248,115 @@ class QDebriefingWindow(QDialog):
             expenditure_box.setLayout(expenditure_grid)
             layout.addWidget(expenditure_box)
 
+        pilots_box = self._pilots_box(debriefing)
+        if pilots_box is not None:
+            layout.addWidget(pilots_box)
+        layout.addStretch(1)
+
+        # Outside the scroll area: the way out of the dialog is always in reach.
         okay = QPushButton("Okay")
         okay.clicked.connect(self.close)
-        layout.addWidget(okay)
+        outer.addWidget(okay)
+
+        # Tall enough to read without being taller than the screen.
+        available = self.screen().availableGeometry() if self.screen() else None
+        if available is not None:
+            self.resize(
+                min(760, available.width() - 80),
+                min(920, available.height() - 80),
+            )
+
+    @staticmethod
+    def _pilots_box(debriefing: Debriefing) -> Optional[QGroupBox]:
+        """Who went up, who walked away, and who did not come back.
+
+        Omitted entirely when nothing happened to the aircrew: an empty box says less
+        than no box.
+        """
+        outcomes = debriefing.pilot_outcomes
+        if outcomes.empty:
+            return None
+
+        box = QGroupBox("Pilots:")
+        grid = QGridLayout()
+        row = 0
+
+        def line(text: str, detail: str = "") -> None:
+            nonlocal row
+            grid.addWidget(QLabel(text), row, 0)
+            if detail:
+                grid.addWidget(QLabel(detail), row, 1)
+            row += 1
+
+        if outcomes.promotions:
+            line("<b>Promoted</b>")
+            for promotion in outcomes.promotions:
+                line(
+                    f"{promotion.from_rank} {promotion.pilot_name}",
+                    f"promoted to {promotion.to_rank} — {promotion.squadron}",
+                )
+
+        if outcomes.survivors:
+            line("<b>Shot down and recovered</b>")
+            for survivor in outcomes.survivors:
+                brought_down = survivor.killed_by or "an unknown attacker"
+                line(
+                    survivor.pilot_name,
+                    f"lost his {survivor.aircraft} to {brought_down}, and walked away",
+                )
+
+        if outcomes.wounded:
+            line("<b>Wounded</b>")
+            for wound in outcomes.wounded:
+                line(
+                    wound.pilot_name,
+                    f"pulled out alive, unavailable for "
+                    f"{turns_phrase(wound.turns)} — {wound.squadron}",
+                )
+
+        if outcomes.deaths:
+            line("<b>Killed in action</b>")
+            for death in outcomes.deaths:
+                if death.friendly_fire:
+                    detail = f"killed by {death.killed_by} — friendly fire"
+                elif death.killed_by:
+                    detail = f"killed by {death.killed_by}"
+                else:
+                    detail = "lost, with nobody credited"
+                line(f"{death.pilot_name} ({death.aircraft})", detail)
+
+        box.setLayout(grid)
+        return box
 
     def closeEvent(self, event: QCloseEvent) -> None:
         super().closeEvent(event)
+        # Queued rather than shown here: this dialog is modal and still closing, and a
+        # second modal raised inside its own close handler does not always come up.
+        QTimer.singleShot(0, self._congratulate_the_player)
         state = self.debriefing.game.check_win_loss()
         GameUpdateSignal.get_instance().gameStateChanged(state)
+
+    def _congratulate_the_player(self) -> None:
+        """Tell the player he has been promoted. Nobody else gets a parade."""
+        promotions = [p for p in self.debriefing.pilot_outcomes.promotions if p.player]
+        if not promotions:
+            return
+
+        # He knows who he is and which squadron he flies for, so the rank is the whole
+        # of the news. More than one player pilot can be promoted in a mission, though,
+        # and then they cannot all be "you": name them instead.
+        box = QMessageBox(self)
+        box.setWindowTitle("Promotion")
+        box.setIcon(QMessageBox.Icon.Information)
+        if len(promotions) == 1:
+            rank = promotions[0].to_rank_full or promotions[0].to_rank
+            box.setText(f"<b>Congratulations, you have been promoted to {rank}!</b>")
+        else:
+            box.setText("<b>Congratulations!</b>")
+            box.setInformativeText(
+                "<br>".join(
+                    f"{p.pilot_name} is promoted to {p.to_rank_full or p.to_rank}"
+                    for p in promotions
+                )
+            )
+        box.exec()

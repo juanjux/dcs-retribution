@@ -23,6 +23,7 @@ from game.data.weapons import Pylon, Weapon, WeaponGroup
 from game.dcs.aircrafttype import AircraftType
 from game.factions import FACTIONS
 from game.persistency import base_path
+from game.payloadbackup import backup_payloads
 from game.profiling import logged_duration
 from game.server import EventStream, Server
 from game.settings import Settings
@@ -115,6 +116,14 @@ def run_ui(game: Optional[Game], ui_flags: UiFlags) -> None:
     )
 
     inject_custom_payloads(persistency.base_path())
+
+    # Before anything can write to the payload directory, and before the user goes
+    # looking for whatever made them open Retribution today.
+    snapshot = backup_payloads(
+        persistency.payloads_dir(), persistency.payload_backups_dir()
+    )
+    if snapshot is not None:
+        logging.info("Backed up the payload library to %s", snapshot)
 
     # Splash screen setup
     pixmap = QPixmap("./resources/ui/splash_screen.png")

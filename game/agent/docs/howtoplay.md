@@ -164,6 +164,19 @@ The DCS AI that actually flies these missions is limited. Plan robustly around i
   huge blob. The defense can't suppress them all at once, so more flights reach their launch
   range before reacting to fire. Saturation works by **dispersion in space and time**, not by
   one big formation (which all aborts together).
+- **`ground_pending_transfer` means an army you have decided to move and cannot.** Those
+  vehicles are *included* in `ground`: still parked at that base, still deploying to its
+  front, still counted in the ground war. They leave only when a transport turns up, so a
+  large number here is a standing order going nowhere -- cancel it, or buy the lift.
+  `ground_transferring_out` is the opposite: gone this turn, and they will not defend
+  that base or its front.
+- **At night, a flight whose only air-to-ground weapons are unguided will not attack.**
+  Dumb bombs and unguided rockets are aimed by eye. Without a targeting pod the AI reaches
+  the target in the dark, finds nothing it can aim at, and turns for home with a full load —
+  observed with Hornets carrying Mk-8x bombs, which flew all the way to the target and came
+  back without dropping. For a night mission, send aircraft carrying **guided** weapons, or
+  one that carries **its own pod**; otherwise put that strike in daylight. Check
+  `turn_context` for the mission time before you commit a package to dumb bombs.
 - **Match the INGRESS to the weapon's range — for ANY stand-off attack, this is the big one.**
   The auto-planned **INGRESS** waypoint (where the attack *begins*) is placed close to the
   target (~45 nm) for EVERY attack type. That's fine for short-range / direct-attack weapons
@@ -199,6 +212,32 @@ The DCS AI that actually flies these missions is limited. Plan robustly around i
     same move used for a jamming/EWAR escort.
   Read `GET /waypoints/{flight_id}` and reposition these with `/waypoints/edit` (move, never
   delete), exactly like the strike ingress above.
+
+- **Raising a CAS or BAI flight's altitude can stop it attacking altogether.** Height is
+  not free the way distance is: past a point the AI flies over the target and never fires,
+  and where that point sits depends on the airframe, on the weapons it is carrying, and on
+  how experienced the pilot is. There is no rule to read it off; it is found by flying it.
+  Worked example, measured in game: a pair of **Su-25T** with Vikhr and Kh-29T crossed a
+  front full of armour at 5,000 m unopposed and came home without firing a shot. Flown
+  again lower, the same pair attacked — a cadet down to about 3,000 m, an average pilot to
+  about 4,500. **Those numbers are that aircraft's with that load, and nothing else's.**
+
+  `/waypoints/edit` answers with a warning when `alt_m` puts a CAS or BAI flight above the
+  altitude its own aircraft is planned to fight from. The edit is applied either way, so
+  the warning is yours to weigh: flying high is how you stay out of MANPADS, and there is
+  no altitude that does both.
+
+  **Moving the INGRESS alone is not enough, and this is the single most repeated planning
+  miss.** After every DEAD/SEAD package, walk the whole list per flight:
+
+  1. `INGRESS_*` on every flight that shoots.
+  2. `ESCORT HOLD` (type `CUSTOM`) — the planner parks it a few miles off the target, so
+     the escort orbits inside the ring while the strikers stand off.
+  3. The escort's `TARGET_GROUP_LOC` — it points at the SAM itself.
+  4. `NAV/SEAD Sweep` on the sweep flight.
+
+  `JOIN` can stay where it is. If you moved the ingress to 90 nm and left HOLD at 7 nm,
+  you have not moved the package: you have split it.
 - **Don't mix short-legged flights into a stand-off bomber package.** The package
   synchronises on its shortest-ranged member: a short-range SEAD/strike flight in the same
   package drags the bombers to ITS attack distance — into the SAM ring, abort included.
@@ -237,6 +276,29 @@ park you can bomb (`kind:motorpool` in `targets[]`, task **BAI**).
 - **Your own reserve is exposed the same way.** Armor you buy and leave sitting at a base
   within blue's reach is a standing target — commit it to a front, or expect to pay for it
   twice.
+
+### GPS jamming: where your satellite-guided weapons stop working
+
+Some campaigns field **GPS jammers** -- an ordinary ground unit, bombable like any
+other, that denies satellite guidance over an area around itself (typically ~15 nm).
+Inside that area a **JDAM, JSOW or JASSM lands off the aimpoint**, further off
+the deeper in the target sits. The weapon still flies its whole normal profile, so
+nothing warns you: the pass simply misses.
+
+What that means for planning:
+
+- **The bubble is a denied TARGET area, not a denied release area.** A weapon aimed at
+  something inside it flies through it whatever range you released from, so standing off
+  buys nothing. Moving the AIMPOINT out is the only thing that helps.
+- **Laser, TV, IR, anti-radiation weapons and the SLAM-ER are unaffected.** Against a target inside a
+  bubble, task an airframe carrying those instead -- a laser-guided bomb or a Maverick
+  hits normally where a JDAM will not.
+- **Killing the jammer restores accuracy immediately**, on the very next weapon in the
+  same mission. So a strike package with a jammer inside its target area should service
+  the jammer first and then bomb, in that order, rather than accept the miss.
+- **It is symmetric.** Your own jammers do the same to blue's GPS weapons, so a jammer
+  sitting over what you most need to protect is worth more than one in open country.
+  They are bought and repaired like any ground unit.
 
 ### Fighting the IADS, not just the launchers
 
@@ -531,7 +593,12 @@ means none/empty** (stated once so the per-turn payloads stay small).
   `parking_free`?/`parking_total`? (room to buy/station aircraft),
   `can_recruit_ground`? (true = you can `buy/ground` here), `links`? (adjacent
   control-point ids — land moves and where fronts form), `ground`? (armor on hand,
-  `{unit: count}` — what you can `ground/transfer`), `motorpool`? (how many of that armor
+  `{unit: count}` — what you can `ground/transfer`), `air`? (aircraft based there
+  grouped by role, `{"CAP": {"F-16CM …": 7}, "CAS": {"AH-64D …": 6}}` — the same
+  breakdown the human reads on that base's Intel tab, for BOTH sides. **On an enemy
+  field this is what decides an OCA/Aircraft package**: seven fighters is worth a
+  strike, two transports is not, and the count is aircraft PRESENT, not ordered or in
+  transit), `motorpool`? (how many of that armor
   sit **undeployed in a bombable depot**: on YOUR base that is what a blue BAI strike can
   destroy and force you to repurchase — deploy it or defend it; on an enemy base it sizes
   the prize behind a `kind:motorpool` target. Omitted when the base has no motorpool or
@@ -545,7 +612,10 @@ means none/empty** (stated once so the per-turn payloads stay small).
 - `air_wing[]` — your squadrons — {`id`, `name`, `aircraft`, `base`, `owned`?,
   `untasked`?, `flyable`? (**the number to plan with**: aircraft you can actually
   LAUNCH this turn = `min(untasked, pilots)`, or 0 if grounded — `untasked` can exceed
-  your pilots, `flyable` can't; omitted when 0), `pending`?, `pilots`, `max_ac`?
+  your pilots, `flyable` can't; omitted when 0), `pending`?, `pilots`, `price` (cost of
+  **ONE** aircraft — `buy/aircraft` with `quantity: n` costs `n * price`, so
+  `budget / price` is how many you can actually afford this turn; do not guess it),
+  `max_ac`?
   (squadron airframe cap: `buy/aircraft` refuses once `owned + pending` reaches it —
   a 1-aircraft cap means that airframe is IRREPLACEABLE, protect it; omitted when the
   campaign has no per-squadron limits), `grounded`? (true = the squadron cannot sortie
@@ -576,6 +646,11 @@ means none/empty** (stated once so the per-turn payloads stay small).
   still up — not just alive/dead, so you can tell a lightly-scratched SA-10 from a
   nearly-dead one and not over-commit a DEAD package),
   `damage`? (a damaged target — don't waste sorties finishing it)};
+  `rebuild`? ({`force_group`, `turns_remaining`} -- the site is UNDER CONSTRUCTION,
+  not destroyed: all its units are dead but on a countdown, and they come alive in
+  `turns_remaining` turns. Read it both ways: an enemy SAM two turns from coming back
+  is not a free corridor to route through, and one of your own sites under
+  construction is not somewhere to send a repair),
   **aim a package at the `id`**;
 - `threats[]` — blue's strongest air-defense umbrellas (radar SAMs + SAM-armed ships)
   **ranked by reach** (largest first), a frugal digest of `targets` so you needn't sort
@@ -661,7 +736,8 @@ guess endpoint names). Full prose is here in `/howtoplay`.
 `GET /prev_turns?n=` → `[{turn, blue_aircraft, blue_vehicles, red_aircraft,
 red_vehicles, blue_air_lost?, red_air_lost?, blue_air_crashed?, red_air_crashed?,
 blue_air_combat?, red_air_combat?, blue_ground_lost?, red_ground_lost?,
-blue_sites_lost?, red_sites_lost?, red_air_killers?, blue_air_killers?}]`.
+blue_sites_lost?, red_sites_lost?, red_air_killers?, blue_air_killers?,
+*_air_lost_by_type?, *_air_kills_by_weapon?, *_air_kills_by_victim?}]`.
 
 **Air losses (precomputed, no arithmetic needed).** `*_air_lost` is the total;
 `*_air_crashed` is the **non-combat subset** (crashes/collisions, no credited shooter);
@@ -670,6 +746,30 @@ directly); and `*_air_killers` (`{unit/weapon: count}`) breaks that combat count
 what killed them. If the `crashes_dont_count` setting (`/settings`) is ON, crashed
 aircraft do NOT deplete the squadron or kill the pilot, so weigh them lightly; if OFF, a
 crash costs the airframe and pilot like any loss.
+
+**Three breakdowns that let you judge an airframe and a loadout, not just a headline.**
+All three are aggregates keyed by TYPE, so they cost a few hundred tokens whatever
+happened in the mission:
+
+- `*_air_lost_by_type` (`{"Mi-24P": 8, "Su-25": 6}`) -- WHAT died. "Thirty aircraft
+  lost" does not tell you whether your gunships or your CAS went, and those two say
+  different things about what to fly next turn.
+- `*_air_kills_by_weapon` (`{"R-37M": 20}`) -- what did the KILLING, by weapon alone.
+  This is the one to judge a loadout by. Twenty kills all from the long-range missile
+  and none from the dogfight missile means the fight never got close, so more of the
+  short-range one buys nothing.
+- `*_air_kills_by_victim` (`{"Su-57": {"F-16C_50": 9, "F15EX": 4}}`) -- WHICH airframe
+  killed WHICH. Read that as "red's Su-57s were shot down nine times by F-16Cs and four
+  by F-15EXs". This is the matchup table: it tells you which of your types is losing to
+  which of theirs, which no total ever can.
+
+`*_air_killers` predates these three and is kept for compatibility, but it falls back
+from the shooter to the weapon and so mixes airframes and missiles in one dict. Prefer
+`*_air_kills_by_weapon` and `*_air_kills_by_victim`, which never mix the two.
+
+The per-event record -- every shot and hit with its time, ids and coalition -- is
+deliberately NOT here. It is a whole event log per turn, it costs far more than these
+aggregates, and nothing in it changes a plan that these do not already tell you.
 
 **Site/naval losses — the concrete result of the turn's strikes.** `*_sites_lost` is
 `{unit-type-id: count}` of the ground/naval **units destroyed that turn** — ships by hull
