@@ -9,9 +9,13 @@ groups:
         - 1
       unit_classes:
         - AircraftCarrier
+  # The screen is a mix of whatever surface combatants the faction fields, not
+  # four copies of one destroyer (naval layouts mix types within a slot).
   - Escort:
     - name: Carrier Group 1
       unit_count:
         - 4
       unit_classes:
         - Destroyer
+        - Cruiser
+        - Frigate

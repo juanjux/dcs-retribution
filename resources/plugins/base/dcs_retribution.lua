@@ -14,6 +14,7 @@ destroyed_objects_positions = {} -- will be added via S_EVENT_DEAD event
 took_off = {}   -- unit name -> true (S_EVENT_TAKEOFF); a ground-start unit absent here was destroyed parked
 death_time = {} -- unit name -> first death-event mission time (s), for indirect-kill timing
 cruise_missiles_state = {} -- cruisemissiles plugin appends/updates {group=, fired=} per ship group that launched; Python debits the campaign magazine at the turn boundary
+naval_magazines_state = {} -- navalmagazines plugin appends/updates {group=, fired=} per naval group that fired ANTI-SHIP missiles (a disjoint weapon set from cruise_missiles_state); Python debits the campaign magazine at the turn boundary
 mission_ended = false
 dirty_state = false -- Track if state has changed and needs writing
 
@@ -145,6 +146,7 @@ function write_state()
         ["took_off"] = took_off,
         ["death_time"] = death_time,
         ["cruise_missiles_state"] = cruise_missiles_state or {},
+        ["naval_magazines_state"] = naval_magazines_state or {},
     }
     local t0 = os.clock()
     local ok, write_error = pcall(function()

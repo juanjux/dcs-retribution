@@ -90,6 +90,18 @@ class ControlPointView(BaseModel):
     can_recruit_ground: bool | None = None  # has a factory/front — buy ground here
     links: list[str] | None = None  # adjacent control-point ids (land moves / fronts)
     ground: dict[str, int] | None = None  # armor on hand here (unit name -> count)
+    ground_pending_transfer: int | None = (
+        None  # vehicles ordered away from here that have found no transport yet.
+        # They are INCLUDED in ground above: still parked here, still deployable to
+        # the front, still counted in the ground war. They leave only when a lift
+        # turns up, so a big number here is an army you have decided to move and
+        # cannot
+    )
+    ground_transferring_out: int | None = (
+        None  # vehicles that left here under a transport this turn. NOT included
+        # in ground above -- they are on the road or in the air and will not defend
+        # this base or its front
+    )
     air: dict[str, dict[str, int]] | None = (
         None  # aircraft based here, grouped by role: {"CAP": {"F-16CM …": 7}, …}. The
         # same breakdown the human reads on a base's Intel tab, for both sides — on an
@@ -176,6 +188,13 @@ class PackageView(BaseModel):
     flights: list[FlightView]
 
 
+class RebuildView(BaseModel):
+    """A site that is being rebuilt: what it will become, and when."""
+
+    force_group: str  # what it is being rebuilt into
+    turns_remaining: int  # turns until its units come alive
+
+
 class TargetView(BaseModel):
     id: str
     name: str
@@ -191,6 +210,10 @@ class TargetView(BaseModel):
     group_id: str | None = (
         None  # ships: their naval-group control-point id (concentrate)
     )
+    #: Set only while the site is being rebuilt: what it will become and how many
+    #: turns until its units come alive. Without it a site under construction is
+    #: indistinguishable from a destroyed one -- the player sees the works on the map.
+    rebuild: RebuildView | None = None
     iads_role: str | None = (
         None  # what this site is to the enemy IADS, when it is part of one: PowerSource /
         # ConnectionNode / CommandCenter / Ewr / Sam / SamAsEwr. Tells a code-named
@@ -313,6 +336,21 @@ class TurnForcesView(BaseModel):
     )
     blue_ground_lost: int | None = None
     red_ground_lost: int | None = None
+    #: What died, by airframe: {"Mi-24P": 8, "Su-25": 6}. A headline count does not
+    #: say whether a side lost its Hinds or its Frogfoots, and the two mean different
+    #: things for the next turn.
+    red_air_lost_by_type: dict[str, int] | None = None
+    blue_air_lost_by_type: dict[str, int] | None = None
+    #: What did the killing, by WEAPON alone: {"R-37M": 20}. Judge a loadout from this
+    #: rather than from *_air_killers below, which falls back from the shooter to the
+    #: weapon and so mixes airframes and missiles in one dict.
+    red_air_kills_by_weapon: dict[str, int] | None = None
+    blue_air_kills_by_weapon: dict[str, int] | None = None
+    #: Which airframe killed which: {"Su-57": {"F-16C_50": 9, "F15EX": 4}} reads "red's
+    #: Su-57s were shot down 9 times by F-16Cs and 4 by F-15EXs". One nesting deep, and
+    #: aggregated, so it grows with the number of TYPES in the fight, not with kills.
+    red_air_kills_by_victim: dict[str, dict[str, int]] | None = None
+    blue_air_kills_by_victim: dict[str, dict[str, int]] | None = None
     red_air_killers: dict[str, int] | None = None  # what killed red's aircraft
     blue_air_killers: dict[str, int] | None = None  # what killed blue's aircraft
     blue_air_combat: int | None = (
@@ -477,6 +515,14 @@ def build_control_point(game: Game, cp: ControlPoint) -> ControlPointView:
     ground = {ut.display_name: n for ut, n in armor.items() if n} if armor else None
     links = [str(n.id) for n in getattr(cp, "connected_points", [])] or None
     try:
+        allocations = cp.allocated_ground_units(
+            game.coalition_for(cp.captured).transfers
+        )
+        pending_out = allocations.total_pending_transfer or None
+        moving_out = allocations.total_transferring_out or None
+    except Exception:
+        pending_out = moving_out = None
+    try:
         recruit = bool(cp.has_ground_unit_source(game)) or None
     except Exception:
         recruit = None
@@ -498,6 +544,8 @@ def build_control_point(game: Game, cp: ControlPoint) -> ControlPointView:
         can_recruit_ground=recruit,
         links=links,
         ground=ground or None,
+        ground_pending_transfer=pending_out,
+        ground_transferring_out=moving_out,
         air=_air_intel(cp),
         can_launch=(False if not operational else None),
         no_launch_reason=(None if operational else _no_launch_reason(cp)),
@@ -628,7 +676,36 @@ def _build_target(game: Game, tgo, kind: str, task: str) -> TargetView:
         composition=composition,
         damage=_damage_word(tgo),
         iads_role=_iads_role(tgo),
+        rebuild=_rebuild_state(tgo),
     )
+
+
+def _rebuild_state(tgo: object) -> RebuildView | None:
+    """Whether this site is under construction, and what it will be.
+
+    A rebuilt site spends the repair delay with all of its units dead but with a
+    countdown on them, which reads exactly like a destroyed site: no composition, and
+    for an enemy site, dropped from the target list entirely. The player sees the works
+    on the map, so a planner that cannot is being asked to plan against a different
+    board -- and it matters both ways round. An enemy SAM coming back in two turns is
+    not a free corridor, and your own rebuilt site is not somewhere to send a repair.
+    """
+    turns = None
+    for unit in getattr(tgo, "units", []):
+        if getattr(unit, "alive", True):
+            return None  # something is already up: this is damage, not construction
+        remaining = getattr(unit, "repair_turns_remaining", None)
+        if remaining is not None:
+            turns = remaining if turns is None else max(turns, remaining)
+    if turns is None:
+        return None
+    name = None
+    for group in getattr(tgo, "groups", []):
+        name = getattr(group, "name", None)
+        if name:
+            break
+    fallback = getattr(tgo, "name", "")
+    return RebuildView(force_group=str(name or fallback), turns_remaining=int(turns))
 
 
 def _iads_role(tgo) -> str | None:
@@ -1066,6 +1143,12 @@ def build_prev_turns(game: Game, n: int = 3) -> list[TurnForcesView]:
                 red_air_crashed=loss.get("red_air_crashed") or None,
                 blue_ground_lost=loss.get("blue_ground_lost") or None,
                 red_ground_lost=loss.get("red_ground_lost") or None,
+                red_air_lost_by_type=loss.get("red_air_lost_by_type") or None,
+                blue_air_lost_by_type=loss.get("blue_air_lost_by_type") or None,
+                red_air_kills_by_weapon=loss.get("red_air_kills_by_weapon") or None,
+                blue_air_kills_by_weapon=loss.get("blue_air_kills_by_weapon") or None,
+                red_air_kills_by_victim=loss.get("red_air_kills_by_victim") or None,
+                blue_air_kills_by_victim=loss.get("blue_air_kills_by_victim") or None,
                 red_air_killers=loss.get("red_air_killers") or None,
                 blue_air_killers=loss.get("blue_air_killers") or None,
                 blue_air_combat=(

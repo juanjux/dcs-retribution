@@ -43,6 +43,11 @@ class GroupLayoutMapping:
     #  dedicated EWRs are available to the faction
     fallback_classes: list[UnitClass] = field(default_factory=list)
 
+    # May this group field more than one type of unit? Unset defers to the
+    # layout's own default (naval layouts mix hull types, everything else keeps
+    # a group uniform).
+    mix_unit_types: Optional[bool] = None
+
     @staticmethod
     def from_dict(d: dict[str, Any]) -> GroupLayoutMapping:
         optional = d["optional"] if "optional" in d else False
@@ -64,6 +69,7 @@ class GroupLayoutMapping:
             if "fallback_classes" in d
             else []
         )
+        mix_unit_types = d["mix_unit_types"] if "mix_unit_types" in d else None
         return GroupLayoutMapping(
             d["name"],
             optional,
@@ -74,6 +80,7 @@ class GroupLayoutMapping:
             unit_types,
             unit_classes,
             fallback_classes,
+            mix_unit_types,
         )
 
 
