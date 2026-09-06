@@ -113,6 +113,13 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   already flying. `/settings` keeps its curated fields and gains `all_settings`: every box
   on the settings pages with its label, value and explanation.
   ([#139](https://github.com/juanjux/dcs-retribution/pull/139))
+- **Saves still had pilots who were flying and available at once.** The fault below is
+  fixed, but every save written while it was live still carries the state -- five pilots
+  across three squadrons in one campaign -- so the Edit Flight dropdown listed the same
+  man twice and the next flight could claim him again. A migration step now takes anyone
+  in a cockpit out of the pool on load, and the selector lists nobody twice however the
+  save got that way.
+  ([#141](https://github.com/juanjux/dcs-retribution/pull/141))
 - **The same pilot could fly two missions in one turn.** Clearing a roster handed its crew
   back to the squadron and then went on holding them, so a pilot could be flying one
   mission and be offered for the next at the same time. Measured in a save: El Jefe and
