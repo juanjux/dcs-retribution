@@ -10,12 +10,14 @@ sellable -- again, letting the player refund their price repeatedly and driving
 negative ``pending_deliveries`` at end of turn.
 """
 
+from game.settings import Settings
 from game.squadrons.squadron import Squadron
 
 
 def _bare_squadron(owned: int, untasked: int, pending: int) -> Squadron:
     sq = Squadron.__new__(Squadron)
     sq.current_roster = []  # active_pilots reads this; empty is fine here
+    sq.settings = Settings()  # who is offered for a sortie now asks about morale
     sq.owned_aircraft = owned
     sq.untasked_aircraft = untasked
     sq.pending_deliveries = pending
