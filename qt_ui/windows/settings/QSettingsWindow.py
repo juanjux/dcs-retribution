@@ -525,6 +525,19 @@ class AutoSettingsLayout(QGridLayout):
         self.addWidget(combobox, row, 1, Qt.AlignmentFlag.AlignRight)
         self.settings_map[name] = combobox
 
+    def add_line_edit_for(self, row: int, name: str, description: TextOption) -> None:
+        edit = QLineEdit(self.sc.settings.__dict__[name])
+        if description.placeholder is not None:
+            edit.setPlaceholderText(description.placeholder)
+
+        def on_changed(value: str) -> None:
+            self.sc.settings.__dict__[name] = value.strip()
+
+        edit.textChanged.connect(on_changed)
+        edit.setMinimumWidth(260)
+        self.addWidget(edit, row, 1, Qt.AlignmentFlag.AlignRight)
+        self.settings_map[name] = edit
+
     def add_float_spin_slider_for(
         self, row: int, name: str, description: BoundedFloatOption
     ) -> None:
@@ -573,6 +586,23 @@ class AutoSettingsLayout(QGridLayout):
         self.addLayout(inputs, row, 1, Qt.AlignmentFlag.AlignRight)
         self.settings_map[name] = inputs
 
+    def apply_visibility(self) -> None:
+        """Hide the settings whose visible_when says they do not apply right now."""
+        for name, description in Settings.fields(self.page, self.section):
+            if description.visible_when is None:
+                continue
+            visible = bool(description.visible_when(self.sc.settings))
+            self.label_map[name].setVisible(visible)
+            entry = self.settings_map[name]
+            # The spinner and time options register a layout rather than a widget,
+            # and a layout cannot be hidden -- its contents can.
+            if isinstance(entry, QLayout):
+                for i in range(entry.count()):
+                    if (child := entry.itemAt(i).widget()) is not None:
+                        child.setVisible(visible)
+            else:
+                entry.setVisible(visible)
+
     def update_from_settings(self) -> None:
         for hook in self.refresh_hooks:
             hook()
@@ -596,6 +626,7 @@ class AutoSettingsLayout(QGridLayout):
                 widget.setValue(value)
             elif isinstance(widget, TimeInputs):
                 widget.spinner.setValue(value.seconds // 60)
+        self.apply_visibility()
 
 
 class AutoSettingsGroup(QGroupBox):

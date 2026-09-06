@@ -10,6 +10,7 @@ from game.settings import Settings, NightMissions
 from game.theater import ConflictTheater, SeasonalConditions
 from game.theater.seasonalconditions import determine_season
 from game.timeofday import TimeOfDay
+from game.weather.atmosxliveweather import live_weather_for
 from game.weather.weather import Weather, Thunderstorm, Raining, Cloudy, ClearSkies
 
 
@@ -36,10 +37,17 @@ class Conditions:
                 theater, day, time_of_day, settings.night_day_missions
             )
 
+        # A real observation, when the player asked for one and it could be fetched.
+        # It has to be decided here rather than at mission generation: the kneeboards,
+        # the active runway and the carrier's course into wind all read this weather.
+        weather = live_weather_for(theater, settings) or cls.generate_weather(
+            theater.seasonal_conditions, day, time_of_day
+        )
+
         return cls(
             time_of_day=time_of_day,
             start_time=_start_time,
-            weather=cls.generate_weather(theater.seasonal_conditions, day, time_of_day),
+            weather=weather,
         )
 
     @classmethod

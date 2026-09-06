@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 
 from .optiondescription import OptionDescription, SETTING_DESCRIPTION_KEY
 
@@ -18,6 +18,7 @@ def boolean_option(
     detail: Optional[str] = None,
     tooltip: Optional[str] = None,
     causes_expensive_game_update: bool = False,
+    visible_when: Optional[Callable[[Any], bool]] = None,
     **kwargs: Any,
 ) -> bool:
     return field(
@@ -30,6 +31,7 @@ def boolean_option(
                 tooltip,
                 causes_expensive_game_update,
                 invert,
+                visible_when=visible_when,
             )
         },
         default=default,
