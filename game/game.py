@@ -98,6 +98,24 @@ class TurnState(Enum):
     CONTINUE = 2
 
 
+def time_of_day_offset(
+    theater: ConflictTheater, start_date: datetime, start_time: time | None
+) -> int:
+    """Which turn slot a campaign beginning at this date and time starts in.
+
+    The date and the time are two values and are not interchangeable: the slots
+    themselves are computed from the sun, so the map is chosen by the date, and the
+    time of day is then looked up inside it. Only one shipped campaign carries a time
+    in its start date, so confusing the two crashed exactly that campaign and nothing
+    else.
+    """
+    if start_time is None:
+        return list(TimeOfDay).index(TimeOfDay.Day)
+    return list(TimeOfDay).index(
+        theater.daytime_map_for(start_date.date()).best_guess_time_of_day_at(start_time)
+    )
+
+
 class Game:
     scenery_clear_zones: List[Point]
 
@@ -160,14 +178,9 @@ class Game:
 
         self.db = GameDb()
 
-        if start_time is None:
-            self.time_of_day_offset_for_start_time = list(TimeOfDay).index(
-                TimeOfDay.Day
-            )
-        else:
-            self.time_of_day_offset_for_start_time = list(TimeOfDay).index(
-                self.theater.daytime_map.best_guess_time_of_day_at(start_time)
-            )
+        self.time_of_day_offset_for_start_time = time_of_day_offset(
+            self.theater, start_date, start_time
+        )
         self.conditions = self.generate_conditions(forced_time=start_time)
 
         self.sanitize_sides(player_faction, enemy_faction)
@@ -607,6 +620,23 @@ class Game:
         self.blue.bullseye = Bullseye(enemy_cp.position)
         self.red.bullseye = Bullseye(player_cp.position)
 
+    def plan_ground_war(self) -> None:
+        """Decide which of each base's vehicles deploy to which front.
+
+        Planned from ``base.armor`` as it stands *now*, and deliberately not cached
+        across the turn: ordering a transfer debits the origin the moment it is
+        created, so a plan made at the start of the turn deploys units the campaign
+        no longer owns. That is not a cosmetic disagreement -- the front line battle
+        is resolved from the books, so a player who moved his army mid-turn watched
+        it hold the line on the map and lose the ground war for being absent.
+        """
+        self.ground_planners = {}
+        for cp in self.theater.controlpoints:
+            if cp.has_frontline:
+                gplanner = GroundPlanner(cp, self)
+                gplanner.plan_groundwar()
+                self.ground_planners[cp.id] = gplanner
+
     def initialize_turn(
         self,
         events: GameUpdateEvents,
@@ -670,13 +700,7 @@ class Game:
         if for_red:
             self.red.initialize_turn(self.turn == 0 and squadrons_start_full)
 
-        # Plan GroundWar
-        self.ground_planners = {}
-        for cp in self.theater.controlpoints:
-            if cp.has_frontline:
-                gplanner = GroundPlanner(cp, self)
-                gplanner.plan_groundwar()
-                self.ground_planners[cp.id] = gplanner
+        self.plan_ground_war()
 
         # Update cull zones
         with logged_duration("Computing culling positions"):
