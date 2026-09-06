@@ -600,7 +600,10 @@ means none/empty** (stated once so the per-turn payloads stay small).
 - `air_wing[]` — your squadrons — {`id`, `name`, `aircraft`, `base`, `owned`?,
   `untasked`?, `flyable`? (**the number to plan with**: aircraft you can actually
   LAUNCH this turn = `min(untasked, pilots)`, or 0 if grounded — `untasked` can exceed
-  your pilots, `flyable` can't; omitted when 0), `pending`?, `pilots`, `max_ac`?
+  your pilots, `flyable` can't; omitted when 0), `pending`?, `pilots`, `price` (cost of
+  **ONE** aircraft — `buy/aircraft` with `quantity: n` costs `n * price`, so
+  `budget / price` is how many you can actually afford this turn; do not guess it),
+  `max_ac`?
   (squadron airframe cap: `buy/aircraft` refuses once `owned + pending` reaches it —
   a 1-aircraft cap means that airframe is IRREPLACEABLE, protect it; omitted when the
   campaign has no per-squadron limits), `grounded`? (true = the squadron cannot sortie

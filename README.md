@@ -243,6 +243,18 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   longer ships the S-300PS family, DCS silently drops unit types it cannot resolve, and
   Retribution kept the site alive and its threat ring up. Now the stock S-300PS.
   ([#96](https://github.com/juanjux/dcs-retribution/pull/96))
+- **The `/start` doc sent the LLM planner to twelve endpoints that do not exist.**
+  It documented `POST /transfers`, `POST /buy/auto`, `GET /ai_log`, `POST /squadrons`
+  and others the server never served, while omitting nine it does — so the planner
+  404'd on the documented name and never found the real one. Corrected against the
+  router, and a test now fails the build if the two drift apart again.
+  ([#90](https://github.com/juanjux/dcs-retribution/pull/90))
+- **The LLM planner could not see what aircraft cost.** `buyable_ground[]` carried
+  a `price`, but the squadron view did not, so the planner guessed — it assumed an
+  Apache was 5M, tried to buy several, and read the refusal as a broken squadron
+  relocation. `air_wing[]` now carries `price` (cost of ONE aircraft), documented
+  alongside it, and the refusal says "costs 20M **each**".
+  ([#88](https://github.com/juanjux/dcs-retribution/pull/88))
 - **A refused purchase now says why.** "Cannot buy more X" was the same message
   whether you were short of money, out of parking, or at the squadron's aircraft
   cap — three problems with three different answers. It now names the one that
