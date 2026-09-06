@@ -187,6 +187,35 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   the 500 for a sortie: losing the aircraft now forfeits the mission-complete award it
   was quietly still paying, so being shot down is never the better outcome.
   ([#134](https://github.com/juanjux/dcs-retribution/pull/134))
+- **Live Pilots III: a pilot has a state of mind.** Everyone used to fly the same
+  whatever the campaign had done to him -- the man shot down twice, who watched his
+  squadron die and has not had leave in eleven turns, took off exactly as steady as the
+  one who was promoted twice and slept. Now he carries **morale**, 0 to 100, starting at
+  50, moved by what is already in the debriefing: losing his aircraft, coming home from
+  a strike having destroyed nothing, a squadron mate killed, a base lost, five turns
+  without leave and worse every turn after -- against kills, targets of opportunity,
+  completing the sortie, his promotion and rest. It drifts a step back towards 50 every
+  turn, and rank is armour: a squadron leader loses less from the same event than a
+  cadet, though nobody is too senior to enjoy a promotion. It buys four things. **What a
+  sortie pays** is no longer flat -- half at the bottom, half again at the top, and +0.1
+  per rung of difference to the best pilot in the flight, so a cadet on an Excellent
+  wing earns 40% more and the veteran earns nothing extra for the company. **How he
+  flies**: above 85 he flies a rung better than his rank and below 15 a rung worse,
+  which is not cosmetic -- the attack ceiling belongs to the pilot, so a dropped rung can
+  stop him attacking from the altitude he was planned at. That shift goes through a new
+  `mission_skill` and never touches `pilot_skill`, because rank is derived from it and a
+  bad week must not demote a Major. **What his flight will put up with**: a lead below 20
+  routes around what frightens him instead of fighting through it, and below 10 he turns
+  for home -- group options, so the formation follows the man in front. And **whether he
+  comes back**: morale shifts the survival roll and the length of a wound. At the bottom
+  he refuses to fly, does not mend on his own, and after three turns there he is simply
+  gone. **Leave** answers that, and gains a length: a pilot asks -- more often the worse
+  he is holding up, but a contented man asks now and then too -- and a dialog after the
+  debriefing lists them with the turns to grant, per man, or a refusal that costs him.
+  His row in the Air Wing carries the figure and turns yellow, then red, in time to do
+  something about it. Fifteen settings, and a campaign in progress starts even: old saves
+  read as morale 50 with no leave owing.
+  ([#142](https://github.com/juanjux/dcs-retribution/pull/142))
 - **Switching Live Pilots on demoted one coalition and not the other.** Starting the
   ladder wrote Cadet into the difficulty page, and settings carry into the next campaign
   started from them -- so a second campaign began at Cadet, seeding measured blue against

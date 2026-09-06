@@ -1658,6 +1658,16 @@ def _pilot_view(squadron: Any, pilot: Any) -> dict[str, Any]:
         view["wounded_turns_remaining"] = pilot.wounded_turns
     if pilot.player:
         view["player"] = True
+
+    settings = getattr(squadron, "settings", None)
+    if settings is not None and getattr(settings, "morale_enabled", True):
+        view["morale"] = pilot.morale
+        # What he will actually fly at, which morale moves and his rank does not.
+        view["flies_at"] = squadron.mission_skill(pilot).value
+        if pilot.wants_leave:
+            view["asking_for_leave"] = True
+        if pilot.on_leave and pilot.leave_turns:
+            view["leave_turns_remaining"] = pilot.leave_turns
     return view
 
 

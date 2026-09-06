@@ -82,10 +82,10 @@ you lose if they capture yours. Think in terms of a campaign, not a single turn.
   seats will **block the turn from starting** — always crew your flights (the API
   assigns pilots automatically and refuses pilotless flights).
 - **Pilots are people, and you can pick them.** `GET /squadrons/{squadron_id}/pilots`
-  is the squadron's roster: each pilot's **rank**, **experience**, the **skill** he
-  actually flies at, whether he is **wounded** (and for how many more turns), and
-  `assigned_to` naming the flight he is already crewing. The entries **without**
-  `assigned_to` are the ones you can task.
+  is the squadron's roster: each pilot's **rank**, **experience**, his **skill**, the
+  **`flies_at`** skill he will actually take off with, his **morale**, whether he is
+  **wounded** (and for how many more turns), and `assigned_to` naming the flight he is
+  already crewing. The entries **without** `assigned_to` are the ones you can task.
 
   `GET /flights/{flight_id}/crew` shows who is in each seat of one flight plus the free
   pilots, and `POST /flights/crew` `{flight_id, seat, pilot_name}` puts a named pilot in
@@ -99,6 +99,23 @@ you lose if they capture yours. Think in terms of a campaign, not a single turn.
   an inexperienced pilot will not attack from as high up (see the altitude warning under
   waypoints). Without that setting every pilot flies the same, and crewing is only about
   keeping your named people alive.
+- **Morale**: how a pilot is holding up, 0 to 100, 50 to start. It falls when he loses
+  his aircraft, comes home from a strike having destroyed nothing, loses a squadron mate
+  or a base, or goes more than five turns without leave; it rises with kills, completed
+  missions, promotions and rest. It matters three ways:
+
+  1. **What a sortie pays him** — half at the bottom, half again at the top. A cadet also
+     earns more for flying with a better pilot, so putting a rookie on a veteran's wing
+     is how you bring him on.
+  2. **How he flies** — above 85 he flies a rung better than his rank, below 15 a rung
+     worse. `flies_at` already accounts for this; `skill` is the rank he holds.
+  3. **What his flight will put up with** — a lead below 20 routes his flight around
+     threats instead of fighting through them, and below 10 he turns for home. Do not
+     send a broken lead on a mission that has to succeed.
+
+  A pilot at 0 will not fly at all and **deserts after three turns there**, and he does
+  not recover on his own — only leave lifts him. `asking_for_leave` on his entry means he
+  has asked; resting him for a turn or two is usually cheaper than losing him.
 - **Ground forces**: vehicle groups at your bases and along the front. You buy them,
   move them between bases (transfers), and commit them via front-line stance.
 - **Money**: you earn income each turn and spend it on aircraft and ground units.
