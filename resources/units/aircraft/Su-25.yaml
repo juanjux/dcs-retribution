@@ -13,6 +13,16 @@ price: 11
 role: Close Air Support/Attack
 max_range: 200
 default_livery: forest camo scheme #1 (native)
+# Measured, not estimated. With no combat altitude of its own an Su-25 falls back to
+# the guess made from its top speed -- 20,000 ft, clamped to the doctrine ceiling -- and
+# from up there the AI never attacks: a flight tasked at 5,000 m crossed a front full of
+# armour unopposed and came home without firing a shot. The ceiling turned out to be the
+# pilot's, not the weapon's: cadets shoot from the deck up to about 3,000 m and nothing
+# above it, veterans to about 4,500. Live Pilots starts everyone at cadet, so the cadet
+# figure is the one that has to work. 7,000 ft leaves room for the +/-2,000 ft the
+# planner adds without the top of that spread reaching 3,000 m.
+altitudes:
+  combat: 7000
 variants:
   Su-25 Frogfoot: {}
 kneeboard_units: "metric"

@@ -9,9 +9,12 @@ groups:
         - 1
       unit_classes:
         - HelicopterCarrier
+  # An ARG screen is a mix of whatever surface combatants the faction fields.
   - Escort:
     - name: LHA Group 1
       unit_count:
         - 2
       unit_classes:
         - Destroyer
+        - Cruiser
+        - Frigate

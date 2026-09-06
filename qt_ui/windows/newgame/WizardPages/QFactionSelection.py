@@ -37,7 +37,11 @@ from qt_ui.windows.newgame.jinja_env import jinja_env
 
 
 class QFactionUnits(QScrollArea):
-    preset_groups_changed = Signal(Faction)
+    #: Emitted whenever anything the faction fields changes -- a preset group, a
+    #: unit, an aircraft. In a running campaign the coalition's ArmedForces are built
+    #: from the faction ONCE, so a listener has to rebuild them or the change is
+    #: invisible until a new campaign.
+    faction_changed = Signal(Faction)
 
     def __init__(
         self,
@@ -316,6 +320,7 @@ class QFactionUnits(QScrollArea):
             # invalidate the cached property
             del self.faction.__dict__["accessible_units"]
         self.updateFaction(self.faction)
+        self.faction_changed.emit(self.faction)
 
     def _on_add_ac(self, aircraft: Set[AircraftType], cb: QComboBox):
         aircraft.add(cb.currentData())
@@ -323,6 +328,7 @@ class QFactionUnits(QScrollArea):
             # invalidate the cached property
             del self.faction.__dict__["all_aircrafts"]
         self.updateFaction(self.faction)
+        self.faction_changed.emit(self.faction)
 
     def _on_add_preset_group(self, groups: List[ForceGroup], cb: QComboBox):
         groups.append(cb.currentData())
@@ -330,7 +336,7 @@ class QFactionUnits(QScrollArea):
             # invalidate the cached property
             del self.faction.__dict__["accessible_units"]
         self.updateFaction(self.faction)
-        self.preset_groups_changed.emit(self.faction)
+        self.faction_changed.emit(self.faction)
 
     def updateFaction(self, faction: Faction):
         self.faction = faction
