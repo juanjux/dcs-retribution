@@ -23,6 +23,7 @@ from dcs.task import CAP, CAS, PinpointStrike
 from dcs.vehicles import AirDefence
 
 from game.ato.closestairfields import ObjectiveDistanceCache
+from game.dcs.skills import experience_for_skill
 from game.ground_forces.ai_ground_planner import GroundPlanner
 from game.models.game_stats import GameStats
 from game.plugins import LuaPluginManager
@@ -606,6 +607,29 @@ class Game:
         player_cp, enemy_cp = self.theater.closest_opposing_control_points()
         self.blue.bullseye = Bullseye(enemy_cp.position)
         self.red.bullseye = Bullseye(player_cp.position)
+
+    def begin_live_pilots(self) -> None:
+        """Start the career ladder, once, when Live Pilots is switched on.
+
+        Every pilot already in the campaign keeps the rank he has, seeded with what
+        that rank costs. Nobody is demoted and nobody gets a windfall; the next
+        promotion is paid for in full.
+
+        The rank is read from the difficulty page rather than from what the pilot
+        currently flies at, because the moment the feature is switched on the floor
+        under him is the bottom rung. Seeding from the floor instead would hand
+        every wing whose coalition was already at Cadet a career starting from zero
+        while the other side kept its rank -- which is what it did.
+        """
+        if getattr(self, "live_pilots_initialized", False):
+            return
+        for coalition in (self.blue, self.red):
+            for squadron in coalition.air_wing.iter_squadrons():
+                earned = experience_for_skill(squadron.difficulty_skill)
+                for pilot in list(squadron.pilot_pool) + list(squadron.current_roster):
+                    pilot.record.xp = max(pilot.record.xp, earned)
+        self.live_pilots_initialized = True
+        logging.info("Live Pilots started: every pilot seeded with his rank")
 
     def initialize_turn(
         self,

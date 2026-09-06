@@ -48,6 +48,7 @@ from game.settings.ISettingsContainer import SettingsContainer
 from game.settings.settings import (
     CloudPresetPack,
     LIVE_PILOTS_RANKS_SECTION,
+    LIVE_PILOTS_SURVIVAL_SECTION,
     LIVE_PILOTS_PAGE,
     OPFOR_AI_SECTION,
 )
@@ -214,6 +215,8 @@ class AutoSettingsLayout(QGridLayout):
                     "live_pilots_show_ranks",
                 ),
             )
+        if self.section == LIVE_PILOTS_SURVIVAL_SECTION:
+            self._wire_survival_odds()
 
     def _build_rank_grid(self) -> None:
         """The rank ladder: five rungs, short and full form side by side.
@@ -397,6 +400,38 @@ class AutoSettingsLayout(QGridLayout):
                         target.setEnabled(enabled)
 
         master.toggled.connect(lambda _=None: refresh())
+        refresh()
+
+    def _wire_survival_odds(self) -> None:
+        """The odds follow their own switch, and the switch follows Live Pilots.
+
+        Two masters and one of them lives in another section, so this refreshes from
+        the settings rather than from the checkbox: the page re-runs every group when
+        any of them changes.
+        """
+        master = self.settings_map.get("live_pilots_rank_survival")
+        rungs = [
+            name
+            for name, _ in Settings.fields(self.page, self.section)
+            if name.startswith("live_pilots_survival_")
+        ]
+
+        def refresh() -> None:
+            live = bool(self.sc.settings.live_pilots_enabled)
+            rolling = live and bool(self.sc.settings.live_pilots_rank_survival)
+            # The wound roll is flat and rank-free, so it follows the master switch
+            # rather than the rank one: it still applies with rank survival off.
+            for name, enabled in [
+                ("live_pilots_rank_survival", live),
+                ("live_pilots_wounded_chance", live),
+            ] + [(rung, rolling) for rung in rungs]:
+                for target in (self.settings_map.get(name), self.label_map.get(name)):
+                    if isinstance(target, QWidget):
+                        target.setEnabled(enabled)
+
+        if isinstance(master, QCheckBox):
+            master.toggled.connect(lambda _=None: refresh())
+        self.refresh_hooks.append(refresh)
         refresh()
 
     def _wire_opfor_ai(self) -> None:
@@ -650,6 +685,10 @@ class QSettingsWindow(QDialog):
 
     def closeEvent(self, event: QCloseEvent) -> None:
         self._handle_mod_settings()
+        if self.game is not None and self.game.settings.live_pilots_enabled:
+            # Idempotent: it starts the ladder the first time and does nothing after,
+            # so the player is free to raise the coalition skills again afterwards.
+            self.game.begin_live_pilots()
         super().closeEvent(event)
 
     def _handle_mod_settings(self) -> None:

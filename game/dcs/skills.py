@@ -55,3 +55,60 @@ def ground_skill(skill: Skill) -> Skill:
     no ground unit has.
     """
     return Skill.Average if skill is CADET_SKILL else skill
+
+
+# Experience needed to reach each rung, in the same order as SKILL_LADDER. A pilot flies
+# at the highest rung whose threshold he has passed. The steps double, so the climb out of
+# cadet is a couple of good sorties and the last one is a campaign.
+SKILL_XP_THRESHOLDS: tuple[int, ...] = (0, 1000, 2000, 4000, 8000)
+
+
+def skill_for_experience(xp: int, floor: Skill = Skill.Average) -> Skill:
+    """The rung ``xp`` has earned, never below ``floor``.
+
+    The coalition's skill setting is a floor rather than a starting point: raising the
+    difficulty lifts everyone at once, and a veteran is never demoted by it.
+    """
+    earned = 0
+    for rung, threshold in enumerate(SKILL_XP_THRESHOLDS):
+        if xp >= threshold:
+            earned = rung
+    try:
+        return SKILL_LADDER[max(earned, SKILL_LADDER.index(floor))]
+    except ValueError:
+        # Random, Player and Client are skills to DCS but not rungs of anything.
+        return SKILL_LADDER[earned]
+
+
+def one_promotion_at_most(before: int, after: int, floor: Skill = Skill.Average) -> int:
+    """Cap a mission's experience at one rung, and at the rung's own price.
+
+    A pilot who is promoted arrives at his new rank with nothing banked towards the
+    next: a cadet who earns 2500 in one sortie makes First Lieutenant, not Captain,
+    and holds the 1000 it costs. Double promotions do happen in life and are
+    extraordinary; a campaign would hand them out whenever a good SEAD sortie paid
+    two rungs at once, which is most of them.
+
+    Experience that does not promote anyone is kept in full.
+    """
+    rung_before = _rung_of(before, floor)
+    rung_after = _rung_of(after, floor)
+    if rung_after <= rung_before:
+        return after
+    return SKILL_XP_THRESHOLDS[min(rung_after, rung_before + 1)]
+
+
+def _rung_of(xp: int, floor: Skill) -> int:
+    try:
+        return SKILL_LADDER.index(skill_for_experience(xp, floor))
+    except ValueError:
+        return 0
+
+
+def experience_for_skill(skill: Skill) -> int:
+    """The experience a pilot flying at ``skill`` must have. Used when the feature is
+    switched on mid-campaign: a veteran keeps his rank and is seeded with its cost."""
+    try:
+        return SKILL_XP_THRESHOLDS[SKILL_LADDER.index(skill)]
+    except ValueError:
+        return 0

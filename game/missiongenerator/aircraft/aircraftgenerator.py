@@ -259,6 +259,9 @@ class AircraftGenerator:
                 claim_inv=False,
             )
             flight.state = Completed(flight, self.game.settings)
+            # It never took off, so losing it must not kill the pilot it was
+            # assigned. See MissionResultsProcessor.commit_air_losses.
+            flight.parked_reserve = True
 
             group = FlightGroupSpawner(
                 flight,

@@ -18,7 +18,7 @@ from game.settings import AutoAtoBehavior, Settings
 from game.theater import ParkingType
 from game.theater.player import Player
 from .pilot import Pilot, PilotStatus
-from game.dcs.skills import SKILL_LADDER
+from game.dcs.skills import CADET_SKILL, SKILL_LADDER, skill_for_experience
 
 from .pilotnames import faker_for_country
 from .pilotranks import Rank, rank_for_skill, ranks_for
@@ -122,6 +122,21 @@ class Squadron:
 
     @property
     def base_skill(self) -> Skill:
+        """The lowest rung this coalition's pilots may fly at.
+
+        Live Pilots puts every wing on the bottom rung, because a rank that starts at
+        Veteran has nowhere to climb from. It does that here rather than by writing
+        Cadet into the difficulty settings: those belong to the player, they are what
+        the wing returns to when the feature is switched off, and overwriting them
+        leaked a Cadet air force into the next campaign started from them.
+        """
+        if self.settings.live_pilots_enabled:
+            return CADET_SKILL
+        return self.difficulty_skill
+
+    @property
+    def difficulty_skill(self) -> Skill:
+        """The skill the player set for this coalition on the difficulty page."""
         if self.player.is_blue:
             return Skill(self.settings.player_skill)
         return Skill(self.settings.enemy_skill)
@@ -129,22 +144,29 @@ class Squadron:
     def pilot_skill(self, pilot: Pilot) -> Skill:
         """The effective DCS skill the pilot flies at.
 
-        Pilots level up one skill tier every few missions flown, starting from
-        the coalition's base skill and capped at the top tier. Levelling only
-        applies when the ``ai_pilot_levelling`` setting is enabled.
+        Earned, not counted: a pilot flies at the highest rung his experience has paid
+        for. The coalition's setting is the floor rather than the starting point, so
+        raising the difficulty lifts the whole wing at once and never demotes a veteran.
+        Levelling only applies when the ``ai_pilot_levelling`` setting is enabled.
         """
-        levels = SKILL_LADDER
-        current_level = levels.index(self.base_skill)
-        missions_for_skill_increase = 4
-        increase = pilot.record.missions_flown // missions_for_skill_increase
-        capped_increase = min(current_level + increase, len(levels) - 1)
+        if not self.settings.ai_pilot_levelling:
+            return self.base_skill
+        return skill_for_experience(pilot.record.xp, self.base_skill)
 
-        if self.settings.ai_pilot_levelling:
-            new_level = capped_increase
-        else:
-            new_level = current_level
+    def rank_order(self, pilot: Pilot) -> tuple[int, int]:
+        """Sort key placing the senior pilot first, the most experienced first within
+        a rank.
 
-        return levels[new_level]
+        Constant while Live Pilots is off: no rank is on display then, so ordering a
+        roster by a number nobody can see would look arbitrary.
+        """
+        if self.pilot_rank(pilot) is None:
+            return 0, 0
+        try:
+            rung = SKILL_LADDER.index(self.pilot_skill(pilot))
+        except ValueError:
+            rung = 0
+        return -rung, -pilot.record.xp
 
     def pilot_rank(self, pilot: Pilot) -> Optional[Rank]:
         """The rank the pilot holds, or None while Live Pilots is switched off.
@@ -291,8 +313,15 @@ class Squadron:
     def end_turn(self) -> None:
         if self.destination is not None:
             self.relocate_to(self.destination)
+        self.tend_the_wounded()
         self.replenish_lost_pilots()
         self.deliver_orders()
+
+    def tend_the_wounded(self) -> None:
+        """One turn of every wound served; the last one puts the pilot back to work."""
+        turn = self.coalition.game.turn
+        for pilot in self.wounded_pilots:
+            pilot.serve_a_turn_wounded(turn)
 
     def replenish_lost_pilots(self) -> None:
         if self.pilot_limits_enabled and self.replenish_count > 0:
@@ -354,6 +383,10 @@ class Squadron:
         return self._pilots_with_status(PilotStatus.OnLeave)
 
     @property
+    def wounded_pilots(self) -> list[Pilot]:
+        return self._pilots_with_status(PilotStatus.Wounded)
+
+    @property
     def number_of_pilots_including_inactive(self) -> int:
         return len(self.current_roster)
 
@@ -367,7 +400,10 @@ class Squadron:
 
     @property
     def _number_of_unfilled_pilot_slots(self) -> int:
-        return self.pilot_limit - len(self.active_pilots)
+        # A wounded pilot is still on the books, so his slot is not free to recruit
+        # into. Otherwise the squadron backfills every casualty and finds itself over
+        # its own limit the turn the wounded come back.
+        return self.pilot_limit - len(self.active_pilots) - len(self.wounded_pilots)
 
     @property
     def number_of_available_pilots(self) -> int:
