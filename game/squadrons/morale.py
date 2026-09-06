@@ -202,6 +202,38 @@ def shifted_skill(skill: Skill, morale: int, settings: Any = None) -> Skill:
     return SKILL_LADDER[max(0, min(len(SKILL_LADDER) - 1, rung + shift))]
 
 
+@dataclass(frozen=True)
+class MoraleState:
+    """What a squadron commander would be told, rather than a number.
+
+    ``floor`` is the bottom of the band, taken inclusively. ``severity`` is what the
+    player should read into it: 0 nothing, 1 worth an eye, 2 do something about it now.
+    """
+
+    floor: int
+    name: str
+    severity: int
+
+
+#: The figure itself is for the pilot dialog, the ledger and the API. Everywhere the
+#: player looks he gets the name, exactly as a rank stands in for a skill level.
+MORALE_STATES: tuple[MoraleState, ...] = (
+    MoraleState(85, "Triumphant", 0),
+    MoraleState(60, "Confident", 0),
+    MoraleState(40, "Normal", 0),
+    MoraleState(15, "Shaken", 1),
+    MoraleState(1, "Shattered", 2),
+    MoraleState(MORALE_MIN, "Broken", 2),
+)
+
+
+def morale_state(morale: int) -> MoraleState:
+    for state in MORALE_STATES:
+        if morale >= state.floor:
+            return state
+    return MORALE_STATES[-1]
+
+
 #: Multiplier on everything a sortie pays. A band's number is its lower bound, taken
 #: inclusively, so a pilot sitting exactly on a boundary gets the better of the two.
 XP_MULTIPLIER_BANDS: tuple[tuple[int, float], ...] = (

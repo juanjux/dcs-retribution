@@ -75,7 +75,7 @@ class LeaveRequestsDialog(QDialog):
         outer.addWidget(scroll, 1)
 
         for column, heading in enumerate(
-            ("Pilot", "Squadron", "Aircraft", "Morale", "Turns", "Grant")
+            ("Pilot", "Squadron", "Aircraft", "Holding up", "Turns", "Grant")
         ):
             grid.addWidget(QLabel(f"<b>{heading}</b>"), 0, column)
 
@@ -86,9 +86,10 @@ class LeaveRequestsDialog(QDialog):
             grid.addWidget(QLabel(str(squadron)), row, 1)
             grid.addWidget(QLabel(str(squadron.aircraft)), row, 2)
 
-            morale = QLabel(str(pilot.morale))
-            if pilot.morale < morale_rules.SHAKEN_BELOW:
-                morale.setText(f"<b>{pilot.morale}</b>")
+            state = morale_rules.morale_state(pilot.morale)
+            morale = QLabel(state.name)
+            if state.severity:
+                morale.setText(f"<b>{state.name}</b>")
                 morale.setToolTip("He is close to being no use to you at all.")
             grid.addWidget(morale, row, 3)
 
@@ -98,7 +99,7 @@ class LeaveRequestsDialog(QDialog):
             grid.addWidget(turns, row, 4)
 
             grant = QCheckBox()
-            grant.setChecked(pilot.morale < morale_rules.SHAKEN_BELOW)
+            grant.setChecked(bool(state.severity))
             grid.addWidget(grant, row, 5, Qt.AlignmentFlag.AlignCenter)
 
             self.rows.append((squadron, pilot, grant, turns))
