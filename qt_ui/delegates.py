@@ -2,7 +2,7 @@ from contextlib import contextmanager
 from typing import ContextManager, Optional
 
 from PySide6.QtCore import QModelIndex, Qt, QSize
-from PySide6.QtGui import QPainter, QFont, QFontMetrics, QIcon
+from PySide6.QtGui import QColor, QPainter, QFont, QFontMetrics, QIcon
 from PySide6.QtWidgets import QStyledItemDelegate, QStyleOptionViewItem, QStyle
 
 
@@ -35,6 +35,14 @@ class TwoColumnRowDelegate(QStyledItemDelegate):
     def text_for(self, index: QModelIndex, row: int, column: int) -> str:
         raise NotImplementedError
 
+    def colour_for(self, index: QModelIndex, row: int, column: int) -> Optional[QColor]:
+        """The pen for one cell, or None to leave it as the theme drew it.
+
+        A whole row painted in one colour cannot say "this one line is a warning", and
+        a warning that reads the same as everything else is not one.
+        """
+        return None
+
     def paint(
         self, painter: QPainter, option: QStyleOptionViewItem, index: QModelIndex
     ) -> None:
@@ -61,19 +69,23 @@ class TwoColumnRowDelegate(QStyledItemDelegate):
                 )
             rect = rect.adjusted(self.icon_size(option).width() + self.HMARGIN, 0, 0, 0)
 
+            plain = painter.pen()
             row_height = rect.height() / self.rows
             for row in range(self.rows):
                 y = row_height * row
                 location = rect.adjusted(0, y, 0, y)
-                painter.drawText(
-                    location, Qt.AlignmentFlag.AlignLeft, self.text_for(index, row, 0)
-                )
-                if self.columns == 2:
+                for column, alignment in (
+                    (0, Qt.AlignmentFlag.AlignLeft),
+                    (1, Qt.AlignmentFlag.AlignRight),
+                ):
+                    if column and self.columns != 2:
+                        continue
+                    colour = self.colour_for(index, row, column)
+                    painter.setPen(colour if colour is not None else plain)
                     painter.drawText(
-                        location,
-                        Qt.AlignmentFlag.AlignRight,
-                        self.text_for(index, row, 1),
+                        location, alignment, self.text_for(index, row, column)
                     )
+            painter.setPen(plain)
 
     @staticmethod
     def icon_mode(option: QStyleOptionViewItem) -> QIcon.Mode:

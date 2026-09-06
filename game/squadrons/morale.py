@@ -1,0 +1,306 @@
+"""How a pilot is holding up, and what that is worth.
+
+Morale runs 0 to 100 and starts at 50. It moves with what the campaign does to a man --
+losing his aircraft, watching his squadron die, going a long time without leave -- and it
+moves back with what goes well. Everything it reads is already in the debriefing; nothing
+here needs the mission to report anything new.
+
+The numbers below are the defaults. Each one has a settings key beside it so a campaign
+can be tuned without editing code, exactly as :mod:`game.squadrons.experience` does for
+the survival odds.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any, Optional
+
+from dcs.task import OptReactOnThreat
+from dcs.unit import Skill
+
+from game.dcs.skills import SKILL_LADDER
+
+if TYPE_CHECKING:
+    from game.settings import Settings
+
+MORALE_MIN = 0
+MORALE_MAX = 100
+
+#: Where a pilot starts, and where he drifts back to. A campaign that has done nothing
+#: to a man yet should not have an opinion about him.
+MORALE_START = 50
+
+
+@dataclass(frozen=True)
+class MoraleEvent:
+    """One thing that moves a pilot, and how far.
+
+    ``default`` is signed: negative for the things that wear him down. The settings key
+    holds the same sign, so a campaign that wants a harder war only has to make the
+    numbers bigger.
+    """
+
+    key: str
+    default: int
+    reason: str
+
+    def amount(self, settings: Optional["Settings"] = None) -> int:
+        if settings is None:
+            return self.default
+        return int(getattr(settings, self.key, self.default))
+
+
+# --- what wears him down ----------------------------------------------------
+
+#: He came home without the aircraft. The plugin does not report ejections, but a pilot
+#: who lost his aircraft and lived is the same man in the same parachute.
+LOST_AIRCRAFT = MoraleEvent("morale_lost_aircraft", -15, "lost his aircraft")
+
+#: He flew a strike, a CAS or a SEAD and destroyed nothing at all.
+ACHIEVED_NOTHING = MoraleEvent("morale_achieved_nothing", -5, "came home empty")
+
+#: Per pilot of his own squadron killed. Friendship weighting is Tier IV.
+SQUADRON_DEATH = MoraleEvent("morale_squadron_death", -8, "lost a squadron mate")
+
+#: A base of his coalition changed hands.
+BASE_LOST = MoraleEvent("morale_base_lost", -6, "a base was lost")
+
+#: Turns a pilot will go without leave before it starts to tell on him.
+TURNS_BEFORE_LEAVE_IS_MISSED = 5
+
+#: Per turn beyond the fifth without leave, and it keeps growing.
+NO_LEAVE = MoraleEvent("morale_no_leave", -2, "no leave in a long time")
+
+#: He asked for leave and was told no.
+LEAVE_REFUSED = MoraleEvent("morale_leave_refused", -6, "leave refused")
+
+# --- what builds him up -----------------------------------------------------
+
+#: Per enemy aircraft shot down.
+AIR_KILL = MoraleEvent("morale_air_kill", 10, "shot one down")
+
+#: Per thing destroyed that was not what his package was sent for.
+UNPLANNED_KILL = MoraleEvent("morale_unplanned_kill", 3, "took a target of opportunity")
+
+#: He flew the sortie and brought the aircraft home.
+MISSION_COMPLETE = MoraleEvent("morale_mission_complete", 4, "flew the mission")
+
+#: His own promotion.
+PROMOTED = MoraleEvent("morale_promoted", 12, "promoted")
+
+#: Per turn of leave served.
+ON_LEAVE = MoraleEvent("morale_on_leave", 8, "on leave")
+
+#: Every event, for the settings page and for tests that check nothing was forgotten.
+MORALE_EVENTS: tuple[MoraleEvent, ...] = (
+    LOST_AIRCRAFT,
+    ACHIEVED_NOTHING,
+    SQUADRON_DEATH,
+    BASE_LOST,
+    NO_LEAVE,
+    LEAVE_REFUSED,
+    AIR_KILL,
+    UNPLANNED_KILL,
+    MISSION_COMPLETE,
+    PROMOTED,
+    ON_LEAVE,
+)
+
+
+def clamp(morale: int) -> int:
+    return max(MORALE_MIN, min(MORALE_MAX, morale))
+
+
+def drift(morale: int) -> int:
+    """One step back towards the middle, from either side.
+
+    Without this a pilot who had one very good or one very bad turn stays there for the
+    rest of the campaign. It is applied once a turn, before anything else.
+
+    A man at rock bottom is the exception: he does not mend on his own. He will not fly,
+    so he can earn nothing back, and the only thing that lifts him is leave. That is what
+    makes the warning on his row worth reading -- ignore it and he is gone.
+    """
+    if morale <= MORALE_MIN:
+        return 0
+    if morale > MORALE_START:
+        return -1
+    if morale < MORALE_START:
+        return 1
+    return 0
+
+
+def resistance(skill: Skill) -> float:
+    """How much of a knock a pilot of this rank actually takes.
+
+    Rank is armour: a squadron leader has seen it before. It only softens the falls --
+    nobody is too senior to be pleased about a promotion.
+    """
+    try:
+        rung = SKILL_LADDER.index(skill)
+    except ValueError:
+        rung = 0
+    return 1.0 - 0.15 * rung
+
+
+def apply(morale: int, event: MoraleEvent, skill: Skill, settings: Any = None) -> int:
+    """Move a pilot by one event, softened by his rank if it is a knock."""
+    amount = event.amount(settings)
+    if amount < 0:
+        amount = -max(1, round(-amount * resistance(skill)))
+    return clamp(morale + amount)
+
+
+#: The tasks a pilot can come home from having failed. A CAP that saw nobody has not
+#: failed at anything; a strike that dropped on nothing has.
+STRIKE_TASKS: frozenset[str] = frozenset(
+    {
+        "CAS",
+        "BAI",
+        "STRIKE",
+        "DEAD",
+        "SEAD",
+        "SEAD_SWEEP",
+        "OCA_RUNWAY",
+        "OCA_AIRCRAFT",
+        "ANTISHIP",
+        "ARMED_RECON",
+    }
+)
+
+
+# --- what it does -----------------------------------------------------------
+
+#: Above the first he flies a rung better, below the second a rung worse.
+SKILL_SHIFT_HIGH = 85
+SKILL_SHIFT_LOW = 15
+
+
+def skill_shift(morale: int, settings: Any = None) -> int:
+    """-1, 0 or +1 rungs, from how he is holding up."""
+    high = SKILL_SHIFT_HIGH
+    low = SKILL_SHIFT_LOW
+    if settings is not None:
+        high = getattr(settings, "morale_skill_high", high)
+        low = getattr(settings, "morale_skill_low", low)
+    if morale > high:
+        return 1
+    if morale < low:
+        return -1
+    return 0
+
+
+def shifted_skill(skill: Skill, morale: int, settings: Any = None) -> Skill:
+    """The rung he will actually fly at, clamped to the ladder."""
+    shift = skill_shift(morale, settings)
+    if not shift:
+        return skill
+    try:
+        rung = SKILL_LADDER.index(skill)
+    except ValueError:
+        return skill
+    return SKILL_LADDER[max(0, min(len(SKILL_LADDER) - 1, rung + shift))]
+
+
+#: Multiplier on everything a sortie pays. A band's number is its lower bound, taken
+#: inclusively, so a pilot sitting exactly on a boundary gets the better of the two.
+XP_MULTIPLIER_BANDS: tuple[tuple[int, float], ...] = (
+    (81, 1.5),  # above 80
+    (60, 1.2),
+    (40, 1.0),
+    (10, 0.8),
+    (MORALE_MIN, 0.5),
+)
+
+
+def xp_multiplier(morale: int) -> float:
+    """What a sortie is worth to a man in this state."""
+    for floor, multiplier in XP_MULTIPLIER_BANDS:
+        if morale >= floor:
+            return multiplier
+    return 1.0
+
+
+#: What each rung of difference to the best pilot in the flight is worth to the others.
+LEARNING_PER_RUNG = 0.1
+
+
+def learning_bonus(own: Skill, best_in_flight: Skill) -> float:
+    """Flying with somebody better than you is worth something.
+
+    Only the best man in the formation counts, and only for the ones below him: he gets
+    nothing out of it himself. A cadet on an Excellent's wing is four rungs down, so he
+    learns four rungs' worth.
+    """
+    try:
+        mine = SKILL_LADDER.index(own)
+        theirs = SKILL_LADDER.index(best_in_flight)
+    except ValueError:
+        return 0.0
+    return max(0, theirs - mine) * LEARNING_PER_RUNG
+
+
+# --- how the flight behaves -------------------------------------------------
+
+#: Below this the flight routes around what frightens it; below the second it turns for
+#: home when the threat is serious. These are group options, so they follow the lead.
+SHAKEN_BELOW = 20
+BROKEN_BELOW = 10
+
+
+def threat_reaction(morale: int) -> OptReactOnThreat.Values:
+    """What the lead will let his flight do about a threat."""
+    if morale < BROKEN_BELOW:
+        return OptReactOnThreat.Values.AllowAbortMission
+    if morale < SHAKEN_BELOW:
+        return OptReactOnThreat.Values.ByPassAndEscape
+    return OptReactOnThreat.Values.EvadeFire
+
+
+def rtb_on_bingo(morale: int) -> bool:
+    """The shaken flight goes home at bingo; the confident one presses on."""
+    return morale < SHAKEN_BELOW
+
+
+# --- the rest ---------------------------------------------------------------
+
+
+#: A wound keeps a hollow man out longer and a cheerful one less.
+def recovery_turns(turns: int, morale: int) -> int:
+    if morale < SHAKEN_BELOW:
+        return turns + 1
+    if morale > SKILL_SHIFT_HIGH:
+        return max(1, turns - 1)
+    return turns
+
+
+#: How much morale moves the survival roll, as a fraction added to the rank's chance.
+def survival_modifier(morale: int) -> float:
+    """The steady man gets out of the aircraft; the hollow one does not."""
+    return (morale - MORALE_START) / 500.0  # +/- 10 points at the extremes
+
+
+#: The turns of leave the dialog offers by default when the player grants one.
+DEFAULT_LEAVE_TURNS = 2
+MAX_LEAVE_TURNS = 6
+
+
+def leave_request_chance(morale: int, base_percent: int) -> float:
+    """How likely this pilot is to ask for leave this turn, 0 to 1.
+
+    Inversely proportional to how he is holding up, but never zero: a contented man
+    still wants a week off now and then, he just does not need one.
+    """
+    factor = max(0.25, min(2.0, 2.0 - morale / (MORALE_START * 1.0)))
+    return max(0.0, min(1.0, base_percent / 100.0 * factor))
+
+
+#: A movement this big is worth telling the player about in the debriefing; smaller
+#: ones are the ordinary churn of a campaign and only go to the ledger.
+MORALE_WORTH_REPORTING = 10
+
+#: Turns at rock bottom before a pilot walks away for good.
+DESERTION_AFTER_TURNS = 3
+
+#: At or below this he will not fly at all.
+REFUSES_TO_FLY_AT = 0

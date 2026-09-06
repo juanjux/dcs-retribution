@@ -19,6 +19,8 @@ from game.theater import ParkingType
 from game.theater.player import Player
 from .pilot import Pilot, PilotStatus
 from game.dcs.skills import CADET_SKILL, SKILL_LADDER, skill_for_experience
+from game.squadrons import morale as morale_rules
+from game.squadrons.morale import TURNS_BEFORE_LEAVE_IS_MISSED, shifted_skill
 
 from .pilotnames import faker_for_country
 from .pilotranks import Rank, rank_for_skill, ranks_for
@@ -168,6 +170,17 @@ class Squadron:
             rung = 0
         return -rung, -pilot.record.xp
 
+    def mission_skill(self, pilot: Pilot) -> Skill:
+        """The rung he will actually fly at, once his state of mind is counted.
+
+        Kept apart from :meth:`pilot_skill` on purpose. Rank is derived from that one,
+        so shifting it for morale would demote a Major to Captain on a bad week and
+        promote him back on a good one. Only the mission file reads this.
+        """
+        if not self.settings.live_pilots_enabled:
+            return self.pilot_skill(pilot)
+        return shifted_skill(self.pilot_skill(pilot), pilot.morale, self.settings)
+
     def pilot_rank(self, pilot: Pilot) -> Optional[Rank]:
         """The rank the pilot holds, or None while Live Pilots is switched off.
 
@@ -314,8 +327,67 @@ class Squadron:
         if self.destination is not None:
             self.relocate_to(self.destination)
         self.tend_the_wounded()
+        self.tend_morale(self.coalition.game.turn)
         self.replenish_lost_pilots()
         self.deliver_orders()
+
+    def tend_morale(self, turn: int) -> None:
+        """A turn of ordinary life: leave served, drift, and the cost of no rest.
+
+        Everything that happens *to* a pilot in a mission is applied by the results
+        processor. This is only what the passage of time does.
+        """
+        if not self.settings.live_pilots_enabled:
+            return
+        for pilot in list(self.current_roster):
+            if not pilot.alive:
+                continue
+            if pilot.on_leave:
+                pilot.morale = morale_rules.apply(
+                    pilot.morale,
+                    morale_rules.ON_LEAVE,
+                    self.pilot_skill(pilot),
+                    self.settings,
+                )
+                pilot.serve_a_turn_of_leave(turn)
+                continue
+
+            # Judged on the state he arrived in. The drift below always lifts a man off
+            # rock bottom, so asking afterwards would mean nobody ever deserts.
+            was_at_rock_bottom = pilot.morale <= morale_rules.REFUSES_TO_FLY_AT
+
+            pilot.turns_since_leave += 1
+            if pilot.turns_since_leave > TURNS_BEFORE_LEAVE_IS_MISSED:
+                # It gets worse the longer it goes on: one event per turn beyond the
+                # fifth, so the eighth turn costs three times the sixth.
+                overdue = pilot.turns_since_leave - TURNS_BEFORE_LEAVE_IS_MISSED
+                for _ in range(overdue):
+                    pilot.morale = morale_rules.apply(
+                        pilot.morale,
+                        morale_rules.NO_LEAVE,
+                        self.pilot_skill(pilot),
+                        self.settings,
+                    )
+            pilot.morale = morale_rules.clamp(
+                pilot.morale + morale_rules.drift(pilot.morale)
+            )
+
+            if was_at_rock_bottom:
+                pilot.turns_at_zero += 1
+                if pilot.turns_at_zero >= morale_rules.DESERTION_AFTER_TURNS:
+                    logging.info(f"{pilot.name} has deserted {self}")
+                    pilot.desert()
+                    continue
+            else:
+                pilot.turns_at_zero = 0
+
+            if not pilot.wants_leave and random.random() < (
+                morale_rules.leave_request_chance(
+                    pilot.morale,
+                    getattr(self.settings, "morale_leave_request_chance", 8),
+                )
+            ):
+                pilot.wants_leave = True
 
     def tend_the_wounded(self) -> None:
         """One turn of every wound served; the last one puts the pilot back to work."""
@@ -328,15 +400,18 @@ class Squadron:
             self._recruit_pilots(self.replenish_count)
 
     def return_all_pilots_and_aircraft(self) -> None:
-        self.available_pilots = list(self.active_pilots)
+        # A man at rock bottom is not offered, the same way a wounded one is not. He is
+        # still on the books and still counts against the squadron's establishment.
+        self.available_pilots = [p for p in self.active_pilots if not p.refuses_to_fly]
         # Aircraft already sold this turn (negative pending) must not return to the
         # taskable pool; otherwise a turn re-initialisation would let the same units
         # be sold (and flown) again, refunding their price every time.
         self.untasked_aircraft = self.owned_aircraft + min(0, self.pending_deliveries)
 
     @staticmethod
-    def send_on_leave(pilot: Pilot) -> None:
-        pilot.send_on_leave()
+    def send_on_leave(pilot: Pilot, turns: int = 0, turn: int = -1) -> None:
+        """Open-ended from the Air Wing button; for a fixed spell from a granted request."""
+        pilot.send_on_leave(turns, turn)
 
     def return_from_leave(self, pilot: Pilot) -> None:
         if not self.has_unfilled_pilot_slots:
@@ -387,16 +462,21 @@ class Squadron:
         return self._pilots_with_status(PilotStatus.Wounded)
 
     @property
+    def deserted_pilots(self) -> list[Pilot]:
+        return self._pilots_with_status(PilotStatus.Deserted)
+
+    @property
     def number_of_pilots_including_inactive(self) -> int:
         return len(self.current_roster)
 
     @property
     def living_pilots(self) -> list[Pilot]:
-        return self._pilots_without_status(PilotStatus.Dead)
+        return [p for p in self.current_roster if p.alive]
 
     @property
     def dead_pilots(self) -> list[Pilot]:
-        return self._pilots_with_status(PilotStatus.Dead)
+        """The ones who are not coming back, however they went."""
+        return [p for p in self.current_roster if not p.alive]
 
     @property
     def _number_of_unfilled_pilot_slots(self) -> int:

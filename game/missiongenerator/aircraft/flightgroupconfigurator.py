@@ -349,7 +349,9 @@ class FlightGroupConfigurator:
         if pilot is None:
             logging.error(f"Cannot determine skill level: {unit.name} has not pilot")
             return squadron.base_skill
-        return squadron.pilot_skill(pilot)
+        # The skill he flies at, which morale moves; his rank is a separate thing
+        # and does not change with how his week has gone.
+        return squadron.mission_skill(pilot)
 
     def name_pilots(self) -> None:
         """Put the rank and name of the pilot where the label reads "Pilot #2".
