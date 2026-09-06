@@ -15,6 +15,7 @@ from PySide6.QtWidgets import (
 )
 from dcs import Point
 from game.config import REWARDS
+from game.cruise_raids import tgo_magazines
 from game.data.building_data import FORTIFICATION_BUILDINGS
 from game.server import EventStream
 from game.sim.gameupdateevents import GameUpdateEvents
@@ -71,8 +72,10 @@ class QGroundObjectMenu(QDialog):
         self.intelBox = QGroupBox("Units :")
         self.buildingBox = QGroupBox("Buildings :")
         self.orientationBox = QGroupBox("Orientation :")
+        self.cruiseMissilesBox = QGroupBox("Cruise missiles :")
         self.intelLayout = QGridLayout()
         self.buildingsLayout = QGridLayout()
+        self.cruise_missile_rows: list[tuple[str, int]] = []
         self.sell_all_button = None
         self.total_value = 0
         self.init_ui()
@@ -90,6 +93,8 @@ class QGroundObjectMenu(QDialog):
                 self.mainLayout.addWidget(self.financesBox)
         else:
             self.mainLayout.addWidget(self.intelBox)
+            if self.cruise_missile_rows:
+                self.mainLayout.addWidget(self.cruiseMissilesBox)
             self.mainLayout.addWidget(self.orientationBox)
             if self.ground_object.is_iads and self.cp.is_friendly(to_player=Player.RED):
                 self.mainLayout.addWidget(self.hiddenBox)
@@ -145,7 +150,12 @@ class QGroundObjectMenu(QDialog):
                         repair = QPushButton(f"Repair [{price}M]")
                         repair.setProperty("style", "btn-success")
                         repair.clicked.connect(
-                            lambda u=unit, p=price: self.repair_unit(u, p)
+                            # clicked emits a `checked` bool as the first positional
+                            # arg; absorb it so it doesn't clobber the captured unit
+                            # default (it was binding u=False -> crash in repair_unit).
+                            lambda checked=False, u=unit, p=price: self.repair_unit(
+                                u, p
+                            )
                         )
                         self.intelLayout.addWidget(repair, i, 1)
                     else:
@@ -155,6 +165,18 @@ class QGroundObjectMenu(QDialog):
         stretch = QVBoxLayout()
         stretch.addStretch()
         self.intelLayout.addLayout(stretch, i, 0)
+
+        # Cruise missile magazine, friendly launchers only: what the enemy has left in
+        # its tubes is not intel one click should hand out.
+        self.cruise_missile_rows = self.friendly_cruise_missile_magazines()
+        self.cruiseMissilesBox = QGroupBox("Cruise missiles :")
+        cruiseMissilesLayout = QGridLayout()
+        for row, (group_name, remaining) in enumerate(self.cruise_missile_rows):
+            cruiseMissilesLayout.addWidget(QLabel(f"<b>{group_name}</b>"), row, 0)
+            cruiseMissilesLayout.addWidget(
+                QLabel(f"{remaining} missile(s) remaining (no rearm)"), row, 1
+            )
+        self.cruiseMissilesBox.setLayout(cruiseMissilesLayout)
 
         self.buildingBox = QGroupBox("Buildings :")
         self.buildingsLayout = QGridLayout()
@@ -237,6 +259,12 @@ class QGroundObjectMenu(QDialog):
         self.orientationBox.setLayout(self.orientationBoxLayout)
         self.hiddenBox.setLayout(self.hiddenBoxLayout)
 
+    def friendly_cruise_missile_magazines(self) -> list[tuple[str, int]]:
+        viewer = Player.BLUE if self.game_model.is_ownfor else Player.RED
+        if not self.cp.is_friendly(to_player=viewer):
+            return []
+        return tgo_magazines(self.game, self.ground_object)
+
     def update_hidden_on_mfd(self, state: bool) -> None:
         self.ground_object.hide_on_mfd = bool(state)
 
@@ -255,6 +283,8 @@ class QGroundObjectMenu(QDialog):
                 self.mainLayout.addWidget(self.buildingBox)
             else:
                 self.mainLayout.addWidget(self.intelBox)
+                if self.cruise_missile_rows:
+                    self.mainLayout.addWidget(self.cruiseMissilesBox)
                 self.mainLayout.addWidget(self.orientationBox)
 
             self.actionLayout = QHBoxLayout()

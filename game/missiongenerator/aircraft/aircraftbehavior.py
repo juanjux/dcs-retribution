@@ -13,6 +13,7 @@ from dcs.task import (
     FighterSweep,
     GroundAttack,
     Nothing,
+    OptECMUsing,
     OptROE,
     OptRTBOnBingoFuel,
     OptRTBOnOutOfAmmo,
@@ -39,7 +40,6 @@ from dcs.task import (
 from dcs.unitgroup import FlyingGroup, ShipGroup
 
 from game.ato import Flight, FlightType, Package
-from game.data.weapons import WeaponType
 from game.ato.flightplans.aewc import AewcFlightPlan
 from game.ato.flightplans.formationattack import FormationAttackLayout
 from game.ato.flightplans.packagerefueling import PackageRefuelingFlightPlan
@@ -83,8 +83,6 @@ class AircraftBehavior:
             self.configure_sead(group, flight)
         elif self.task == FlightType.SEAD_ESCORT:
             self.configure_sead_escort(group, flight)
-        elif self.task == FlightType.EWAR:
-            self.configure_ewar(group, flight)
         elif self.task == FlightType.STRIKE:
             self.configure_strike(group, flight)
         elif self.task == FlightType.ANTISHIP:
@@ -449,10 +447,18 @@ class AircraftBehavior:
             f"({carrier_position.x}, {carrier_position.y})"
         )
 
+    # Escorts spawn at ReturnFire and escalate to OpenFire at the JOIN waypoint
+    # (JoinPointBuilder). OpenFire means "engage ONLY targets specified in its
+    # taskings", and an escort's one target-designating task (the Escort
+    # ControlledTask) only attaches at JOIN -- so the whole hold/transit window had
+    # an EMPTY legal-target set and the jet could not fire even while under attack
+    # (EvadeFire permits maneuver and countermeasures only). ReturnFire lets a
+    # pre-join escort shoot back at whatever shoots first without freelancing off
+    # its timeline. Adapted from the 414Ret fork.
     def configure_escort(self, group: FlyingGroup[Any], flight: Flight) -> None:
         self.configure_task(flight, group, Escort)
         self.configure_behavior(
-            flight, group, roe=OptROE.Values.OpenFire, restrict_jettison=True
+            flight, group, roe=OptROE.Values.ReturnFire, restrict_jettison=True
         )
 
     def configure_sead_escort(self, group: FlyingGroup[Any], flight: Flight) -> None:
@@ -460,42 +466,11 @@ class AircraftBehavior:
         self.configure_behavior(
             flight,
             group,
-            roe=OptROE.Values.OpenFire,
+            # ReturnFire until JOIN escalates to OpenFire -- see configure_escort.
+            roe=OptROE.Values.ReturnFire,
             # Guided includes ARMs and TALDs (among other things, but those are the useful
             # weapons for SEAD).
             rtb_winchester=OptRTBOnOutOfAmmo.Values.Guided,
-            restrict_jettison=True,
-            mission_uses_gun=False,
-        )
-
-    def configure_ewar(self, group: FlyingGroup[Any], flight: Flight) -> None:
-        # An EW jammer accompanies the package. The actual offensive/defensive jamming is
-        # fired by the join/split waypoint builders, so it is not configured here.
-        # Fallback tasks so non-fighter EW airframes (EC-130/C-130, Mi-8) that lack the
-        # preferred task don't crash MIZ generation (configure_task raises with no fallback).
-        if flight.any_member_has_weapon_of_type(WeaponType.ARM):
-            # Carries anti-radiation missiles: task it like a SEAD escort so it also
-            # prosecutes radar emitters (HARM) while jamming, instead of only self-defending.
-            self.configure_task(
-                flight, group, SEAD, [Escort, CAS, GroundAttack, Transport, Nothing]
-            )
-            roe = OptROE.Values.OpenFire
-            # Guided includes ARMs/HARMs, so it RTBs when out of anti-radiation missiles.
-            rtb_winchester = OptRTBOnOutOfAmmo.Values.Guided
-        else:
-            # No ARMs: keep a self-defense ROE so the jammer can defend itself without
-            # being drawn off to prosecute targets it cannot engage.
-            self.configure_task(
-                flight, group, Escort, [CAS, SEAD, GroundAttack, Transport, Nothing]
-            )
-            roe = OptROE.Values.ReturnFire
-            rtb_winchester = None
-        self.configure_behavior(
-            flight,
-            group,
-            react_on_threat=OptReactOnThreat.Values.EvadeFire,
-            roe=roe,
-            rtb_winchester=rtb_winchester,
             restrict_jettison=True,
             mission_uses_gun=False,
         )
@@ -521,7 +496,13 @@ class AircraftBehavior:
             flight,
             group,
             react_on_threat=OptReactOnThreat.Values.EvadeFire,
-            roe=OptROE.Values.WeaponHold,
+            # ReturnFire, not WeaponHold: a ferry is a transit, not a patrol, but held
+            # weapons made it a free kill -- it would evade a missile all the way into
+            # the ground without ever shooting at the fighter that launched it, and a
+            # relocation crossing contested airspace lost the whole squadron for free.
+            # ReturnFire keeps it out of fights it is not sent to pick while letting it
+            # answer the one it did not choose.
+            roe=OptROE.Values.ReturnFire,
             restrict_jettison=True,
             rtb_on_bingo=False,
         )
@@ -555,16 +536,20 @@ class AircraftBehavior:
         # This method should allow for dynamic choice between tasks,
         # obviously depending on what's preferred and compatible...
 
-        if preferred_task in flight.unit_type.dcs_unit_type.tasks:
+        if (
+            preferred_task.name
+            and preferred_task in flight.unit_type.dcs_unit_type.tasks
+        ):
             group.task = preferred_task.name
             return
         if fallback_tasks:
             for task in fallback_tasks:
-                if task in flight.unit_type.dcs_unit_type.tasks:
+                if task.name and task in flight.unit_type.dcs_unit_type.tasks:
                     group.task = task.name
                     return
-        if flight.unit_type.dcs_unit_type.task_default and preferred_task == Nothing:
-            group.task = flight.unit_type.dcs_unit_type.task_default.name
+        task_default = flight.unit_type.dcs_unit_type.task_default
+        if task_default and task_default.name and preferred_task == Nothing:
+            group.task = task_default.name
             logging.warning(
                 f"{ac_type} is not capable of 'Nothing', using default task '{group.task}'"
             )
@@ -573,6 +558,7 @@ class AircraftBehavior:
             group.task = (
                 flight.unit_type.dcs_unit_type.task_default.name
                 if flight.unit_type.dcs_unit_type.task_default
+                and flight.unit_type.dcs_unit_type.task_default.name
                 else group.task  # even if this is incompatible, if it's a client we don't really care...
             )
             logging.warning(

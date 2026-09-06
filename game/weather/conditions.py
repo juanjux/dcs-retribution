@@ -69,7 +69,7 @@ class Conditions:
                 night=(datetime.time(hour=22), datetime.time(hour=23)),
             ).range_of(time_of_day)
         else:
-            time_range = theater.daytime_map.range_of(time_of_day)
+            time_range = theater.daytime_map_for(day).range_of(time_of_day)
 
         # Starting missions on the hour is a nice gameplay property, so keep the random
         # time constrained to that. DaytimeMap enforces that we have only whole hour

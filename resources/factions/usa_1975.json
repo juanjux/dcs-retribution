@@ -25,6 +25,7 @@
     "F-4E-45MC Phantom II",
     "F-5E Tiger II",
     "F-100 Super Sabre",
+    "F-100D Super Sabre",
     "F-105G Thunderchief",
     "F-106A Delta Dart",
     "F-106B Delta Dart",
@@ -66,7 +67,7 @@
     "CV-59 Forrestal"
   ],
   "air_defense_units": [
-    "SAM Hawk SR (AN/MPQ-50)",
+    "EWR AN/FPS-117 Radar",
     "M163 Vulcan Air Defense System",
     "M48 Chaparral"
   ],

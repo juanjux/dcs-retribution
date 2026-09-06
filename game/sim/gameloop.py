@@ -58,28 +58,13 @@ class GameLoop:
         with self.timer.locked_pause():
             yield
 
-    #: Back-stop ceiling for run_to_first_contact (1 tick = 1 sim-second).
-    #: Four sim-hours is past any reasonable pre-engagement window; hitting
-    #: it means the stop condition is unreachable, so we abort.
-    MAX_FAST_FORWARD_TICKS = 4 * 60 * 60
-
     def run_to_first_contact(self) -> None:
         self.pause()
         if not self.started:
             self.start()
         logging.info("Running sim to first contact")
-        ticks = 0
         while not self.completed:
             self.tick(suppress_events=False)
-            ticks += 1
-            if ticks >= self.MAX_FAST_FORWARD_TICKS:
-                logging.warning(
-                    "Fast-forward aborted after %s sim-ticks; configured "
-                    "stop condition appears unreachable. Mission generated "
-                    "without fast-forward applied.",
-                    ticks,
-                )
-                break
 
     def pause_and_generate_miz(self, output: Path) -> None:
         self.pause()
@@ -114,7 +99,11 @@ class GameLoop:
         if not self.started:
             raise RuntimeError("Attempted to tick game loop before initialization")
         try:
-            self.sim.tick(self.events)
+            self.sim.tick(
+                self.events,
+                self.game.settings.combat_resolution_method,
+                force_continue=False,
+            )
             self.completed = self.events.simulation_complete
             if not suppress_events:
                 self.send_update(rate_limit=True)

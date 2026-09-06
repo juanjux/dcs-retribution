@@ -7,7 +7,6 @@
     "en_US"
   ],
   "aircrafts": [
-    "EC-130 Compass Call (emulated)",
     "A-10C Thunderbolt II (Suite 3)",
     "A-10C Thunderbolt II (Suite 7)",
     "AH-64D Apache Longbow",
@@ -25,6 +24,7 @@
     "CH-53E",
     "F-117A Nighthawk",
     "F-14B Tomcat",
+    "F-14B(U) Tomcat",
     "F-15C Eagle",
     "F-15E Strike Eagle (AI)",
     "F-15E Strike Eagle (Suite 4+)",

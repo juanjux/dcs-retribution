@@ -1,0 +1,6 @@
+name: AGM-142 Popeye
+range: 40  # nm - stand-off launch range
+year: 1989
+fallback: GBU-15
+clsids:
+  - "{F111C_AGM_142_ARM}"   # AGM-142 Popeye

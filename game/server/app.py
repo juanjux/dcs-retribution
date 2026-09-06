@@ -1,3 +1,6 @@
+import contextlib
+from collections.abc import AsyncIterator
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -15,10 +18,28 @@ from . import (
     tgos,
     waypoints,
     iadsnetwork,
+    retributionai,
 )
+from .security import TokenAuthMiddleware
 from .settings import ServerSettings
 
-app = FastAPI()
+# The MCP transport is optional: if `mcp` isn't installed the REST API still runs.
+try:
+    from game.mcp.server import mcp as _mcp
+except Exception:  # pragma: no cover - mcp[cli] is an optional dependency
+    _mcp = None  # type: ignore[assignment]
+
+
+@contextlib.asynccontextmanager
+async def _lifespan(_app: FastAPI) -> AsyncIterator[None]:
+    async with contextlib.AsyncExitStack() as stack:
+        if _mcp is not None:
+            # Required for the streamable-HTTP MCP app mounted at /mcp.
+            await stack.enter_async_context(_mcp.session_manager.run())
+        yield
+
+
+app = FastAPI(lifespan=_lifespan)
 app.include_router(controlpoints.router)
 app.include_router(debuggeometries.router)
 app.include_router(eventstream.router)
@@ -32,6 +53,11 @@ app.include_router(supplyroutes.router)
 app.include_router(tgos.router)
 app.include_router(waypoints.router)
 app.include_router(iadsnetwork.router)
+app.include_router(retributionai.router)
+
+if _mcp is not None:
+    # Gate /mcp on the same per-process token as the REST routes.
+    app.mount("/mcp", TokenAuthMiddleware(_mcp.streamable_http_app()))
 
 
 origins = ["file://"]

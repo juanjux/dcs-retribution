@@ -28,3 +28,14 @@ env/
 
 # Local virtualenv (matches existing `venv` convention but with leading dot)
 .venv/
+
+# Local fork build output and scratch files. `dist/**` above only covers the stock
+# build dir; the buffed-fork build script writes elsewhere, and a stray `git add -A`
+# once swept 8k build files (incl. a 147 MB Qt DLL) into a commit that GitHub then
+# refused to accept.
+/dist_full_fork/
+/build_full_fork/
+/_modtools/
+/_design_review/
+/_rebuild_*.log
+/state.json.*_bak

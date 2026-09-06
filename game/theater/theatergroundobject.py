@@ -21,7 +21,6 @@ from game.sidc import (
     Status,
     SymbolSet,
 )
-from game.data.units import UnitClass
 from game.theater.presetlocation import PresetLocation
 from .missiontarget import MissionTarget
 from .player import Player
@@ -30,6 +29,7 @@ from ..utils import Distance, Heading, meters, nautical_miles
 
 if TYPE_CHECKING:
     from game.ato.flighttype import FlightType
+    from game.dcs.groundunittype import GroundUnitType
     from game.threatzones import ThreatPoly
     from .theatergroup import TheaterUnit, TheaterGroup
     from .controlpoint import ControlPoint, Coalition
@@ -50,6 +50,7 @@ NAME_BY_CATEGORY = {
     "fob": "FOB",
     "fuel": "Fuel depot",
     "missile": "Missile site",
+    "motorpool": "Motorpool",
     "oil": "Oil platform",
     "power": "Power plant",
     "ship": "Ship",
@@ -94,6 +95,12 @@ class TheaterGroundObject(MissionTarget, SidcDescribable, ABC):
 
     @property
     def sidc_status(self) -> Status:
+        # Health-bar contract (the map bar is milsymbol's condition bar, driven by
+        # this digit): intact -> FULLY_CAPABLE (green), any dead unit -> DAMAGED
+        # (yellow), all dead unrepaired -> DESTROYED (red). "Repairing" is shown
+        # ORANGE by the client, which recolours the yellow bar when the TGO's
+        # `repairing` flag is set (see client tgos/shared.tsx) -- the digit itself
+        # stays DAMAGED for both.
         if self.control_point.captured.is_neutral:
             return Status.PRESENT
         if self.is_dead:
@@ -103,7 +110,7 @@ class TheaterGroundObject(MissionTarget, SidcDescribable, ABC):
         elif self.dead_units:
             return Status.PRESENT_DAMAGED
         else:
-            return Status.PRESENT
+            return Status.PRESENT_FULLY_CAPABLE
 
     @property
     def has_pending_repairs(self) -> bool:
@@ -620,23 +627,10 @@ class SamGroundObject(IadsGroundObject):
             task=task,
         )
 
-    @property
-    def sidc_status(self) -> Status:
-        if self.control_point.captured.is_neutral:
-            return Status.PRESENT
-        if self.is_dead:
-            if self.has_pending_repairs:
-                return Status.PRESENT_DAMAGED
-            return Status.PRESENT_DESTROYED
-        elif self.dead_units:
-            if self.has_pending_repairs:
-                return Status.PRESENT_DAMAGED
-            if self.max_threat_range() > meters(0):
-                return Status.PRESENT
-            else:
-                return Status.PRESENT_DAMAGED
-        else:
-            return Status.PRESENT_FULLY_CAPABLE
+    # sidc_status: no override. A SAM used to report PRESENT (no bar) when damaged
+    # but still projecting a threat ring, hiding real damage from the map; the base
+    # green/yellow/red contract applies now, and the ring already tells whether the
+    # site still threatens.
 
     @property
     def symbol_set_and_entity(self) -> tuple[SymbolSet, Entity]:
@@ -707,6 +701,78 @@ class VehicleGroupGroundObject(TheaterGroundObject):
         yield from super().mission_types(for_player)
 
 
+class MotorpoolGroundObject(TheaterGroundObject):
+    """A control point's not-deployed reserve armor, rendered as a stationary,
+    strikeable vehicle park. Its .groups are populated ephemerally each mission
+    from the current reserve slice (see MotorpoolPopulator); units are NOT
+    persisted."""
+
+    def __init__(
+        self,
+        name: str,
+        location: PresetLocation,
+        control_point: ControlPoint,
+        task: Optional[GroupTask],
+    ) -> None:
+        super().__init__(
+            name=name,
+            category="motorpool",
+            location=location,
+            control_point=control_point,
+            sea_object=False,
+            task=task,
+        )
+        # group-id -> the exact GroundUnitType variant that group represents, so
+        # the renderer decrements the right base.armor key. Set by the populator;
+        # never persisted meaningfully (groups are rebuilt each mission).
+        self.motorpool_unit_types: dict[int, GroundUnitType] = {}
+
+    @property
+    def symbol_set_and_entity(self) -> tuple[SymbolSet, Entity]:
+        # Maintenance-facility installation symbol: visually distinct from the
+        # armor-group symbol so the motorpool reads as a depot, not a fighting unit.
+        return (
+            SymbolSet.LAND_INSTALLATIONS,
+            LandInstallationEntity.MAINTENANCE_FACILITY,
+        )
+
+    @property
+    def capturable(self) -> bool:
+        return False
+
+    @property
+    def purchasable(self) -> bool:
+        # Not individually bought; reflects the reserve pool.
+        return False
+
+    @property
+    def should_head_to_conflict(self) -> bool:
+        # Parked/unmanned: never advances to the front.
+        return False
+
+    def mission_types(self, for_player: Player) -> Iterator[FlightType]:
+        from game.ato import FlightType
+
+        if not self.is_friendly(for_player):
+            yield FlightType.BAI
+        yield from super().mission_types(for_player)
+
+    @property
+    def sidc_status(self) -> Status:
+        # A motorpool is a live reserve projection: empty on the strategic map is its
+        # normal resting state (vehicles populate ephemerally at mission-gen), not
+        # destruction. Always render as a present depot — never damaged/destroyed.
+        # is_dead is deliberately left intact so AI target-selection, capture, and
+        # IADS logic (which read is_dead, not sidc_status) are unaffected.
+        return Status.PRESENT
+
+    def clear(self) -> None:
+        # Keep the group-id -> unit-type map in lockstep with groups so a wiped
+        # motorpool (e.g. on capture) leaves no dangling group-id keys behind.
+        super().clear()
+        self.motorpool_unit_types = {}
+
+
 class EwrGroundObject(IadsGroundObject):
     def __init__(
         self,
@@ -736,11 +802,6 @@ class EwrGroundObject(IadsGroundObject):
 
 
 class ShipGroundObject(NavalGroundObject):
-    #: Straight-line distance a ship group may be repositioned in one turn. Flat,
-    #: like carriers/LHA (NavalControlPoint.max_move_distance), rather than
-    #: per-hull-speed, to keep the campaign-map reposition simple.
-    MAX_MOVE_DISTANCE = nautical_miles(80)
-
     def __init__(
         self, name: str, location: PresetLocation, control_point: ControlPoint
     ) -> None:
@@ -752,7 +813,8 @@ class ShipGroundObject(NavalGroundObject):
             sea_object=True,
             task=GroupTask.NAVY,
         )
-        #: End-of-turn reposition target set from the map; None = hold position.
+        # Movement state (mirrors NavalControlPoint). Blue ownership is enforced
+        # at the API/serialization layer, not here.
         self.target_position: Optional[Point] = None
 
     @property
@@ -761,35 +823,15 @@ class ShipGroundObject(NavalGroundObject):
 
     @property
     def moveable(self) -> bool:
-        """Combatant ship groups can be repositioned on the campaign map."""
         return True
 
     @property
     def max_move_distance(self) -> Distance:
-        return self.MAX_MOVE_DISTANCE
+        return nautical_miles(80)
 
     def destination_in_range(self, destination: Point) -> bool:
-        distance = meters(self.position.distance_to_point(destination))
+        distance = meters(destination.distance_to_point(self.position))
         return distance <= self.max_move_distance
-
-    def commit_move(self) -> None:
-        """Apply a pending reposition at turn processing.
-
-        Shifts the group's position and every unit by the same delta, the way a
-        carrier control point drags its escorts (see ControlPoint.process_turn).
-        ``getattr`` keeps this safe for groups loaded from pre-feature saves.
-        """
-        target = getattr(self, "target_position", None)
-        if target is None:
-            return
-        delta = target - self.position
-        self.position.x += delta.x
-        self.position.y += delta.y
-        for group in self.groups:
-            for unit in group.units:
-                unit.position.x += delta.x
-                unit.position.y += delta.y
-        self.target_position = None
 
 
 class IadsBuildingGroundObject(BuildingGroundObject):

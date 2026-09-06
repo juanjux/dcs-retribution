@@ -19,9 +19,6 @@ if dcsRetribution then
             ewrj_options.DEBUG_OFFENSIVE = dcsRetribution.plugins.ewrj.DEBUG_OFFENSIVE
             ewrj_options.DEBUG_DEFENSIVE = dcsRetribution.plugins.ewrj.DEBUG_DEFENSIVE
             ewrj_options.DEBUG_ADVANCED = dcsRetribution.plugins.ewrj.DEBUG_ADVANCED
-            ewrj_options.SHOW_POD_MESSAGES = dcsRetribution.plugins.ewrj.SHOW_POD_MESSAGES
-            ewrj_options.MESSAGE_SCOPE = dcsRetribution.plugins.ewrj.MESSAGE_SCOPE
-            ewrj_options.SHOW_OPFOR_MESSAGES = dcsRetribution.plugins.ewrj.SHOW_OPFOR_MESSAGES
             env.info("[DEBUG EW SETUP] Offensive Power = "..ewrj_options.OFFENSIVE_POWER)
             env.info("[DEBUG EW SETUP] Defensive Power = "..ewrj_options.DEFENSIVE_POWER)
         end

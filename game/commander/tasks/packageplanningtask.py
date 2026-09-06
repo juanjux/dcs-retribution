@@ -129,8 +129,6 @@ class PackagePlanningTask(TheaterCommanderTask, Generic[MissionTargetT]):
         self.propose_flight(FlightType.SEAD_ESCORT, 2, EscortType.Sead)
         self.propose_flight(FlightType.ESCORT, 2, EscortType.AirToAir)
         self.propose_flight(FlightType.SEAD_SWEEP, 2, EscortType.Sead)
-        # Gated in PackageFulfiller.can_plan_escort on the EW setting + a capable squadron.
-        self.propose_flight(FlightType.EWAR, 2, EscortType.Ewar)
 
     def iter_iads_ranges(
         self, state: TheaterState, range_type: RangeType

@@ -9,7 +9,7 @@ from dcs.point import MovingPoint, PointAction
 from dcs.task import RunScript
 from dcs.unitgroup import FlyingGroup
 
-from game.ato import Flight, FlightType, FlightWaypoint
+from game.ato import Flight, FlightWaypoint
 from game.ato.flightwaypointtype import FlightWaypointType
 from game.ato.starttype import StartType
 from game.ato.traveltime import GroundSpeed
@@ -21,6 +21,15 @@ TARGET_WAYPOINTS = (
     FlightWaypointType.TARGET_GROUP_LOC,
     FlightWaypointType.TARGET_POINT,
     FlightWaypointType.TARGET_SHIP,
+)
+
+# Waypoints whose generated .miz name is matched as a structural identifier downstream --
+# CTLD air-assault split (landingzone.py: name == "DROPOFFZONE"), EW jamming placement and
+# formation join/split (aircraftgenerator.py / missiongenerator.py: name in {"JOIN", "SPLIT",
+# "RACETRACK START", "RACETRACK END"}). A player rename must NOT reach the .miz for these or
+# that logic silently breaks, so they keep their canonical name regardless of custom_name.
+STRUCTURAL_WAYPOINT_NAMES = frozenset(
+    {"JOIN", "SPLIT", "RACETRACK START", "RACETRACK END", "DROPOFFZONE"}
 )
 
 
@@ -43,7 +52,21 @@ class PydcsWaypointBuilder:
         self.mission_data = mission_data
 
     def dcs_name_for_waypoint(self) -> str:
-        return self.waypoint.name
+        # Structural waypoints are matched by name downstream; never let a rename reach the
+        # .miz for them (see STRUCTURAL_WAYPOINT_NAMES). The UI still allows the edit, but it
+        # is a harmless no-op in the cockpit for these.
+        if self.waypoint.name in STRUCTURAL_WAYPOINT_NAMES:
+            return self.waypoint.name
+        # Prefer the player's rename; otherwise the terse auto .miz name. NB the CDU
+        # fallback is `name`, not `pretty_name` (the list/kneeboard fallback) — by design.
+        #
+        # Flight-agnostic by design: AI flights are unaffected by a player's rename
+        # because a rename is written only to the player's own flight-plan waypoints
+        # (FlightWaypoint.apply_name_edit), and the player-only waypoint types a rename
+        # usually targets (target/divert/bullseye) are filtered out for AI flights
+        # upstream in WaypointGenerator.create_waypoints (only_for_player, client_count).
+        # See test_divert_and_bullseye_waypoints_are_player_only.
+        return self.waypoint.custom_name or self.waypoint.name
 
     def build(self) -> MovingPoint:
         waypoint = self.group.add_waypoint(
@@ -160,17 +183,18 @@ class PydcsWaypointBuilder:
             self.group.add_nav_target_point(self.waypoint.position, "IP")
 
     def defensive_jamming(self, waypoint: MovingPoint, action: str) -> None:
-        # The EW-Jammer script's defensive jamming physically defeats incoming radar
-        # missiles in a bubble -- a strong scripted shield, reserved for dedicated EW
-        # flights and aircraft carrying an actual jammer pod. Aircraft with only built-in
-        # ECM/jamming self-protect with DCS's own engine ECM (OptECMUsing) instead, so we
-        # don't stack a scripted missile-delete on top of it.
-        is_dedicated_ew = self.flight.flight_type == FlightType.EWAR
+        # Explodes incoming missiles within the jamming bubble through the EW-Jamming script
+        settings = self.flight.coalition.game.settings
+        ecm_required = settings.plugin_option("ewrj.ecm_required")
         for unit, member in zip(self.group.units, self.flight.iter_members()):
-            has_pod = member.loadout.has_weapon_of_type(
+            has_jammer = member.loadout.has_weapon_of_type(
                 WeaponType.JAMMER
             ) or member.loadout.has_weapon_of_type(WeaponType.OFFENSIVE_JAMMER)
-            if not (is_dedicated_ew or has_pod):
+            built_in_jammer = (
+                self.flight.squadron.aircraft.has_built_in_ecm
+                or self.flight.squadron.aircraft.has_built_in_jamming
+            )
+            if ecm_required and not (has_jammer or built_in_jammer):
                 continue
             if not member.is_player:
                 script_content = f'{action}IAdefjamming("{unit.name}")'
@@ -178,21 +202,13 @@ class PydcsWaypointBuilder:
                 waypoint.tasks.append(jamming_script)
 
     def offensive_jamming(self, waypoint: MovingPoint, action: str) -> None:
-        # The EW-Jammer script's offensive jamming scripts-off enemy radars -- a strong
-        # scripted effect. Restricted to dedicated EW flights, aircraft with built-in
-        # jamming (the EW-specific airframes such as Su-34/EC-130), or aircraft carrying an
-        # actual jammer pod -- matching the changelog. Aircraft with only built-in ECM
-        # (F/A-18C, Su-57) self-protect with DCS's own engine ECM (OptECMUsing) instead,
-        # so they never run scripted offensive jamming.
-        is_ew_capable = (
-            self.flight.flight_type == FlightType.EWAR
-            or self.flight.squadron.aircraft.has_built_in_jamming
-        )
+        # Silences enemy radars through the EW-Jamming script
+        settings = self.flight.coalition.game.settings
+        ecm_required = settings.plugin_option("ewrj.ecm_required")
         for unit, member in zip(self.group.units, self.flight.iter_members()):
-            has_pod = member.loadout.has_weapon_of_type(
-                WeaponType.JAMMER
-            ) or member.loadout.has_weapon_of_type(WeaponType.OFFENSIVE_JAMMER)
-            if not (is_ew_capable or has_pod):
+            has_jammer = member.loadout.has_weapon_of_type(WeaponType.OFFENSIVE_JAMMER)
+            built_in_jammer = self.flight.squadron.aircraft.has_built_in_jamming
+            if ecm_required and not (has_jammer or built_in_jammer):
                 continue
             if not member.is_player:
                 script_content = f'{action}EWjamm("{unit.name}")'

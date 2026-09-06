@@ -1,0 +1,10 @@
+name: GB-6
+range: 42  # nm - stand-off launch range (DCS ref guide v34: 42nm / 77.8km)
+year: 2010
+clsids:
+  - "DIS_GB6"   # GB-6
+  - "{GB-6}"   # GB-6
+  - "DIS_GB6_HE"   # GB-6-HE
+  - "{GB-6-HE}"   # GB-6-HE
+  - "DIS_GB6_TSP"   # GB-6-SFW
+  - "{GB-6-SFW}"   # GB-6-SFW

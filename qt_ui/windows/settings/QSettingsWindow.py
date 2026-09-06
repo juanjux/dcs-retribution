@@ -9,6 +9,7 @@ from PySide6.QtCore import QItemSelectionModel, QPoint, QSize, Qt
 from PySide6.QtGui import QStandardItem, QStandardItemModel, QCloseEvent
 from PySide6.QtWidgets import (
     QAbstractItemView,
+    QApplication,
     QCheckBox,
     QComboBox,
     QDialog,
@@ -16,6 +17,7 @@ from PySide6.QtWidgets import (
     QGroupBox,
     QHBoxLayout,
     QLabel,
+    QLineEdit,
     QListView,
     QPushButton,
     QScrollArea,
@@ -41,8 +43,9 @@ from game.settings import (
     Settings,
 )
 from game.settings.ISettingsContainer import SettingsContainer
+from game.settings.settings import CloudPresetPack, OPFOR_AI_SECTION
 from game.sim import GameUpdateEvents
-from pydcs_extensions import BanditClouds
+from pydcs_extensions import AtmosXClouds, BanditClouds, Weather2Clouds
 from qt_ui.widgets.QLabeledWidget import QLabeledWidget
 from qt_ui.widgets.spinsliders import FloatSpinSlider, TimeInputs
 from qt_ui.windows.GameUpdateSignal import GameUpdateSignal
@@ -177,6 +180,52 @@ class AutoSettingsLayout(QGridLayout):
                 self.add_duration_controls_for(row, name, description)
             else:
                 raise TypeError(f"Unhandled option type: {description}")
+        if self.section == OPFOR_AI_SECTION:
+            self._wire_opfor_ai()
+
+    def _wire_opfor_ai(self) -> None:
+        """Show the REST/MCP connect URLs when OPFOR AI control is enabled."""
+        master = self.settings_map.get("opfor_ai_enabled")
+
+        box = QWidget()
+        v = QVBoxLayout(box)
+        v.setContentsMargins(0, 4, 0, 0)
+        v.addWidget(QLabel("<b>Connect your LLM (paste a URL):</b>"))
+        self._opfor_ai_rest = self._url_row(v, "REST — any HTTP/REST client or curl")
+        self._opfor_ai_mcp = self._url_row(v, "MCP — any MCP-compatible client")
+        self.addWidget(box, self.rowCount(), 0, 1, 2)
+        self._opfor_ai_box = box
+
+        def refresh() -> None:
+            show = bool(master and master.isChecked())
+            self._opfor_ai_box.setVisible(show)
+            if show:
+                try:
+                    from game.agent import service
+
+                    self._opfor_ai_rest.setText(service.connect_url())
+                    self._opfor_ai_mcp.setText(service.mcp_url())
+                except Exception:
+                    self._opfor_ai_rest.setText(
+                        "(start a campaign to generate the URL)"
+                    )
+                    self._opfor_ai_mcp.setText("")
+
+        if master is not None:
+            master.toggled.connect(lambda _=None: refresh())
+        refresh()
+
+    def _url_row(self, parent_layout: QVBoxLayout, label: str) -> QLineEdit:
+        h = QHBoxLayout()
+        h.addWidget(QLabel(label + ":"))
+        field = QLineEdit()
+        field.setReadOnly(True)
+        h.addWidget(field, 1)
+        copy = QPushButton("Copy")
+        copy.clicked.connect(lambda: QApplication.clipboard().setText(field.text()))
+        h.addWidget(copy)
+        parent_layout.addLayout(h)
+        return field
 
     def add_label(self, row: int, description: OptionDescription) -> None:
         wrapped_title = "<br />".join(textwrap.wrap(description.text, width=55))
@@ -362,10 +411,22 @@ class QSettingsWindow(QDialog):
         super().closeEvent(event)
 
     def _handle_mod_settings(self) -> None:
-        if self.game.settings.use_bandit_clouds:
-            BanditClouds.activate()
-        else:
-            BanditClouds.deactivate()
+        # Only one cloud-preset pack may be injected at a time — the packs reuse the
+        # same Preset keys for different clouds, so activate the chosen one and eject
+        # the others.
+        packs = {
+            CloudPresetPack.BANDIT: BanditClouds,
+            CloudPresetPack.WEATHER2: Weather2Clouds,
+            CloudPresetPack.ATMOSX: AtmosXClouds,
+        }
+        chosen = self.game.settings.cloud_preset_pack
+        # Eject every pack first, then inject the chosen one: the packs share Preset
+        # keys, so ejecting after injecting would undo the chosen pack's own presets.
+        for pack, mod in packs.items():
+            if pack is not chosen:
+                mod.deactivate()
+        if chosen in packs:
+            packs[chosen].activate()
 
 
 class QSettingsWidget(QtWidgets.QWizardPage, SettingsContainer):

@@ -122,6 +122,22 @@ class GeneratorOptions(QtWidgets.QWizardPage):
         self.registerField("fa_18efg", self.fa_18efg)
         self.fa18ef_tanker = QtWidgets.QCheckBox()
         self.registerField("fa18ef_tanker", self.fa18ef_tanker)
+        self.fa18c_aargm_er = QtWidgets.QCheckBox()
+        self.registerField("fa18c_aargm_er", self.fa18c_aargm_er)
+        self.fa18c_aargm_er_realistic = QtWidgets.QCheckBox()
+        self.registerField("fa18c_aargm_er_realistic", self.fa18c_aargm_er_realistic)
+        # Mutually exclusive: the AARGM-ER covers either the whole F/A-18 family or only
+        # the Super Hornets (realistic), not both.
+        self.fa18c_aargm_er.toggled.connect(
+            lambda on: on and self.fa18c_aargm_er_realistic.setChecked(False)
+        )
+        self.fa18c_aargm_er_realistic.toggled.connect(
+            lambda on: on and self.fa18c_aargm_er.setChecked(False)
+        )
+        self.fa18c_lrasm = QtWidgets.QCheckBox()
+        self.registerField("fa18c_lrasm", self.fa18c_lrasm)
+        self.fa18c_jassm = QtWidgets.QCheckBox()
+        self.registerField("fa18c_jassm", self.fa18c_jassm)
         self.f22_raptor = QtWidgets.QCheckBox()
         self.registerField("f22_raptor", self.f22_raptor)
         self.f84g_thunderjet = QtWidgets.QCheckBox()
@@ -148,6 +164,10 @@ class GeneratorOptions(QtWidgets.QWizardPage):
         self.registerField("su30_flanker_h", self.su30_flanker_h)
         self.su35s_flanker_m = QtWidgets.QCheckBox()
         self.registerField("su35s_flanker_m", self.su35s_flanker_m)
+        self.f15ex = QtWidgets.QCheckBox()
+        self.registerField("f15ex", self.f15ex)
+        self.f15cge = QtWidgets.QCheckBox()
+        self.registerField("f15cge", self.f15cge)
         self.eurofighter = QtWidgets.QCheckBox()
         self.registerField("eurofighter", self.eurofighter)
         self.su57_felon = QtWidgets.QCheckBox()
@@ -172,6 +192,8 @@ class GeneratorOptions(QtWidgets.QWizardPage):
         self.registerField("vietnamwarvessels", self.vietnamwarvessels)
         self.chinesemilitaryassetspack = QtWidgets.QCheckBox()
         self.registerField("chinesemilitaryassetspack", self.chinesemilitaryassetspack)
+        self.iranmilitaryassetspack = QtWidgets.QCheckBox()
+        self.registerField("iranmilitaryassetspack", self.iranmilitaryassetspack)
         self.russianmilitaryassetspack = QtWidgets.QCheckBox()
         self.registerField("russianmilitaryassetspack", self.russianmilitaryassetspack)
         self.usamilitaryassetspack = QtWidgets.QCheckBox()
@@ -200,14 +222,18 @@ class GeneratorOptions(QtWidgets.QWizardPage):
         modLayout_row = 1
 
         mod_pairs = [
-            ("A-4E Skyhawk (v2.2.0)", self.a4_skyhawk),
+            ("A-4E Skyhawk (v2.3.0)", self.a4_skyhawk),
             ("A-6A Intruder (v2.7.5.01)", self.a6a_intruder),
             ("A-7E Corsair II", self.a7e_corsair2),
             ("C-130J-30 Super Hercules (v6.8.2)", self.hercules),
             ("Cold War Assets mod (v1.2)", self.coldwarassets),
             (
-                "CurrentHill Chinese Military Assets pack (1.1.4)",
+                "CurrentHill Chinese Military Assets pack (1.1.6)",
                 self.chinesemilitaryassetspack,
+            ),
+            (
+                "CurrentHill Iran Military Assets pack (2.0.0)",
+                self.iranmilitaryassetspack,
             ),
             (
                 "CurrentHill Russian Military Assets pack (2.0.0)",
@@ -218,7 +244,7 @@ class GeneratorOptions(QtWidgets.QWizardPage):
                 self.swedishmilitaryassetspack,
             ),
             (
-                "CurrentHill USA Military Assets pack (1.1.5)",
+                "CurrentHill USA Military Assets pack (1.5.0)",
                 self.usamilitaryassetspack,
             ),
             (
@@ -231,24 +257,38 @@ class GeneratorOptions(QtWidgets.QWizardPage):
             ),
             ("EA-6B Prowler (v2.9.4.102)", self.ea6b_prowler),
             ("E-7A Wedgetail (AI Only, EW Capable)", self.e7a_wedgetail),
+            ("Eurofighter Typhoon (v1.1.4 by Lechuzas Negras)", self.eurofighter),
             ("F-100 Super Sabre (v2.7.18.30765 patch 20.10.22)", self.f100_supersabre),
             ("F-104 Starfighter (v2.7.11.222.01)", self.f104_starfighter),
             ("F-105 Thunderchief (v2.7.12.23x)", self.f105_thunderchief),
             ("F-106 Delta Dart (v2.9.4.101)", self.f106_deltadart),
+            ("F-15C EG Golden Eagle (v1.5 by Spino)", self.f15cge),
             ("F-15D Baz (v1.0)", self.f15d_baz),
+            ("F-15EX Eagle II (v2.3 by Spino)", self.f15ex),
             ("F-15I Ra'am (v1.0 by IDF Mods Project)", self.f_15_idf),
             ("F-16I Sufa & F-16D (v3.6 by IDF Mods Project)", self.f_16_idf),
             ("F-22A Raptor (v2.0.0 released May 2025)", self.f22_raptor),
             ("F-35A/B/C Lightning II (v2.9.2.103 FC3 EFM)", self.vsnf35),
             ("F-4B/C Phantom II (2.8.7.204)", self.f4bc_phantom),
             ("F-4E Expanded Weapons (v1.0.11)", self.f4e_expanded_weapons),
+            ("F/A-18C AGM-88G AARGM-ER by SYNTAX", self.fa18c_aargm_er),
+            (
+                "F/A-18C AGM-88G AARGM-ER (Realistic mode: F/A-18E/F/G only, "
+                "without F/A-18C) by SYNTAX",
+                self.fa18c_aargm_er_realistic,
+            ),
+            ("F/A-18C AGM-158C LRASM by SYNTAX", self.fa18c_lrasm),
+            ("F/A-18C AGM-158B JASSM-ER by SYNTAX", self.fa18c_jassm),
             ("F-84G Thunderjet (v2.5.7.01)", self.f84g_thunderjet),
             ("F-111C Aardvark (Warpig Production v2.260208)", self.f111c),
             ("F9F Panther (v2.8.7.101)", self.f9f_panther),
-            ("F/A-18E/F/G Super Hornet (version 2.4.5)", self.fa_18efg),
-            ("F/A-18E/F Super Hornet AI Tanker (version 2.4.5)", self.fa18ef_tanker),
+            ("F/A-18E/F/G Super Hornet (version 2.4.5.260501.RC1)", self.fa_18efg),
+            (
+                "F/A-18E/F Super Hornet AI Tanker (version 2.4.5.260501.RC1)",
+                self.fa18ef_tanker,
+            ),
             ("Frenchpack (v4.9.1)", self.frenchpack),
-            ("High Digit SAMs (v1.4.0)", self.high_digit_sams),
+            ("High Digit SAMs (v2.1.0)", self.high_digit_sams),
             ("IDF Assets Pack (v1.1 by IDF Mods Project)", self.irondome),
             ("JAS 39 Gripen (v1.8.5-beta)", self.jas39_gripen),
             ("MiG-31BM (v2.62)", self.mig31bm_foxhound),
@@ -263,7 +303,6 @@ class GeneratorOptions(QtWidgets.QWizardPage):
             ("Su-15 Flagon (v1.0)", self.su15_flagon),
             ("Su-30 Flanker-H (v2.8.04b + CWS 3.72)", self.su30_flanker_h),
             ("Su-35S Flanker-M (v2.0.27b)", self.su35s_flanker_m),
-            ("Eurofighter Typhoon (v1.1.4 by Lechuzas Negras)", self.eurofighter),
             ("Su-57 Felon (build-04)", self.su57_felon),
             ("Super Étendard (v2.5.5)", self.super_etendard),
             ("Tornado F3 ADV (1.0)", self.tornado_adv),
@@ -319,6 +358,12 @@ class GeneratorOptions(QtWidgets.QWizardPage):
         self.f_15_idf.setChecked(s.get("f_15_idf", False))
         self.f_16_idf.setChecked(s.get("f_16_idf", False))
         self.fa_18efg.setChecked(s.get("fa_18efg", False))
+        self.fa18c_aargm_er.setChecked(s.get("fa18c_aargm_er", False))
+        self.fa18c_aargm_er_realistic.setChecked(
+            s.get("fa18c_aargm_er_realistic", False)
+        )
+        self.fa18c_lrasm.setChecked(s.get("fa18c_lrasm", False))
+        self.fa18c_jassm.setChecked(s.get("fa18c_jassm", False))
         self.f22_raptor.setChecked(s.get("f22_raptor", False))
         self.f84g_thunderjet.setChecked(s.get("f84g_thunderjet", False))
         self.f100_supersabre.setChecked(s.get("f100_supersabre", False))
@@ -344,6 +389,7 @@ class GeneratorOptions(QtWidgets.QWizardPage):
         self.chinesemilitaryassetspack.setChecked(
             s.get("chinesemilitaryassetspack", False)
         )
+        self.iranmilitaryassetspack.setChecked(s.get("iranmilitaryassetspack", False))
         self.russianmilitaryassetspack.setChecked(
             s.get("russianmilitaryassetspack", False)
         )

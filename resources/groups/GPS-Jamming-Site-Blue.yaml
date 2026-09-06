@@ -1,0 +1,25 @@
+# 414th -- a placeable GPS jamming site (BLUE).
+#
+# Pin this onto an authored air-defence marker in a campaign's `ground_forces`
+# block to put a jamming site wherever you want it -- beside a SAM belt, on an
+# objective, covering an approach. It brings its own layout
+# (`GPS Jamming Site`), so it touches nothing else in the theater and no
+# campaign sees one unless it asks for it.
+#
+# What it fields: the jammer(s) that deny GPS, plus point defence so killing them
+# is not free. NO radar -- a real GPS jammer is L-band, invisible to RWR and
+# un-homeable by a HARM, so this is a STRIKE target found by recon, not a SEAD
+# target (DM call 2026-08-05).
+#
+# EVERY unit listed here must be reachable by the faction that uses it: the
+# override gate is `all(u in faction.accessible_units for u in fg.units)`, so ONE
+# unreachable unit silently discards the whole pin and the marker falls back to
+# an ordinary site. Registering this preset in a faction's `preset_groups` is
+# what makes its units accessible.
+name: GPS Jamming Site (Blue)
+tasks:
+  - EarlyWarningRadar
+units:
+  - EW Radio Jammer (Blue)
+layouts:
+  - GPS Jamming Site

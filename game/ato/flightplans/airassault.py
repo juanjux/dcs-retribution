@@ -33,6 +33,9 @@ class AirAssaultLayout(FormationAttackLayout):
     drop_off: FlightWaypoint | None = None
     # This is an implementation detail used by CTLD. The aircraft will not go to this
     # waypoint. It is used by CTLD as the destination for unloaded troops.
+    # When True (a "remain at destination" helo assault) the route ends at the
+    # objective with no return leg -- the helos land there and stay.
+    remain: bool = False
 
     def iter_waypoints(self) -> Iterator[FlightWaypoint]:
         yield self.departure
@@ -44,10 +47,11 @@ class AirAssaultLayout(FormationAttackLayout):
         if self.drop_off is not None:
             yield self.drop_off
         yield self.targets[0]
-        yield from self.nav_from
-        yield self.arrival
-        if self.divert is not None:
-            yield self.divert
+        if not self.remain:
+            yield from self.nav_from
+            yield self.arrival
+            if self.divert is not None:
+                yield self.divert
         yield self.bullseye
         yield from self.custom_waypoints
 
@@ -150,6 +154,16 @@ class Builder(FormationAttackBuilder[AirAssaultFlightPlan, AirAssaultLayout]):
         else:
             heading = tgt.position.heading_between_point(ingress.position)
             drop_pos = tgt.position.point_from_heading(heading, 1200)
+            # Keep the drop-off out of the water. nearest_land_pos snaps to the nearest
+            # landmass in the WHOLE theater, so on an island map it teleports the LZ
+            # hundreds of NM to a distant island when the target's own islet isn't in the
+            # landmap (e.g. a small-island FOB in the Marianas). Bound it: if the snap
+            # lands implausibly far, keep the LZ at the target — a ground objective is
+            # already on land.
+            land_pos = self.flight.coalition.game.theater.nearest_land_pos(drop_pos)
+            if land_pos.distance_to_point(tgt.position) > 5000:
+                land_pos = tgt.position
+            drop_pos = land_pos
         drop_off_zone = MissionTarget("Dropoff zone", drop_pos)
         dz = builder.dropoff_zone(drop_off_zone) if self.flight.is_helo else None
 
@@ -164,6 +178,8 @@ class Builder(FormationAttackBuilder[AirAssaultFlightPlan, AirAssaultLayout]):
             ),
             ingress=ingress,
             drop_off=dz,
+            remain=getattr(self.flight, "remain_at_destination", False)
+            and self.flight.is_helo,
             targets=[assault_area],
             nav_from=builder.nav_path(
                 drop_off_zone.position,

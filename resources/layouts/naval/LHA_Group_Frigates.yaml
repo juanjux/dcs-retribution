@@ -9,9 +9,11 @@ groups:
         - 1
       unit_classes:
         - HelicopterCarrier
+  # The light-screen variant: frigate-led, no cruiser.
   - Escort:
     - name: LHA Group 1
       unit_count:
         - 2
       unit_classes:
         - Frigate
+        - Destroyer

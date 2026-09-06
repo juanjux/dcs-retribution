@@ -27,6 +27,18 @@ class AutoAtoBehavior(Enum):
 
 
 @unique
+class CloudPresetPack(Enum):
+    """A community cloud-preset weather mod whose presets the mission generator may
+    use. Only one can be active at a time: the packs share the same preset keys
+    (Preset35+) but map them to different clouds, so they must not be mixed."""
+
+    NONE = "None (stock DCS presets)"
+    BANDIT = "Bandit's Cloud Presets"
+    WEATHER2 = "Weather 2.0 (Bandit)"
+    ATMOSX = "ATMOS-X"
+
+
+@unique
 class NightMissions(Enum):
     DayAndNight = "nightmissions_nightandday"
     OnlyDay = "nightmissions_onlyday"
@@ -40,6 +52,7 @@ class FastForwardStopCondition(Enum):
     PLAYER_TAKEOFF = "Player takeoff time"
     PLAYER_TAXI = "Player taxi time"
     PLAYER_STARTUP = "Player startup time"
+    PLAYER_AT_IP = "Player at IP"
     MANUAL = "Manual fast forward control"
 
 
@@ -48,6 +61,12 @@ class CombatResolutionMethod(Enum):
     PAUSE = "Pause simulation"
     RESOLVE = "Resolve combat"
     SKIP = "Skip combat"
+
+
+@unique
+class DefaultPlayerLaserCode(Enum):
+    DEFAULT_1688 = "Default (1688)"
+    ALLOCATE_OWN = "Allocate own (unique per flight)"
 
 
 DIFFICULTY_PAGE = "Difficulty"
@@ -62,6 +81,7 @@ ADVANCED_CAMPAIGN_MANAGEMENT_PAGE = "Campaign Management+"
 GENERAL_SECTION = "General"
 PILOTS_AND_SQUADRONS_SECTION = "Pilots and Squadrons"
 HQ_AUTOMATION_SECTION = "HQ Automation"
+OPFOR_AI_SECTION = "OPFOR AI commander"
 FLIGHT_PLANNER_AUTOMATION = "Flight Planner Automation"
 GROUND_OBJECT_REPAIR_TUNING_SECTION = "Ground Object Repairs"
 BUILDING_REPAIR_TUNING_SECTION = "Building Repairs"
@@ -173,6 +193,18 @@ class Settings:
         },
         default=Views.All,
     )
+    opfor_ai_enabled: bool = boolean_option(
+        "Allow OPFOR AI control (external LLM plays red)",
+        page=CAMPAIGN_MANAGEMENT_PAGE,
+        section=OPFOR_AI_SECTION,
+        default=False,
+        detail=(
+            "Expose the live game over a local API so an external LLM (e.g. ChatGPT, "
+            "Claude, et cetera) plans the enemy turns instead of the scripted "
+            "commander. Check the toolbar OPFOR AI button for more info when enabling "
+            "this."
+        ),
+    )
     external_views_allowed: bool = boolean_option(
         "Allow external views",
         DIFFICULTY_PAGE,
@@ -210,20 +242,6 @@ class Settings:
             "Applies to both coalitions."
         ),
     )
-    electronic_warfare_enabled: bool = boolean_option(
-        "Enable Electronic Warfare (jamming) flights",
-        page=CAMPAIGN_DOCTRINE_PAGE,
-        section=GENERAL_SECTION,
-        default=False,
-        detail=(
-            "Enables the 'Jamming' flight task for dedicated electronic-warfare "
-            "aircraft (EA-18G, EA-6B, Su-34, Tornado ECR, etc.): they accompany a "
-            "package, jam enemy SAM radars and defeat incoming radar-guided "
-            "missiles. REQUIRES the 'EW Jammer Script 2.0' plugin to be enabled in "
-            "the LUA plugins section — without it the flights fly but do not jam. "
-            "Applies to both coalitions."
-        ),
-    )
     desired_barcap_mission_duration: timedelta = minutes_option(
         "Desired BARCAP on-station time",
         page=CAMPAIGN_DOCTRINE_PAGE,
@@ -233,6 +251,17 @@ class Settings:
         max=150,
         detail="Implicitly determines the number of BARCAPs planned by taking the mission duration"
         " and dividing it by the desired on-station time.",
+    )
+    desired_tarcap_mission_duration: timedelta = minutes_option(
+        "Desired TARCAP on-station time",
+        page=CAMPAIGN_DOCTRINE_PAGE,
+        section=GENERAL_SECTION,
+        default=timedelta(minutes=30),
+        min=10,
+        max=150,
+        detail="Only applies to a TARCAP nobody asked to escort. When a flight in its"
+        " package has requested an escort, the TARCAP stays for as long as the escorted"
+        " mission does, whatever this says.",
     )
     desired_awacs_mission_duration: timedelta = minutes_option(
         "Desired AWACS on-station time",
@@ -556,6 +585,43 @@ class Settings:
             "extremely incomplete so does not affect all weapons."
         ),
     )
+    restrict_props_by_date: bool = boolean_option(
+        "Restrict aircraft options by date (WIP)",
+        page=CAMPAIGN_MANAGEMENT_PAGE,
+        section=GENERAL_SECTION,
+        default=False,
+        detail=(
+            "Restricts era-defining aircraft mission options (e.g. the JHMCS helmet "
+            "cueing selection) based on the campaign date: gated options are hidden "
+            "from the payload editor and clamped to a period-correct value at "
+            "mission generation. Independent of the weapons restriction so either "
+            "can be enforced alone. Data is curated per airframe and incomplete."
+        ),
+    )
+    motorpool_enabled: bool = boolean_option(
+        "Spawn strikeable motorpool reserves",
+        page=CAMPAIGN_MANAGEMENT_PAGE,
+        section=GENERAL_SECTION,
+        default=True,
+        detail=(
+            "Render each control point's not-yet-deployed reserve armor as a "
+            "strikeable motorpool (only where the campaign authored one). "
+            "Destroying reserves forces the owner to repurchase."
+        ),
+    )
+    motorpool_spawn_cap: int = bounded_int_option(
+        "Maximum motorpool vehicles per turn",
+        page=CAMPAIGN_MANAGEMENT_PAGE,
+        section=GENERAL_SECTION,
+        default=10,
+        min=0,
+        max=25,
+        detail=(
+            "Caps how many reserve vehicles a control point renders across its "
+            "motorpool(s) per turn. Lower this if motorpools hurt mission "
+            "performance."
+        ),
+    )
     apply_target_overrides_to_loadouts: bool = boolean_option(
         "Apply target-based weapon settings to player loadouts",
         page=CAMPAIGN_MANAGEMENT_PAGE,
@@ -579,12 +645,18 @@ class Settings:
             "assigned to their primary task."
         ),
     )
-    use_bandit_clouds: bool = boolean_option(
-        "Use Bandit's clouds",
+    cloud_preset_pack: CloudPresetPack = choices_option(
+        "Custom cloud preset pack",
         page=CAMPAIGN_MANAGEMENT_PAGE,
         section=GENERAL_SECTION,
-        default=False,
-        detail=("If checked, Bandit's cloud presets will become available."),
+        default=CloudPresetPack.NONE,
+        choices={v.value: v for v in CloudPresetPack},
+        detail=(
+            "Make a community cloud-preset weather mod's presets available to the "
+            "mission generator. Pick the pack you have installed in DCS. Only one can "
+            "be active at a time, since the packs reuse the same preset keys for "
+            "different clouds. 'None' uses the stock DCS presets."
+        ),
     )
 
     # Pilots and Squadrons
@@ -667,6 +739,19 @@ class Settings:
         CAMPAIGN_MANAGEMENT_PAGE,
         HQ_AUTOMATION_SECTION,
         default=False,
+    )
+    weighted_ground_procurement: bool = boolean_option(
+        "AI buys its better ground units more often",
+        CAMPAIGN_MANAGEMENT_PAGE,
+        HQ_AUTOMATION_SECTION,
+        default=True,
+        detail=(
+            "The AI picks a ground unit uniformly at random from everything of the "
+            "right class it can afford, so a faction fielding both a modern MBT and a "
+            "gun truck buys as many of one as the other. With this enabled the roll is "
+            "weighted by price, which is the only capability measure the model has. It "
+            "is a weighting and not a maximum, so cheap units still appear."
+        ),
     )
     automate_ground_object_repairs: bool = boolean_option(
         "Automate ground object repairs",
@@ -1034,6 +1119,7 @@ class Settings:
             "Player startup time": FastForwardStopCondition.PLAYER_STARTUP,
             "Player taxi time": FastForwardStopCondition.PLAYER_TAXI,
             "Player takeoff time": FastForwardStopCondition.PLAYER_TAKEOFF,
+            "Player at IP": FastForwardStopCondition.PLAYER_AT_IP,
             "First contact": FastForwardStopCondition.FIRST_CONTACT,
             "Manual": FastForwardStopCondition.MANUAL,
         },
@@ -1187,6 +1273,19 @@ class Settings:
         choices={v.value: v for v in StartType},
         default=StartType.COLD,
         detail="Default start type for flights containing Player/Client slots.",
+    )
+    default_player_laser_code: DefaultPlayerLaserCode = choices_option(
+        "Default laser code for Player flights",
+        page=MISSION_GENERATOR_PAGE,
+        section=GAMEPLAY_SECTION,
+        choices={v.value: v for v in DefaultPlayerLaserCode},
+        default=DefaultPlayerLaserCode.ALLOCATE_OWN,
+        detail=(
+            "Allocate own gives every newly-created player flight a unique TGP/"
+            "weapon laser code. Default (1688) leaves the code unset so bombs "
+            "and the cockpit TGP fall back to 1688. Affects newly-created "
+            "flights only; existing flights are unchanged."
+        ),
     )
     nevatim_parking_fix: bool = boolean_option(
         "Force air-starts for aircraft at Nevatim and Ramon Airbase inoperable parking slots",
@@ -1402,6 +1501,116 @@ class Settings:
         GAMEPLAY_SECTION,
         default=True,
     )
+    gps_jamming: bool = boolean_option(
+        "GPS jamming (satellite-guided weapons go long)",
+        page=MISSION_GENERATOR_PAGE,
+        section=GAMEPLAY_SECTION,
+        default=False,
+        detail=(
+            "A JDAM, JSOW or JASSM released against a target inside an "
+            "enemy jamming bubble flies its normal profile and lands off the "
+            "aimpoint -- further off the deeper inside the bubble the target sits. "
+            "Laser, TV and anti-radiation weapons are unaffected, and killing the "
+            "jammer restores accuracy on the very next weapon, in the same mission. "
+            "A jammer is an ordinary bombable ground unit: any unit type whose data "
+            "file carries a `gps_jamming` block. Symmetric -- red eats its own "
+            "medicine wherever blue fields one. Needs the GPS jamming LUA plugin "
+            "enabled or it does nothing."
+        ),
+    )
+    gps_jamming_default_reach_nm: float = bounded_float_option(
+        "GPS jamming: default reach (nm)",
+        page=MISSION_GENERATOR_PAGE,
+        section=GAMEPLAY_SECTION,
+        default=30.0,
+        min=5.0,
+        max=150.0,
+        divisor=1,
+        detail=(
+            "Used by a jammer whose unit definition names no radius. This is the "
+            "size of the GPS-denied TARGET area, not a denied release area: a weapon "
+            "aimed at anything inside the bubble flies through it whatever range it "
+            "was released from, so standing off does not help a covered target."
+        ),
+    )
+    gps_jamming_miss_radius_m: float = bounded_float_option(
+        "GPS jamming: miss distance at full strength (m)",
+        page=MISSION_GENERATOR_PAGE,
+        section=GAMEPLAY_SECTION,
+        default=200.0,
+        min=25.0,
+        max=1000.0,
+        divisor=1,
+        detail=(
+            "How far off the aimpoint a degraded weapon lands when released over the "
+            "emitter. It scales down to zero at the bubble's edge, so a store "
+            "clipping the fringe is nudged and one released overhead is thrown clear."
+        ),
+    )
+    naval_weapon_release_stagger: bool = boolean_option(
+        "Stagger naval weapons release",
+        page=MISSION_GENERATOR_PAGE,
+        section=GAMEPLAY_SECTION,
+        default=False,
+        detail=(
+            "Warships start the mission on return-fire and are released to "
+            "weapons-free one group at a time across a window, instead of every hull "
+            "opening up at once. A modern anti-ship missile out-ranges the whole "
+            "theatre, so without this both fleets are in range from the moment the "
+            "mission loads and the entire naval battle happens in the first five "
+            "minutes. They still defend themselves while they wait -- this delays who "
+            "shoots first, it does not disarm anyone. Symmetric. Needs the naval "
+            "magazines LUA plugin enabled or it does nothing."
+        ),
+    )
+    naval_magazines: bool = boolean_option(
+        "Cross-turn naval magazines (anti-ship missiles do not rearm)",
+        page=MISSION_GENERATOR_PAGE,
+        section=GAMEPLAY_SECTION,
+        default=False,
+        detail=(
+            "Every warship group carries a finite campaign stock of anti-ship "
+            "missiles. A mission is a fresh spawn, so without this a fleet reloads for "
+            "free every turn and empties its tubes again and again; with it, what a "
+            "group fires this mission is gone for the rest of the war. A group that "
+            "runs dry drops back to return-fire -- winchester, not disarmed. "
+            "Land-attack cruise missiles are counted by their own setting, so nothing "
+            "is charged twice. Symmetric. Needs the naval magazines LUA plugin "
+            "enabled or it does nothing."
+        ),
+    )
+    cruise_missile_strikes: bool = boolean_option(
+        "Ship-launched cruise missile strikes",
+        page=MISSION_GENERATOR_PAGE,
+        section=GAMEPLAY_SECTION,
+        default=False,
+        detail=(
+            "Warships that carry land-attack cruise missiles (the Burke's Tomahawks, "
+            "the CurrentHill Kalibr hulls) can fire them at shore targets: an F10 "
+            "'Cruise Missile Strike' menu calls a salvo onto your last map marker from "
+            "the nearest ship that still has missiles. Each ship group carries a finite "
+            "campaign magazine and there is no rearm, so every salvo spends stock you "
+            "never get back. The missiles are real weapons from a real, tracked ship: "
+            "kills count at debrief, enemy point defense can intercept them, and "
+            "sinking the shooter ends the raids. Both coalitions play by these rules. "
+            "Runs through the 'Cruise missile strikes' LUA plugin -- keep that plugin "
+            "enabled or this setting does nothing."
+        ),
+    )
+    cruise_missile_auto_raids: bool = boolean_option(
+        "Auto-plan cruise missile raids",
+        page=MISSION_GENERATOR_PAGE,
+        section=GAMEPLAY_SECTION,
+        default=False,
+        detail=(
+            "Needs 'Ship-launched cruise missile strikes'. Each turn, a side with a "
+            "cruise-missile ship in range commits one raid: a salvo fired early in the "
+            "mission at its highest-value reachable enemy ground object -- command "
+            "centers and comms first, then war industry, then anything strikeable. "
+            "Watch for the LAUNCH WARNING: an enemy raid is your point-defense SAMs' "
+            "problem, or yours."
+        ),
+    )
 
     # Performance
     perf_smoke_gen: bool = boolean_option(
@@ -1419,10 +1628,28 @@ class Settings:
         max=24000,
     )
     perf_red_alert_state: bool = boolean_option(
-        "SAM starts in red alert mode",
+        "Air defenses start in red alert mode",
         page=MISSION_GENERATOR_PAGE,
         section=PERFORMANCE_SECTION,
         default=True,
+        tooltip=(
+            "Applies to SAM, AAA and other air-defense sites. Turning it off makes "
+            "them spawn on green alert, which costs less CPU but leaves them passive "
+            "until they are shot at. Front-line ground units and EWRs are not "
+            "affected: they always come up on red alert."
+        ),
+    )
+    coastal_batteries_engage_ships: bool = boolean_option(
+        "Coastal batteries engage ships",
+        page=MISSION_GENERATOR_PAGE,
+        section=PERFORMANCE_SECTION,
+        default=False,
+        detail=(
+            "Let coastal anti-ship batteries fire on their own at enemy hulls that "
+            "enter range, the way fleets do. Off by default: a battery from a unit "
+            "mod firing anti-ship missiles has been seen to crash DCS, so try it on "
+            "a throwaway mission before using it in a campaign."
+        ),
     )
     perf_artillery: bool = boolean_option(
         "Artillery strikes",
@@ -1724,14 +1951,121 @@ class Settings:
     def deserialize_state_dict(state: dict[str, Any]) -> dict[str, Any]:
         # restore Enum & timedelta types
         s = Settings()
-        for key, value in state.items():
-            if isinstance(s.__dict__.get(key), timedelta) and isinstance(value, int):
+        Settings._migrate_legacy_fast_forward(state)
+        Settings._migrate_legacy_bandit_clouds(state)
+        for key, value in list(state.items()):
+            default = s.__dict__.get(key)
+            if isinstance(default, Enum):
+                # Restore the stored member, falling back to the field default
+                # for any value that no longer resolves to a member of this
+                # field's enum -- a stale/renamed choice, or a legacy non-enum
+                # value such as None or a bool. Otherwise the bad value crashes
+                # the load and later the settings UI via text_for_value.
+                restored = Settings._restore_enum(value, type(default))
+                state[key] = restored if restored is not None else default
+            elif isinstance(default, timedelta) and isinstance(value, int):
                 state[key] = timedelta(minutes=value)
-            elif isinstance(s.__dict__.get(key), Enum) and isinstance(value, str):
-                state[key] = eval(value)
             elif isinstance(value, dict):
                 state[key] = s.obj_hook(value)
         return state
+
+    @staticmethod
+    def _restore_enum(value: Any, enum_cls: type[Enum]) -> Optional[Enum]:
+        """Resolve a serialized value to a member of enum_cls, or None if it no
+        longer maps to one (stale, renamed, or a legacy non-enum value)."""
+        if isinstance(value, enum_cls):
+            return value
+        # Accept the JSON form {"Enum": "EnumName.MEMBER"} and the bare
+        # "EnumName.MEMBER" string; ignore anything that does not eval to a
+        # member of this field's enum.
+        expr: Optional[str] = None
+        if isinstance(value, dict):
+            inner = value.get("Enum")
+            if isinstance(inner, str):
+                expr = inner
+        elif isinstance(value, str):
+            expr = value
+        if expr is not None:
+            try:
+                restored = eval(expr)
+            except Exception:
+                return None
+            if isinstance(restored, enum_cls):
+                return restored
+        return None
+
+    @staticmethod
+    def _migrate_legacy_bandit_clouds(state: dict[str, Any]) -> None:
+        """Pre-pack saves had a boolean ``use_bandit_clouds``; map it onto the new
+        ``cloud_preset_pack`` choice so a user who had Bandit's clouds on keeps them."""
+        legacy = state.pop("use_bandit_clouds", None)
+        if legacy is not None and "cloud_preset_pack" not in state:
+            state["cloud_preset_pack"] = (
+                CloudPresetPack.BANDIT if legacy else CloudPresetPack.NONE
+            )
+
+    @staticmethod
+    def _migrate_legacy_fast_forward(state: dict[str, Any]) -> None:
+        """Map pre-#684 fast-forward settings onto the current enums.
+
+        Before #684 fast-forward was three separate fields::
+
+            fast_forward_to_first_contact: bool          # was it enabled
+            player_mission_interrupts_sim_at: Optional[StartType]
+                # None=Never, COLD=startup, WARM=taxi, RUNWAY=takeoff
+            auto_resolve_combat: bool
+
+        #684 replaced them with ``fast_forward_stop_condition`` /
+        ``combat_resolution_method``. Translate old saves so the user keeps an
+        equivalent setting instead of crashing on load, and normalize the legacy
+        "Never"/None sentinel (which has no enum member) to "no fast forward".
+        """
+        legacy_ff = state.pop("fast_forward_to_first_contact", None)
+        legacy_interrupt = state.pop("player_mission_interrupts_sim_at", None)
+        legacy_auto = state.pop("auto_resolve_combat", None)
+
+        if "fast_forward_stop_condition" not in state and legacy_ff is not None:
+            if not legacy_ff:
+                state["fast_forward_stop_condition"] = FastForwardStopCondition.DISABLED
+            else:
+                interrupt = Settings._resolve_start_type(legacy_interrupt)
+                if interrupt is None:
+                    state["fast_forward_stop_condition"] = (
+                        FastForwardStopCondition.FIRST_CONTACT
+                    )
+                else:
+                    state["fast_forward_stop_condition"] = {
+                        StartType.COLD: FastForwardStopCondition.PLAYER_STARTUP,
+                        StartType.WARM: FastForwardStopCondition.PLAYER_TAXI,
+                        StartType.RUNWAY: FastForwardStopCondition.PLAYER_TAKEOFF,
+                    }.get(interrupt, FastForwardStopCondition.FIRST_CONTACT)
+
+        if "combat_resolution_method" not in state and legacy_auto is not None:
+            state["combat_resolution_method"] = (
+                CombatResolutionMethod.RESOLVE
+                if legacy_auto
+                else CombatResolutionMethod.PAUSE
+            )
+
+        # A "none"/"Never"/None value stored directly under the new key has no
+        # matching enum member; treat that family as "no fast forward".
+        ff = state.get("fast_forward_stop_condition")
+        if ff is None and "fast_forward_stop_condition" in state:
+            state["fast_forward_stop_condition"] = FastForwardStopCondition.DISABLED
+        elif isinstance(ff, str) and ff.strip().lower() in {"none", "never", ""}:
+            state["fast_forward_stop_condition"] = FastForwardStopCondition.DISABLED
+
+    @staticmethod
+    def _resolve_start_type(value: Any) -> Optional[StartType]:
+        """Coerce a serialized legacy value to a StartType member, or None."""
+        if isinstance(value, StartType):
+            return value
+        if isinstance(value, str):
+            name = value.rsplit(".", 1)[-1]
+            for member in StartType:
+                if name == member.name or value == member.value:
+                    return member
+        return None
 
     @classmethod
     def _field_description(cls, settings_field: Field[Any]) -> OptionDescription:

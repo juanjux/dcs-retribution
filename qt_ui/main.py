@@ -1,7 +1,9 @@
 import argparse
 import logging
 import ntpath
+import os
 import sys
+import tempfile
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -21,6 +23,7 @@ from game.data.weapons import Pylon, Weapon, WeaponGroup
 from game.dcs.aircrafttype import AircraftType
 from game.factions import FACTIONS
 from game.persistency import base_path
+from game.payloadbackup import backup_payloads
 from game.profiling import logged_duration
 from game.server import EventStream, Server
 from game.settings import Settings
@@ -67,6 +70,16 @@ def on_game_load(game: Optional[Game]) -> None:
 
 
 def run_ui(game: Optional[Game], ui_flags: UiFlags) -> None:
+    # Use ANGLE (Direct3D) instead of desktop OpenGL for Qt. The desktop-GL path
+    # (opengl32/nvoglv64 + wglSwapLayerBuffers) can deadlock the main thread on a
+    # synchronous Win32 message when a modal dialog is shown over the live
+    # QtWebEngine map -- e.g. interacting with / clicking outside the "Waiting for
+    # mission completion" window froze the whole app ("Not Responding"). ANGLE
+    # keeps hardware acceleration (via Direct3D) but removes that wgl* synchronous
+    # path. Must be set before Qt initialises its GL integration, i.e. before the
+    # QApplication below; setdefault lets an explicit QT_OPENGL still override it.
+    os.environ.setdefault("QT_OPENGL", "angle")
+
     QApplication.setHighDpiScaleFactorRoundingPolicy(
         Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
     )
@@ -103,6 +116,14 @@ def run_ui(game: Optional[Game], ui_flags: UiFlags) -> None:
     )
 
     inject_custom_payloads(persistency.base_path())
+
+    # Before anything can write to the payload directory, and before the user goes
+    # looking for whatever made them open Retribution today.
+    snapshot = backup_payloads(
+        persistency.payloads_dir(), persistency.payload_backups_dir()
+    )
+    if snapshot is not None:
+        logging.info("Backed up the payload library to %s", snapshot)
 
     # Splash screen setup
     pixmap = QPixmap("./resources/ui/splash_screen.png")
@@ -354,6 +375,9 @@ def create_game(
             su15_flagon=False,
             su30_flanker_h=False,
             su35s_flanker_m=False,
+            f15ex=False,
+            f15cge=False,
+            eurofighter=False,
             su57_felon=False,
             coldwarassets=False,
             frenchpack=False,
@@ -420,8 +444,47 @@ def dump_task_priorities() -> None:
         yaml.dump(data, output, sort_keys=False, allow_unicode=True)
 
 
+_single_instance_lock = None  # held lock-file handle; the OS frees it on exit
+
+
+def _acquire_single_instance_lock() -> bool:
+    """Become the only running instance; return False if another one holds the lock.
+
+    Uses an OS advisory lock on a temp file that the OS releases automatically when
+    this process exits, even on a crash. Without it, relaunching the executable
+    starts a second process that cannot bind the already-used web-server port, hangs
+    without ever showing a window, and is left orphaned when the first window closes.
+    """
+    global _single_instance_lock
+    lock_path = Path(tempfile.gettempdir()) / "dcs_retribution.lock"
+    try:
+        handle = open(lock_path, "w")
+    except OSError:
+        return True  # never block startup on a lock-file problem
+    try:
+        if sys.platform == "win32":
+            import msvcrt
+
+            msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+        else:
+            import fcntl
+
+            fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        handle.close()
+        return False
+    _single_instance_lock = handle  # keep open for the lifetime of the process
+    return True
+
+
 def main():
     logging_config.init_logging(VERSION)
+
+    if not _acquire_single_instance_lock():
+        logging.warning(
+            "DCS Retribution is already running; exiting this duplicate instance."
+        )
+        sys.exit(0)
 
     logging.debug("Python version %s", sys.version)
 
