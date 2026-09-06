@@ -42,9 +42,12 @@ class PilotSelector(QComboBox):
         self.pilot_index = idx
         self.rebuild()
 
-    @staticmethod
-    def text_for(pilot: Pilot) -> str:
-        return pilot.name
+    def text_for(self, pilot: Pilot) -> str:
+        """The pilot as he is addressed: rank first, when he holds one."""
+        if self.squadron is None:
+            return pilot.name
+        rank = self.squadron.pilot_rank(pilot)
+        return pilot.name if rank is None else f"{rank.abbreviation} {pilot.name}"
 
     def _do_rebuild(self) -> None:
         self.clear()
@@ -62,8 +65,13 @@ class PilotSelector(QComboBox):
         current_pilot = self.roster.pilot_at(self.pilot_index)
         if current_pilot is not None:
             choices.append(current_pilot)
-        # Put players first, otherwise alphabetically.
-        for pilot in sorted(choices, key=lambda p: (not p.player, p.name)):
+        # Players first, then by rank, then alphabetically. Squadron.rank_order is the
+        # same rule the Air Wing roster sorts by, and it flattens to nothing while Live
+        # Pilots is off, leaving the old alphabetical order untouched.
+        squadron = self.squadron
+        for pilot in sorted(
+            choices, key=lambda p: (not p.player, *squadron.rank_order(p), p.name)
+        ):
             self.addItem(self.text_for(pilot), pilot)
         if current_pilot is None:
             self.setCurrentText("Unassigned")
