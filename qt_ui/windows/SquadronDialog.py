@@ -853,7 +853,8 @@ class SquadronDialog(QDialog):
         self.dead_pilot_list = PilotList(self.dead_squadron_model, fallen=True)
         right_column.addWidget(self.dead_pilot_list, stretch=1)
 
-        layout.addLayout(self._build_buttons())
+        # Under the roster, not under the aircraft: these all act on a pilot.
+        right_column.addLayout(self._build_buttons())
 
         self._warn_parking_overflow()
 
@@ -993,6 +994,7 @@ class SquadronDialog(QDialog):
         """Discharge is set apart: a fast click on Rename must never land on it."""
         panel = QHBoxLayout()
         panel.setSpacing(8)
+        panel.setContentsMargins(0, 6, 0, 0)
 
         self.discharge_button = QPushButton("Discharge")
         self.discharge_button.setStyleSheet(BUTTON_DESTRUCTIVE)
