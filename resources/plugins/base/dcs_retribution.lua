@@ -7,9 +7,14 @@ logger:info("Check that json.lua is loaded : json = "..tostring(json))
 crash_events = {} -- killed aircraft will be added via S_EVENT_CRASH event
 dead_events = {} -- killed units will be added via S_EVENT_DEAD event
 unit_lost_events = {} -- killed units will be added via S_EVENT_UNIT_LOST
-kill_events = {} -- killed units will be added via S_EVENT_KILL 
+kill_events = {} -- killed units will be added via S_EVENT_KILL
+kill_details = {} -- structured S_EVENT_KILL records {target, initiator, weapon} for the UI feed
 base_capture_events = {}
 destroyed_objects_positions = {} -- will be added via S_EVENT_DEAD event
+took_off = {}   -- unit name -> true (S_EVENT_TAKEOFF); a ground-start unit absent here was destroyed parked
+death_time = {} -- unit name -> first death-event mission time (s), for indirect-kill timing
+cruise_missiles_state = {} -- cruisemissiles plugin appends/updates {group=, fired=} per ship group that launched; Python debits the campaign magazine at the turn boundary
+naval_magazines_state = {} -- navalmagazines plugin appends/updates {group=, fired=} per naval group that fired ANTI-SHIP missiles (a disjoint weapon set from cruise_missiles_state); Python debits the campaign magazine at the turn boundary
 mission_ended = false
 dirty_state = false -- Track if state has changed and needs writing
 
@@ -38,6 +43,82 @@ local function messageAll(message)
     mist.message.add(msg)
 end
 
+-- ── Freeze diagnostics ──────────────────────────────────────────────────────
+-- Some missions stall for minutes shortly after start, then recover. Several
+-- things could be to blame (an event storm, this state export, another plugin, or
+-- the engine itself), so measure instead of guessing. A heartbeat samples the wall
+-- clock against mission time: while the sim is stalled no scheduled function runs,
+-- so the first beat afterwards sees far more wall-clock seconds than mission
+-- seconds. It then reports what THIS script did during that gap, which is what
+-- tells the two cases apart: if the events/export numbers are ~0 the stall came
+-- from outside these scripts. Cheap: two counters per event, one line every few
+-- seconds. Set DIAG_ENABLED = false to silence it.
+DIAG_ENABLED = true
+DIAG_HEARTBEAT_S = 2   -- mission-time seconds between samples
+DIAG_STALL_WARN_S = 5  -- wall-clock seconds in one beat that count as a stall
+
+diag = {
+    events = 0,           -- events handled since the last sample
+    event_time = 0.0,     -- seconds spent inside our handler since the last sample
+    events_by_id = {},    -- DCS event id -> count since the last sample
+    write_calls = 0,      -- write_state calls since the last sample
+    write_time = 0.0,     -- seconds spent encoding+writing since the last sample
+    write_bytes = 0,      -- size of the most recent encoded payload
+    stalls = 0,
+    last_wall = 0,
+    last_mission = 0,
+}
+
+local function diag_count(t)
+    local n = 0
+    for _ in pairs(t) do n = n + 1 end
+    return n
+end
+
+local function diag_state_sizes()
+    return string.format(
+        "dead=%d kill=%d details=%d crash=%d lost=%d destroyed=%d took_off=%d death_time=%d",
+        #dead_events, #kill_events, #kill_details, #crash_events, #unit_lost_events,
+        #destroyed_objects_positions, diag_count(took_off), diag_count(death_time))
+end
+
+local function diag_top_events()
+    local parts = {}
+    for id, n in pairs(diag.events_by_id) do
+        parts[#parts + 1] = string.format("%s:%d", tostring(id), n)
+    end
+    table.sort(parts)
+    return table.concat(parts, " ")
+end
+
+function diag_heartbeat()
+    local wall = os.time()
+    local mission = timer.getTime()
+    local wall_gap = wall - diag.last_wall
+    local mission_gap = mission - diag.last_mission
+    local summary = string.format(
+        "t=%.0f wall=%ds mission=%.1fs | events=%d in %.2fs [%s] | write x%d in %.2fs (%d B) | %s",
+        mission, wall_gap, mission_gap, diag.events, diag.event_time, diag_top_events(),
+        diag.write_calls, diag.write_time, diag.write_bytes, diag_state_sizes())
+    if wall_gap >= DIAG_STALL_WARN_S then
+        -- The sim lost wall-clock time it never spent on mission time: that gap IS
+        -- the freeze. Compare it against the event/write cost reported alongside.
+        diag.stalls = diag.stalls + 1
+        logger:warn(string.format("DIAG STALL #%d (lag %.0fs): %s",
+            diag.stalls, wall_gap - mission_gap, summary))
+    elseif diag.events > 0 or diag.write_calls > 0 then
+        logger:info("DIAG " .. summary)
+    end
+    diag.last_wall = wall
+    diag.last_mission = mission
+    diag.events = 0
+    diag.event_time = 0.0
+    diag.events_by_id = {}
+    diag.write_calls = 0
+    diag.write_time = 0.0
+    mist.scheduleFunction(diag_heartbeat, {}, timer.getTime() + DIAG_HEARTBEAT_S)
+end
+
 function write_state()
     local _debriefing_file_location = debriefing_file_location
     if not debriefing_file_location or debriefing_file_location == "" then
@@ -58,12 +139,25 @@ function write_state()
         ["base_capture_events"] = base_capture_events,
 		["unit_lost_events"] = unit_lost_events,
 		["kill_events"] = kill_events,
+		["kill_details"] = kill_details,
         ["mission_ended"] = mission_ended,
         ["destroyed_objects_positions"] = destroyed_objects_positions,
+        ["model_time"] = timer.getTime(),
+        ["took_off"] = took_off,
+        ["death_time"] = death_time,
+        ["cruise_missiles_state"] = cruise_missiles_state or {},
+        ["naval_magazines_state"] = naval_magazines_state or {},
     }
+    local t0 = os.clock()
     local ok, write_error = pcall(function()
-        fp:write(json:encode(game_state))
+        -- Encoded separately from the write so the diagnostics can report the
+        -- payload size that this call actually cost.
+        local encoded = json:encode(game_state)
+        diag.write_bytes = #encoded
+        fp:write(encoded)
     end)
+    diag.write_time = diag.write_time + (os.clock() - t0)
+    diag.write_calls = diag.write_calls + 1
     fp:close()
     if not ok then
         error(write_error)
@@ -196,6 +290,43 @@ local function is_player_despawn(name)
 end
 
 local function onEvent(event)
+    -- Indirect-kill attribution data (consumed by the debriefing): which units
+    -- took off, and the first death-event time of each unit. pcall-guarded so a
+    -- missing accessor never breaks the mission.
+    --
+    -- The type(n) == "string" guards are load-bearing, not defensive fluff. For
+    -- scenery/map objects getName() returns a NUMBER (an object id in the tens of
+    -- millions), and a Hercules clipping an airfield fence fires S_EVENT_DEAD with
+    -- exactly such an initiator. One numeric key like death_time[71610370] makes
+    -- JSON.lua encode the table as an array with 71M null holes: ~100 s of CPU on
+    -- the sim thread per write_state and a "table overflow" abort, retried every
+    -- 15 s because the failed write never clears dirty_state -- the recurring
+    -- in-mission freeze. Scenery deaths carry no debriefing value; drop them.
+    if event.id == world.event.S_EVENT_TAKEOFF and event.initiator then
+        pcall(function()
+            local n = event.initiator:getName()
+            if type(n) == "string" and not took_off[n] then took_off[n] = true; dirty_state = true end
+        end)
+    end
+    if event.id == world.event.S_EVENT_KILL and event.target then
+        pcall(function()
+            local n = event.target:getName()
+            if type(n) == "string" and death_time[n] == nil then death_time[n] = timer.getTime(); dirty_state = true end
+        end)
+    end
+    if event.initiator and (event.id == world.event.S_EVENT_CRASH
+        or event.id == world.event.S_EVENT_DEAD
+        or event.id == world.event.S_EVENT_UNIT_LOST) then
+        pcall(function()
+            local n = event.initiator:getName()
+            -- Skip player-despawns (same guard as the loss lists) so death_time
+            -- only holds genuine deaths.
+            if type(n) == "string" and death_time[n] == nil and not is_player_despawn(n) then
+                death_time[n] = timer.getTime(); dirty_state = true
+            end
+        end)
+    end
+
     -- Track player seat-leaves and ejections first so the loss handlers below can
     -- tell a despawn (player left, survived) from a real shootdown.
     if event.id == world.event.S_EVENT_EJECTION and event.initiator
@@ -225,7 +356,23 @@ local function onEvent(event)
     end
 	
 	if event.id == world.event.S_EVENT_KILL and event.target then
-        kill_events[#kill_events + 1] = event.target.getName(event.target)
+        local target_name = event.target.getName(event.target)
+        kill_events[#kill_events + 1] = target_name
+        -- Also record who killed it and with what, for the UI event feed. All
+        -- accessors are pcall-guarded so a missing field never breaks the mission.
+        local detail = { ["target"] = target_name }
+        if event.initiator then
+            pcall(function() detail["initiator"] = event.initiator:getName() end)
+            pcall(function() detail["initiator_type"] = event.initiator:getTypeName() end)
+            pcall(function()
+                local pn = event.initiator:getPlayerName()
+                if pn and pn ~= "" then detail["initiator_player"] = pn end
+            end)
+        end
+        if event.weapon then
+            pcall(function() detail["weapon"] = event.weapon:getTypeName() end)
+        end
+        kill_details[#kill_details + 1] = detail
         dirty_state = true
     end
 
@@ -260,7 +407,26 @@ local function onEvent(event)
 
 end
 
-mist.addEventHandler(onEvent)
+if DIAG_ENABLED then
+    -- Same handler, wrapped so a stall report can say how many events arrived in
+    -- the gap and how long they cost us (an event storm is one of the suspects).
+    mist.addEventHandler(function(event)
+        local t0 = os.clock()
+        diag.events = diag.events + 1
+        local id = event and event.id or -1
+        diag.events_by_id[id] = (diag.events_by_id[id] or 0) + 1
+        onEvent(event)
+        diag.event_time = diag.event_time + (os.clock() - t0)
+    end)
+    diag.last_wall = os.time()
+    diag.last_mission = timer.getTime()
+    mist.scheduleFunction(diag_heartbeat, {}, timer.getTime() + DIAG_HEARTBEAT_S)
+    logger:info(string.format(
+        "DIAG enabled: heartbeat every %ds, stall threshold %ds wall clock",
+        DIAG_HEARTBEAT_S, DIAG_STALL_WARN_S))
+else
+    mist.addEventHandler(onEvent)
+end
 
 dirty_state = true
 write_state_error_handling()

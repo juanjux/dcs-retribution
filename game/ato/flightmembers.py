@@ -79,10 +79,18 @@ class FlightMembers(IFlightRoster):
         self.members[index].pilot = pilot
 
     def clear(self) -> None:
+        """Give the crew back to the squadron, and stop holding on to them.
+
+        Returning them without letting go left a pilot assigned to this flight and
+        sitting in the available pool at the same time, so the next flight could claim
+        him again: the same man flew a BARCAP and a DEAD in the same turn, and the
+        squadron's books showed four pilots claimed for two people.
+        """
         self.flight.squadron.return_pilots(
             [p for p in self.iter_pilots() if p is not None]
         )
         for member in self.members:
+            member.pilot = None
             if (code := member.tgp_laser_code) is not None:
                 code.release()
 

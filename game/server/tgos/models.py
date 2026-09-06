@@ -30,6 +30,10 @@ class TgoJs(BaseModel):
     # groups (SAM/EWR/armor), or buildings the building-repair feature can rebuild.
     # (Wire name kept as `purchasable` for the JS client; value is tgo.repairable.)
     purchasable: bool
+    # Repairs pending on this group's dead units. The client shows the health bar
+    # ORANGE (instead of the damaged yellow) while this is true, for partial and
+    # fully-dead groups alike.
+    repairing: bool
     sidc: str  # TODO: Event stream
     task: Optional[GroupTask]
     mobile: bool
@@ -77,6 +81,7 @@ class TgoJs(BaseModel):
             detection_ranges=detection_ranges,
             dead=tgo.is_dead,
             purchasable=tgo.repairable,
+            repairing=tgo.has_pending_repairs,
             sidc=str(tgo.sidc()),
             task=tgo.groups[0].ground_object.task if tgo.groups else None,
             mobile=mobile,

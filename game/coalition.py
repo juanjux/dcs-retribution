@@ -3,8 +3,6 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Optional, TYPE_CHECKING
 
-from faker import Faker
-
 from game.armedforces.armedforces import ArmedForces
 from game.ato.airtaaskingorder import AirTaskingOrder
 from game.campaignloader.defaultsquadronassigner import DefaultSquadronAssigner
@@ -43,7 +41,6 @@ class Coalition:
         self.transit_network = TransitNetwork()
         self.procurement_requests: OrderedSet[AircraftProcurementRequest] = OrderedSet()
         self.bullseye = Bullseye(self.game.point_in_world(0, 0))
-        self.faker = Faker(self.faction.locales)
         self.air_wing = AirWing(player, game, self.faction)
         self.armed_forces = ArmedForces(self.faction)
         self.transfers = PendingTransfers(game, player)
@@ -61,11 +58,10 @@ class Coalition:
         # breaks less frequent. Each of these properties has a non-underscore-prefixed
         # @property that should be used for non-Optional access.
         #
-        # All of these are late-initialized (whether via on_load or called later), but
-        # will be non-None after the game has finished loading.
+        # All of these are late-initialized, but will be non-None after the game has
+        # finished loading.
         self._threat_zone: Optional[ThreatZones] = None
         self._navmesh: Optional[NavMesh] = None
-        self.on_load()
 
     @property
     def doctrine(self) -> Doctrine:
@@ -102,7 +98,6 @@ class Coalition:
         state = self.__dict__.copy()
         # Avoid persisting any volatile types that can be deterministically
         # recomputed on load for the sake of save compatibility.
-        del state["faker"]
         # TODO: Figure out why this is needed after adding neutral point support
         if state["player"] != Player.NEUTRAL:
             del state["_threat_zone"]
@@ -120,11 +115,6 @@ class Coalition:
                 state["player"] = Player.RED
 
         self.__dict__.update(state)
-        # Regenerate any state that was not persisted.
-        self.on_load()
-
-    def on_load(self) -> None:
-        self.faker = Faker(self.faction.locales)
 
     def set_opponent(self, opponent: Coalition) -> None:
         if self._opponent is not None:
@@ -203,7 +193,12 @@ class Coalition:
         with logged_duration("Transport planning"):
             self.transfers.plan_transports(self.game.conditions.start_time)
 
-        if not is_turn_0:
+        # When the LLM commands OPFOR, leave red's air plan empty for it to author
+        # via the API. The scripted commander still runs as a fallback at Take Off if
+        # the AI never fills it (see game.agent.service.run_opfor_fallback_if_needed).
+        # Procurement still runs so red reinforces automatically either way.
+        ai_controls_red = self.player.is_red and self.game.settings.opfor_ai_enabled
+        if not is_turn_0 and not ai_controls_red:
             self.plan_missions(self.game.conditions.start_time)
         self.plan_procurement()
 

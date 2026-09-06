@@ -18,6 +18,7 @@ groups:
         - 1
       unit_types:
         - CH_MIM104_ECS
+        - CH_MIM104_ECS_KAT1
     - name: Patriot Battery 3
       unit_count:
         - 1
@@ -28,6 +29,7 @@ groups:
         - 1
       unit_types:
         - CH_MIM104_EPP
+        - CH_MIM104_EPP_KAT1
     - name: Patriot Battery 5
       unit_count:
         - 8

@@ -1,14 +1,15 @@
 {
     "nameInUI": "Skynet IADS",
+    "descriptionInUI": "Networks each coalition's SAMs and EWRs into an Integrated Air Defense System, coordinating detection and engagement and letting mobile SAMs shoot-and-scoot instead of fighting as isolated sites.",
     "defaultValue": true,
     "specificOptions": [
         {
-            "nameInUI": "create IADS for RED coalition",
+            "nameInUI": "Create IADS for RED coalition",
             "mnemonic": "createRedIADS",
             "defaultValue": true
         },
         {
-            "nameInUI": "create IADS for BLUE coalition",
+            "nameInUI": "Create IADS for BLUE coalition",
             "mnemonic": "createBlueIADS",
             "defaultValue": true
         },
@@ -33,77 +34,77 @@
             "defaultValue": false
         },
         {
-            "nameInUI": "Enable Mobile SAMs SHORAD (SA-8/9/13/15/19)",
+            "nameInUI": "Enable mobile SHORAD shoot-and-scoot (SA-8/9/13/15/19)",
             "mnemonic": "actMobile",
             "defaultValue": false
         },
         {
-            "nameInUI": "Maximum emission time (s) for Mobile SHORAD",
+            "nameInUI": "Mobile SHORAD: max emission time before scooting (s)",
             "mnemonic": "actMobileMaxEmissionTime",
             "defaultValue": 30
         },
         {
-            "nameInUI": "Minimum scoot distance (m) for Mobile SHORAD",
+            "nameInUI": "Mobile SHORAD: minimum scoot distance (m)",
             "mnemonic": "actMobileMinimumScootDistance",
             "defaultValue": 300
         },
         {
-            "nameInUI": "Maximum scoot distance (m) for Mobile SHORAD",
+            "nameInUI": "Mobile SHORAD: maximum scoot distance (m)",
             "mnemonic": "actMobileMaximumScootDistance",
             "defaultValue": 500
         },
         {
-            "nameInUI": "Exclude SA-15",
+            "nameInUI": "Exclude SA-15 from mobile SHORAD scooting",
             "mnemonic": "actMobile_exclude_SA15",
             "defaultValue": false
         },
         {
-            "nameInUI": "Enable Mobile SAMs MERAD (SA-6/11/17)",
+            "nameInUI": "Enable mobile MERAD shoot-and-scoot (SA-6/11/17)",
             "mnemonic": "actMobile_merad",
             "defaultValue": false
         },
         {
-            "nameInUI": "Maximum emission time (s) for Mobile MERAD",
+            "nameInUI": "Mobile MERAD: max emission time before scooting (s)",
             "mnemonic": "actMobileMaxEmissionTime_merad",
             "defaultValue": 120
         },
         {
-            "nameInUI": "Minimum scoot distance (m) for Mobile MERAD",
+            "nameInUI": "Mobile MERAD: minimum scoot distance (m)",
             "mnemonic": "actMobileMinimumScootDistance_merad",
             "defaultValue": 500
         },
         {
-            "nameInUI": "Maximum scoot distance (m) for Mobile MERAD",
+            "nameInUI": "Mobile MERAD: maximum scoot distance (m)",
             "mnemonic": "actMobileMaximumScootDistance_merad",
             "defaultValue": 3000
         },
         {
-            "nameInUI": "Adjust default SAMs GoLiveRange",
+            "nameInUI": "Adjust default SAM go-live range",
             "mnemonic": "adjustGoLiveRange",
             "defaultValue": false
         },
         {
-            "nameInUI": "SA-5 GoLiveRange (% max interceptor range)",
+            "nameInUI": "SA-5 go-live range (% of max interceptor range)",
             "mnemonic": "adjustGoLiveRange_SA5",
             "defaultValue": 100
         },
         {
-            "nameInUI": "SA-10 GoLiveRange (% max interceptor range)",
+            "nameInUI": "SA-10 go-live range (% of max interceptor range)",
             "mnemonic": "adjustGoLiveRange_SA10",
             "defaultValue": 100
         },
         {
-            "nameInUI": "SA-17 GoLiveRange (% max interceptor range)",
+            "nameInUI": "SA-17 go-live range (% of max interceptor range)",
             "mnemonic": "adjustGoLiveRange_SA17",
             "defaultValue": 100
         },
         {
-            "nameInUI": "SA-20 GoLiveRange (% max interceptor range)",
+            "nameInUI": "SA-20 go-live range (% of max interceptor range)",
             "mnemonic": "adjustGoLiveRange_SA20",
             "defaultValue": 100
         },
         {
-            "nameInUI": "SA-23 GoLiveRange (% max interceptor range)",
+            "nameInUI": "SA-23 go-live range (% of max interceptor range)",
             "mnemonic": "adjustGoLiveRange_SA23",
             "defaultValue": 100
         }

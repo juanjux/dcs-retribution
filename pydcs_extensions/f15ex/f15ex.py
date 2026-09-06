@@ -154,7 +154,15 @@ class F_15EX(PlaneType):
     chaff_charge_size = 1
     flare_charge_size = 1
     eplrs = True
-    category = "Multirole fighter"
+    # "Interceptor" (mapped to the "Air" callsign category by pydcs), not
+    # "Multirole fighter": Mission._assign_callsign only issues NATO-style
+    # name callsigns when the category is a key of the country's callsign
+    # table, and an unknown category falls back to a NUMERIC callsign --
+    # which the DCS Mission Editor cannot load for these units
+    # ("attempt to index field 'callsign' (a number value)", the mission
+    # hangs at ~97% of Terrain Graphics Init). Every stock and working mod
+    # fighter declares "Interceptor".
+    category = "Interceptor"
     radio_frequency = 124
 
     livery_name = "F15EX"
@@ -218,21 +226,21 @@ class F_15EX(PlaneType):
         )
         MiG_29MU2_ADM_160B = (2, WeaponsF15EX.MiG_29MU2_ADM_160B)
         MIG29MU2_JDAM_ER = (2, WeaponsF15EX.MIG29MU2_JDAM_ER)
-        BRU_42_with_3_x_Mk_82___500lb_GP_Bombs_LD = (
+        BRU_42___3_x_Mk_82___500lb_GP_Bomb_LD = (
             2,
-            Weapons.BRU_42_with_3_x_Mk_82___500lb_GP_Bombs_LD,
+            Weapons.BRU_42___3_x_Mk_82___500lb_GP_Bomb_LD,
         )
         BRU_33_with_2_x_Mk_20_Rockeye___490lbs_CBU__247_x_HEAT_Bomblets = (
             2,
             Weapons.BRU_33_with_2_x_Mk_20_Rockeye___490lbs_CBU__247_x_HEAT_Bomblets,
         )
-        BRU_42_with_3_x_Mk_82_AIR_Ballute___500lb_GP_Bombs_HD = (
+        BRU_42___3_x_Mk_82_AIR_Ballute___500lb_GP_Bomb_HD = (
             2,
-            Weapons.BRU_42_with_3_x_Mk_82_AIR_Ballute___500lb_GP_Bombs_HD,
+            Weapons.BRU_42___3_x_Mk_82_AIR_Ballute___500lb_GP_Bomb_HD,
         )
-        BRU_42_with_3_x_Mk_20_Rockeye___490lbs_CBUs__247_x_HEAT_Bomblets = (
+        BRU_42___3_x_Mk_20_Rockeye___490lbs_CBU__247_x_HEAT_Bomblets = (
             2,
-            Weapons.BRU_42_with_3_x_Mk_20_Rockeye___490lbs_CBUs__247_x_HEAT_Bomblets,
+            Weapons.BRU_42___3_x_Mk_20_Rockeye___490lbs_CBU__247_x_HEAT_Bomblets,
         )
         Mk_84___2000lb_GP_Bomb_LD = (2, Weapons.Mk_84___2000lb_GP_Bomb_LD)
         Mk_82___500lb_GP_Bomb_LD = (2, Weapons.Mk_82___500lb_GP_Bomb_LD)
@@ -579,21 +587,21 @@ class F_15EX(PlaneType):
         )
         MiG_29MU2_ADM_160B = (10, WeaponsF15EX.MiG_29MU2_ADM_160B)
         MIG29MU2_JDAM_ER = (10, WeaponsF15EX.MIG29MU2_JDAM_ER)
-        BRU_42_with_3_x_Mk_82___500lb_GP_Bombs_LD = (
+        BRU_42___3_x_Mk_82___500lb_GP_Bomb_LD = (
             10,
-            Weapons.BRU_42_with_3_x_Mk_82___500lb_GP_Bombs_LD,
+            Weapons.BRU_42___3_x_Mk_82___500lb_GP_Bomb_LD,
         )
         BRU_33_with_2_x_Mk_20_Rockeye___490lbs_CBU__247_x_HEAT_Bomblets = (
             10,
             Weapons.BRU_33_with_2_x_Mk_20_Rockeye___490lbs_CBU__247_x_HEAT_Bomblets,
         )
-        BRU_42_with_3_x_Mk_82_AIR_Ballute___500lb_GP_Bombs_HD = (
+        BRU_42___3_x_Mk_82_AIR_Ballute___500lb_GP_Bomb_HD = (
             10,
-            Weapons.BRU_42_with_3_x_Mk_82_AIR_Ballute___500lb_GP_Bombs_HD,
+            Weapons.BRU_42___3_x_Mk_82_AIR_Ballute___500lb_GP_Bomb_HD,
         )
-        BRU_42_with_3_x_Mk_20_Rockeye___490lbs_CBUs__247_x_HEAT_Bomblets = (
+        BRU_42___3_x_Mk_20_Rockeye___490lbs_CBU__247_x_HEAT_Bomblets = (
             10,
-            Weapons.BRU_42_with_3_x_Mk_20_Rockeye___490lbs_CBUs__247_x_HEAT_Bomblets,
+            Weapons.BRU_42___3_x_Mk_20_Rockeye___490lbs_CBU__247_x_HEAT_Bomblets,
         )
         Mk_84___2000lb_GP_Bomb_LD = (10, Weapons.Mk_84___2000lb_GP_Bomb_LD)
         Mk_82___500lb_GP_Bomb_LD = (10, Weapons.Mk_82___500lb_GP_Bomb_LD)

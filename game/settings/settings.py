@@ -81,6 +81,7 @@ ADVANCED_CAMPAIGN_MANAGEMENT_PAGE = "Campaign Management+"
 GENERAL_SECTION = "General"
 PILOTS_AND_SQUADRONS_SECTION = "Pilots and Squadrons"
 HQ_AUTOMATION_SECTION = "HQ Automation"
+OPFOR_AI_SECTION = "OPFOR AI commander"
 FLIGHT_PLANNER_AUTOMATION = "Flight Planner Automation"
 GROUND_OBJECT_REPAIR_TUNING_SECTION = "Ground Object Repairs"
 BUILDING_REPAIR_TUNING_SECTION = "Building Repairs"
@@ -192,6 +193,18 @@ class Settings:
         },
         default=Views.All,
     )
+    opfor_ai_enabled: bool = boolean_option(
+        "Allow OPFOR AI control (external LLM plays red)",
+        page=CAMPAIGN_MANAGEMENT_PAGE,
+        section=OPFOR_AI_SECTION,
+        default=False,
+        detail=(
+            "Expose the live game over a local API so an external LLM (e.g. ChatGPT, "
+            "Claude, et cetera) plans the enemy turns instead of the scripted "
+            "commander. Check the toolbar OPFOR AI button for more info when enabling "
+            "this."
+        ),
+    )
     external_views_allowed: bool = boolean_option(
         "Allow external views",
         DIFFICULTY_PAGE,
@@ -238,6 +251,17 @@ class Settings:
         max=150,
         detail="Implicitly determines the number of BARCAPs planned by taking the mission duration"
         " and dividing it by the desired on-station time.",
+    )
+    desired_tarcap_mission_duration: timedelta = minutes_option(
+        "Desired TARCAP on-station time",
+        page=CAMPAIGN_DOCTRINE_PAGE,
+        section=GENERAL_SECTION,
+        default=timedelta(minutes=30),
+        min=10,
+        max=150,
+        detail="Only applies to a TARCAP nobody asked to escort. When a flight in its"
+        " package has requested an escort, the TARCAP stays for as long as the escorted"
+        " mission does, whatever this says.",
     )
     desired_awacs_mission_duration: timedelta = minutes_option(
         "Desired AWACS on-station time",
@@ -561,6 +585,43 @@ class Settings:
             "extremely incomplete so does not affect all weapons."
         ),
     )
+    restrict_props_by_date: bool = boolean_option(
+        "Restrict aircraft options by date (WIP)",
+        page=CAMPAIGN_MANAGEMENT_PAGE,
+        section=GENERAL_SECTION,
+        default=False,
+        detail=(
+            "Restricts era-defining aircraft mission options (e.g. the JHMCS helmet "
+            "cueing selection) based on the campaign date: gated options are hidden "
+            "from the payload editor and clamped to a period-correct value at "
+            "mission generation. Independent of the weapons restriction so either "
+            "can be enforced alone. Data is curated per airframe and incomplete."
+        ),
+    )
+    motorpool_enabled: bool = boolean_option(
+        "Spawn strikeable motorpool reserves",
+        page=CAMPAIGN_MANAGEMENT_PAGE,
+        section=GENERAL_SECTION,
+        default=True,
+        detail=(
+            "Render each control point's not-yet-deployed reserve armor as a "
+            "strikeable motorpool (only where the campaign authored one). "
+            "Destroying reserves forces the owner to repurchase."
+        ),
+    )
+    motorpool_spawn_cap: int = bounded_int_option(
+        "Maximum motorpool vehicles per turn",
+        page=CAMPAIGN_MANAGEMENT_PAGE,
+        section=GENERAL_SECTION,
+        default=10,
+        min=0,
+        max=25,
+        detail=(
+            "Caps how many reserve vehicles a control point renders across its "
+            "motorpool(s) per turn. Lower this if motorpools hurt mission "
+            "performance."
+        ),
+    )
     apply_target_overrides_to_loadouts: bool = boolean_option(
         "Apply target-based weapon settings to player loadouts",
         page=CAMPAIGN_MANAGEMENT_PAGE,
@@ -678,6 +739,19 @@ class Settings:
         CAMPAIGN_MANAGEMENT_PAGE,
         HQ_AUTOMATION_SECTION,
         default=False,
+    )
+    weighted_ground_procurement: bool = boolean_option(
+        "AI buys its better ground units more often",
+        CAMPAIGN_MANAGEMENT_PAGE,
+        HQ_AUTOMATION_SECTION,
+        default=True,
+        detail=(
+            "The AI picks a ground unit uniformly at random from everything of the "
+            "right class it can afford, so a faction fielding both a modern MBT and a "
+            "gun truck buys as many of one as the other. With this enabled the roll is "
+            "weighted by price, which is the only capability measure the model has. It "
+            "is a weighting and not a maximum, so cheap units still appear."
+        ),
     )
     automate_ground_object_repairs: bool = boolean_option(
         "Automate ground object repairs",
@@ -1427,6 +1501,116 @@ class Settings:
         GAMEPLAY_SECTION,
         default=True,
     )
+    gps_jamming: bool = boolean_option(
+        "GPS jamming (satellite-guided weapons go long)",
+        page=MISSION_GENERATOR_PAGE,
+        section=GAMEPLAY_SECTION,
+        default=False,
+        detail=(
+            "A JDAM, JSOW or JASSM released against a target inside an "
+            "enemy jamming bubble flies its normal profile and lands off the "
+            "aimpoint -- further off the deeper inside the bubble the target sits. "
+            "Laser, TV and anti-radiation weapons are unaffected, and killing the "
+            "jammer restores accuracy on the very next weapon, in the same mission. "
+            "A jammer is an ordinary bombable ground unit: any unit type whose data "
+            "file carries a `gps_jamming` block. Symmetric -- red eats its own "
+            "medicine wherever blue fields one. Needs the GPS jamming LUA plugin "
+            "enabled or it does nothing."
+        ),
+    )
+    gps_jamming_default_reach_nm: float = bounded_float_option(
+        "GPS jamming: default reach (nm)",
+        page=MISSION_GENERATOR_PAGE,
+        section=GAMEPLAY_SECTION,
+        default=30.0,
+        min=5.0,
+        max=150.0,
+        divisor=1,
+        detail=(
+            "Used by a jammer whose unit definition names no radius. This is the "
+            "size of the GPS-denied TARGET area, not a denied release area: a weapon "
+            "aimed at anything inside the bubble flies through it whatever range it "
+            "was released from, so standing off does not help a covered target."
+        ),
+    )
+    gps_jamming_miss_radius_m: float = bounded_float_option(
+        "GPS jamming: miss distance at full strength (m)",
+        page=MISSION_GENERATOR_PAGE,
+        section=GAMEPLAY_SECTION,
+        default=200.0,
+        min=25.0,
+        max=1000.0,
+        divisor=1,
+        detail=(
+            "How far off the aimpoint a degraded weapon lands when released over the "
+            "emitter. It scales down to zero at the bubble's edge, so a store "
+            "clipping the fringe is nudged and one released overhead is thrown clear."
+        ),
+    )
+    naval_weapon_release_stagger: bool = boolean_option(
+        "Stagger naval weapons release",
+        page=MISSION_GENERATOR_PAGE,
+        section=GAMEPLAY_SECTION,
+        default=False,
+        detail=(
+            "Warships start the mission on return-fire and are released to "
+            "weapons-free one group at a time across a window, instead of every hull "
+            "opening up at once. A modern anti-ship missile out-ranges the whole "
+            "theatre, so without this both fleets are in range from the moment the "
+            "mission loads and the entire naval battle happens in the first five "
+            "minutes. They still defend themselves while they wait -- this delays who "
+            "shoots first, it does not disarm anyone. Symmetric. Needs the naval "
+            "magazines LUA plugin enabled or it does nothing."
+        ),
+    )
+    naval_magazines: bool = boolean_option(
+        "Cross-turn naval magazines (anti-ship missiles do not rearm)",
+        page=MISSION_GENERATOR_PAGE,
+        section=GAMEPLAY_SECTION,
+        default=False,
+        detail=(
+            "Every warship group carries a finite campaign stock of anti-ship "
+            "missiles. A mission is a fresh spawn, so without this a fleet reloads for "
+            "free every turn and empties its tubes again and again; with it, what a "
+            "group fires this mission is gone for the rest of the war. A group that "
+            "runs dry drops back to return-fire -- winchester, not disarmed. "
+            "Land-attack cruise missiles are counted by their own setting, so nothing "
+            "is charged twice. Symmetric. Needs the naval magazines LUA plugin "
+            "enabled or it does nothing."
+        ),
+    )
+    cruise_missile_strikes: bool = boolean_option(
+        "Ship-launched cruise missile strikes",
+        page=MISSION_GENERATOR_PAGE,
+        section=GAMEPLAY_SECTION,
+        default=False,
+        detail=(
+            "Warships that carry land-attack cruise missiles (the Burke's Tomahawks, "
+            "the CurrentHill Kalibr hulls) can fire them at shore targets: an F10 "
+            "'Cruise Missile Strike' menu calls a salvo onto your last map marker from "
+            "the nearest ship that still has missiles. Each ship group carries a finite "
+            "campaign magazine and there is no rearm, so every salvo spends stock you "
+            "never get back. The missiles are real weapons from a real, tracked ship: "
+            "kills count at debrief, enemy point defense can intercept them, and "
+            "sinking the shooter ends the raids. Both coalitions play by these rules. "
+            "Runs through the 'Cruise missile strikes' LUA plugin -- keep that plugin "
+            "enabled or this setting does nothing."
+        ),
+    )
+    cruise_missile_auto_raids: bool = boolean_option(
+        "Auto-plan cruise missile raids",
+        page=MISSION_GENERATOR_PAGE,
+        section=GAMEPLAY_SECTION,
+        default=False,
+        detail=(
+            "Needs 'Ship-launched cruise missile strikes'. Each turn, a side with a "
+            "cruise-missile ship in range commits one raid: a salvo fired early in the "
+            "mission at its highest-value reachable enemy ground object -- command "
+            "centers and comms first, then war industry, then anything strikeable. "
+            "Watch for the LAUNCH WARNING: an enemy raid is your point-defense SAMs' "
+            "problem, or yours."
+        ),
+    )
 
     # Performance
     perf_smoke_gen: bool = boolean_option(
@@ -1444,10 +1628,28 @@ class Settings:
         max=24000,
     )
     perf_red_alert_state: bool = boolean_option(
-        "SAM starts in red alert mode",
+        "Air defenses start in red alert mode",
         page=MISSION_GENERATOR_PAGE,
         section=PERFORMANCE_SECTION,
         default=True,
+        tooltip=(
+            "Applies to SAM, AAA and other air-defense sites. Turning it off makes "
+            "them spawn on green alert, which costs less CPU but leaves them passive "
+            "until they are shot at. Front-line ground units and EWRs are not "
+            "affected: they always come up on red alert."
+        ),
+    )
+    coastal_batteries_engage_ships: bool = boolean_option(
+        "Coastal batteries engage ships",
+        page=MISSION_GENERATOR_PAGE,
+        section=PERFORMANCE_SECTION,
+        default=False,
+        detail=(
+            "Let coastal anti-ship batteries fire on their own at enemy hulls that "
+            "enter range, the way fleets do. Off by default: a battery from a unit "
+            "mod firing anti-ship missiles has been seen to crash DCS, so try it on "
+            "a throwaway mission before using it in a campaign."
+        ),
     )
     perf_artillery: bool = boolean_option(
         "Artillery strikes",

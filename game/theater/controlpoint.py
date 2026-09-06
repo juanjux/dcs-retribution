@@ -71,6 +71,7 @@ from .missiontarget import MissionTarget
 from .player import Player
 from .theatergroundobject import (
     GenericCarrierGroundObject,
+    MotorpoolGroundObject,
     TheaterGroundObject,
     VehicleGroupGroundObject,
 )
@@ -100,6 +101,60 @@ if TYPE_CHECKING:
 FREE_FRONTLINE_UNIT_SUPPLY: int = 15
 AMMO_DEPOT_FRONTLINE_UNIT_CONTRIBUTION: int = 12
 TRIGGER_RADIUS_CAPTURE = 3000
+
+
+def warn_if_motorpool_inside_capture_zone(
+    name: str, location: Point, control_point: ControlPoint
+) -> None:
+    """Log a loud error when a motorpool preset sits inside its CP's capture zone.
+
+    Motorpool vehicles render as live DCS ground units of the owning CP. While
+    any survive inside the capture radius, DCS's base-capture trigger
+    (AllOfCoalitionOutsideZone, unit_type=GROUND) counts them, so the base
+    cannot be captured by ground assault -- and the AI commander's
+    capture-blocking model ignores MotorpoolGroundObjects, so it won't clear
+    them either. Motorpools must therefore be authored outside the capture
+    perimeter. This is a campaign-authoring check only; it never relocates
+    anything.
+    """
+    distance = meters(location.distance_to_point(control_point.position))
+    if distance < meters(TRIGGER_RADIUS_CAPTURE):
+        logging.error(
+            f"Motorpool '{name}' is {distance} from control point "
+            f"'{control_point.name}', inside its approximately 2 nm "
+            f"({meters(TRIGGER_RADIUS_CAPTURE)} meter) capture zone. Its parked reserve vehicles are live ground units and "
+            "will block base capture. Relocate the motorpool's Garage_A marker "
+            "outside the capture radius."
+        )
+
+
+@dataclass(frozen=True)
+class MotorpoolCaptureViolation:
+    control_point: str
+    motorpool: str
+    distance: Distance
+
+    def __str__(self) -> str:
+        return f"{self.motorpool} ({self.distance} from {self.control_point})"
+
+
+def motorpools_inside_capture_zone(
+    control_points: Iterable[ControlPoint],
+) -> list[MotorpoolCaptureViolation]:
+    """Every motorpool TGO whose parked-vehicle position sits inside its CP's
+    capture zone. The owning CP cannot be captured by ground assault while any
+    of those live ground units survive inside the radius, so the UI warns
+    (both at new-game generation and on save load)."""
+    violations: list[MotorpoolCaptureViolation] = []
+    for cp in control_points:
+        for tgo in cp.ground_objects:
+            if isinstance(tgo, MotorpoolGroundObject):
+                distance = meters(tgo.position.distance_to_point(cp.position))
+                if distance < meters(TRIGGER_RADIUS_CAPTURE):
+                    violations.append(
+                        MotorpoolCaptureViolation(cp.name, tgo.name, distance)
+                    )
+    return violations
 
 
 class ControlPointType(Enum):
@@ -162,6 +217,9 @@ class PresetLocations:
     #: control point.
     ammunition_depots: List[PresetLocation] = field(default_factory=list)
 
+    #: Locations of per-campaign motorpool reserve-vehicle parks.
+    motorpools: List[PresetLocation] = field(default_factory=list)
+
     #: Locations of stationary armor groups.
     armor_groups: List[PresetLocation] = field(default_factory=list)
 
@@ -212,6 +270,23 @@ class GroundUnitAllocations:
     ordered: dict[GroundUnitType, int]
     transferring: dict[GroundUnitType, int]
 
+    #: Units this base has been ordered to send away but which have found no lift
+    #: yet. They are part of ``present``: still here, still deployable, still
+    #: counted in the ground war, and they leave only when a transport turns up.
+    pending_transfer: dict[GroundUnitType, int] = field(default_factory=dict)
+
+    #: Units that have left this base under a transport this turn. No longer part of
+    #: ``present`` -- they were debited when they departed.
+    transferring_out: dict[GroundUnitType, int] = field(default_factory=dict)
+
+    @property
+    def total_pending_transfer(self) -> int:
+        return sum(self.pending_transfer.values())
+
+    @property
+    def total_transferring_out(self) -> int:
+        return sum(self.transferring_out.values())
+
     @property
     def all(self) -> dict[GroundUnitType, int]:
         combined: dict[GroundUnitType, int] = defaultdict(int)
@@ -250,6 +325,10 @@ class GroundUnitAllocations:
         return sum(self.transferring.values())
 
 
+# A cratered runway takes this many turns to repair (RunwayStatus.begin_repair).
+RUNWAY_REPAIR_TURNS = 4
+
+
 @dataclass
 class RunwayStatus:
     damaged: bool = False
@@ -268,7 +347,7 @@ class RunwayStatus:
     def begin_repair(self) -> None:
         if self.repair_turns_remaining is not None:
             logging.error("Runway already under repair. Restarting.")
-        self.repair_turns_remaining = 4
+        self.repair_turns_remaining = RUNWAY_REPAIR_TURNS
 
     def process_turn(self) -> None:
         if self.repair_turns_remaining is not None:
@@ -1226,15 +1305,24 @@ class ControlPoint(MissionTarget, SidcDescribable, ABC):
                 on_order[unit_bought] = count
 
         transferring: dict[GroundUnitType, int] = defaultdict(int)
+        pending_transfer: dict[GroundUnitType, int] = defaultdict(int)
+        transferring_out: dict[GroundUnitType, int] = defaultdict(int)
         for transfer in transfers:
             if transfer.destination == self:
                 for unit_type, count in transfer.units.items():
                     transferring[unit_type] += count
+            if transfer.origin == self:
+                # Still here until a lift exists; gone once one does.
+                bucket = transferring_out if transfer.departed else pending_transfer
+                for unit_type, count in transfer.units.items():
+                    bucket[unit_type] += count
 
         return GroundUnitAllocations(
             self.base.armor,
             on_order,
             transferring,
+            dict(pending_transfer),
+            dict(transferring_out),
         )
 
     @property
