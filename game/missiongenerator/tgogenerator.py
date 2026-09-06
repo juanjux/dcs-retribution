@@ -104,6 +104,25 @@ AA_CP_MIN_DISTANCE = 40000
 # Offset (meters) from airport position to place the portable TACAN beacon
 _PORTABLE_TACAN_OFFSET_M = 50
 
+# Published circular error probable (meters) per launcher. There are eighteen times
+# more error in a Scud than in an ATACMS, so one shared constant flattered the Soviet
+# missile and libelled the American one.
+MISSILE_SITE_CEP_M = {
+    "Scud_B": 450,  # R-17: inertial only, and it shows
+    "CH_M270A1_ATACMS": 25,  # Block IA and later, INS + GPS
+    "CHAP_9K720_HE": 50,  # Iskander-M on satellite guidance; far better with the
+    "CHAP_9K720_Cluster": 50,  # optical seeker, which is not what DCS models
+    "CH_IskanderK": 10,  # Iskander-K is a cruise missile, not the ballistic one
+    "CH_CJ10": 10,
+    "CH_DF21D": 30,  # manufacturer's claim, widely disputed
+    "CH_Shahed136": 50,  # against fixed coordinates; blind to anything that moves
+}
+
+# For launchers with no published figure -- and for the YJ-12B, an anti-ship missile
+# with no business aiming at a building. The V-1 needs no entry: its site cannot fire
+# in DCS at all.
+MISSILE_SITE_DEFAULT_CEP_M = 150
+
 
 def farp_truck_types_for_country(
     country_id: int,
@@ -483,6 +502,16 @@ class GroundObjectGenerator:
         # for a ship controller (DCS me_action_db offers ships only NoTask), and feeding
         # it to the naval AI crashed DCS (ACCESS_VIOLATION in AI::ControllerStack::start).
         # Upstream ships likewise engage on ROE/alarm alone.
+        #
+        # With the release stagger on, ships instead generate on ReturnFire and the
+        # navalmagazines plugin releases each group to weapons-free at its own moment
+        # inside a window: a modern anti-ship missile out-ranges the whole theatre, so
+        # "in range" is true at t=0 and an unstaggered fleet empties its tubes in the
+        # opening minute. ReturnFire and never WeaponHold -- the point is to delay who
+        # INITIATES, and a holding ship would be a defenceless one while it waits.
+        if getattr(self.game.settings, "naval_weapon_release_stagger", False):
+            group.points[0].tasks.append(OptROE(OptROE.Values.ReturnFire))
+            return
         group.points[0].tasks.append(OptROE(OptROE.Values.WeaponFree))
 
     def _register_theater_unit(
@@ -587,7 +616,8 @@ class MissileSiteGenerator(GroundObjectGenerator):
                 if targets:
                     target = random.choice(targets)
                     real_target = target.point_from_heading(
-                        Heading.random().degrees, random.randint(0, 2500)
+                        Heading.random().degrees,
+                        random.randint(0, self.aimpoint_error),
                     )
                     hold = ControlledTask(Hold())
                     hold.stop_after_duration(
@@ -612,15 +642,32 @@ class MissileSiteGenerator(GroundObjectGenerator):
 
     def possible_missile_targets(self) -> List[Point]:
         """
-        Find enemy control points in range
+        Find aimpoints at enemy control points in range
         :return: List of possible missile targets
+
+        A control point's ``position`` is a campaign-map coordinate, not a target:
+        for an airfield it is the reference point, and nothing in particular stands
+        there. Aiming at it is why missile sites reliably cratered empty grass a few
+        hundred metres off the runway. Prefer the positions of real ground objects
+        at the enemy base -- depots, warehouses, defences, all of them immobile --
+        and only fall back to the map coordinate for a base that has none.
         """
         targets: List[Point] = []
         for cp in self.game.theater.controlpoints:
-            if cp.captured != self.ground_object.control_point.captured:
-                distance = cp.position.distance_to_point(self.ground_object.position)
-                if distance < self.missile_site_range:
-                    targets.append(cp.position)
+            if cp.captured == self.ground_object.control_point.captured:
+                continue
+            # Ships move; a fire task aimed where one used to be is the same bug.
+            aimpoints = [
+                tgo.position
+                for tgo in cp.ground_objects
+                if not tgo.is_dead and tgo.category != "ship"
+            ]
+            targets.extend(
+                aimpoint
+                for aimpoint in (aimpoints or [cp.position])
+                if aimpoint.distance_to_point(self.ground_object.position)
+                < self.missile_site_range
+            )
         return targets
 
     @property
@@ -638,6 +685,24 @@ class MissileSiteGenerator(GroundObjectGenerator):
                         if vehicle_map[u.type].threat_range > site_range:
                             site_range = vehicle_map[u.type].threat_range
         return site_range
+
+    @property
+    def aimpoint_error(self) -> int:
+        """
+        Get how far (meters) this site's salvo may fall from its aimpoint
+
+        The fire task draws the miss evenly from zero to this, so the median round
+        lands at half of it: doubling the published CEP puts half the salvo inside
+        the real figure. Takes the least accurate launcher on the site, mirroring
+        :meth:`missile_site_range`.
+        """
+        cep = 0
+        for group in self.ground_object.groups:
+            vg = self.m.find_group(group.group_name)
+            if vg is not None:
+                for u in vg.units:
+                    cep = max(cep, MISSILE_SITE_CEP_M.get(u.type, 0))
+        return 2 * (cep or MISSILE_SITE_DEFAULT_CEP_M)
 
 
 class GenericCarrierGenerator(GroundObjectGenerator):

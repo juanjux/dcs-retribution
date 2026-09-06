@@ -17,8 +17,10 @@ from game.dcs.shipunittype import ShipUnitType
 from game.dcs.unittype import UnitType
 from game.layout import LAYOUTS
 from game.layout.layout import (
+    MAX_MIXED_UNIT_TYPES,
     TgoLayout,
     TgoLayoutUnitGroup,
+    unit_family,
 )
 from game.point_with_heading import PointWithHeading
 from game.theater.theatergroundobject import (
@@ -193,6 +195,52 @@ class ForceGroup:
         """Return random DCS Unit Type which can be used in the given TgoLayoutGroup"""
         return random.choice(self.dcs_unit_types_for_group(unit_group))
 
+    def mixed_dcs_unit_types_for_group(
+        self,
+        unit_group: TgoLayoutUnitGroup,
+        lead: Type[DcsUnitType],
+        unit_count: int,
+    ) -> list[Type[DcsUnitType]]:
+        """Pick one DCS unit type per slot, mixing types around the lead one.
+
+        Used so a ship group stops generating as N copies of a single hull. The
+        candidates are restricted to the lead's own unit family (see
+        layout.UNIT_FAMILIES), so a carrier screen can mix destroyers, frigates
+        and a cruiser while a speedboat never ends up in a cruiser's slot. The
+        lead type is always present; the number of distinct types is capped so a
+        deep roster produces a task group rather than a one-of-everything zoo.
+        """
+        lead_unit = next(
+            (
+                u
+                for u in self.unit_types_for_group(unit_group)
+                if u.dcs_unit_type == lead
+            ),
+            None,
+        )
+        if lead_unit is None:
+            return [lead] * unit_count
+        family = unit_family(lead_unit.unit_class)
+        alternatives = [
+            unit.dcs_unit_type
+            for unit in self.unit_types_for_group(unit_group)
+            if unit.unit_class in family and unit.dcs_unit_type is not lead
+        ]
+        # unit_types_for_group can yield the same type twice (a layout listing a
+        # type that is also covered by one of its unit_classes).
+        alternatives = list(dict.fromkeys(alternatives))
+        if not alternatives:
+            return [lead] * unit_count
+
+        distinct = min(len(alternatives) + 1, unit_count, MAX_MIXED_UNIT_TYPES)
+        types = [lead] + random.sample(alternatives, distinct - 1)
+        # Every chosen type appears at least once; the rest of the slots are
+        # dealt from them, so a 4-ship screen off a 2-hull navy is not forced
+        # into an even 2/2 split.
+        slots = types + [random.choice(types) for _ in range(unit_count - distinct)]
+        random.shuffle(slots)
+        return slots
+
     def merge_group(self, new_group: ForceGroup) -> None:
         """Merge the group with another similar group."""
         # Unified name for the resulting group
@@ -257,7 +305,12 @@ class ForceGroup:
                     )
                 tgo_group_name = f"{name} ({tgo_group.group_name})"
                 self.create_theater_group_for_tgo(
-                    go, unit_group, tgo_group_name, game, unit_type
+                    go,
+                    unit_group,
+                    tgo_group_name,
+                    game,
+                    unit_type,
+                    mix_unit_types=layout.mixes_unit_types(unit_group),
                 )
 
         return go
@@ -270,8 +323,15 @@ class ForceGroup:
         game: Game,
         unit_type: Type[DcsUnitType],
         unit_count: Optional[int] = None,
+        mix_unit_types: bool = False,
     ) -> None:
-        """Create a TheaterGroup and add it to the given TGO"""
+        """Create a TheaterGroup and add it to the given TGO
+
+        ``mix_unit_types`` lets the group field several types around ``unit_type``
+        (naval layouts, so a ship group is a mix of hulls). It defaults off so
+        the buy menu, which generates the exact type the player picked, is
+        unaffected.
+        """
         # Random UnitCounter if not forced
         if unit_count is None:
             # Choose a random group_size based on the layouts unit_count
@@ -285,8 +345,14 @@ class ForceGroup:
         # Generate Units
         fixed_pos = FIXED_POS_ARG in unit_group.name
         fixed_hdg = FIXED_HDG_ARG in unit_group.name
+        if mix_unit_types and unit_count > 1:
+            slot_types = self.mixed_dcs_unit_types_for_group(
+                unit_group, unit_type, unit_count
+            )
+        else:
+            slot_types = [unit_type] * unit_count
         units = unit_group.generate_units(
-            ground_object, unit_type, unit_count, fixed_pos, fixed_hdg
+            ground_object, slot_types, fixed_pos, fixed_hdg
         )
         # Get or create the TheaterGroup
         ground_group = ground_object.group_by_name(group_name)
