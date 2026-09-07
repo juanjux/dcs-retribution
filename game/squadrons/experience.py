@@ -110,8 +110,10 @@ class PilotDeath:
     pilot_name: str
     squadron: str
     aircraft: str
-    #: His rank, abbreviated, as the debriefing addresses him.
+    #: His rank, abbreviated, as the debriefing addresses him, and the rung it stands
+    #: on so the same five stars can be drawn.
     rank: str = ""
+    level: int = 0
     #: Already-formatted attribution: a roster pilot, a human's name, an airframe type,
     #: "a crash", or a friendly-fire note. None when nothing at all is known.
     killed_by: Optional[str] = None
@@ -132,6 +134,7 @@ class PilotWound:
     turns: int
     aircraft: str = ""
     rank: str = ""
+    level: int = 0
 
 
 @dataclass
@@ -143,6 +146,10 @@ class PilotPromotion:
 
     #: The full name of the new rank, for anything with room to spell it out.
     to_rank_full: str = ""
+
+    #: The rungs either side of it, so a promotion can be drawn as the transition it is.
+    from_level: int = 0
+    to_level: int = 0
 
     #: Whether this is a pilot the human flies himself, who is told about it.
     player: bool = False
@@ -161,6 +168,23 @@ class MoraleShift:
     reasons: list[str]
     aircraft: str = ""
     rank: str = ""
+    level: int = 0
+
+    @property
+    def reason(self) -> str:
+        """The one line of it, for a column with room for a phrase and not a list.
+
+        Repeats are counted rather than repeated: three dead squadron mates is one
+        thing that happened three times, not three things.
+        """
+        tally: dict[str, int] = {}
+        for reason in self.reasons:
+            tally[reason] = tally.get(reason, 0) + 1
+        parts = [
+            reason if count == 1 else f"{reason} x{count}"
+            for reason, count in tally.items()
+        ]
+        return ", ".join(parts)
 
 
 @dataclass

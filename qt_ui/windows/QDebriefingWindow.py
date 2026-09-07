@@ -1,73 +1,641 @@
+"""What the turn cost, and what it bought.
+
+A fixed summary strip answers "how did it go" before anything is scrolled; the sections
+below it are the evidence, in the order they matter. Pilots come first: matériel is
+replaceable with money and a pilot record is not, and it is the only section that
+carries decisions into the two dialogs this window chains on the way out.
+
+The palette and the vocabulary -- five stars for a rank, a coloured dot for morale --
+are the Air Wing's, so the two read as one program.
+"""
+
 import logging
 from typing import Callable, Dict, Optional, TypeVar
 
-from PySide6.QtCore import Qt, QTimer
-from PySide6.QtGui import QIcon, QPixmap, QCloseEvent
+from PySide6.QtCore import QRectF, Qt, QTimer
+from PySide6.QtGui import QCloseEvent, QColor, QFont, QIcon, QPainter
 from PySide6.QtWidgets import (
     QDialog,
-    QGridLayout,
-    QGroupBox,
-    QLabel,
     QFrame,
+    QGridLayout,
+    QHBoxLayout,
+    QLabel,
     QMessageBox,
     QPushButton,
     QScrollArea,
-    QTextBrowser,
+    QSizePolicy,
     QVBoxLayout,
     QWidget,
 )
 
 from game.cruise_raids import debrief_expenditures
 from game.debriefing import Debriefing
-from game.squadrons.experience import turns_phrase
+from game.squadrons.experience import (
+    MoraleShift,
+    PilotDeath,
+    PilotPromotion,
+    PilotWound,
+    turns_phrase,
+)
 from game.squadrons.morale import morale_state
 from game.theater import Player
+from qt_ui.rankstars import (
+    STAR_EMPTY,
+    STAR_EMPTY_DIMMED,
+    STAR_FILLED,
+    STAR_FILLED_DIMMED,
+    paint_rank_stars,
+)
 from qt_ui.windows.GameUpdateSignal import GameUpdateSignal
 
 T = TypeVar("T")
 
+# --- the palette ------------------------------------------------------------
 
-class LossGrid(QGridLayout):
+PAGE = "#2D3E50"
+BAND = "#26343F"
+CARD = "#14202B"
+HEADER = "#1B2732"
+LINE = "#1D2731"
+
+TITLE = "#F2F7FA"
+BODY = "#D3DFE8"
+SUBDUED = "#B7C6D2"
+MUTED = "#8E9DAA"
+DIM = "#7C8B99"
+CAPTION = "#6B7A87"
+FAINT = "#4F6070"
+
+OURS = "#D9645E"
+THEIRS = "#86C39A"
+WOUNDED = "#C08A72"
+WOUNDED_DETAIL = "#8A6C5C"
+UNHURT = "#5F8A6C"
+ACCENT = "#8FC3F0"
+AMBER = "#E0A86B"
+
+#: The five groups of the pilots section, in the order they are read: the worst news
+#: first, so a long list of promotions never buries a death.
+GROUP_COLOURS = {
+    "KILLED IN ACTION": OURS,
+    "SHOT DOWN & RECOVERED": AMBER,
+    "WOUNDED": WOUNDED,
+    "PROMOTIONS": ACCENT,
+    "MORALE CHANGES": CAPTION,
+}
+
+MORALE_COLOURS = {
+    "Triumphant": "#8FC3F0",
+    "Confident": "#86C39A",
+    "Normal": "#8E9DAA",
+    "Shaken": "#E0A86B",
+    "Shattered": "#D97B4F",
+    "Broken": "#D9645E",
+}
+
+MARGIN = 14
+PILOT_ROW_HEIGHT = 44
+GROUP_HEADER_HEIGHT = 24
+#: Where the middle column starts. Wide enough for the longest aircraft-and-squadron
+#: line the fork ships without either colliding.
+DETAIL_X = 520
+
+
+def _font(
+    size: float, weight: QFont.Weight = QFont.Weight.Normal, mono: bool = False
+) -> QFont:
+    font = QFont("Consolas") if mono else QFont()
+    font.setPixelSize(int(size))
+    font.setWeight(weight)
+    return font
+
+
+def _label(text: str, size: float, colour: str, bold: bool = False) -> QLabel:
+    label = QLabel(text)
+    weight = "bold" if bold else "normal"
+    label.setStyleSheet(f"font-size: {size}px; font-weight: {weight}; color: {colour};")
+    return label
+
+
+def _caption(text: str, hint: str = "") -> QWidget:
+    """A section's name, above its card rather than inside a frame."""
+    row = QHBoxLayout()
+    row.setContentsMargins(0, 0, 0, 0)
+    row.setSpacing(10)
+    name = QLabel(text.upper())
+    name.setStyleSheet(
+        f"font-size: 11px; font-weight: bold; letter-spacing: 1px; color: {CAPTION};"
+    )
+    row.addWidget(name)
+    if hint:
+        row.addWidget(_label(hint, 11, FAINT))
+    row.addStretch()
+    holder = QWidget()
+    holder.setFixedHeight(20)
+    holder.setLayout(row)
+    return holder
+
+
+def _card() -> QWidget:
+    card = QWidget()
+    card.setStyleSheet(
+        f"background: {CARD}; border: 1px solid {LINE}; border-radius: 3px;"
+    )
+    return card
+
+
+# --- the strip that answers the question ------------------------------------
+
+
+class SummaryStrip(QWidget):
+    """Four numbers and a verdict, before anything is scrolled."""
+
+    def __init__(self, debriefing: Debriefing) -> None:
+        super().__init__()
+        self.setFixedHeight(96)
+        self.setStyleSheet(f"background: {BAND}; border-bottom: 1px solid {LINE};")
+
+        row = QHBoxLayout()
+        row.setContentsMargins(24, 14, 24, 14)
+        row.setSpacing(36)
+        self.setLayout(row)
+
+        status = QVBoxLayout()
+        status.setSpacing(2)
+        status.addWidget(_label("MISSION STATUS", 11, CAPTION, bold=True))
+        ended = debriefing.state_data.mission_ended
+        status.addWidget(
+            _label(
+                (
+                    "Mission ended normally"
+                    if ended
+                    else "Mission ended early or state data was incomplete"
+                ),
+                20,
+                TITLE,
+                bold=True,
+            )
+        )
+        status.addWidget(
+            _label(
+                f"{debriefing.player_country} vs {debriefing.enemy_country}", 12, MUTED
+            )
+        )
+        row.addLayout(status)
+        row.addStretch()
+
+        blue = debriefing.loss_counts(Player.BLUE)
+        red = debriefing.loss_counts(Player.RED)
+        outcomes = debriefing.pilot_outcomes
+        for caption, figures in (
+            (
+                "AIRCRAFT LOST",
+                ((blue.aircraft, "ours", OURS), (red.aircraft, "theirs", THEIRS)),
+            ),
+            (
+                "GROUND UNITS LOST",
+                (
+                    (blue.front_line + blue.ground_objects, "ours", OURS),
+                    (red.front_line + red.ground_objects, "theirs", THEIRS),
+                ),
+            ),
+            (
+                "PILOTS",
+                (
+                    (len(outcomes.deaths), "KIA", OURS),
+                    (len(outcomes.wounded), "wounded", WOUNDED),
+                    (len(outcomes.promotions), "promoted", ACCENT),
+                ),
+            ),
+            (
+                "BASES",
+                ((len(debriefing.base_captures), "changed hands", MUTED),),
+            ),
+        ):
+            row.addLayout(self._stat_group(caption, figures))
+
+    @staticmethod
+    def _stat_group(
+        caption: str, figures: tuple[tuple[int, str, str], ...]
+    ) -> QVBoxLayout:
+        column = QVBoxLayout()
+        column.setSpacing(2)
+        column.addWidget(_label(caption, 10.5, DIM))
+        numbers = QHBoxLayout()
+        numbers.setSpacing(10)
+        for value, unit, colour in figures:
+            # A zero is not news, whatever it is a zero of.
+            shown = colour if value else MUTED
+            pair = QHBoxLayout()
+            pair.setSpacing(4)
+            figure = QLabel(str(value))
+            figure.setStyleSheet(
+                f"font-family: Consolas, monospace; font-size: 24px;"
+                f" font-weight: 600; color: {shown};"
+            )
+            pair.addWidget(figure)
+            pair.addWidget(
+                _label(unit, 11.5, DIM), alignment=Qt.AlignmentFlag.AlignBottom
+            )
+            numbers.addLayout(pair)
+        numbers.addStretch()
+        column.addLayout(numbers)
+        column.addStretch()
+        return column
+
+
+# --- the pilots -------------------------------------------------------------
+
+
+class GroupHeader(QWidget):
+    """The name of one group of pilots, and how many are in it."""
+
+    def __init__(self, title: str, count: int) -> None:
+        super().__init__()
+        self.title = title
+        self.count = count
+        self.setFixedHeight(GROUP_HEADER_HEIGHT)
+
+    def paintEvent(self, event: object) -> None:
+        painter = QPainter(self)
+        painter.fillRect(self.rect(), QColor(HEADER))
+        painter.setFont(_font(10, QFont.Weight.Bold))
+        painter.setPen(QColor(GROUP_COLOURS.get(self.title, CAPTION)))
+        painter.drawText(MARGIN, 16, self.title)
+        after = MARGIN + painter.fontMetrics().horizontalAdvance(self.title) + 10
+        painter.setFont(_font(11, mono=True))
+        painter.setPen(QColor(CAPTION))
+        painter.drawText(after, 16, str(self.count))
+        painter.end()
+
+
+class PilotRow(QWidget):
+    """One pilot, in three columns: who he is, what happened, and what it left him.
+
+    The middle column changes meaning by group -- who shot him down, the rank he came
+    out with, the state he ended in -- which is why the row is painted rather than
+    assembled out of labels.
+    """
+
+    def __init__(self, name: str, rank: str, level: int, aircraft: str, squadron: str):
+        super().__init__()
+        self.name = name
+        self.rank = rank
+        self.level = level
+        self.aircraft = aircraft
+        self.squadron = squadron
+        self.player = False
+        self.setFixedHeight(PILOT_ROW_HEIGHT)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+
+    def paintEvent(self, event: object) -> None:
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.fillRect(0, PILOT_ROW_HEIGHT - 1, self.width(), 1, QColor(LINE))
+        self._paint_identity(painter)
+        self.paint_detail(painter, DETAIL_X)
+        self.paint_outcome(painter, self.width() - MARGIN)
+        painter.end()
+
+    def _paint_identity(self, painter: QPainter) -> None:
+        painter.setFont(_font(14, QFont.Weight.DemiBold))
+        painter.setPen(QColor(TITLE))
+        painter.drawText(MARGIN, 19, self.name)
+        x = MARGIN + painter.fontMetrics().horizontalAdvance(self.name) + 8
+
+        x += paint_rank_stars(painter, x, 19, self.level) + 8
+        painter.setFont(_font(12))
+        painter.setPen(QColor(DIM))
+        painter.drawText(int(x), 19, self.rank)
+        if self.player:
+            x += painter.fontMetrics().horizontalAdvance(self.rank) + 8
+            self._paint_player_chip(painter, x)
+
+        painter.setFont(_font(12))
+        painter.setPen(QColor(SUBDUED))
+        painter.drawText(MARGIN, 37, self.aircraft)
+        x = MARGIN + painter.fontMetrics().horizontalAdvance(self.aircraft) + 6
+        painter.setPen(QColor(FAINT))
+        painter.drawText(int(x), 37, "·")
+        x += painter.fontMetrics().horizontalAdvance("·") + 6
+        painter.setPen(QColor(MUTED))
+        painter.drawText(int(x), 37, self.squadron)
+
+    @staticmethod
+    def _paint_player_chip(painter: QPainter, x: float) -> None:
+        painter.setFont(_font(9.5, QFont.Weight.Bold))
+        label = "PLAYER"
+        width = painter.fontMetrics().horizontalAdvance(label) + 12
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(QColor("#22384A"))
+        painter.drawRoundedRect(QRectF(x, 5, width, 16), 3, 3)
+        painter.setPen(QColor(ACCENT))
+        painter.drawText(QRectF(x, 5, width, 16), Qt.AlignmentFlag.AlignCenter, label)
+
+    def paint_detail(self, painter: QPainter, x: int) -> None:
+        """What happened to him. Overridden per group."""
+
+    def paint_outcome(self, painter: QPainter, right: int) -> None:
+        """What it left him with, right-aligned. Overridden per group."""
+
+    @staticmethod
+    def _right(painter: QPainter, right: int, baseline: int, parts) -> None:
+        """Draw ``(text, colour, font)`` triples ending at ``right``."""
+        total = 0.0
+        for text, _, font in parts:
+            painter.setFont(font)
+            total += painter.fontMetrics().horizontalAdvance(text)
+        x = right - total
+        for text, colour, font in parts:
+            painter.setFont(font)
+            painter.setPen(QColor(colour))
+            painter.drawText(int(x), baseline, text)
+            x += painter.fontMetrics().horizontalAdvance(text)
+
+
+class ShotDownRow(PilotRow):
+    """A man who was hit: who did it, and whether he walked away."""
+
+    def __init__(self, record: PilotDeath, outcome: str, colour: str, detail: str = ""):
+        super().__init__(
+            record.pilot_name,
+            record.rank,
+            record.level,
+            record.aircraft,
+            record.squadron,
+        )
+        self.record = record
+        self.outcome = outcome
+        self.colour = colour
+        self.detail = detail
+
+    def paint_detail(self, painter: QPainter, x: int) -> None:
+        if self.record.friendly_fire:
+            lead, killer = "lost to friendly fire from ", self.record.killed_by or ""
+        elif self.record.killed_by:
+            lead, killer = "shot down by ", self.record.killed_by
+        else:
+            lead, killer = "lost, with nobody credited", ""
+        painter.setFont(_font(12))
+        painter.setPen(QColor(DIM))
+        painter.drawText(x, 27, lead)
+        if killer:
+            after = x + painter.fontMetrics().horizontalAdvance(lead)
+            painter.setFont(_font(12, QFont.Weight.Medium))
+            painter.setPen(QColor(OURS if self.record.friendly_fire else BODY))
+            painter.drawText(int(after), 27, killer)
+
+    def paint_outcome(self, painter: QPainter, right: int) -> None:
+        if self.outcome == "KIA":
+            painter.setFont(_font(10, QFont.Weight.Bold))
+            width = painter.fontMetrics().horizontalAdvance("KIA") + 16
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.setBrush(QColor("#3B2523"))
+            painter.drawRoundedRect(QRectF(right - width, 13, width, 18), 4, 4)
+            painter.setPen(QColor(OURS))
+            painter.drawText(
+                QRectF(right - width, 13, width, 18),
+                Qt.AlignmentFlag.AlignCenter,
+                "KIA",
+            )
+            return
+        parts = [(self.outcome, self.colour, _font(11.5))]
+        if self.detail:
+            parts.append((f" · {self.detail}", WOUNDED_DETAIL, _font(11.5)))
+        self._right(painter, right, 27, parts)
+
+
+class WoundedRow(PilotRow):
+    def __init__(self, record: PilotWound):
+        super().__init__(
+            record.pilot_name,
+            record.rank,
+            record.level,
+            record.aircraft,
+            record.squadron,
+        )
+        self.turns = record.turns
+
+    def paint_detail(self, painter: QPainter, x: int) -> None:
+        painter.setFont(_font(12))
+        painter.setPen(QColor(DIM))
+        painter.drawText(x, 27, "pulled out alive")
+
+    def paint_outcome(self, painter: QPainter, right: int) -> None:
+        self._right(
+            painter,
+            right,
+            27,
+            [
+                ("Wounded", WOUNDED, _font(11.5)),
+                (f" · {turns_phrase(self.turns)}", WOUNDED_DETAIL, _font(11.5)),
+            ],
+        )
+
+
+class PromotionRow(PilotRow):
+    """A promotion drawn as the transition it is: dim stars to gold."""
+
+    def __init__(self, record: PilotPromotion):
+        super().__init__(
+            record.pilot_name,
+            record.from_rank,
+            record.from_level,
+            record.aircraft,
+            record.squadron,
+        )
+        self.record = record
+        self.player = record.player
+
+    def paint_detail(self, painter: QPainter, x: int) -> None:
+        cursor = float(x)
+        cursor += paint_rank_stars(
+            painter,
+            cursor,
+            27,
+            self.record.from_level,
+            filled=STAR_FILLED_DIMMED,
+            empty=STAR_EMPTY_DIMMED,
+        )
+        cursor += 6
+        painter.setFont(_font(12))
+        painter.setPen(QColor(DIM))
+        painter.drawText(int(cursor), 27, self.record.from_rank)
+        cursor += painter.fontMetrics().horizontalAdvance(self.record.from_rank) + 8
+        painter.setPen(QColor(ACCENT))
+        painter.drawText(int(cursor), 27, "→")
+        cursor += painter.fontMetrics().horizontalAdvance("→") + 8
+        cursor += paint_rank_stars(
+            painter,
+            cursor,
+            27,
+            self.record.to_level,
+            filled=STAR_FILLED,
+            empty=STAR_EMPTY,
+        )
+        cursor += 6
+        painter.setFont(_font(12, QFont.Weight.Medium))
+        painter.setPen(QColor(TITLE))
+        painter.drawText(
+            int(cursor), 27, self.record.to_rank_full or self.record.to_rank
+        )
+
+
+class MoraleRow(PilotRow):
+    """Old state to new, with only the new one coloured."""
+
+    def __init__(self, record: MoraleShift):
+        super().__init__(
+            record.pilot_name,
+            record.rank,
+            record.level,
+            record.aircraft,
+            record.squadron,
+        )
+        self.record = record
+
+    def paint_detail(self, painter: QPainter, x: int) -> None:
+        was = morale_state(self.record.before).name
+        now = morale_state(self.record.after).name
+        cursor = float(x)
+        cursor = self._paint_state(painter, cursor, was, DIM, DIM)
+        painter.setFont(_font(12))
+        painter.setPen(QColor(DIM))
+        painter.drawText(int(cursor), 27, "→")
+        cursor += painter.fontMetrics().horizontalAdvance("→") + 8
+        colour = MORALE_COLOURS.get(now, MUTED)
+        self._paint_state(painter, cursor, now, colour, colour, medium=True)
+
+    @staticmethod
+    def _paint_state(
+        painter: QPainter,
+        x: float,
+        text: str,
+        dot: str,
+        label: str,
+        medium: bool = False,
+    ) -> float:
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(QColor(dot))
+        painter.drawEllipse(QRectF(x, 19, 8, 8))
+        x += 8 + 6
+        painter.setFont(
+            _font(12, QFont.Weight.Medium if medium else QFont.Weight.Normal)
+        )
+        painter.setPen(QColor(label))
+        painter.drawText(int(x), 27, text)
+        return x + painter.fontMetrics().horizontalAdvance(text) + 8
+
+    def paint_outcome(self, painter: QPainter, right: int) -> None:
+        blocking = self.record.after <= 0
+        text = "will refuse to fly" if blocking else self.record.reason
+        if not text:
+            return
+        parts = []
+        if blocking:
+            parts.append(("▲ ", OURS, _font(11.5)))
+        parts.append((text, OURS if blocking else DIM, _font(11.5)))
+        self._right(painter, right, 27, parts)
+
+
+# --- the ledgers ------------------------------------------------------------
+
+
+class FactionLosses(QWidget):
+    """One side's losses: aircraft over ground, with the total in the header."""
+
     def __init__(self, debriefing: Debriefing, player: Player) -> None:
         super().__init__()
+        ours = player.is_blue
+        counts = debriefing.loss_counts(player)
+        total = counts.aircraft + counts.front_line + counts.ground_objects
+        name = debriefing.player_country if ours else debriefing.enemy_country
 
-        self.add_air_loss_rows(debriefing, player)
-        self.add_loss_rows(
-            debriefing.front_line_losses_by_type(player), lambda u: str(u)
+        outer = QVBoxLayout()
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.setSpacing(0)
+        self.setLayout(outer)
+        self.setStyleSheet(
+            f"background: {CARD}; border: 1px solid {LINE}; border-radius: 3px;"
         )
-        self.add_loss_rows(
-            debriefing.motorpool_losses_by_type(player),
-            lambda u: f"{u} from motorpool",
-        )
-        self.add_loss_rows(
-            debriefing.convoy_losses_by_type(player), lambda u: f"{u} from convoy"
-        )
-        self.add_loss_rows(
-            debriefing.cargo_ship_losses_by_type(player),
-            lambda u: f"{u} from cargo ship",
-        )
-        self.add_loss_rows(
-            debriefing.airlift_losses_by_type(player), lambda u: f"{u} from airlift"
-        )
-        self.add_loss_rows(debriefing.ground_object_losses_by_type(player), lambda u: u)
-        self.add_loss_rows(debriefing.scenery_losses_by_type(player), lambda u: u)
 
-        # TODO: Display dead ground object units and runways.
+        head = QWidget()
+        head.setFixedHeight(30)
+        head.setStyleSheet(f"background: {HEADER}; border: none;")
+        head_row = QHBoxLayout()
+        head_row.setContentsMargins(MARGIN, 0, MARGIN, 0)
+        head.setLayout(head_row)
+        head_row.addWidget(_label(str(name), 11, TITLE, bold=True))
+        head_row.addStretch()
+        figure = QLabel(str(total))
+        figure.setStyleSheet(
+            f"font-family: Consolas, monospace; font-size: 14px; font-weight: 600;"
+            f" color: {OURS if ours else THEIRS}; border: none;"
+        )
+        head_row.addWidget(figure)
+        head_row.addWidget(_label("units lost", 11, DIM))
+        outer.addWidget(head)
 
-    def add_loss_rows(self, losses: Dict[T, int], make_name: Callable[[T], str]):
-        for unit_type, count in losses.items():
-            row = self.rowCount()
-            try:
-                name = make_name(unit_type)
-            except AttributeError:
-                logging.exception(f"Could not make unit name for {unit_type}")
-                name = unit_type.id
-            self.addWidget(QLabel(name), row, 0)
-            self.addWidget(QLabel(str(count)), row, 1)
+        body = QVBoxLayout()
+        body.setContentsMargins(0, 0, 0, 6)
+        body.setSpacing(0)
+        outer.addLayout(body)
 
-    def add_air_loss_rows(self, debriefing: Debriefing, player: Player) -> None:
-        # Air losses, flagging how many didn't count when the "crashes don't
-        # count" doctrine is on, so the debrief matches what the campaign applied.
+        air = self._air_rows(debriefing, player)
+        ground = self._ground_rows(debriefing, player)
+        self._add_group(body, "AIRCRAFT", air)
+        self._add_group(body, "GROUND", ground)
+        if not air and not ground:
+            body.addWidget(self._row("Nothing lost", "", FAINT, ""))
+
+    def _add_group(self, body: QVBoxLayout, title: str, rows: list) -> None:
+        if not rows:
+            return
+        head = QWidget()
+        head.setFixedHeight(22)
+        head.setStyleSheet("border: none;")
+        row = QHBoxLayout()
+        row.setContentsMargins(MARGIN, 0, MARGIN, 0)
+        head.setLayout(row)
+        row.addWidget(_label(title, 10, CAPTION, bold=True))
+        row.addStretch()
+        count = QLabel(str(sum(n for _, n, _ in rows)))
+        count.setStyleSheet(
+            f"font-family: Consolas, monospace; font-size: 11px; color: {DIM};"
+            " border: none;"
+        )
+        row.addWidget(count)
+        body.addWidget(head)
+        for name, number, note in rows:
+            body.addWidget(
+                self._row(name, str(number), BODY if number else CAPTION, note)
+            )
+
+    @staticmethod
+    def _row(name: str, number: str, colour: str, note: str) -> QWidget:
+        holder = QWidget()
+        holder.setFixedHeight(28)
+        holder.setStyleSheet("border: none;")
+        row = QHBoxLayout()
+        row.setContentsMargins(MARGIN, 0, MARGIN, 0)
+        row.setSpacing(8)
+        holder.setLayout(row)
+        row.addWidget(_label(name, 12.5, colour))
+        if note:
+            row.addWidget(_label(note, 11, CAPTION))
+        row.addStretch()
+        if number:
+            figure = QLabel(number)
+            figure.setStyleSheet(
+                f"font-family: Consolas, monospace; font-size: 13px;"
+                f" font-weight: 600; color: {TITLE if number != '0' else CAPTION};"
+                " border: none;"
+            )
+            row.addWidget(figure)
+        return holder
+
+    @staticmethod
+    def _air_rows(debriefing: Debriefing, player: Player) -> list:
         doctrine_on = bool(
             getattr(debriefing.game.settings, "ignore_non_combat_air_losses", False)
         )
@@ -82,57 +650,165 @@ class LossGrid(QGridLayout):
                 if debriefing.is_non_combat_loss(loss):
                     unit_type = loss.flight.unit_type
                     not_counted[unit_type] = not_counted.get(unit_type, 0) + 1
+        rows = []
         for unit_type, count in debriefing.air_losses.by_type(player).items():
             nc = not_counted.get(unit_type, 0)
-            # Show the counted figure as the headline — which may be 0 when every
-            # loss of this type was an ignored non-combat crash — so the player
-            # still sees the type went down; the parenthetical explains why it
-            # didn't count.
-            counted = count - nc
-            row = self.rowCount()
             try:
                 name = unit_type.display_name
             except AttributeError:
                 name = unit_type.id
-            self.addWidget(QLabel(name), row, 0)
-            self.addWidget(QLabel(str(counted)), row, 1)
-            if nc:
-                self.addWidget(
-                    QLabel(
-                        f"(other {nc} not counted because of crashed-do-not-count setting)"
-                    ),
-                    row,
-                    2,
-                )
-
-
-class CasualtyReportContainer(QGroupBox):
-    """The list of what one side lost.
-
-    It used to be a scroll area of its own, from when the window did not scroll. Now
-    that the whole report does, a second bar inside it only makes two lines of losses
-    look like a list too long to fit.
-    """
-
-    def __init__(self, debriefing: Debriefing, player: Player) -> None:
-        country = (
-            debriefing.player_country if player.is_blue else debriefing.enemy_country
-        )
-        super().__init__(f"{country}'s lost units:")
-        self.setLayout(LossGrid(debriefing, player))
-
-
-class MissionImpactGrid(QGridLayout):
-    def __init__(self, debriefing: Debriefing) -> None:
-        super().__init__()
-        for row, (label, value) in enumerate(self._rows_for(debriefing)):
-            self.addWidget(QLabel(f"<b>{label}</b>"), row, 0)
-            self.addWidget(QLabel(value), row, 1)
+            note = f"{nc} not counted — crashed-do-not-count" if nc else ""
+            rows.append((name, count - nc, note))
+        return rows
 
     @staticmethod
-    def _rows_for(debriefing: Debriefing) -> list[tuple[str, str]]:
-        blue_losses = debriefing.loss_counts(Player.BLUE)
-        red_losses = debriefing.loss_counts(Player.RED)
+    def _ground_rows(debriefing: Debriefing, player: Player) -> list:
+        rows: list = []
+
+        def collect(losses: Dict[T, int], make_name: Callable[[T], str]) -> None:
+            for unit_type, count in losses.items():
+                try:
+                    name = make_name(unit_type)
+                except AttributeError:
+                    logging.exception(f"Could not make unit name for {unit_type}")
+                    name = str(getattr(unit_type, "id", unit_type))
+                rows.append((name, count, ""))
+
+        collect(debriefing.front_line_losses_by_type(player), lambda u: str(u))
+        collect(
+            debriefing.motorpool_losses_by_type(player), lambda u: f"{u} from motorpool"
+        )
+        collect(debriefing.convoy_losses_by_type(player), lambda u: f"{u} from convoy")
+        collect(
+            debriefing.cargo_ship_losses_by_type(player),
+            lambda u: f"{u} from cargo ship",
+        )
+        collect(
+            debriefing.airlift_losses_by_type(player), lambda u: f"{u} from airlift"
+        )
+        collect(debriefing.ground_object_losses_by_type(player), lambda u: str(u))
+        collect(debriefing.scenery_losses_by_type(player), lambda u: str(u))
+        return rows
+
+
+# --- the window -------------------------------------------------------------
+
+
+class QDebriefingWindow(QDialog):
+    def __init__(self, debriefing: Debriefing):
+        super(QDebriefingWindow, self).__init__()
+        self.debriefing = debriefing
+
+        self.setModal(True)
+        self.setWindowTitle(f"Debriefing — Turn {debriefing.game.turn}")
+        self.setWindowIcon(QIcon("./resources/icon.png"))
+        self.setStyleSheet(f"QDialog {{ background: {PAGE}; }}")
+
+        outer = QVBoxLayout()
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.setSpacing(0)
+        self.setLayout(outer)
+
+        outer.addWidget(SummaryStrip(debriefing))
+
+        # The report scrolls as a whole. It used not to, and a mission with a busy
+        # Pilots box squeezed every section until the lines overlapped each other.
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll.setStyleSheet(f"background: {PAGE};")
+        outer.addWidget(scroll, 1)
+
+        body = QWidget()
+        scroll.setWidget(body)
+        layout = QVBoxLayout()
+        layout.setContentsMargins(24, 22, 24, 24)
+        layout.setSpacing(30)
+        body.setLayout(layout)
+
+        for section in (
+            self._pilots_section(debriefing),
+            self._losses_section(debriefing),
+            self._front_line_section(debriefing),
+            self._missiles_section(debriefing),
+        ):
+            if section is not None:
+                layout.addLayout(section)
+        layout.addStretch(1)
+
+        outer.addWidget(self._footer(debriefing))
+
+        available = self.screen().availableGeometry() if self.screen() else None
+        if available is not None:
+            self.resize(
+                min(1130, available.width() - 80),
+                min(920, available.height() - 80),
+            )
+
+    # --- sections -----------------------------------------------------------
+
+    @staticmethod
+    def _section(caption: str, hint: str, card: QWidget) -> QVBoxLayout:
+        column = QVBoxLayout()
+        column.setSpacing(10)
+        column.addWidget(_caption(caption, hint))
+        column.addWidget(card)
+        return column
+
+    def _pilots_section(self, debriefing: Debriefing) -> Optional[QVBoxLayout]:
+        """Who did not come back, who was hurt, and who came out of it better.
+
+        Omitted entirely when nothing happened to the aircrew, and so is any group
+        inside it: an empty heading says less than no heading.
+        """
+        outcomes = debriefing.pilot_outcomes
+        if outcomes.empty:
+            return None
+
+        card = _card()
+        column = QVBoxLayout()
+        column.setContentsMargins(0, 0, 0, 0)
+        column.setSpacing(0)
+        card.setLayout(column)
+
+        groups: list[tuple[str, list[QWidget]]] = [
+            (
+                "KILLED IN ACTION",
+                [ShotDownRow(d, "KIA", OURS) for d in outcomes.deaths],
+            ),
+            (
+                "SHOT DOWN & RECOVERED",
+                [ShotDownRow(s, "Unhurt", UNHURT) for s in outcomes.survivors],
+            ),
+            ("WOUNDED", [WoundedRow(w) for w in outcomes.wounded]),
+            ("PROMOTIONS", [PromotionRow(p) for p in outcomes.promotions]),
+            ("MORALE CHANGES", [MoraleRow(m) for m in outcomes.morale_shifts]),
+        ]
+        for title, rows in groups:
+            if not rows:
+                continue
+            column.addWidget(GroupHeader(title, len(rows)))
+            for row in rows:
+                column.addWidget(row)
+        return self._section("Pilots", "only groups with entries are drawn", card)
+
+    def _losses_section(self, debriefing: Debriefing) -> QVBoxLayout:
+        """Both sides side by side: stacked, the exchange took a scroll to read."""
+        card = QWidget()
+        grid = QGridLayout()
+        grid.setContentsMargins(0, 0, 0, 0)
+        grid.setSpacing(16)
+        card.setLayout(grid)
+        grid.addWidget(FactionLosses(debriefing, Player.BLUE), 0, 0)
+        grid.addWidget(FactionLosses(debriefing, Player.RED), 0, 1)
+        grid.setColumnStretch(0, 1)
+        grid.setColumnStretch(1, 1)
+        return self._section(
+            "Losses", "both sides, side by side · aircraft first, then ground", card
+        )
+
+    def _front_line_section(self, debriefing: Debriefing) -> Optional[QVBoxLayout]:
         captured = [
             capture.control_point.name
             for capture in debriefing.base_captures
@@ -144,265 +820,175 @@ class MissionImpactGrid(QGridLayout):
             if capture.captured_by_player.is_red
         ]
         runways = [airfield.name for airfield in debriefing.damaged_runways]
-
         rows = [
-            (
-                "Mission status",
-                (
-                    "Mission ended normally"
-                    if debriefing.state_data.mission_ended
-                    else "Mission ended early or state data was incomplete"
-                ),
-            ),
-            (
-                "Bases captured",
-                ", ".join(captured) if captured else "None",
-            ),
-            (
-                "Bases lost",
-                ", ".join(lost) if lost else "None",
-            ),
-            (
-                "Runways damaged",
-                ", ".join(runways) if runways else "None",
-            ),
-            (
-                f"{debriefing.player_country} losses",
-                f"{blue_losses.aircraft} aircraft, {blue_losses.front_line} front-line "
-                f"units, {blue_losses.ground_objects} site units, {blue_losses.bases_lost} bases",
-            ),
-            (
-                f"{debriefing.enemy_country} losses",
-                f"{red_losses.aircraft} aircraft, {red_losses.front_line} front-line "
-                f"units, {red_losses.ground_objects} site units, {red_losses.bases_lost} bases",
-            ),
+            ("Bases captured", ", ".join(captured), BODY),
+            ("Bases lost", ", ".join(lost), OURS),
+            ("Runways damaged", ", ".join(runways), AMBER),
         ]
-        return rows
-
-
-class MissionImpactContainer(QGroupBox):
-    def __init__(self, debriefing: Debriefing) -> None:
-        super().__init__("Mission Impact")
-        layout = QVBoxLayout()
-        layout.addLayout(MissionImpactGrid(debriefing))
-        self.setLayout(layout)
-
-
-class QDebriefingWindow(QDialog):
-    def __init__(self, debriefing: Debriefing):
-        super(QDebriefingWindow, self).__init__()
-        self.debriefing = debriefing
-
-        self.setModal(True)
-        self.setWindowTitle("Debriefing")
-        self.setMinimumSize(300, 200)
-        self.setWindowIcon(QIcon("./resources/icon.png"))
-
-        # The report scrolls as a whole. It used not to, and a mission with a busy
-        # Pilots box squeezed every section until the lines overlapped each other:
-        # the window can only grow to the height of the screen, and the layout took
-        # the difference out of whatever was longest.
-        outer = QVBoxLayout()
-        self.setLayout(outer)
-
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setFrameShape(QFrame.Shape.NoFrame)
-        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        outer.addWidget(scroll, 1)
-
-        body = QWidget()
-        scroll.setWidget(body)
-        layout = QVBoxLayout()
-        body.setLayout(layout)
-
-        header = QLabel(self)
-        header.setGeometry(0, 0, 655, 106)
-        pixmap = QPixmap("./resources/ui/debriefing.png")
-        header.setPixmap(pixmap)
-        layout.addWidget(header)
-
-        title = QLabel("<b>Casualty report</b>")
-        layout.addWidget(title)
-
-        impact = MissionImpactContainer(debriefing)
-        layout.addWidget(impact)
-
-        player_lost_units = CasualtyReportContainer(debriefing, player=Player.BLUE)
-        layout.addWidget(player_lost_units)
-
-        enemy_lost_units = CasualtyReportContainer(debriefing, player=Player.RED)
-        layout.addWidget(enemy_lost_units)
-
-        # Shown after the turn-boundary debit, so "remaining" is the magazine sailing
-        # into next turn. Enemy remainders stay hidden.
-        expenditures = debrief_expenditures(debriefing.game, debriefing)
-        if expenditures:
-            expenditure_box = QGroupBox("Cruise missiles expended:")
-            expenditure_grid = QGridLayout()
-            for row, (group_name, fired, remaining) in enumerate(expenditures):
-                expenditure_grid.addWidget(QLabel(group_name), row, 0)
-                if remaining is None:
-                    detail = f"{fired} fired"
-                else:
-                    detail = f"{fired} fired, {remaining} remaining"
-                expenditure_grid.addWidget(QLabel(detail), row, 1)
-            expenditure_box.setLayout(expenditure_grid)
-            layout.addWidget(expenditure_box)
-
-        pilots_box = self._pilots_box(debriefing)
-        if pilots_box is not None:
-            layout.addWidget(pilots_box)
-        layout.addStretch(1)
-
-        # Outside the scroll area: the way out of the dialog is always in reach.
-        okay = QPushButton("Okay")
-        okay.clicked.connect(self.close)
-        outer.addWidget(okay)
-
-        # Tall enough to read without being taller than the screen.
-        available = self.screen().availableGeometry() if self.screen() else None
-        if available is not None:
-            self.resize(
-                min(760, available.width() - 80),
-                min(920, available.height() - 80),
-            )
-
-    @staticmethod
-    def _pilots_box(debriefing: Debriefing) -> Optional[QGroupBox]:
-        """Who went up, who walked away, and who did not come back.
-
-        Omitted entirely when nothing happened to the aircrew: an empty box says less
-        than no box.
-        """
-        outcomes = debriefing.pilot_outcomes
-        if outcomes.empty:
+        if not any(value for _, value, _ in rows):
             return None
 
-        box = QGroupBox("Pilots:")
-        grid = QGridLayout()
-        row = 0
+        card = _card()
+        column = QVBoxLayout()
+        column.setContentsMargins(0, 4, 0, 4)
+        column.setSpacing(0)
+        card.setLayout(column)
+        for key, value, colour in rows:
+            holder = QWidget()
+            holder.setFixedHeight(32)
+            holder.setStyleSheet("border: none;")
+            row = QHBoxLayout()
+            row.setContentsMargins(MARGIN, 0, MARGIN, 0)
+            holder.setLayout(row)
+            row.addWidget(_label(key, 12.5, SUBDUED))
+            row.addSpacing(160)
+            row.addWidget(_label(value or "none", 12.5, colour if value else FAINT))
+            row.addStretch()
+            column.addWidget(holder)
+        return self._section(
+            "Front line & bases", "rows with nothing to report say none", card
+        )
 
-        def line(text: str, detail: str = "") -> None:
-            nonlocal row
-            grid.addWidget(QLabel(text), row, 0)
-            if detail:
-                grid.addWidget(QLabel(detail), row, 1)
-            row += 1
+    def _missiles_section(self, debriefing: Debriefing) -> Optional[QVBoxLayout]:
+        """Shown after the turn-boundary debit, so what remains is next turn's stock.
 
-        def addressed(rank: str, name: str, aircraft: str) -> str:
-            """Rank, name, and what he was flying -- the same shape in every section.
+        Enemy remainders stay hidden: a launch is observable, a magazine is not.
+        """
+        expenditures = debrief_expenditures(debriefing.game, debriefing)
+        if not expenditures:
+            return None
 
-            The short rank, because these are lists to be read down. The one place
-            that spells a rank out is the promotion, where the rank is the news.
-            """
-            who = f"{rank} {name}" if rank else name
-            return f"{who} ({aircraft})" if aircraft else who
+        card = _card()
+        column = QVBoxLayout()
+        column.setContentsMargins(0, 0, 0, 6)
+        column.setSpacing(0)
+        card.setLayout(column)
 
-        if outcomes.promotions:
-            line("<b>Promoted</b>")
-            for promotion in outcomes.promotions:
-                line(
-                    addressed(
-                        promotion.from_rank, promotion.pilot_name, promotion.aircraft
-                    ),
-                    f"promoted to {promotion.to_rank_full or promotion.to_rank}"
-                    f" — {promotion.squadron}",
-                )
+        head = QWidget()
+        head.setFixedHeight(22)
+        head.setStyleSheet("border: none;")
+        head_row = QHBoxLayout()
+        head_row.setContentsMargins(MARGIN, 0, MARGIN, 0)
+        head.setLayout(head_row)
+        head_row.addWidget(_label("LAUNCHER", 10, CAPTION, bold=True))
+        head_row.addStretch()
+        head_row.addWidget(_label("FIRED", 10, CAPTION, bold=True))
+        head_row.addSpacing(60)
+        head_row.addWidget(_label("REMAINING", 10, CAPTION, bold=True))
+        column.addWidget(head)
 
-        if outcomes.survivors:
-            line("<b>Shot down and recovered</b>")
-            for survivor in outcomes.survivors:
-                brought_down = survivor.killed_by or "an unknown attacker"
-                line(
-                    addressed(survivor.rank, survivor.pilot_name, survivor.aircraft),
-                    f"lost his aircraft to {brought_down}, and walked away",
-                )
+        for group_name, fired, remaining in expenditures:
+            holder = QWidget()
+            holder.setFixedHeight(32)
+            holder.setStyleSheet("border: none;")
+            row = QHBoxLayout()
+            row.setContentsMargins(MARGIN, 0, MARGIN, 0)
+            holder.setLayout(row)
+            row.addWidget(_label(group_name, 12.5, BODY))
+            row.addStretch()
+            fired_label = QLabel(str(fired))
+            fired_label.setStyleSheet(
+                f"font-family: Consolas, monospace; font-size: 13px; color: {TITLE};"
+                " border: none;"
+            )
+            row.addWidget(fired_label)
+            row.addSpacing(60)
+            left = QLabel("—" if remaining is None else str(remaining))
+            left.setStyleSheet(
+                f"font-family: Consolas, monospace; font-size: 13px;"
+                f" color: {SUBDUED if remaining else DIM}; border: none;"
+            )
+            left.setToolTip(
+                "Only your own magazines are known."
+                if remaining is None
+                else "What sails into next turn. There is no resupply."
+            )
+            row.addWidget(left)
+            column.addWidget(holder)
+        return self._section("Cruise missiles expended", "", card)
 
-        if outcomes.wounded:
-            line("<b>Wounded</b>")
-            for wound in outcomes.wounded:
-                line(
-                    addressed(wound.rank, wound.pilot_name, wound.aircraft),
-                    f"pulled out alive, unavailable for "
-                    f"{turns_phrase(wound.turns)} — {wound.squadron}",
-                )
+    def _footer(self, debriefing: Debriefing) -> QWidget:
+        """The way out, and what closing it will bring up next."""
+        footer = QWidget()
+        footer.setFixedHeight(56)
+        footer.setStyleSheet(f"background: {BAND}; border-top: 1px solid {LINE};")
+        row = QHBoxLayout()
+        row.setContentsMargins(24, 0, 24, 0)
+        footer.setLayout(row)
 
-        if outcomes.morale_shifts:
-            line("<b>Morale changes</b>")
-            for shift in outcomes.morale_shifts:
-                direction = "up" if shift.after > shift.before else "down"
-                state = morale_state(shift.after).name
-                line(
-                    addressed(shift.rank, shift.pilot_name, shift.aircraft),
-                    f"{direction} to {state} — {', '.join(shift.reasons)}",
-                )
+        coming = []
+        if any(p.player for p in debriefing.pilot_outcomes.promotions):
+            coming.append("your promotion")
+        waiting = self._leave_requests(debriefing)
+        if waiting:
+            coming.append(
+                f"{len(waiting)} leave request" f"{'' if len(waiting) == 1 else 's'}"
+            )
+        if coming:
+            row.addWidget(_label(f"Next: {' · '.join(coming)}", 11.5, DIM))
+        row.addStretch()
 
-        if outcomes.deaths:
-            line("<b>Killed in action</b>")
-            for death in outcomes.deaths:
-                if death.friendly_fire:
-                    detail = f"killed by {death.killed_by} — friendly fire"
-                elif death.killed_by:
-                    detail = f"killed by {death.killed_by}"
-                else:
-                    detail = "lost, with nobody credited"
-                line(addressed(death.rank, death.pilot_name, death.aircraft), detail)
+        okay = QPushButton("Continue")
+        okay.setStyleSheet(
+            "QPushButton { height: 30px; font-size: 12px; font-weight: 600;"
+            f" background: {ACCENT}; border: none; border-radius: 3px;"
+            " color: #0F1922; padding: 0 20px; }"
+        )
+        okay.clicked.connect(self.close)
+        row.addWidget(okay)
+        return footer
 
-        box.setLayout(grid)
-        return box
+    @staticmethod
+    def _leave_requests(debriefing: Debriefing) -> list:
+        from qt_ui.windows.LeaveRequestsDialog import pending_leave_requests
+
+        game = debriefing.game
+        if not game.settings.live_pilots_enabled or not getattr(
+            game.settings, "morale_enabled", True
+        ):
+            return []
+        return pending_leave_requests(game)
+
+    # --- what this window leads to ------------------------------------------
 
     def closeEvent(self, event: QCloseEvent) -> None:
         super().closeEvent(event)
         # Queued rather than shown here: this dialog is modal and still closing, and a
-        # second modal raised inside its own close handler does not always come up.
+        # second modal opened from inside closeEvent inherits the mess.
         QTimer.singleShot(0, self._congratulate_the_player)
         QTimer.singleShot(0, self._answer_leave_requests)
-        state = self.debriefing.game.check_win_loss()
-        GameUpdateSignal.get_instance().gameStateChanged(state)
+        GameUpdateSignal.get_instance().updateGame(self.debriefing.game)
 
     def _answer_leave_requests(self) -> None:
         """Whoever asked for a rest this turn, and your answer.
 
         Queued after the promotion box so the good news comes first.
         """
-        from qt_ui.windows.LeaveRequestsDialog import (
-            LeaveRequestsDialog,
-            pending_leave_requests,
-        )
+        from qt_ui.windows.LeaveRequestsDialog import LeaveRequestsDialog
 
-        game = self.debriefing.game
-        if not game.settings.live_pilots_enabled or not getattr(
-            game.settings, "morale_enabled", True
-        ):
-            return
-        requests = pending_leave_requests(game)
+        requests = self._leave_requests(self.debriefing)
         if not requests:
             return
-        self._leave_dialog = LeaveRequestsDialog(game, requests)
+        self._leave_dialog = LeaveRequestsDialog(self.debriefing.game, requests)
         self._leave_dialog.exec()
 
     def _congratulate_the_player(self) -> None:
-        """Tell the player he has been promoted. Nobody else gets a parade."""
-        promotions = [p for p in self.debriefing.pilot_outcomes.promotions if p.player]
-        if not promotions:
+        """A promotion of one of the player's own pilots is told, not just listed."""
+        mine = [p for p in self.debriefing.pilot_outcomes.promotions if p.player]
+        if not mine:
             return
-
-        # He knows who he is and which squadron he flies for, so the rank is the whole
-        # of the news. More than one player pilot can be promoted in a mission, though,
-        # and then they cannot all be "you": name them instead.
+        if len(mine) == 1:
+            body = (
+                f"You have been promoted to <b>{mine[0].to_rank_full}</b> "
+                f"in {mine[0].squadron}."
+            )
+        else:
+            named = "<br>".join(
+                f"{p.pilot_name} — <b>{p.to_rank_full}</b>, {p.squadron}" for p in mine
+            )
+            body = f"Your pilots have been promoted:<br><br>{named}"
         box = QMessageBox(self)
         box.setWindowTitle("Promotion")
-        box.setIcon(QMessageBox.Icon.Information)
-        if len(promotions) == 1:
-            rank = promotions[0].to_rank_full or promotions[0].to_rank
-            box.setText(f"<b>Congratulations, you have been promoted to {rank}!</b>")
-        else:
-            box.setText("<b>Congratulations!</b>")
-            box.setInformativeText(
-                "<br>".join(
-                    f"{p.pilot_name} is promoted to {p.to_rank_full or p.to_rank}"
-                    for p in promotions
-                )
-            )
+        box.setTextFormat(Qt.TextFormat.RichText)
+        box.setText(body)
         box.exec()

@@ -102,6 +102,7 @@ class MissionResultsProcessor:
                                     squadron=str(squadron),
                                     aircraft=str(squadron.aircraft),
                                     rank=self._short_rank(squadron, pilot),
+                                    level=self._rank_level(squadron, pilot),
                                     before=before,
                                     after=pilot.morale,
                                     reasons=sorted(set(reasons)),
@@ -410,6 +411,7 @@ class MissionResultsProcessor:
                     turns,
                     aircraft=str(loss.flight.unit_type),
                     rank=self._short_rank(squadron, pilot),
+                    level=self._rank_level(squadron, pilot),
                 )
             )
             note(f"wounded, out for {turns_phrase(turns)}")
@@ -427,6 +429,11 @@ class MissionResultsProcessor:
     def _short_rank(squadron: Any, pilot: Any) -> str:
         rank = squadron.pilot_rank(pilot)
         return "" if rank is None else rank.abbreviation
+
+    @staticmethod
+    def _rank_level(squadron: Any, pilot: Any) -> int:
+        """Which of the five rungs he stands on, for the stars beside his name."""
+        return morale_rules.rank_level(squadron.pilot_skill(pilot))
 
     def _note_flight_morale(
         self, flight: Any, casualty: Any, event: Any, turns: int = 1
@@ -458,6 +465,9 @@ class MissionResultsProcessor:
             friendly_fire=friendly,
             rank=(
                 self._short_rank(squadron, loss.pilot) if loss.pilot is not None else ""
+            ),
+            level=(
+                self._rank_level(squadron, loss.pilot) if loss.pilot is not None else 0
             ),
         )
 
@@ -677,6 +687,7 @@ class MissionResultsProcessor:
                         continue
 
                     before = squadron.pilot_rank(pilot)
+                    before_level = self._rank_level(squadron, pilot)
                     had = pilot.record.xp
                     # A pilot who lost the aircraft did not complete the mission. If
                     # the medics reached him, the wound is his consolation -- smaller
@@ -738,6 +749,8 @@ class MissionResultsProcessor:
                                 to_rank_full=after.name,
                                 player=pilot.player,
                                 aircraft=str(squadron.aircraft),
+                                from_level=before_level,
+                                to_level=self._rank_level(squadron, pilot),
                             )
                         )
                     self.xp_log.collected(
