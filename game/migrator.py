@@ -44,6 +44,7 @@ class Migrator:
         self._update_transfers()
         self._release_untasked_flights()
         self._reconcile_available_pilots()
+        self._clear_leave_requests_from_the_wounded()
         self._update_weather()
         self._update_tgos()
         try_set_attr(self.game.settings, "motorpool_enabled", True)
@@ -167,6 +168,24 @@ class Migrator:
                 s.claim_inventory(new_claim)
                 for i in range(new_claim):
                     s.claim_available_pilot()
+
+    def _clear_leave_requests_from_the_wounded(self) -> None:
+        """A pilot cannot be asking for leave from a hospital bed.
+
+        Being wounded clears the request now, and the turn's housekeeping will not let a
+        wounded man ask -- but saves made before both still carry the flag, and it showed
+        as "Requests leave" on the row of a man who was plainly out of action.
+        """
+        for coalition in (self.game.blue, self.game.red):
+            for squadron in coalition.air_wing.iter_squadrons():
+                for pilot in squadron.current_roster:
+                    if pilot.wounded and pilot.wants_leave:
+                        logging.info(
+                            f"{pilot.name} of {squadron} was asking for leave while "
+                            "wounded; request dropped"
+                        )
+                        pilot.wants_leave = False
+                        pilot.leave_turns_requested = 0
 
     def _reconcile_available_pilots(self) -> None:
         """The pool of pilots on offer, made to agree with the roster and the ATO.
