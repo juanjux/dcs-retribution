@@ -9,10 +9,18 @@ from PySide6.QtCore import (
     QItemSelectionModel,
     QModelIndex,
     QRectF,
+    QSettings,
     QSize,
     Qt,
 )
-from PySide6.QtGui import QColor, QFont, QHelpEvent, QPainter, QPalette
+from PySide6.QtGui import (
+    QCloseEvent,
+    QColor,
+    QFont,
+    QHelpEvent,
+    QPainter,
+    QPalette,
+)
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QApplication,
@@ -138,6 +146,16 @@ STATE_BLOCK_WIDTH = 200
 #: Below this the notes are unreadable anyway, so let them clip rather than collide.
 NOTES_MIN_WIDTH = 60
 MARGIN = 14
+
+#: Wide enough that the longest note fits without being shortened.
+#:
+#: A 1200-wide window leaves the notes 35 px of the roster's 564 -- the identity column
+#: takes NOTES_LEFT and the morale block STATE_BLOCK_WIDTH -- so "Requests leave · 2
+#: turns" (113 px) was cut to "Requests l...". The longest note, "Will refuse to fly next
+#: mission", wants about 142 px, and the roster loses roughly 636 px of the window to the
+#: form beside it and its own margins: 315 + 142 + 200 + 14 + 636, rounded up.
+MIN_DIALOG_WIDTH = 1320
+MIN_DIALOG_HEIGHT = 760
 
 
 def _font(
@@ -780,7 +798,7 @@ class SquadronDialog(QDialog):
         self.theater = theater
         self._child_dialogs: list[QDialog] = []
 
-        self.setMinimumSize(1200, 760)
+        self.setMinimumSize(MIN_DIALOG_WIDTH, MIN_DIALOG_HEIGHT)
         self.setWindowTitle(f"Squadron — {squadron_model.squadron}")
         # TODO: self.setWindowIcon()
 
@@ -899,6 +917,26 @@ class SquadronDialog(QDialog):
         right_column.addLayout(self._build_buttons())
 
         self._warn_parking_overflow()
+        self._restore_geometry()
+
+    # --- the size you chose -------------------------------------------------
+
+    #: Shared by every squadron: the size you want is a property of the dialog, not of
+    #: one squadron, and the same key the main window uses for its own geometry.
+    GEOMETRY_KEY = "squadronDialogGeometry"
+
+    @staticmethod
+    def _qsettings() -> QSettings:
+        return QSettings("DCS Retribution", "Qt UI")
+
+    def _restore_geometry(self) -> None:
+        saved = self._qsettings().value(self.GEOMETRY_KEY)
+        if saved is not None:
+            self.restoreGeometry(saved)
+
+    def closeEvent(self, event: QCloseEvent) -> None:
+        self._qsettings().setValue(self.GEOMETRY_KEY, self.saveGeometry())
+        super().closeEvent(event)
 
     # --- the panels ---------------------------------------------------------
 

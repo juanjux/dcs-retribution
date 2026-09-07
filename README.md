@@ -155,6 +155,14 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   (the promotion box is told once, not on every reopening). Enabled only while the
   report belongs to the turn being played, so it never shows a stale one.
 
+- **The squadron dialog fits its own text, and keeps the size you give it.** It opened
+  at 1200 px, which left the notes column 35 px of the roster's 564 -- the identity
+  column and the morale block take the rest -- so *every* note was shortened, down to
+  "Requests leave" itself becoming "Requests l...". The minimum is 1320 now, which fits
+  the longest of them ("Will refuse to fly next mission", 142 px) in 155. And the size
+  is remembered between openings, for any squadron, the same way the main window
+  remembers its own.
+
 ### Kneeboards
 - **Friendly-packages list** plus a **package-targets map** page.
   ([#11](https://github.com/juanjux/dcs-retribution/pull/11))
