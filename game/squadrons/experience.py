@@ -110,6 +110,8 @@ class PilotDeath:
     pilot_name: str
     squadron: str
     aircraft: str
+    #: His rank, abbreviated, as the debriefing addresses him.
+    rank: str = ""
     #: Already-formatted attribution: a roster pilot, a human's name, an airframe type,
     #: "a crash", or a friendly-fire note. None when nothing at all is known.
     killed_by: Optional[str] = None
@@ -128,6 +130,8 @@ class PilotWound:
     pilot_name: str
     squadron: str
     turns: int
+    aircraft: str = ""
+    rank: str = ""
 
 
 @dataclass
@@ -143,6 +147,21 @@ class PilotPromotion:
     #: Whether this is a pilot the human flies himself, who is told about it.
     player: bool = False
 
+    aircraft: str = ""
+
+
+@dataclass
+class MoraleShift:
+    """A pilot the turn moved a long way, in either direction."""
+
+    pilot_name: str
+    squadron: str
+    before: int
+    after: int
+    reasons: list[str]
+    aircraft: str = ""
+    rank: str = ""
+
 
 @dataclass
 class PilotOutcomes:
@@ -157,6 +176,7 @@ class PilotOutcomes:
     survivors: list[PilotDeath] = field(default_factory=list)
     wounded: list[PilotWound] = field(default_factory=list)
     deaths: list[PilotDeath] = field(default_factory=list)
+    morale_shifts: list[MoraleShift] = field(default_factory=list)
 
     #: ``id()`` of every pilot who lost his aircraft, however it ended for him. He did
     #: not complete the mission, so he is not paid for completing it.
@@ -164,4 +184,10 @@ class PilotOutcomes:
 
     @property
     def empty(self) -> bool:
-        return not (self.promotions or self.survivors or self.wounded or self.deaths)
+        return not (
+            self.promotions
+            or self.survivors
+            or self.wounded
+            or self.deaths
+            or self.morale_shifts
+        )

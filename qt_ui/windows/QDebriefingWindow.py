@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
 from game.cruise_raids import debrief_expenditures
 from game.debriefing import Debriefing
 from game.squadrons.experience import turns_phrase
+from game.squadrons.morale import morale_state
 from game.theater import Player
 from qt_ui.windows.GameUpdateSignal import GameUpdateSignal
 
@@ -288,12 +289,24 @@ class QDebriefingWindow(QDialog):
                 grid.addWidget(QLabel(detail), row, 1)
             row += 1
 
+        def addressed(rank: str, name: str, aircraft: str) -> str:
+            """Rank, name, and what he was flying -- the same shape in every section.
+
+            The short rank, because these are lists to be read down. The one place
+            that spells a rank out is the promotion, where the rank is the news.
+            """
+            who = f"{rank} {name}" if rank else name
+            return f"{who} ({aircraft})" if aircraft else who
+
         if outcomes.promotions:
             line("<b>Promoted</b>")
             for promotion in outcomes.promotions:
                 line(
-                    f"{promotion.from_rank} {promotion.pilot_name}",
-                    f"promoted to {promotion.to_rank} — {promotion.squadron}",
+                    addressed(
+                        promotion.from_rank, promotion.pilot_name, promotion.aircraft
+                    ),
+                    f"promoted to {promotion.to_rank_full or promotion.to_rank}"
+                    f" — {promotion.squadron}",
                 )
 
         if outcomes.survivors:
@@ -301,17 +314,27 @@ class QDebriefingWindow(QDialog):
             for survivor in outcomes.survivors:
                 brought_down = survivor.killed_by or "an unknown attacker"
                 line(
-                    survivor.pilot_name,
-                    f"lost his {survivor.aircraft} to {brought_down}, and walked away",
+                    addressed(survivor.rank, survivor.pilot_name, survivor.aircraft),
+                    f"lost his aircraft to {brought_down}, and walked away",
                 )
 
         if outcomes.wounded:
             line("<b>Wounded</b>")
             for wound in outcomes.wounded:
                 line(
-                    wound.pilot_name,
+                    addressed(wound.rank, wound.pilot_name, wound.aircraft),
                     f"pulled out alive, unavailable for "
                     f"{turns_phrase(wound.turns)} — {wound.squadron}",
+                )
+
+        if outcomes.morale_shifts:
+            line("<b>Morale changes</b>")
+            for shift in outcomes.morale_shifts:
+                direction = "up" if shift.after > shift.before else "down"
+                state = morale_state(shift.after).name
+                line(
+                    addressed(shift.rank, shift.pilot_name, shift.aircraft),
+                    f"{direction} to {state} — {', '.join(shift.reasons)}",
                 )
 
         if outcomes.deaths:
@@ -323,7 +346,7 @@ class QDebriefingWindow(QDialog):
                     detail = f"killed by {death.killed_by}"
                 else:
                     detail = "lost, with nobody credited"
-                line(f"{death.pilot_name} ({death.aircraft})", detail)
+                line(addressed(death.rank, death.pilot_name, death.aircraft), detail)
 
         box.setLayout(grid)
         return box
@@ -333,8 +356,30 @@ class QDebriefingWindow(QDialog):
         # Queued rather than shown here: this dialog is modal and still closing, and a
         # second modal raised inside its own close handler does not always come up.
         QTimer.singleShot(0, self._congratulate_the_player)
+        QTimer.singleShot(0, self._answer_leave_requests)
         state = self.debriefing.game.check_win_loss()
         GameUpdateSignal.get_instance().gameStateChanged(state)
+
+    def _answer_leave_requests(self) -> None:
+        """Whoever asked for a rest this turn, and your answer.
+
+        Queued after the promotion box so the good news comes first.
+        """
+        from qt_ui.windows.LeaveRequestsDialog import (
+            LeaveRequestsDialog,
+            pending_leave_requests,
+        )
+
+        game = self.debriefing.game
+        if not game.settings.live_pilots_enabled or not getattr(
+            game.settings, "morale_enabled", True
+        ):
+            return
+        requests = pending_leave_requests(game)
+        if not requests:
+            return
+        self._leave_dialog = LeaveRequestsDialog(game, requests)
+        self._leave_dialog.exec()
 
     def _congratulate_the_player(self) -> None:
         """Tell the player he has been promoted. Nobody else gets a parade."""

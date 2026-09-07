@@ -19,6 +19,8 @@ from game.theater import ParkingType
 from game.theater.player import Player
 from .pilot import Pilot, PilotStatus
 from game.dcs.skills import CADET_SKILL, SKILL_LADDER, skill_for_experience
+from game.squadrons import morale as morale_rules
+from game.squadrons.morale import TURNS_BEFORE_LEAVE_IS_MISSED, shifted_skill
 
 from .pilotnames import faker_for_country
 from .pilotranks import Rank, rank_for_skill, ranks_for
@@ -168,6 +170,28 @@ class Squadron:
             rung = 0
         return -rung, -pilot.record.xp
 
+    @property
+    def morale_in_play(self) -> bool:
+        """Morale rides on Live Pilots and can be switched off on its own.
+
+        Switched off it does nothing at all: no drift, no leave running down, and
+        nobody grounded for a figure the player cannot see.
+        """
+        return self.settings.live_pilots_enabled and getattr(
+            self.settings, "morale_enabled", True
+        )
+
+    def mission_skill(self, pilot: Pilot) -> Skill:
+        """The rung he will actually fly at, once his state of mind is counted.
+
+        Kept apart from :meth:`pilot_skill` on purpose. Rank is derived from that one,
+        so shifting it for morale would demote a Major to Captain on a bad week and
+        promote him back on a good one. Only the mission file reads this.
+        """
+        if not self.morale_in_play:
+            return self.pilot_skill(pilot)
+        return shifted_skill(self.pilot_skill(pilot), pilot.morale, self.settings)
+
     def pilot_rank(self, pilot: Pilot) -> Optional[Rank]:
         """The rank the pilot holds, or None while Live Pilots is switched off.
 
@@ -314,8 +338,115 @@ class Squadron:
         if self.destination is not None:
             self.relocate_to(self.destination)
         self.tend_the_wounded()
+        self.tend_morale(self.coalition.game.turn)
         self.replenish_lost_pilots()
         self.deliver_orders()
+
+    def tend_morale(self, turn: int) -> None:
+        """A turn of ordinary life: leave served, drift, and the cost of no rest.
+
+        Everything that happens *to* a pilot in a mission is applied by the results
+        processor. This is only what the passage of time does.
+        """
+        if not self.morale_in_play:
+            return
+        for pilot in list(self.current_roster):
+            if not pilot.alive:
+                continue
+
+            # What he had at this point one turn ago, so the next turn can say whether
+            # he is sliding. Taken before anything moves him.
+            was = pilot.morale
+            pilot.morale_last_turn = was
+
+            if pilot.on_leave:
+                pilot.move_morale(
+                    morale_rules.ON_LEAVE, self.pilot_skill(pilot), self.settings, turn
+                )
+                pilot.serve_a_turn_of_leave(turn)
+                continue
+
+            # Judged on the state he arrived in. The drift below lifts a man who is
+            # merely low, so asking afterwards would read the wrong number.
+            was_at_rock_bottom = was <= morale_rules.REFUSES_TO_FLY_AT
+
+            pilot.turns_since_leave += 1
+            if pilot.turns_since_leave > TURNS_BEFORE_LEAVE_IS_MISSED:
+                # It gets worse the longer it goes on: one event per turn beyond the
+                # fifth, so the eighth turn costs three times the sixth.
+                overdue = pilot.turns_since_leave - TURNS_BEFORE_LEAVE_IS_MISSED
+                for _ in range(overdue):
+                    pilot.move_morale(
+                        morale_rules.NO_LEAVE,
+                        self.pilot_skill(pilot),
+                        self.settings,
+                        turn,
+                    )
+            before_drift = pilot.morale
+            pilot.morale = morale_rules.clamp(
+                pilot.morale + morale_rules.drift(pilot.morale)
+            )
+            pilot.note_morale_change(before_drift, "time passing", turn)
+
+            if was_at_rock_bottom:
+                pilot.turns_at_zero += 1
+                # A roll, not a countdown: every turn a man is left at the bottom is a
+                # turn he might not come back from, and rank is what holds him there.
+                if random.random() < morale_rules.desertion_chance(
+                    self.pilot_skill(pilot)
+                ):
+                    logging.info(
+                        f"{pilot.name} has deserted {self} after "
+                        f"{pilot.turns_at_zero} turns at rock bottom"
+                    )
+                    pilot.desert()
+                    continue
+            else:
+                pilot.turns_at_zero = 0
+
+            # A man in a hospital bed does not ask for leave, and how hard he has been
+            # worked lately counts as much as how he is holding up.
+            flown = pilot.sorties_in_last(morale_rules.RECENT_SORTIE_WINDOW, turn)
+            if (
+                not pilot.wounded
+                and not pilot.wants_leave
+                and random.random()
+                < (
+                    morale_rules.leave_request_chance(
+                        pilot.morale,
+                        getattr(self.settings, "morale_leave_request_chance", 8),
+                        flown,
+                    )
+                )
+            ):
+                pilot.wants_leave = True
+                pilot.leave_turns_requested = morale_rules.requested_leave_turns(
+                    pilot.morale
+                )
+
+    def cancel_leave(self, pilot: Pilot) -> None:
+        """Call a man back before his leave is up, and pay for it.
+
+        The cost hangs on this, not on :meth:`Pilot.return_from_leave` -- a pilot whose
+        leave simply ran out has had his rest and owes nothing.
+        """
+        if not pilot.on_leave:
+            raise RuntimeError("Only pilots on leave may have it cancelled")
+        # Goes through the ordinary return, which refuses when the squadron is full.
+        self.return_from_leave(pilot)
+        if self.morale_in_play:
+            pilot.move_morale(
+                morale_rules.LEAVE_CANCELLED,
+                self.pilot_skill(pilot),
+                self.settings,
+                self.coalition.game.turn,
+            )
+
+    def discharge(self, pilot: Pilot) -> None:
+        """Throw a pilot out. He leaves the roster and joins the roll below it."""
+        pilot.discharge()
+        self.leaves_the_pool(pilot)
+        logging.info(f"{pilot.name} was discharged from {self}")
 
     def tend_the_wounded(self) -> None:
         """One turn of every wound served; the last one puts the pilot back to work."""
@@ -328,15 +459,23 @@ class Squadron:
             self._recruit_pilots(self.replenish_count)
 
     def return_all_pilots_and_aircraft(self) -> None:
-        self.available_pilots = list(self.active_pilots)
+        # A man at rock bottom is not offered, the same way a wounded one is not. He is
+        # still on the books and still counts against the squadron's establishment.
+        if self.morale_in_play:
+            self.available_pilots = [
+                p for p in self.active_pilots if not p.refuses_to_fly
+            ]
+        else:
+            self.available_pilots = list(self.active_pilots)
         # Aircraft already sold this turn (negative pending) must not return to the
         # taskable pool; otherwise a turn re-initialisation would let the same units
         # be sold (and flown) again, refunding their price every time.
         self.untasked_aircraft = self.owned_aircraft + min(0, self.pending_deliveries)
 
-    @staticmethod
-    def send_on_leave(pilot: Pilot) -> None:
-        pilot.send_on_leave()
+    def send_on_leave(self, pilot: Pilot, turns: int = 0, turn: int = -1) -> None:
+        """Open-ended from the Air Wing button; for a fixed spell from a granted request."""
+        pilot.send_on_leave(turns, turn)
+        self.leaves_the_pool(pilot)
 
     def return_from_leave(self, pilot: Pilot) -> None:
         if not self.has_unfilled_pilot_slots:
@@ -344,6 +483,26 @@ class Squadron:
                 f"Cannot return {pilot} from leave because {self} is full"
             )
         pilot.return_from_leave()
+        self.joins_the_pool(pilot)
+
+    def leaves_the_pool(self, pilot: Pilot) -> None:
+        """He is no longer on offer for a sortie.
+
+        The pool is only rebuilt from the roster between turns, so anything that takes a
+        man off duty *during* one has to say so, or he stays on the list until the turn
+        ends -- and the men still fit for it go missing from it.
+
+        Compared by identity: Pilot is a dataclass, so two men of the same name and
+        record are equal to one another and ``list.remove`` would take the wrong one.
+        """
+        self.available_pilots = [p for p in self.available_pilots if p is not pilot]
+
+    def joins_the_pool(self, pilot: Pilot) -> None:
+        """He is fit and unassigned, so he is on offer again."""
+        if pilot.status is not PilotStatus.Active or pilot.refuses_to_fly:
+            return
+        if not any(p is pilot for p in self.available_pilots):
+            self.available_pilots.append(pilot)
 
     @property
     def faker(self) -> Faker:
@@ -387,16 +546,21 @@ class Squadron:
         return self._pilots_with_status(PilotStatus.Wounded)
 
     @property
+    def deserted_pilots(self) -> list[Pilot]:
+        return self._pilots_with_status(PilotStatus.Deserted)
+
+    @property
     def number_of_pilots_including_inactive(self) -> int:
         return len(self.current_roster)
 
     @property
     def living_pilots(self) -> list[Pilot]:
-        return self._pilots_without_status(PilotStatus.Dead)
+        return [p for p in self.current_roster if p.alive]
 
     @property
     def dead_pilots(self) -> list[Pilot]:
-        return self._pilots_with_status(PilotStatus.Dead)
+        """The ones who are not coming back, however they went."""
+        return [p for p in self.current_roster if not p.alive]
 
     @property
     def _number_of_unfilled_pilot_slots(self) -> int:

@@ -24,10 +24,12 @@ from game.ato.flightroster import FlightRoster
 from game.ato.iflightroster import IFlightRoster
 from game.dcs.aircrafttype import AircraftType
 from game.squadrons import Squadron
+from game.squadrons.morale import rank_level
 from game.squadrons.pilot import Pilot
 from game.theater import ControlPoint, OffMapSpawn
 from game.utils import nautical_miles
 from qt_ui.models import PackageModel
+from qt_ui.rankstars import rank_stars_text
 
 
 class PilotSelector(QComboBox):
@@ -43,11 +45,19 @@ class PilotSelector(QComboBox):
         self.rebuild()
 
     def text_for(self, pilot: Pilot) -> str:
-        """The pilot as he is addressed: rank first, when he holds one."""
+        """The pilot as he is addressed: his seniority, his rank, his name.
+
+        The same five slots the roster paints, so choosing a pilot here and reading the
+        squadron dialog are the same act. A combo draws its own text, so these are one
+        colour rather than the gold and grey of the list.
+        """
         if self.squadron is None:
             return pilot.name
         rank = self.squadron.pilot_rank(pilot)
-        return pilot.name if rank is None else f"{rank.abbreviation} {pilot.name}"
+        if rank is None:
+            return pilot.name
+        stars = rank_stars_text(rank_level(self.squadron.pilot_skill(pilot)))
+        return f"{stars}  {rank.abbreviation} {pilot.name}"
 
     def _do_rebuild(self) -> None:
         self.clear()

@@ -46,6 +46,7 @@ from game.ato.flightplans.packagerefueling import PackageRefuelingFlightPlan
 from game.ato.flightplans.shiprecoverytanker import RecoveryTankerFlightPlan
 from game.ato.flightplans.theaterrefueling import TheaterRefuelingFlightPlan
 from game.missiongenerator.missiondata import MissionData
+from game.squadrons import morale as morale_rules
 from game.utils import nautical_miles, knots, feet
 
 
@@ -105,6 +106,38 @@ class AircraftBehavior:
 
         self.configure_eplrs(group, flight)
 
+    @staticmethod
+    def _temper_with_morale(
+        flight: Flight,
+        react_on_threat: OptReactOnThreat.Values,
+        rtb_winchester: Optional[OptRTBOnOutOfAmmo.Values],
+    ) -> tuple[OptReactOnThreat.Values, Optional[OptRTBOnOutOfAmmo.Values]]:
+        """How willing this flight is to be shot at, from how its lead is holding up.
+
+        These are group options -- DCS has no way to tell one man in a four-ship to be
+        careful -- so the lead decides for the formation, which is how it works anyway.
+        A shaken flight routes around what frightens it; a broken one turns for home
+        when the threat is serious, and goes home as soon as its weapons are gone
+        rather than hanging about with the gun.
+
+        Only ever more cautious than the task asked for, never less: nothing here talks
+        a flight into being braver than its orders.
+        """
+        settings = flight.squadron.coalition.game.settings
+        if not settings.live_pilots_enabled or not getattr(
+            settings, "morale_enabled", True
+        ):
+            return react_on_threat, rtb_winchester
+        lead = next(iter(flight.roster.iter_pilots()), None)
+        if lead is None:
+            return react_on_threat, rtb_winchester
+        wanted = morale_rules.threat_reaction(lead.morale)
+        if wanted.value > react_on_threat.value:
+            react_on_threat = wanted
+        if lead.morale < morale_rules.SHAKEN_BELOW:
+            rtb_winchester = OptRTBOnOutOfAmmo.Values.All
+        return react_on_threat, rtb_winchester
+
     def configure_behavior(
         self,
         flight: Flight,
@@ -150,6 +183,9 @@ class AircraftBehavior:
         if ai_unlimited_fuel and not at_ip_or_combat:
             group.points[0].tasks.append(SetUnlimitedFuelCommand(True))
 
+        react_on_threat, rtb_winchester = self._temper_with_morale(
+            flight, react_on_threat, rtb_winchester
+        )
         group.points[0].tasks.append(OptReactOnThreat(react_on_threat))
         if roe is not None:
             group.points[0].tasks.append(OptROE(roe))

@@ -36,8 +36,13 @@ class XpLog:
         )
 
     @staticmethod
-    def _who(pilot: Any, squadron: Any, aircraft: Any) -> str:
-        return f"{pilot.name} ({squadron}, {aircraft})"
+    def _who(pilot: Any, squadron: Any, aircraft: Any = None) -> str:
+        """A pilot as he is addressed: rank first, the way the rest of the game does."""
+        rank = squadron.pilot_rank(pilot) if hasattr(squadron, "pilot_rank") else None
+        name = pilot.name if rank is None else f"{rank.abbreviation} {pilot.name}"
+        if aircraft is None:
+            return f"{name} ({squadron})"
+        return f"{name} ({squadron}, {aircraft})"
 
     def fate(
         self,
@@ -57,6 +62,29 @@ class XpLog:
         self._lines.append(
             f"  {self._who(pilot, squadron, aircraft)} lost his aircraft as {where}, "
             f"{chance:.0%} to walk away -- {outcome}"
+        )
+
+    def morale(
+        self,
+        pilot: Any,
+        squadron: Any,
+        before: int,
+        after: int,
+        reasons: Iterable[str],
+    ) -> None:
+        """Where a pilot's morale went this turn, and what moved it.
+
+        Counted like the experience above, and here for the same reason: promotions and
+        refusals are decided from a number nobody can see.
+        """
+        tally: dict[str, int] = {}
+        for reason in reasons:
+            tally[reason] = tally.get(reason, 0) + 1
+        detail = ", ".join(
+            reason if n == 1 else f"{reason} x{n}" for reason, n in tally.items()
+        )
+        self._lines.append(
+            f"  {self._who(pilot, squadron)} morale {before} -> {after} ({detail})"
         )
 
     def collected(

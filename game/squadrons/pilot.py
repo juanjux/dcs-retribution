@@ -6,6 +6,18 @@ from typing import Any
 
 from faker import Faker
 
+from dcs.unit import Skill
+
+from game.squadrons.morale import (
+    MORALE_HISTORY_LIMIT,
+    SORTIE_HISTORY_LIMIT,
+    MORALE_START,
+    REFUSES_TO_FLY_AT,
+    MoraleEvent,
+    MoraleLogEntry,
+    apply as apply_morale,
+)
+
 
 @dataclass
 class PilotRecord:
@@ -31,6 +43,12 @@ class PilotStatus(Enum):
     #: Pulled out of the wreckage. Out of the roster until he has served his turns,
     #: which is the same unavailability as leave and needs no separate plumbing.
     Wounded = "Wounded"
+    #: He has had enough and walked away. Counted with the dead rather than the living:
+    #: gone is gone, and the squadron has to replace him either way.
+    Deserted = "Deserted"
+    #: Thrown out by the player. The value is the save format: never rename one of
+    #: these, only add.
+    Discharged = "Discharged"
 
 
 @dataclass
@@ -47,14 +65,75 @@ class Pilot:
     #: The turn the wound was dealt in, which does not count towards serving it.
     wounded_on_turn: int = field(default=-1)
 
+    #: How he is holding up, 0 to 100. A campaign that has done nothing to him yet has
+    #: no opinion about him, which is what 50 means -- and it is what a pilot from a
+    #: save written before morale existed reads from the class.
+    morale: int = field(default=MORALE_START)
+
+    #: Turns of leave left, counted exactly like a wound.
+    leave_turns: int = field(default=0)
+
+    #: The turn leave was granted in, which does not count towards serving it.
+    leave_on_turn: int = field(default=-1)
+
+    #: Turns since he last had any. Starts at zero for everyone, including the pilots
+    #: of a campaign that predates this, so nobody is punished for a rest they were
+    #: never able to ask for.
+    turns_since_leave: int = field(default=0)
+
+    #: He has asked, and is waiting to be told yes or no.
+    wants_leave: bool = field(default=False)
+
+    #: Turns he has spent at rock bottom. Nothing depends on it any more -- desertion
+    #: is a roll now -- but it is worth showing a player who left a man there.
+    turns_at_zero: int = field(default=0)
+
+    #: How many turns of leave he asked for. Nobody asks in the abstract: he asks for a
+    #: morning, a day, a week, and the player may grant him less.
+    leave_turns_requested: int = field(default=0)
+
+    #: What his morale was a turn ago, so "he is sliding" can be said at all.
+    morale_last_turn: int = field(default=MORALE_START)
+
+    #: Everything that has moved him, most recent last. Read by the pilot dialog; the
+    #: campaign never depends on it.
+    morale_log: list[MoraleLogEntry] = field(default_factory=list)
+
+    #: The turns he flew in, most recent last. Only the tail matters -- how hard he has
+    #: been worked lately is what decides whether he asks for a rest.
+    sorties_by_turn: list[int] = field(default_factory=list)
+
     def __setstate__(self, state: dict[str, Any]) -> None:
         state.setdefault("wounded_turns", 0)
         state.setdefault("wounded_on_turn", -1)
+        state.setdefault("morale", MORALE_START)
+        state.setdefault("leave_turns", 0)
+        state.setdefault("leave_on_turn", -1)
+        state.setdefault("turns_since_leave", 0)
+        state.setdefault("wants_leave", False)
+        state.setdefault("turns_at_zero", 0)
+        state.setdefault("leave_turns_requested", 0)
+        state.setdefault("morale_last_turn", MORALE_START)
+        state.setdefault("morale_log", [])
+        state.setdefault("sorties_by_turn", [])
         self.__dict__.update(state)
 
     @property
     def alive(self) -> bool:
-        return self.status is not PilotStatus.Dead
+        return self.status not in (
+            PilotStatus.Dead,
+            PilotStatus.Deserted,
+            PilotStatus.Discharged,
+        )
+
+    @property
+    def deserted(self) -> bool:
+        return self.status is PilotStatus.Deserted
+
+    @property
+    def refuses_to_fly(self) -> bool:
+        """Rock bottom. He is not offered for a sortie, the way a wounded man is not."""
+        return self.morale <= REFUSES_TO_FLY_AT
 
     @property
     def on_leave(self) -> bool:
@@ -64,21 +143,91 @@ class Pilot:
     def wounded(self) -> bool:
         return self.status is PilotStatus.Wounded
 
-    def send_on_leave(self) -> None:
+    def note_sortie(self, turn: int) -> None:
+        """He flew this turn. Only the recent tail is kept."""
+        self.sorties_by_turn.append(turn)
+        if len(self.sorties_by_turn) > SORTIE_HISTORY_LIMIT:
+            del self.sorties_by_turn[:-SORTIE_HISTORY_LIMIT]
+
+    def sorties_in_last(self, turns: int, current_turn: int) -> int:
+        """How many of the last ``turns`` turns he flew in.
+
+        Counted by turn rather than by sortie: two flights in one turn is one hard day,
+        not two.
+        """
+        floor = current_turn - turns
+        return len({t for t in self.sorties_by_turn if t > floor})
+
+    def move_morale(
+        self,
+        event: MoraleEvent,
+        skill: Skill,
+        settings: Any = None,
+        turn: int = -1,
+    ) -> int:
+        """Apply one event to him and remember it. Returns how far he moved.
+
+        Every morale change goes through here so that nothing can move a pilot without
+        it being written down -- the log is what the pilot dialog reads back.
+        """
+        before = self.morale
+        self.morale = apply_morale(before, event, skill, settings)
+        return self.note_morale_change(before, event.reason, turn)
+
+    def note_morale_change(self, before: int, reason: str, turn: int = -1) -> int:
+        """Write down a change already made to :attr:`morale`."""
+        moved = self.morale - before
+        if not moved:
+            return 0
+        self.morale_log.append(
+            MoraleLogEntry(
+                turn=turn, amount=moved, reason=reason, morale_after=self.morale
+            )
+        )
+        if len(self.morale_log) > MORALE_HISTORY_LIMIT:
+            del self.morale_log[:-MORALE_HISTORY_LIMIT]
+        return moved
+
+    def send_on_leave(self, turns: int = 0, turn: int = -1) -> None:
+        """Grant leave, for ``turns`` of them or open-ended when that is zero.
+
+        Open-ended is how leave has always worked and how the Air Wing button still
+        grants it: he stays out until the player fetches him. A granted request carries
+        a length, and then it runs down on its own like a wound.
+        """
         if self.status is not PilotStatus.Active:
             raise RuntimeError("Only active pilots may be sent on leave")
         self.status = PilotStatus.OnLeave
+        self.leave_turns = turns
+        self.leave_on_turn = turn
+        self.wants_leave = False
+        self.leave_turns_requested = 0
+
+    def serve_a_turn_of_leave(self, turn: int) -> None:
+        """One turn of leave used up. Open-ended leave never runs out on its own."""
+        if not self.leave_turns or turn == self.leave_on_turn:
+            return
+        self.leave_turns -= 1
+        if self.leave_turns <= 0:
+            self.return_from_leave()
 
     def return_from_leave(self) -> None:
         if self.status is not PilotStatus.OnLeave:
             raise RuntimeError("Only pilots on leave may be returned from leave")
         self.status = PilotStatus.Active
+        self.leave_turns = 0
+        self.leave_on_turn = -1
+        self.turns_since_leave = 0
 
     def wound(self, turns: int, turn: int) -> None:
         """He was going to die. Instead he is out for the next ``turns`` of them."""
         self.status = PilotStatus.Wounded
         self.wounded_turns = turns
         self.wounded_on_turn = turn
+        # He is already off the roster, in a bed. Asking for leave on top of it is
+        # nonsense, and any request he had made is overtaken by events.
+        self.wants_leave = False
+        self.leave_turns_requested = 0
 
     def serve_a_turn_wounded(self, turn: int) -> None:
         """One turn of the wound served. The last one puts him back on the roster.
@@ -99,6 +248,21 @@ class Pilot:
         self.status = PilotStatus.Dead
         self.wounded_turns = 0
         self.wounded_on_turn = -1
+
+    def discharge(self) -> None:
+        """Thrown out. He keeps his place in the roll below, and nothing else."""
+        self.status = PilotStatus.Discharged
+        self.wants_leave = False
+        self.leave_turns = 0
+        self.leave_turns_requested = 0
+
+    def desert(self) -> None:
+        """He has had enough."""
+        self.status = PilotStatus.Deserted
+        self.wounded_turns = 0
+        self.wounded_on_turn = -1
+        self.leave_turns = 0
+        self.wants_leave = False
 
     @classmethod
     def random(cls, faker: Faker) -> Pilot:

@@ -21,6 +21,7 @@ from game.dcs.skills import (
     skill_for_experience,
 )
 from game.sim.missionresultsprocessor import MissionResultsProcessor
+from game.ato import FlightType
 from game.settings import Settings
 from game.squadrons.experience import (
     SURVIVAL_BY_SKILL,
@@ -467,6 +468,10 @@ class _PromotingSquadron:
     """Promotes at 2000, which is the Captain rung."""
 
     base_skill = CADET_SKILL
+    aircraft = "F/A-18C"
+
+    def pilot_skill(self, pilot: Pilot) -> Any:
+        return CADET_SKILL
 
     def pilot_rank(self, pilot: Pilot) -> Any:
         if pilot.record.xp >= 2000:
@@ -483,6 +488,8 @@ def _promote(pilot: Pilot) -> Any:
     flight = SimpleNamespace(
         squadron=_PromotingSquadron(),
         unit_type="F/A-18C",
+        flight_type=FlightType.BARCAP,
+        package=SimpleNamespace(target=SimpleNamespace(name="somewhere")),
         roster=SimpleNamespace(iter_pilots=lambda: [pilot]),
     )
     ato: Any = SimpleNamespace(packages=[SimpleNamespace(flights=[flight])])
