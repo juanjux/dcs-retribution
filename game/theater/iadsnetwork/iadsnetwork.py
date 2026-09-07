@@ -133,6 +133,12 @@ class IadsNetwork:
                 # Skip culled ground objects
                 continue
 
+            # Outside the Skynet radius: the site is in the mission and fights, it is
+            # just not in the network. Its connections go with it -- a power station
+            # that reaches nothing is only work for Skynet to do.
+            if game.skynet_culled(node.group.ground_object):
+                continue
+
             all_dead = not any([x.alive for x in node.group.units])
             if all_dead and node.group.iads_role not in STATIC_BACKED_ROLES:
                 continue
@@ -154,9 +160,11 @@ class IadsNetwork:
                     and connection.iads_role not in STATIC_BACKED_ROLES
                 ):
                     continue
-                if connection.ground_object.is_friendly(
-                    skynet_node.player
-                ) and not game.iads_considerate_culling(connection.ground_object):
+                if (
+                    connection.ground_object.is_friendly(skynet_node.player)
+                    and not game.iads_considerate_culling(connection.ground_object)
+                    and not game.skynet_culled(connection.ground_object)
+                ):
                     skynet_node.connections[connection.iads_role.value].append(
                         SkynetNode.dcs_name_for_group(connection)
                     )

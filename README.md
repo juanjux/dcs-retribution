@@ -64,6 +64,17 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   carries on a large map -- MANTIS, for comparison, runs its equivalent at 30. It is now
   a plugin option, default **15**. The price of raising it is latency: a site can take up
   to that long to notice something.
+- **A radius for what Skynet manages.** Skynet is handed every SAM site, EWR, comms
+  tower and power station on the map, for both coalitions, and its cost grows with the
+  count: a Morocco save at turn 10 hands it 75 nodes and 100 connections. Setting a
+  radius hands it only what lies within that distance of the front line, a package
+  target or a carrier -- 45 nodes and 46 connections at 100 km, same save. What falls
+  outside is **still generated and still fights**; it is simply not coordinated, so it
+  never goes dark and never reacts to a HARM. It is also **forced to red alert**,
+  because Retribution starts ground SAMs dark for Skynet to wake and nothing would be
+  coming for these. Default 0, meaning the whole map, so no campaign changes unless you
+  ask. Separate from the culling setting, which removes distant units from the mission
+  altogether.
 - **Skynet now comes from our own fork.** Upstream
   [walder/Skynet-IADS](https://github.com/walder/Skynet-IADS) has had no commit in about
   three years and every fork of it looks abandoned too, so the script lives at

@@ -1806,6 +1806,25 @@ class Settings:
         section=PERFORMANCE_SECTION,
         default=True,
     )
+    perf_skynet_iads_radius: int = bounded_int_option(
+        "Skynet IADS radius from the action (km, 0 = whole map)",
+        page=MISSION_GENERATOR_PAGE,
+        section=PERFORMANCE_SECTION,
+        default=0,
+        min=0,
+        max=10000,
+        tooltip=(
+            "Skynet's cost grows with the number of radars it manages, and it is "
+            "handed every SAM site, EWR, comms tower and power station on the map, "
+            "for both coalitions. Set a radius to hand it only what lies within that "
+            "distance of the front line, a planned package target or a carrier. "
+            "Sites outside it are still generated and still fight -- they are forced "
+            "to red alert so they defend themselves autonomously -- they are simply "
+            "not part of the coordinated network: they never go dark, never share "
+            "contacts and never react to a HARM. Independent of the culling setting "
+            "below, which removes distant units from the mission altogether."
+        ),
+    )
     perf_do_not_cull_carrier: bool = boolean_option(
         "Do not cull carrier's surroundings",
         page=MISSION_GENERATOR_PAGE,

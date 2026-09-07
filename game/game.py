@@ -965,6 +965,30 @@ class Game:
                 return False
         return True
 
+    def skynet_culled(self, tgo: TheaterGroundObject) -> bool:
+        """True if this object should be left out of the Skynet IADS.
+
+        A different question from iads_considerate_culling, which asks whether the
+        object is generated at all. What is culled here is still in the mission and
+        still fights: it is simply not handed to Skynet, so it never goes dark, never
+        shares a contact and never reacts to a HARM. tgogenerator forces it to red
+        alert to match, because a site nobody wakes would otherwise sit at green.
+
+        Independent of perf_culling on purpose -- that one defaults to off, which is
+        why Skynet is handed the whole map today.
+        """
+        radius = self.settings.perf_skynet_iads_radius
+        if radius <= 0:
+            return False
+        if not self.__culling_zones:
+            # No conflict located yet. Culling everything would hand Skynet nothing.
+            return False
+        limit = radius * 1000
+        return not any(
+            zone.distance_to_point(tgo.position) < limit
+            for zone in self.__culling_zones
+        )
+
     def iads_considerate_culling(self, tgo: TheaterGroundObject) -> bool:
         if not self.settings.perf_do_not_cull_threatening_iads:
             return self.position_culled(tgo.position)
