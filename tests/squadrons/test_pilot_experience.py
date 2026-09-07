@@ -469,6 +469,9 @@ class _PromotingSquadron:
 
     base_skill = CADET_SKILL
     aircraft = "F/A-18C"
+    # The debriefing records which side a pilot flew for, so it can choose not to
+    # report the other one's aircrew.
+    player = SimpleNamespace(is_blue=True)
 
     def pilot_skill(self, pilot: Pilot) -> Any:
         return CADET_SKILL
