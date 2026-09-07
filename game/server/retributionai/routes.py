@@ -163,6 +163,16 @@ def set_flight_crew(body: schemas.FlightCrewRequest) -> schemas.OpResult:
     )
 
 
+@router.post("/pilots/leave", operation_id="ai_answer_leave_request")
+def answer_leave_request(body: schemas.LeaveRequestAnswer) -> schemas.OpResult:
+    """Say yes or no to a pilot listed in turn_context.leave_requests. Granting takes him
+    off the roster for the turns you allow (never more than he asked) and brings him back
+    steadier; refusing, or ignoring him, costs him morale."""
+    return service.answer_leave_request(
+        body.side, body.squadron_id, body.pilot_name, body.grant, body.turns
+    )
+
+
 @router.post("/flights/loadout", operation_id="ai_set_flight_loadout")
 def set_flight_loadout(body: schemas.FlightLoadoutRequest) -> schemas.OpResult:
     """Re-arm a flight that already exists, like the player's Payload tab. Takes a name

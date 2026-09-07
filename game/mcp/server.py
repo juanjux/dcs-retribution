@@ -138,6 +138,23 @@ def set_flight_crew(
 
 
 @_tool()
+def answer_leave_request(
+    squadron_id: str,
+    pilot_name: str,
+    grant: bool,
+    turns: int = 0,
+    side: str = "red",
+) -> dict:
+    """Say yes or no to a pilot listed in turn_context.leave_requests. Granting takes him
+    off the roster for the turns you allow -- never more than he asked, and 0 means all of
+    them -- and he comes back steadier. Refusing him, or ignoring the request, costs him
+    morale."""
+    return service.answer_leave_request(
+        side, squadron_id, pilot_name, grant, turns
+    ).model_dump()
+
+
+@_tool()
 def get_waypoints(flight_id: str, side: str = "red") -> dict:
     """A flight's waypoints (idx, type, pos [lat,lng], alt_m) — read them before editing a
     route with edit_waypoint. Waypoint 0 is takeoff (immovable); none can be deleted."""

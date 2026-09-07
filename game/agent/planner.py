@@ -1671,6 +1671,66 @@ def _pilot_view(squadron: Any, pilot: Any) -> dict[str, Any]:
     return view
 
 
+def answer_leave_request(
+    game: Game,
+    side: str,
+    squadron_id: str,
+    pilot_name: str,
+    grant: bool,
+    turns: int = 0,
+) -> schemas.OpResult:
+    """Say yes or no to a pilot who asked for leave.
+
+    Granted, he is off the roster for the turns you allow -- at most what he asked for --
+    and comes back steadier. Refused, he takes it badly and does not ask again for a
+    while. Leaving the request unanswered is the same as refusing it, so it is worth
+    doing on purpose: a squadron of shaken men who are all told no will keep sliding.
+    """
+    from game.squadrons.morale import LEAVE_REFUSED, MAX_LEAVE_TURNS, apply
+
+    for coalition in (game.blue, game.red):
+        if (coalition.player.name.lower() == "blue") != (side.lower() == "blue"):
+            continue
+        for squadron in coalition.air_wing.iter_squadrons():
+            if str(squadron.id) != squadron_id and squadron.name != squadron_id:
+                continue
+            asking = {p.name: p for p in squadron.pilots_asking_for_leave()}
+            pilot = asking.get(pilot_name)
+            if pilot is None:
+                return schemas.OpResult(
+                    ok=False,
+                    error=f"{pilot_name} is not asking {squadron} for leave"
+                    f" (asking: {', '.join(sorted(asking)) or 'nobody'})",
+                )
+            if not grant:
+                pilot.wants_leave = False
+                pilot.leave_turns_requested = 0
+                pilot.move_morale(
+                    LEAVE_REFUSED,
+                    squadron.pilot_skill(pilot),
+                    game.settings,
+                    game.turn,
+                )
+                return schemas.OpResult(
+                    ok=True, detail=f"{pilot_name} was refused leave"
+                )
+
+            asked = pilot.leave_turns_requested or 1
+            granted = max(1, min(turns or asked, asked, MAX_LEAVE_TURNS))
+            try:
+                squadron.send_on_leave(pilot, granted, game.turn)
+            except RuntimeError as exc:
+                return schemas.OpResult(ok=False, error=str(exc))
+            spare = squadron.spare_pilots()
+            return schemas.OpResult(
+                ok=True,
+                detail=f"{pilot_name} is on leave for {granted} of the {asked} turns "
+                f"he asked for; {squadron} has {spare} pilots left for "
+                f"{squadron.owned_aircraft} aircraft",
+            )
+    return schemas.OpResult(ok=False, error=f"no squadron with id {squadron_id!r}")
+
+
 def squadron_pilots(game: Game, side: str, squadron_id: str) -> dict[str, Any]:
     """Every pilot on a squadron's books, and where each one is.
 

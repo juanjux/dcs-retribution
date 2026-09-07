@@ -424,6 +424,33 @@ class Squadron:
                     pilot.morale
                 )
 
+    def spare_pilots(self, excluding: Optional[Pilot] = None) -> int:
+        """Who would still be available if this man were let go.
+
+        Not the wounded, not the ones already resting, and not the ones who have asked
+        and are waiting on the same answer -- granting them all at once is the mistake
+        this number is here to prevent.
+        """
+        return sum(
+            1
+            for pilot in self.current_roster
+            if pilot is not excluding
+            and pilot.alive
+            and not pilot.wounded
+            and not pilot.on_leave
+            and not pilot.wants_leave
+        )
+
+    def pilots_asking_for_leave(self) -> list[Pilot]:
+        """Everyone on the books waiting to be told yes or no, worst off first."""
+        asking = [
+            pilot
+            for pilot in self.current_roster
+            if pilot.wants_leave and pilot.status is PilotStatus.Active
+        ]
+        asking.sort(key=lambda pilot: pilot.morale)
+        return asking
+
     def cancel_leave(self, pilot: Pilot) -> None:
         """Call a man back before his leave is up, and pay for it.
 

@@ -82,6 +82,10 @@ tool/resource of the same name.
   (waypoint 0 immovable). Read them first with `GET /waypoints/{flight_id}`.
 - `POST /flights/crew` — put a named pilot in a seat (`{flight_id, seat, pilot_name}`),
   or empty it with a null name. Refuses anyone dead, wounded, on leave or already flying.
+- `POST /pilots/leave` — answer a pilot listed in `turn_context.leave_requests`
+  (`{squadron_id, pilot_name, grant, turns}`; `turns:0` grants everything he asked for,
+  and you can never grant more). Ignoring a request refuses it, and a refusal costs him
+  morale.
 - `POST /flights/loadout` — re-arm a flight that already exists (`flight_id` + a `loadout`
   name or `{pylon: clsid}` map). For flights the engine made for you, not you for it:
   a squadron relocation launches its ferries with an **Empty** loadout.

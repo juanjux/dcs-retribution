@@ -8,7 +8,7 @@ yes costs you the man for the turns you grant; saying no costs him morale.
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QIcon
@@ -32,33 +32,12 @@ if TYPE_CHECKING:
     from game.squadrons.squadron import Squadron
 
 
-def spare_pilots(squadron: "Squadron", excluding: Optional[Pilot] = None) -> int:
-    """Who would still be available if this man went.
-
-    Not the wounded, not the ones already resting, and not the ones who have asked and
-    are waiting on the same answer -- granting them all is the mistake this is here to
-    stop.
-    """
-    return sum(
-        1
-        for pilot in squadron.current_roster
-        if pilot is not excluding
-        and pilot.alive
-        and not pilot.wounded
-        and not pilot.on_leave
-        and not pilot.wants_leave
-    )
-
-
 def pending_leave_requests(game: "Game") -> list[tuple["Squadron", Pilot]]:
     """Everyone on the player's side waiting to be told yes or no."""
     requests: list[tuple[Squadron, Pilot]] = []
     for squadron in game.blue.air_wing.iter_squadrons():
-        for pilot in squadron.current_roster:
-            # Active only: a man already in a bed cannot be asking for a rest, whatever
-            # a save from before that rule may hold.
-            if pilot.wants_leave and pilot.status.value == "Active":
-                requests.append((squadron, pilot))
+        for pilot in squadron.pilots_asking_for_leave():
+            requests.append((squadron, pilot))
     # The one in the worst state first: he is the one the answer matters most to.
     requests.sort(key=lambda pair: pair[1].morale)
     return requests
@@ -123,7 +102,7 @@ class LeaveRequestsDialog(QDialog):
 
             # Saying yes to two men costs a squadron of sixteen pilots and four
             # aircraft nothing, and one of ten and twelve a mission it cannot fly.
-            spare = spare_pilots(squadron, excluding=pilot)
+            spare = squadron.spare_pilots(excluding=pilot)
             aircraft = squadron.owned_aircraft
             cover = QLabel(f"{spare} free · {aircraft} aircraft")
             if spare < aircraft:

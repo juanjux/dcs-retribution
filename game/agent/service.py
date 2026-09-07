@@ -278,6 +278,18 @@ def flight_crew(side: str, flight_id: str) -> dict:
 
 
 @opfor_only
+def answer_leave_request(
+    side: str, squadron_id: str, pilot_name: str, grant: bool, turns: int = 0
+):
+    """Say yes or no to a pilot who asked for leave."""
+    from game.agent import planner
+
+    return planner.answer_leave_request(
+        _require_game(), side, squadron_id, pilot_name, grant, turns
+    )
+
+
+@opfor_only
 def set_flight_crew(side: str, flight_id: str, seat: int, pilot_name):
     """Put a named pilot in a seat, or empty it."""
     from game.agent import planner

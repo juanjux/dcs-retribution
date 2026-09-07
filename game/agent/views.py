@@ -432,6 +432,24 @@ class TurnForcesView(BaseModel):
     )
 
 
+class LeaveRequestView(BaseModel):
+    """A pilot asking for a rest, and what saying yes would cost you.
+
+    Answer with ``answer_leave_request``. Saying nothing is saying no, and a refusal
+    costs him morale -- so is worth doing on purpose rather than by omission.
+    """
+
+    squadron_id: str  # pass this back to answer_leave_request
+    squadron: str
+    pilot_name: str  # and this
+    rank: str
+    morale: int  # 0-100
+    state: str  # the word for it: Shaken, Shattered, Broken...
+    asked_turns: int  # what HE asked for; you may grant fewer
+    spare_pilots: int  # pilots still available in his squadron if you say yes
+    aircraft: int  # airframes it owns -- fewer spare pilots than these means idle jets
+
+
 class TurnContextView(BaseModel):
     side: str
     situation: SituationView
@@ -451,6 +469,10 @@ class TurnContextView(BaseModel):
         RepairView
     ]  # YOUR damaged assets you can pay to repair (with `repair`)
     buyable_ground: list[GroundUnitView]  # ground units this faction can buy
+    leave_requests: list[LeaveRequestView] = (
+        []
+    )  # pilots asking for leave this turn; empty most turns. Answer them with
+    # answer_leave_request -- ignoring one refuses it, and a refusal costs him morale.
 
 
 class SettingsView(BaseModel):
@@ -1272,6 +1294,39 @@ def build_buyable_ground(game: Game, side: str) -> list[GroundUnitView]:
     return out
 
 
+def build_leave_requests(game: Game, side: str) -> list[LeaveRequestView]:
+    """Everyone on this side waiting to be told yes or no, worst off first.
+
+    Empty on most turns, which is why it costs nothing to carry in the turn context.
+    """
+    from game.squadrons.morale import morale_state
+
+    coalition = coalition_for_side(game, side)
+    if not coalition.game.settings.live_pilots_enabled:
+        return []
+    requests: list[LeaveRequestView] = []
+    for squadron in coalition.air_wing.iter_squadrons():
+        if not squadron.morale_in_play:
+            continue
+        for pilot in squadron.pilots_asking_for_leave():
+            rank = squadron.pilot_rank(pilot)
+            requests.append(
+                LeaveRequestView(
+                    squadron_id=str(squadron.id),
+                    squadron=str(squadron),
+                    pilot_name=pilot.name,
+                    rank="" if rank is None else rank.abbreviation,
+                    morale=pilot.morale,
+                    state=morale_state(pilot.morale).name,
+                    asked_turns=pilot.leave_turns_requested,
+                    spare_pilots=squadron.spare_pilots(excluding=pilot),
+                    aircraft=squadron.owned_aircraft,
+                )
+            )
+    requests.sort(key=lambda request: request.morale)
+    return requests
+
+
 def build_turn_context(game: Game, side: str = "red") -> TurnContextView:
     side = side.lower()
     coalition = coalition_for_side(game, side)
@@ -1294,6 +1349,7 @@ def build_turn_context(game: Game, side: str = "red") -> TurnContextView:
         naval=build_my_naval(game, side),
         repairs=build_repairs(game, side),
         buyable_ground=build_buyable_ground(game, side),
+        leave_requests=build_leave_requests(game, side),
     )
 
 

@@ -113,9 +113,26 @@ you lose if they capture yours. Think in terms of a campaign, not a single turn.
      threats instead of fighting through them, and below 10 he turns for home. Do not
      send a broken lead on a mission that has to succeed.
 
-  A pilot at 0 will not fly at all and **deserts after three turns there**, and he does
-  not recover on his own — only leave lifts him. `asking_for_leave` on his entry means he
-  has asked; resting him for a turn or two is usually cheaper than losing him.
+  A pilot at 0 will not fly at all, does **not** recover on his own — only leave lifts
+  him — and every turn you leave him there he may simply stop coming back.
+
+  **Leave is your only lever on it, and answering is part of your turn.** Each turn some
+  pilots ask, more of them the harder you have worked them: the man who flew all of the
+  last five turns asks far sooner than the one who sat on the ground. They arrive in
+  `turn_context.leave_requests`, each with his `morale`, the `state` word for it, the
+  `asked_turns` he wants, and — the number that decides it — `spare_pilots` against
+  `aircraft`: how many pilots his squadron would still have available, and how many
+  airframes it owns. Answer with `answer_leave_request` `{squadron_id, pilot_name,
+  grant, turns}`; `turns: 0` grants everything he asked for and you can never grant
+  more. **Doing nothing is refusing**, and a refusal costs him morale, so it is worth
+  refusing on purpose rather than by omission.
+
+  How to decide: if `spare_pilots` would still cover `aircraft`, granting costs you
+  nothing this turn and buys back a shaken pilot — say yes. If it would not, you are
+  choosing between a jet on the ground now and a pilot who keeps sliding; grant fewer
+  turns than he asked, or refuse the steadiest man and rest the worst one. A squadron
+  where most pilots are Shaken and all of them are told no will keep going down: rest
+  them in ones and twos over several turns rather than losing them together.
 - **Ground forces**: vehicle groups at your bases and along the front. You buy them,
   move them between bases (transfers), and commit them via front-line stance.
 - **Money**: you earn income each turn and spend it on aircraft and ground units.

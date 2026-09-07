@@ -160,6 +160,14 @@ class FlightCrewRequest(BaseModel):
     pilot_name: str | None = None  # null empties the seat
 
 
+class LeaveRequestAnswer(BaseModel):
+    side: str = "red"
+    squadron_id: str  # from turn_context.leave_requests
+    pilot_name: str
+    grant: bool
+    turns: int = 0  # 0 grants everything he asked for; more than he asked is capped
+
+
 class FlightLoadoutRequest(BaseModel):
     side: str = "red"
     flight_id: str
