@@ -79,6 +79,18 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   has however far away. Skynet reads an absent dependency as a working one, so leaving
   one out would not quieten the network -- it would tell the network everything is
   fine, switching a bombed power station's SAMs back on.
+- **Skynet's own performance pass, from our fork.** Ten changes to the script itself,
+  authored by Codex and reviewed here: an index for contact merging instead of a scan
+  per detection, HARM tracks rejected by distance before any heading or aspect maths,
+  short-circuited range checks, position and ammunition sampled once per instant,
+  radar coverage built once per unordered pair, world events dispatched to the elements
+  that subscribed to the object instead of every element inspecting every event, and
+  the jammer filtering by distance before asking the terrain for line of sight. Two
+  bugs went with them: a zero-speed contact aborted the whole HARM sweep rather than
+  skipping itself, and the periodic maintenance -- the only thing that clears spent
+  missiles, expires HARM tracks and lifts jamming -- had been switched off for point
+  defences and zero-HARM-chance sites, which is every EWR and, among SAMs, the two
+  mobile SHORAD whose shoot-and-scoot depends on it.
 - **Skynet now comes from our own fork.** Upstream
   [walder/Skynet-IADS](https://github.com/walder/Skynet-IADS) has had no commit in about
   three years and every fork of it looks abandoned too, so the script lives at
