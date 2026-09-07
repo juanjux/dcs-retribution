@@ -13,6 +13,7 @@ from game.ato.flightplans.formation import FormationLayout
 from game.ato.flightplans.waypointbuilder import WaypointBuilder
 from game.ato.packagewaypoints import PackageWaypoints
 from game.data.doctrine import MODERN_DOCTRINE, COLDWAR_DOCTRINE, WWII_DOCTRINE
+from game.squadrons import morale
 from game.theater import ParkingType, SeasonalConditions, Airfield
 from game.theater.player import Player
 from game.theater.theatergroundobject import ShipGroundObject
@@ -45,6 +46,7 @@ class Migrator:
         self._release_untasked_flights()
         self._reconcile_available_pilots()
         self._clear_leave_requests_from_the_wounded()
+        self._restate_the_morale_numbers()
         self._update_weather()
         self._update_tgos()
         try_set_attr(self.game.settings, "motorpool_enabled", True)
@@ -168,6 +170,27 @@ class Migrator:
                 s.claim_inventory(new_claim)
                 for i in range(new_claim):
                     s.claim_available_pilot()
+
+    def _restate_the_morale_numbers(self) -> None:
+        """Move a campaign in progress onto the re-weighed morale figures.
+
+        The fifteen event sizes are settings, and settings ride inside the save, so a
+        campaign started before they were re-weighed would keep playing by the old ones
+        for ever. Only the ones still sitting on the previous default are moved: a
+        figure the player set himself is his.
+        """
+        settings = self.game.settings
+        moved = []
+        for event in morale.MORALE_EVENTS:
+            was = morale.PREVIOUS_DEFAULTS.get(event.key)
+            if was is None or was == event.default:
+                continue
+            if getattr(settings, event.key, event.default) != was:
+                continue  # he set it himself, or it is already the new figure
+            setattr(settings, event.key, event.default)
+            moved.append(f"{event.key} {was} -> {event.default}")
+        if moved:
+            logging.info("Morale event sizes brought up to date: %s", "; ".join(moved))
 
     def _clear_leave_requests_from_the_wounded(self) -> None:
         """A pilot cannot be asking for leave from a hospital bed.
