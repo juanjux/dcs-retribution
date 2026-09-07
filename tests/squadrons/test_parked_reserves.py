@@ -42,7 +42,10 @@ def _commit(parked: bool) -> tuple[Pilot, _Squadron]:
     pilot = Pilot("2ndLt David Johnson")
     squadron = _Squadron()
     flight = SimpleNamespace(
-        squadron=squadron, unit_type="JF-17 Thunder", parked_reserve=parked
+        squadron=squadron,
+        unit_type="JF-17 Thunder",
+        parked_reserve=parked,
+        roster=SimpleNamespace(iter_pilots=lambda: []),
     )
     loss = SimpleNamespace(pilot=pilot, flight=flight)
 

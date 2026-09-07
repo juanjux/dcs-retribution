@@ -404,10 +404,19 @@ class Squadron:
             else:
                 pilot.turns_at_zero = 0
 
-            if not pilot.wants_leave and random.random() < (
-                morale_rules.leave_request_chance(
-                    pilot.morale,
-                    getattr(self.settings, "morale_leave_request_chance", 8),
+            # A man in a hospital bed does not ask for leave, and how hard he has been
+            # worked lately counts as much as how he is holding up.
+            flown = pilot.sorties_in_last(morale_rules.RECENT_SORTIE_WINDOW, turn)
+            if (
+                not pilot.wounded
+                and not pilot.wants_leave
+                and random.random()
+                < (
+                    morale_rules.leave_request_chance(
+                        pilot.morale,
+                        getattr(self.settings, "morale_leave_request_chance", 8),
+                        flown,
+                    )
                 )
             ):
                 pilot.wants_leave = True

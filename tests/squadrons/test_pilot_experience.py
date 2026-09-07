@@ -468,6 +468,7 @@ class _PromotingSquadron:
     """Promotes at 2000, which is the Captain rung."""
 
     base_skill = CADET_SKILL
+    aircraft = "F/A-18C"
 
     def pilot_skill(self, pilot: Pilot) -> Any:
         return CADET_SKILL

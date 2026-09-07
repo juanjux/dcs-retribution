@@ -254,6 +254,74 @@ def test_a_worn_out_pilot_asks_more_often_than_a_contented_one() -> None:
     assert low > middling > high > 0, "even a happy man wants a week off sometimes"
 
 
+# --- what the squadron feels ------------------------------------------------
+
+
+def test_a_wound_is_felt_by_how_long_it_keeps_him() -> None:
+    assert morale_rules.wound_is_felt_for(1) == 1
+    assert morale_rules.wound_is_felt_for(3) == 3
+    assert morale_rules.wound_is_felt_for(9) == morale_rules.WOUND_TURNS_FELT
+
+
+def test_a_wound_never_weighs_as_much_as_a_grave() -> None:
+    """However long the medics keep him, he came back."""
+    worst_wound = abs(
+        morale_rules.SQUADRON_WOUND.default
+    ) * morale_rules.wound_is_felt_for(99)
+    assert worst_wound < abs(morale_rules.SQUADRON_DEATH.default)
+
+
+def test_the_flight_takes_it_harder_than_the_squadron() -> None:
+    """The squadron hears about it. The flight watched it happen."""
+    assert abs(morale_rules.FLIGHT_DEATH.default) > 0
+    assert abs(morale_rules.FLIGHT_WOUND.default) > 0
+    assert abs(morale_rules.FLIGHT_DEATH.default) > abs(
+        morale_rules.FLIGHT_WOUND.default
+    )
+
+
+# --- how hard he has been worked --------------------------------------------
+
+
+def test_the_man_who_flies_every_turn_asks_soonest() -> None:
+    """Five of five wants a rest more than two of five, which wants one more than none."""
+    chances = [morale_rules.leave_request_chance(50, 8, flown) for flown in range(6)]
+    assert chances == sorted(chances)
+    assert chances[0] < chances[2] < chances[5]
+    assert chances[0] > 0, "even a man who has not flown asks now and then"
+
+
+def test_two_flights_in_one_turn_are_one_hard_day() -> None:
+    pilot = Pilot("Vega")
+    pilot.note_sortie(7)
+    pilot.note_sortie(7)
+    pilot.note_sortie(8)
+    assert pilot.sorties_in_last(5, current_turn=9) == 2
+
+
+def test_the_flying_he_did_last_year_does_not_count() -> None:
+    pilot = Pilot("Vega")
+    for turn in range(1, 4):
+        pilot.note_sortie(turn)
+    assert pilot.sorties_in_last(5, current_turn=20) == 0
+
+
+def test_a_man_in_a_hospital_bed_does_not_ask_for_leave() -> None:
+    settings = _live_settings()
+    settings.morale_leave_request_chance = 100  # he would ask every turn if he could
+    squadron = _squadron(settings)
+    pilot = Pilot("Vega")
+    pilot.wants_leave = True
+    pilot.leave_turns_requested = 3
+    squadron.current_roster = [pilot]
+
+    pilot.wound(3, turn=1)
+    assert not pilot.wants_leave, "being carried out overtakes the request"
+
+    squadron.tend_morale(2)
+    assert not pilot.wants_leave
+
+
 # --- the end of a pilot -----------------------------------------------------
 
 

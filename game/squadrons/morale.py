@@ -63,6 +63,20 @@ ACHIEVED_NOTHING = MoraleEvent("morale_achieved_nothing", -5, "came home empty")
 #: Per pilot of his own squadron killed. Friendship weighting is Tier IV.
 SQUADRON_DEATH = MoraleEvent("morale_squadron_death", -8, "lost a squadron mate")
 
+#: On top of the above, for the men who were in the same flight and watched it happen.
+#: The squadron hears about it; the flight saw it.
+FLIGHT_DEATH = MoraleEvent("morale_flight_death", -6, "watched his wingman go down")
+
+#: Per turn a squadron mate will be in hospital, up to a cap. A wound is not a death,
+#: but a man carried out for four turns is felt more than one back next week.
+SQUADRON_WOUND = MoraleEvent("morale_squadron_wound", -2, "a squadron mate was wounded")
+
+#: And again, extra, for the flight he was in.
+FLIGHT_WOUND = MoraleEvent("morale_flight_wound", -2, "a man in his flight was hit")
+
+#: However long the medics keep him, a wound is never felt as hard as a grave.
+WOUND_TURNS_FELT = 3
+
 #: A base of his coalition changed hands.
 BASE_LOST = MoraleEvent("morale_base_lost", -6, "a base was lost")
 
@@ -101,6 +115,9 @@ MORALE_EVENTS: tuple[MoraleEvent, ...] = (
     LOST_AIRCRAFT,
     ACHIEVED_NOTHING,
     SQUADRON_DEATH,
+    FLIGHT_DEATH,
+    SQUADRON_WOUND,
+    FLIGHT_WOUND,
     BASE_LOST,
     NO_LEAVE,
     LEAVE_REFUSED,
@@ -111,6 +128,11 @@ MORALE_EVENTS: tuple[MoraleEvent, ...] = (
     PROMOTED,
     ON_LEAVE,
 )
+
+
+def wound_is_felt_for(turns: int) -> int:
+    """How many times a wound of this length is counted against a squadron."""
+    return max(1, min(WOUND_TURNS_FELT, turns))
 
 
 def clamp(morale: int) -> int:
@@ -355,13 +377,37 @@ def requested_leave_turns(morale: int, roll: Optional[float] = None) -> int:
     return DEFAULT_LEAVE_TURNS
 
 
-def leave_request_chance(morale: int, base_percent: int) -> float:
+#: The window that counts as "lately" when deciding whether a man has had enough, and
+#: how many turns of his flying is worth keeping to work it out.
+RECENT_SORTIE_WINDOW = 5
+SORTIE_HISTORY_LIMIT = 20
+
+
+def workload_factor(flown: int, window: int = RECENT_SORTIE_WINDOW) -> float:
+    """How hard he has been worked lately, as a multiplier on wanting a rest.
+
+    A man who has flown every turn of the last five asks far more readily than one who
+    has sat on the ground throughout -- and the one who flew twice sits between them.
+    """
+    if window <= 0:
+        return 1.0
+    return 0.6 + 0.8 * (max(0, min(window, flown)) / window)
+
+
+def leave_request_chance(
+    morale: int,
+    base_percent: int,
+    flown_recently: int = 0,
+    window: int = RECENT_SORTIE_WINDOW,
+) -> float:
     """How likely this pilot is to ask for leave this turn, 0 to 1.
 
-    Inversely proportional to how he is holding up, but never zero: a contented man
-    still wants a week off now and then, he just does not need one.
+    Two things decide it: how he is holding up, and how hard he has been worked. Never
+    zero -- a contented, idle man still wants a week off now and then, he just does not
+    need one.
     """
     factor = max(0.25, min(2.0, 2.0 - morale / (MORALE_START * 1.0)))
+    factor *= workload_factor(flown_recently, window)
     return max(0.0, min(1.0, base_percent / 100.0 * factor))
 
 

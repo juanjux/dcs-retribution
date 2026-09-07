@@ -289,12 +289,24 @@ class QDebriefingWindow(QDialog):
                 grid.addWidget(QLabel(detail), row, 1)
             row += 1
 
+        def addressed(rank: str, name: str, aircraft: str) -> str:
+            """Rank, name, and what he was flying -- the same shape in every section.
+
+            The short rank, because these are lists to be read down. The one place
+            that spells a rank out is the promotion, where the rank is the news.
+            """
+            who = f"{rank} {name}" if rank else name
+            return f"{who} ({aircraft})" if aircraft else who
+
         if outcomes.promotions:
             line("<b>Promoted</b>")
             for promotion in outcomes.promotions:
                 line(
-                    f"{promotion.from_rank} {promotion.pilot_name}",
-                    f"promoted to {promotion.to_rank} — {promotion.squadron}",
+                    addressed(
+                        promotion.from_rank, promotion.pilot_name, promotion.aircraft
+                    ),
+                    f"promoted to {promotion.to_rank_full or promotion.to_rank}"
+                    f" — {promotion.squadron}",
                 )
 
         if outcomes.survivors:
@@ -302,26 +314,26 @@ class QDebriefingWindow(QDialog):
             for survivor in outcomes.survivors:
                 brought_down = survivor.killed_by or "an unknown attacker"
                 line(
-                    survivor.pilot_name,
-                    f"lost his {survivor.aircraft} to {brought_down}, and walked away",
+                    addressed(survivor.rank, survivor.pilot_name, survivor.aircraft),
+                    f"lost his aircraft to {brought_down}, and walked away",
                 )
 
         if outcomes.wounded:
             line("<b>Wounded</b>")
             for wound in outcomes.wounded:
                 line(
-                    wound.pilot_name,
+                    addressed(wound.rank, wound.pilot_name, wound.aircraft),
                     f"pulled out alive, unavailable for "
                     f"{turns_phrase(wound.turns)} — {wound.squadron}",
                 )
 
         if outcomes.morale_shifts:
-            line("<b>Morale</b>")
+            line("<b>Morale changes</b>")
             for shift in outcomes.morale_shifts:
                 direction = "up" if shift.after > shift.before else "down"
                 state = morale_state(shift.after).name
                 line(
-                    shift.pilot_name,
+                    addressed(shift.rank, shift.pilot_name, shift.aircraft),
                     f"{direction} to {state} — {', '.join(shift.reasons)}",
                 )
 
@@ -334,7 +346,7 @@ class QDebriefingWindow(QDialog):
                     detail = f"killed by {death.killed_by}"
                 else:
                     detail = "lost, with nobody credited"
-                line(f"{death.pilot_name} ({death.aircraft})", detail)
+                line(addressed(death.rank, death.pilot_name, death.aircraft), detail)
 
         box.setLayout(grid)
         return box
