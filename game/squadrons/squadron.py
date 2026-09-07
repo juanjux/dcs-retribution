@@ -472,6 +472,7 @@ class Squadron:
     def discharge(self, pilot: Pilot) -> None:
         """Throw a pilot out. He leaves the roster and joins the roll below it."""
         pilot.discharge()
+        self.leaves_the_pool(pilot)
         logging.info(f"{pilot.name} was discharged from {self}")
 
     def tend_the_wounded(self) -> None:
@@ -498,10 +499,10 @@ class Squadron:
         # be sold (and flown) again, refunding their price every time.
         self.untasked_aircraft = self.owned_aircraft + min(0, self.pending_deliveries)
 
-    @staticmethod
-    def send_on_leave(pilot: Pilot, turns: int = 0, turn: int = -1) -> None:
+    def send_on_leave(self, pilot: Pilot, turns: int = 0, turn: int = -1) -> None:
         """Open-ended from the Air Wing button; for a fixed spell from a granted request."""
         pilot.send_on_leave(turns, turn)
+        self.leaves_the_pool(pilot)
 
     def return_from_leave(self, pilot: Pilot) -> None:
         if not self.has_unfilled_pilot_slots:
@@ -509,6 +510,26 @@ class Squadron:
                 f"Cannot return {pilot} from leave because {self} is full"
             )
         pilot.return_from_leave()
+        self.joins_the_pool(pilot)
+
+    def leaves_the_pool(self, pilot: Pilot) -> None:
+        """He is no longer on offer for a sortie.
+
+        The pool is only rebuilt from the roster between turns, so anything that takes a
+        man off duty *during* one has to say so, or he stays on the list until the turn
+        ends -- and the men still fit for it go missing from it.
+
+        Compared by identity: Pilot is a dataclass, so two men of the same name and
+        record are equal to one another and ``list.remove`` would take the wrong one.
+        """
+        self.available_pilots = [p for p in self.available_pilots if p is not pilot]
+
+    def joins_the_pool(self, pilot: Pilot) -> None:
+        """He is fit and unassigned, so he is on offer again."""
+        if pilot.status is not PilotStatus.Active or pilot.refuses_to_fly:
+            return
+        if not any(p is pilot for p in self.available_pilots):
+            self.available_pilots.append(pilot)
 
     @property
     def faker(self) -> Faker:

@@ -35,6 +35,8 @@ def _squadron(name: str, aircraft: int) -> Any:
     squadron.owned_aircraft = aircraft
     squadron.current_roster = []
     squadron.pilot_pool = []
+    # Sending a man on leave now takes him off the list of who can be tasked.
+    squadron.available_pilots = []
     squadron.coalition = SimpleNamespace(
         player=SimpleNamespace(is_blue=False, name="red"),
         game=SimpleNamespace(turn=6),

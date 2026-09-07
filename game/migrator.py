@@ -43,7 +43,7 @@ class Migrator:
         self._update_squadrons()
         self._update_transfers()
         self._release_untasked_flights()
-        self._release_pilots_who_are_flying()
+        self._reconcile_available_pilots()
         self._update_weather()
         self._update_tgos()
         try_set_attr(self.game.settings, "motorpool_enabled", True)
@@ -168,16 +168,24 @@ class Migrator:
                 for i in range(new_claim):
                     s.claim_available_pilot()
 
-    def _release_pilots_who_are_flying(self) -> None:
-        """A pilot in a cockpit is not available, whatever the save says.
+    def _reconcile_available_pilots(self) -> None:
+        """The pool of pilots on offer, made to agree with the roster and the ATO.
 
-        Clearing a roster used to hand its crew back to the squadron without letting go
-        of them, so a pilot could be sitting in a flight and in the pool at the same
-        time: the Edit Flight dropdown listed him twice and the next flight could claim
-        him again, and the same man flew two missions in one turn.
-        _release_untasked_flights just above rebuilds the pool from the active roster and
-        then claims an arbitrary pilot per tasked aircraft, which leaves whoever is
-        actually crewing a flight back in it. This has the last word.
+        It is a stored list, rebuilt from the roster only between turns, so anything
+        that moved a man during one used to leave it wrong in one of two ways.
+
+        Too many: clearing a roster handed its crew back without letting go of them, so
+        a pilot sat in a flight and in the pool at once -- the Edit Flight dropdown
+        listed him twice and the next flight could claim him again, and the same man
+        flew two missions in one turn.
+
+        Too few: sending a man on leave did not take him out of the pool and bringing
+        him back did not return him, so every claim after that spent somebody else's
+        place. A squadron rested down to four pilots ended the turn offering none of
+        them, and the two who were fit to fly could not be picked for anything.
+
+        The pool is simply what it should be: active, not refusing to fly, not already
+        in a cockpit. Order is preserved for the ones that were already right.
         """
         for coalition in (self.game.blue, self.game.red):
             assigned = {
@@ -188,19 +196,39 @@ class Migrator:
                 if pilot is not None
             }
             for squadron in coalition.air_wing.iter_squadrons():
+                should_be = [
+                    pilot
+                    for pilot in squadron.active_pilots
+                    if id(pilot) not in assigned
+                    and not (squadron.morale_in_play and pilot.refuses_to_fly)
+                ]
+                wanted = {id(pilot) for pilot in should_be}
                 seen: set[int] = set()
-                free = []
+                # Keep whoever was already listed in the order they were listed in,
+                # then append the ones that went missing.
+                pool = []
                 for pilot in squadron.available_pilots:
-                    if id(pilot) in assigned or id(pilot) in seen:
-                        continue  # flying, or listed twice by the same old fault
-                    seen.add(id(pilot))
-                    free.append(pilot)
-                if len(free) != len(squadron.available_pilots):
-                    logging.info(
-                        f"{squadron}: {len(squadron.available_pilots) - len(free)} "
-                        "pilot(s) were available and flying at once; corrected"
+                    if id(pilot) in wanted and id(pilot) not in seen:
+                        seen.add(id(pilot))
+                        pool.append(pilot)
+                missing = [p for p in should_be if id(p) not in seen]
+                pool.extend(missing)
+                if len(pool) != len(squadron.available_pilots) or missing:
+                    dropped = len(squadron.available_pilots) - (
+                        len(pool) - len(missing)
                     )
-                    squadron.available_pilots = free
+                    if dropped:
+                        logging.info(
+                            f"{squadron}: {dropped} pilot(s) were available and unable "
+                            "to fly at the same time; corrected"
+                        )
+                    if missing:
+                        logging.info(
+                            f"{squadron}: {len(missing)} fit pilot(s) had gone missing "
+                            f"from the pool ({', '.join(p.name for p in missing)}); "
+                            "returned"
+                        )
+                    squadron.available_pilots = pool
 
     def _update_squadrons(self) -> None:
         country_dict = {
