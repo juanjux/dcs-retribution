@@ -452,6 +452,15 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   (branch [`juanjux/ch_china_1.1.6`](https://github.com/juanjux/dcs-retribution/tree/juanjux/ch_china_1.1.6))
 
 ### Fixes
+
+- **A pilot on leave held no place, so squadrons grew past their own limit.** The count
+  of free slots looked at the active and the wounded and forgot leave, so every absence
+  was backfilled and the squadron was over strength the day the man came back. On an
+  Iraq save at turn 11 nine squadrons limited to sixteen sat at seventeen, and one with
+  twelve men resting had reached twenty-four -- and still read four free places. A slot
+  is now held by anyone still on the books; only the dead, the deserted and the
+  discharged free one. A squadron already over its limit recruits nobody and comes back
+  down as men are lost, rather than having anyone taken off it.
 - **Transferring an army mid-turn made it vanish from the ground war.** Two faults, one
   symptom: 26 blue groups holding the line on the map, no armor recorded anywhere in the
   theater, and a defeat handed to a red base with two vehicles. The ground war was planned

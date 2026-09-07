@@ -555,9 +555,15 @@ class Squadron:
 
     @property
     def replenish_count(self) -> int:
-        return min(
-            self.settings.squadron_replenishment_rate,
-            self._number_of_unfilled_pilot_slots,
+        # Never negative. A squadron already over its limit recruits nobody and comes
+        # back down on its own as men are lost, rather than having anyone taken off it;
+        # and expected_pilots_next_turn stays honest for procurement either way.
+        return max(
+            0,
+            min(
+                self.settings.squadron_replenishment_rate,
+                self._number_of_unfilled_pilot_slots,
+            ),
         )
 
     @property
@@ -591,10 +597,16 @@ class Squadron:
 
     @property
     def _number_of_unfilled_pilot_slots(self) -> int:
-        # A wounded pilot is still on the books, so his slot is not free to recruit
-        # into. Otherwise the squadron backfills every casualty and finds itself over
-        # its own limit the turn the wounded come back.
-        return self.pilot_limit - len(self.active_pilots) - len(self.wounded_pilots)
+        """A slot is free only if nobody on the books holds it.
+
+        Not just the men fit to fly today: a wounded pilot and a pilot on leave are
+        both coming back, so recruiting into their places puts the squadron over its
+        own limit the turn they return. This used to count the active and the wounded
+        and forget leave, which is how a squadron limited to sixteen reached
+        twenty-four with twelve men resting -- and how one that merely backfilled a
+        single absence sat at seventeen the day he came back.
+        """
+        return self.pilot_limit - len(self.living_pilots)
 
     @property
     def number_of_available_pilots(self) -> int:
