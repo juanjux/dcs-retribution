@@ -1,4 +1,4 @@
--- Smart Threat Reaction (DCS Retribution — prototype) -----------------------------
+-- Smart Threat Reaction (DCS Retribution) ----------------------------------------
 --
 -- Problem: with DCS' default "Evade Fire", a single SAM launch makes EVERY aircraft
 -- that merely *perceives* the threat break defensive. One Type-055 (HHQ-9) salvo

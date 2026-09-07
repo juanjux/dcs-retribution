@@ -301,7 +301,7 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
 - **Smart Threat Reaction** — a plugin that keeps AI aircraft at Passive Defense
   by default and switches only the flight a missile is actually guiding on to
   Evade Fire (read from the engine via `weapon:getTarget`), so one SAM launch no
-  longer sends every nearby package defensive. Prototype.
+  longer sends every nearby package defensive.
   ([#63](https://github.com/juanjux/dcs-retribution/pull/63))
 - **Custom cloud preset packs** — a campaign setting that makes a community
   cloud-preset weather mod's presets available to the mission generator: choose
