@@ -70,7 +70,9 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   emissions, which is a DCS multiplayer bug. The fork is both at once, so nothing was
   given up either way: `ActMobile` and the four High Digit SAMs systems (S-400,
   S-300V4, SAMP/T, Pantsir-SM) on top of upstream 3.3.0 and its fixes. Its README is the
-  inventory of what we change.
+  inventory of what we change, and the build this ships is labelled
+  `3.3.0-juanjux-fork` -- the line it prints to `dcs.log` on load says which one you are
+  running.
 - **The stock SAMs play the SEAD game the modded ones already did.** Skynet ships with
   HARM reaction switched off, and only 21 of 597 ground unit types ever turned it on --
   all of them Currenthill mods plus the Patriot STR. So an SA-10 or an S-400 sat there

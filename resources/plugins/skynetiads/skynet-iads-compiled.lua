@@ -1,4 +1,4 @@
-env.info("--- SKYNET VERSION: 3.3.0-retribution-fork | BUILD TIME: 07.09.2026 1512Z ---")
+env.info("--- SKYNET VERSION: 3.3.0-juanjux-fork | BUILD TIME: 07.09.2026 1524Z ---")
 do
 --this file contains the required units per sam type
 samTypesDB = {	
@@ -1701,16 +1701,20 @@ function SkynetIADS.evaluateContacts(self)
 
 	self:cleanAgedTargets()
 	
+	-- Worked out once per contact rather than once per site-and-contact pair: this used
+	-- to call getDesc() for every combination, which on a busy map is thousands of calls
+	-- a cycle for an answer that cannot differ between sites.
+	local airborneContacts = {}
+	for j = 1, #self.contacts do
+		local contact = self.contacts[j]
+		if SkynetIADS.isAirborneContact(contact) then
+			table.insert(airborneContacts, contact)
+		end
+	end
+
 	for samName, samToTrigger in pairs(samSitesToTrigger) do
-		for j = 1, #self.contacts do
-			local contact = self.contacts[j]
-			-- the DCS Radar only returns enemy aircraft, if that should change a coalition check will be required
-			-- currently every type of object in the air is handed of to the SAM site, including missiles
-			local description = contact:getDesc()
-			local category = description.category
-			if category and category ~= Unit.Category.GROUND_UNIT and category ~= Unit.Category.SHIP and category ~= Unit.Category.STRUCTURE then
-				samToTrigger:informOfContact(contact)
-			end
+		for j = 1, #airborneContacts do
+			samToTrigger:informOfContact(airborneContacts[j])
 		end
 	end
 	
@@ -1723,6 +1727,37 @@ function SkynetIADS.evaluateContacts(self)
 	self.harmDetection:evaluateContacts()
 	
 	self.logger:printSystemStatus()
+end
+
+--- Is this contact something in the air a SAM site should be told about?
+--
+-- A contact is a unit OR a weapon, and the two use different category enumerations
+-- whose values collide: Weapon.Category.BOMB is 3, the same as Unit.Category.SHIP, and
+-- Weapon.Category.MISSILE is 1, the same as Unit.Category.HELICOPTER. Reading every
+-- contact as a unit therefore threw bombs away as if they were ships and let missiles
+-- through by coincidence. See walder/Skynet-IADS#107.
+function SkynetIADS.isAirborneContact(contact)
+	local description = contact:getDesc()
+	if description == nil then
+		return false
+	end
+	local category = description.category
+	if category == nil then
+		return false
+	end
+	local object = contact:getDCSRepresentation()
+	local isWeapon = false
+	if object ~= nil and object.getCategory ~= nil then
+		local ok, objectCategory = pcall(function() return object:getCategory() end)
+		isWeapon = ( ok and objectCategory == Object.Category.WEAPON )
+	end
+	if isWeapon then
+		-- everything a weapon can be is worth knowing about except a shell
+		return category ~= Weapon.Category.SHELL
+	end
+	return category ~= Unit.Category.GROUND_UNIT
+		and category ~= Unit.Category.SHIP
+		and category ~= Unit.Category.STRUCTURE
 end
 
 function SkynetIADS:cleanAgedTargets()
@@ -3023,8 +3058,20 @@ function SkynetIADSAbstractRadarElement:jam(successProbability)
 		end
 end
 
+--- Watch for inbound HARMs, if there is any point.
+--
+-- The scan runs every two seconds for as long as the element is live, and walks every
+-- contact against every radar, so it is the most expensive thing an element does. Two
+-- kinds of element can never act on what it finds, and used to run it anyway:
+--
+--  * a point defence, which is excluded from going silent by informOfHARM; and
+--  * anything whose HARM detection chance is zero, which is Skynet's default -- it can
+--    never roll high enough to react.
 function SkynetIADSAbstractRadarElement:scanForHarms()
 	self:stopScanningForHARMs()
+	if self:getIsAPointDefence() or self:getHARMDetectionChance() <= 0 then
+		return
+	end
 	self.harmScanID = mist.scheduleFunction(SkynetIADSAbstractRadarElement.evaluateIfTargetsContainHARMs, {self}, 1, 2)
 end
 
