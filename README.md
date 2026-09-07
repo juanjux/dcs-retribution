@@ -163,6 +163,12 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   is remembered between openings, for any squadron, the same way the main window
   remembers its own.
 
+- **Air Wing and Transfers open once.** Pressing Air Wing ten times opened ten of them,
+  each one held by the main window it was parented to; an open one is brought to the
+  front now. The two also shared a single reference, so opening Transfers dropped the
+  only one the transfers dialog had. A closed dialog is rebuilt rather than shown again,
+  so it never returns with a turn-old view.
+
 ### Kneeboards
 - **Friendly-packages list** plus a **package-targets map** page.
   ([#11](https://github.com/juanjux/dcs-retribution/pull/11))
