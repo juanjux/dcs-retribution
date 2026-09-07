@@ -74,7 +74,11 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   because Retribution starts ground SAMs dark for Skynet to wake and nothing would be
   coming for these. Default 0, meaning the whole map, so no campaign changes unless you
   ask. Separate from the culling setting, which removes distant units from the mission
-  altogether.
+  altogether. The radius reaches **only radars**: command centres, comms towers and
+  power stations are never left out, and a site that stays keeps every dependency it
+  has however far away. Skynet reads an absent dependency as a working one, so leaving
+  one out would not quieten the network -- it would tell the network everything is
+  fine, switching a bombed power station's SAMs back on.
 - **Skynet now comes from our own fork.** Upstream
   [walder/Skynet-IADS](https://github.com/walder/Skynet-IADS) has had no commit in about
   three years and every fork of it looks abandoned too, so the script lives at

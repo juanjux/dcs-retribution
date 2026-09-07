@@ -133,9 +133,9 @@ class IadsNetwork:
                 # Skip culled ground objects
                 continue
 
-            # Outside the Skynet radius: the site is in the mission and fights, it is
-            # just not in the network. Its connections go with it -- a power station
-            # that reaches nothing is only work for Skynet to do.
+            # Outside the Skynet radius: the site is in the mission and fights, it
+            # is just not in the network. Only radars are ever culled this way; see
+            # Game.skynet_culled for why the infrastructure has to stay.
             if game.skynet_culled(node.group.ground_object):
                 continue
 
@@ -160,11 +160,15 @@ class IadsNetwork:
                     and connection.iads_role not in STATIC_BACKED_ROLES
                 ):
                     continue
-                if (
-                    connection.ground_object.is_friendly(skynet_node.player)
-                    and not game.iads_considerate_culling(connection.ground_object)
-                    and not game.skynet_culled(connection.ground_object)
-                ):
+                # The Skynet radius is deliberately not asked about here. A node we
+                # kept keeps every dependency it has, in range or not, alive or
+                # destroyed: an empty list is what Skynet reads as "powered" and
+                # "connected", so dropping a dead power station 11 km further out
+                # than its SAM would switch that SAM back on. Only the mission-wide
+                # cull applies, because that one really does remove the object.
+                if connection.ground_object.is_friendly(
+                    skynet_node.player
+                ) and not game.iads_considerate_culling(connection.ground_object):
                     skynet_node.connections[connection.iads_role.value].append(
                         SkynetNode.dcs_name_for_group(connection)
                     )
