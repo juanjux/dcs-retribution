@@ -37,16 +37,24 @@ def test_a_pilot_from_an_older_save_starts_the_same_way() -> None:
     assert pilot.leave_turns == 0
 
 
-@pytest.mark.parametrize("morale,step", [(1, 1), (49, 1), (50, 0), (51, -1), (100, -1)])
-def test_he_drifts_back_towards_the_middle_from_either_side(
+@pytest.mark.parametrize(
+    "morale,step", [(0, 5), (1, 5), (20, 5), (50, 0), (80, -5), (100, -5)]
+)
+def test_he_settles_back_towards_the_middle_from_either_side(
     morale: int, step: int
 ) -> None:
     assert morale_rules.drift(morale) == step
 
 
-def test_but_a_man_at_the_bottom_does_not_mend_on_his_own() -> None:
-    """He will not fly, so he can earn nothing back. Only leave lifts him."""
-    assert morale_rules.drift(0) == 0
+@pytest.mark.parametrize("morale", [46, 48, 52, 54])
+def test_settling_never_overshoots_the_middle(morale: int) -> None:
+    """Or a man two points off it would spend the war swinging past it."""
+    assert morale + morale_rules.drift(morale) == morale_rules.MORALE_START
+
+
+def test_even_the_bottom_settles_back() -> None:
+    """He climbs out like anyone else; a hard turn is what puts him back."""
+    assert morale_rules.drift(0) == morale_rules.DRIFT_PER_TURN
 
 
 def test_rank_softens_the_knocks_and_not_the_good_news() -> None:
@@ -400,6 +408,9 @@ def test_left_at_the_bottom_he_eventually_walks_away() -> None:
 
     random.seed(4)  # a run in which the roll comes up
     for turn in range(200):
+        # A hard war: something puts him back on the floor every turn, which is the
+        # only way anybody stays there now that the drift lifts him.
+        pilot.morale = 0
         squadron.tend_morale(turn)
         if pilot.deserted:
             break
@@ -469,21 +480,32 @@ def test_the_log_does_not_grow_without_end() -> None:
 
 
 def test_going_without_leave_gets_worse_the_longer_it_lasts() -> None:
+    """Counted in what the penalty costs, not in where he ends up.
+
+    The settling drift pulls the other way every turn and is worth more than the first
+    few of these, so measuring his morale would be measuring the two rules against each
+    other rather than this one.
+    """
     settings = _live_settings()
     settings.morale_leave_request_chance = 0  # keep the dice out of it
     squadron = _squadron(settings)
     pilot = Pilot("Vega")
     squadron.current_roster = [pilot]
 
-    for turn in range(morale_rules.TURNS_BEFORE_LEAVE_IS_MISSED):
+    def knocks_this_turn(turn: int) -> int:
+        before = len(pilot.morale_log)
         squadron.tend_morale(turn)
-    settled = pilot.morale
+        return sum(
+            1
+            for entry in pilot.morale_log[before:]
+            if entry.reason == morale_rules.NO_LEAVE.reason
+        )
 
-    squadron.tend_morale(99)
-    first_overdue = settled - pilot.morale
-    before = pilot.morale
-    squadron.tend_morale(100)
-    second_overdue = before - pilot.morale
+    for turn in range(morale_rules.TURNS_BEFORE_LEAVE_IS_MISSED):
+        assert knocks_this_turn(turn) == 0, "the first turns are free"
 
-    assert first_overdue > 0
-    assert second_overdue > first_overdue, "it compounds"
+    first_overdue = knocks_this_turn(99)
+    second_overdue = knocks_this_turn(100)
+
+    assert first_overdue == 1
+    assert second_overdue == 2, "it compounds"
