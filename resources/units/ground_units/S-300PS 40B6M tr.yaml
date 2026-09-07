@@ -3,3 +3,8 @@ price: 24
 variants:
   SAM SA-10 S-300 "Grumble" Flap Lid TR: null
   SAM SA-10 S-300 "Grumble" Flap Lid-A TR: null
+skynet_properties: # Override skynet default properties
+  go_live_range_in_percent: 120
+  harm_detection_chance: 90
+  engagement_zone: SkynetIADSAbstractRadarElement.GO_LIVE_WHEN_IN_KILL_ZONE # https://github.com/walder/Skynet-IADS/tree/develop#engagement-zone
+  autonomous_behaviour: SkynetIADSAbstractRadarElement.AUTONOMOUS_STATE_DCS_AI # https://github.com/walder/Skynet-IADS/tree/develop#autonomous-mode-behaviour

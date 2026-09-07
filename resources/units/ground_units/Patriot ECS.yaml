@@ -2,3 +2,8 @@ class: TrackRadar
 price: 30
 variants:
   SAM Patriot ECS: null
+skynet_properties: # Override skynet default properties
+  go_live_range_in_percent: 120
+  harm_detection_chance: 90
+  engagement_zone: SkynetIADSAbstractRadarElement.GO_LIVE_WHEN_IN_KILL_ZONE # https://github.com/walder/Skynet-IADS/tree/develop#engagement-zone
+  autonomous_behaviour: SkynetIADSAbstractRadarElement.AUTONOMOUS_STATE_DCS_AI # https://github.com/walder/Skynet-IADS/tree/develop#autonomous-mode-behaviour

@@ -59,6 +59,17 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   its emitters; package route lines show flight/package info on hover. (The
   click-to-select half of this made it upstream as #761.)
   ([#8](https://github.com/juanjux/dcs-retribution/pull/8))
+- **The stock SAMs play the SEAD game the modded ones already did.** Skynet ships with
+  HARM reaction switched off, and only 21 of 597 ground unit types ever turned it on --
+  all of them Currenthill mods plus the Patriot STR. So an SA-10 or an S-400 sat there
+  and took the missile, while a `[CH]` Buk ducked. Forty stock search and track radars
+  now carry the same properties: a 90% chance of noticing an inbound HARM and going
+  dark for it. They also wake earlier -- 120% of their own envelope for the long-range
+  systems, 130% for the medium ones -- because Skynet's default is to emit only once
+  you are already inside the kill zone, which leaves an AI SEAD flight with nothing to
+  home on and is the reason those flights behave oddly. The percentages are what MANTIS
+  calls `radiusscale`, and the existing "Adjust default SAM go-live range" setting still
+  overrides them per system.
 - **IADS network links coloured by STATE** — upstream already tints them by kind
   (comms / power); this adds active vs inactive on top, plus an easier tooltip
   hover margin.
