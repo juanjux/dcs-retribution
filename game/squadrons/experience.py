@@ -114,6 +114,8 @@ class PilotDeath:
     #: on so the same five stars can be drawn.
     rank: str = ""
     level: int = 0
+    #: Which side he flew for, so a campaign can choose not to be told about theirs.
+    blue: bool = True
     #: Already-formatted attribution: a roster pilot, a human's name, an airframe type,
     #: "a crash", or a friendly-fire note. None when nothing at all is known.
     killed_by: Optional[str] = None
@@ -135,6 +137,10 @@ class PilotWound:
     aircraft: str = ""
     rank: str = ""
     level: int = 0
+    #: Who put him in the hospital, formatted the same way a death's is.
+    killed_by: Optional[str] = None
+    friendly_fire: bool = False
+    blue: bool = True
 
 
 @dataclass
@@ -150,6 +156,8 @@ class PilotPromotion:
     #: The rungs either side of it, so a promotion can be drawn as the transition it is.
     from_level: int = 0
     to_level: int = 0
+
+    blue: bool = True
 
     #: Whether this is a pilot the human flies himself, who is told about it.
     player: bool = False
@@ -169,6 +177,7 @@ class MoraleShift:
     aircraft: str = ""
     rank: str = ""
     level: int = 0
+    blue: bool = True
 
     @property
     def reason(self) -> str:
