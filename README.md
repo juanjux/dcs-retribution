@@ -149,6 +149,12 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   ([#56](https://github.com/juanjux/dcs-retribution/pull/56),
   [#86](https://github.com/juanjux/dcs-retribution/pull/86))
 
+- **A Debriefing button in the Misc bar.** The debriefing is a modal dialog and an
+  alt-tab can leave it behind the main window, or close it before it has been read. The
+  button puts it back, and closing it again re-offers the leave requests still waiting
+  (the promotion box is told once, not on every reopening). Enabled only while the
+  report belongs to the turn being played, so it never shows a stale one.
+
 ### Kneeboards
 - **Friendly-packages list** plus a **package-targets map** page.
   ([#11](https://github.com/juanjux/dcs-retribution/pull/11))

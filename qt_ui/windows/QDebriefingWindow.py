@@ -725,6 +725,10 @@ class QDebriefingWindow(QDialog):
     def __init__(self, debriefing: Debriefing):
         super(QDebriefingWindow, self).__init__()
         self.debriefing = debriefing
+        # This window can be put back up from the Misc bar, so the promotion box is
+        # told once and not on every reopening. The leave requests are not guarded:
+        # that dialog reads who is still waiting, so it simply has nothing to ask.
+        self._congratulated = False
 
         self.setModal(True)
         self.setWindowTitle(f"Debriefing — Turn {debriefing.game.turn}")
@@ -1010,9 +1014,12 @@ class QDebriefingWindow(QDialog):
 
     def _congratulate_the_player(self) -> None:
         """A promotion of one of the player's own pilots is told, not just listed."""
+        if self._congratulated:
+            return
         mine = [p for p in self.debriefing.pilot_outcomes.promotions if p.player]
         if not mine:
             return
+        self._congratulated = True
         if len(mine) == 1:
             body = (
                 f"You have been promoted to <b>{mine[0].to_rank_full}</b> "

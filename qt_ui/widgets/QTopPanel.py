@@ -97,12 +97,21 @@ class QTopPanel(QFrame):
         self.transfers.setProperty("style", "btn-primary")
         self.transfers.clicked.connect(self.open_transfers)
 
+        # The debriefing is modal and easily lost behind the main window on an alt-tab,
+        # or closed before it has been read. This puts it back.
+        self.debriefing = QPushButton("Debriefing")
+        self.debriefing.setDisabled(True)
+        self.debriefing.setProperty("style", "btn-primary")
+        self.debriefing.setToolTip("Show this turn's debriefing again")
+        self.debriefing.clicked.connect(self.open_debriefing)
+
         self.intel_box = QIntelBox(self.game)
 
         self.buttonBox = QGroupBox("Misc")
         self.buttonBoxLayout = QHBoxLayout()
         self.buttonBoxLayout.addWidget(self.air_wing)
         self.buttonBoxLayout.addWidget(self.transfers)
+        self.buttonBoxLayout.addWidget(self.debriefing)
         # OPFOR-AI commander indicator (only shown when the setting is on); lights up for
         # a few seconds on each API call the LLM makes (no manual on/off), and Take Off
         # is blocked while it's lit.
@@ -205,6 +214,7 @@ class QTopPanel(QFrame):
 
         self.air_wing.setEnabled(True)
         self.transfers.setEnabled(True)
+        self.refresh_debriefing_button()
 
         # The widget writes its own tooltip now, with everything it has no room for.
         self.conditionsWidget.setCurrentTurn(
@@ -233,6 +243,22 @@ class QTopPanel(QFrame):
     def open_transfers(self):
         self.dialog = PendingTransfersDialog(self.game_model)
         self.dialog.show()
+
+    def refresh_debriefing_button(self) -> None:
+        """Offer the report only while it is the current turn's.
+
+        Called both on a game update and the moment a debriefing arrives, because the
+        arrival is exactly when it can go missing behind the main window.
+        """
+        window = self.window()
+        available = getattr(window, "has_debriefing_for_this_turn", None)
+        self.debriefing.setEnabled(bool(available and available()))
+
+    def open_debriefing(self) -> None:
+        window = self.window()
+        show = getattr(window, "show_last_debriefing", None)
+        if show is not None:
+            show()
 
     def _refresh_ai_status(self) -> None:
         from game.agent.session import AI_SESSION
