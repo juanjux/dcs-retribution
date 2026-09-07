@@ -983,6 +983,18 @@ class Game:
         if not self.__culling_zones:
             # No conflict located yet. Culling everything would hand Skynet nothing.
             return False
+        if not isinstance(tgo, (SamGroundObject, EwrGroundObject)):
+            # Only radars cost Skynet anything, and only radars can be left out
+            # safely. Skynet reads an absent dependency as a working one --
+            # genericCheckOneObjectIsAlive starts at `#objects == 0` and
+            # isCommandCenterUsable returns true on an empty list -- so dropping a
+            # command centre, comms tower or power station does not quieten the
+            # network, it tells the network everything is fine. A bombed power
+            # station outside the radius would switch its SAMs back on, and a
+            # coalition whose last command centre fell outside would regain command
+            # by having it culled. They stay in: they are cheap, and their absence
+            # is a lie.
+            return False
         limit = radius * 1000
         return not any(
             zone.distance_to_point(tgo.position) < limit
