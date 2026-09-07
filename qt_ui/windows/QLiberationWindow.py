@@ -96,6 +96,12 @@ class QLiberationWindow(QMainWindow):
         self.setWindowIcon(QIcon("./resources/icon.png"))
         self.statusBar().showMessage("Ready")
 
+        # The last debriefing and the turn it reports on, kept so the Misc bar can put
+        # it back up. It is a modal dialog and an alt-tab can leave it behind the main
+        # window, or close it before it has been read.
+        self.debriefing: Optional[QDebriefingWindow] = None
+        self._debriefing_turn: Optional[int] = None
+
         self.initUi(ui_flags)
         self.initActions()
         self.initToolbar()
@@ -637,8 +643,30 @@ class QLiberationWindow(QMainWindow):
     def onDebriefing(self, debrief: Debriefing):
         logging.info("On Debriefing")
         self.debriefing = QDebriefingWindow(debrief)
+        self._debriefing_turn = debrief.game.turn
         self.debriefing.show()
         self.game_model.init_comms_registry()
+        # The turn does not advance until Pass Turn, so this is the report for the turn
+        # being played: the Misc bar can offer it from here on.
+        self.top_panel.refresh_debriefing_button()
+
+    def has_debriefing_for_this_turn(self) -> bool:
+        """Whether there is a report for the turn being played.
+
+        A debriefing from an earlier turn is deliberately not offered: it would be a
+        stale report of a mission already accounted for.
+        """
+        if self.debriefing is None or self.game is None:
+            return False
+        return self._debriefing_turn == self.game.turn
+
+    def show_last_debriefing(self) -> None:
+        """Put the debriefing back up, in front."""
+        if self.debriefing is None:
+            return
+        self.debriefing.show()
+        self.debriefing.raise_()
+        self.debriefing.activateWindow()
 
     def open_tgo_info_dialog(self, tgo: TheaterGroundObject) -> None:
         QGroundObjectMenu(self, tgo, tgo.control_point, self.game_model).show()
@@ -680,6 +708,7 @@ class QLiberationWindow(QMainWindow):
             super().closeEvent(event)
             self.dialog = None
             self.debriefing = None
+            self._debriefing_turn = None
             for window in QApplication.topLevelWidgets():
                 window.close()
         else:
