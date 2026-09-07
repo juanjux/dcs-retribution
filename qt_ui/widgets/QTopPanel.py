@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional
+from typing import Callable, List, Optional
 
 from PySide6.QtCore import Qt, QTimer, QSize
 from PySide6.QtGui import QAction, QIcon, QMovie
@@ -58,7 +58,10 @@ class QTopPanel(QFrame):
         super(QTopPanel, self).__init__()
         self.game_model = game_model
         self.sim_controller = sim_controller
-        self.dialog: Optional[QDialog] = None
+        # One reference each: they used to share a single `self.dialog`, so opening
+        # one dropped the only reference the other had.
+        self.air_wing_dialog: Optional[QDialog] = None
+        self.transfers_dialog: Optional[QDialog] = None
 
         self.setMaximumHeight(70)
 
@@ -236,13 +239,47 @@ class QTopPanel(QFrame):
         else:
             raise RuntimeError(f"game.turn out of bounds!\n  value = {game.turn}")
 
-    def open_air_wing(self):
-        self.dialog = AirWingDialog(self.game_model, self.window())
-        self.dialog.show()
+    def open_air_wing(self) -> None:
+        self.air_wing_dialog = self._open_once(
+            self.air_wing_dialog,
+            lambda: AirWingDialog(self.game_model, self.window()),
+        )
 
-    def open_transfers(self):
-        self.dialog = PendingTransfersDialog(self.game_model)
-        self.dialog.show()
+    def open_transfers(self) -> None:
+        self.transfers_dialog = self._open_once(
+            self.transfers_dialog,
+            lambda: PendingTransfersDialog(self.game_model),
+        )
+
+    @staticmethod
+    def _open_once(
+        existing: Optional[QDialog], build: Callable[[], QDialog]
+    ) -> QDialog:
+        """One window, however many times the button is pressed.
+
+        Pressing Air Wing ten times opened ten of them: each press built another dialog
+        and the one already up stayed there, held by the main window it was parented to.
+        An open one is brought to the front instead.
+
+        A dialog that has been closed is rebuilt rather than shown again, so it never
+        comes back with a turn-old view of the game, and the closed one is dropped so
+        they do not pile up behind the window for the rest of the session.
+        """
+        try:
+            visible = existing is not None and existing.isVisible()
+        except RuntimeError:
+            # Qt destroyed the C++ object under us; there is nothing to raise.
+            existing, visible = None, False
+        if visible:
+            assert existing is not None
+            existing.raise_()
+            existing.activateWindow()
+            return existing
+        if existing is not None:
+            existing.deleteLater()
+        dialog = build()
+        dialog.show()
+        return dialog
 
     def refresh_debriefing_button(self) -> None:
         """Offer the report only while it is the current turn's.
