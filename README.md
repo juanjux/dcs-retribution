@@ -59,6 +59,18 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   its emitters; package route lines show flight/package info on hover. (The
   click-to-select half of this made it upstream as #761.)
   ([#8](https://github.com/juanjux/dcs-retribution/pull/8))
+- **Skynet now comes from our own fork.** Upstream
+  [walder/Skynet-IADS](https://github.com/walder/Skynet-IADS) has had no commit in about
+  three years and every fork of it looks abandoned too, so the script lives at
+  [juanjux/Skynet-IADS](https://github.com/juanjux/Skynet-IADS) where it can be fixed.
+  What was shipped here until now was a build labelled `baron-branch` from May 2023 --
+  baleBaron's `ActMobile` fork of Skynet 3.0.1, with unit tables this fork had extended
+  since -- and that lineage never came back upstream, while upstream meanwhile fixed the
+  HARM path: a site hiding from a HARM now switches its AI off rather than only its
+  emissions, which is a DCS multiplayer bug. The fork is both at once, so nothing was
+  given up either way: `ActMobile` and the four High Digit SAMs systems (S-400,
+  S-300V4, SAMP/T, Pantsir-SM) on top of upstream 3.3.0 and its fixes. Its README is the
+  inventory of what we change.
 - **The stock SAMs play the SEAD game the modded ones already did.** Skynet ships with
   HARM reaction switched off, and only 21 of 597 ground unit types ever turned it on --
   all of them Currenthill mods plus the Patriot STR. So an SA-10 or an S-400 sat there
