@@ -40,6 +40,7 @@ from qt_ui.widgets.QTopPanel import QTopPanel
 from qt_ui.widgets.ato import QAirTaskingOrderPanel
 from qt_ui.widgets.map.QLiberationMap import QLiberationMap
 from qt_ui.windows.GameUpdateSignal import GameUpdateSignal
+from game.debriefingreport import DebriefingReport
 from qt_ui.windows.QDebriefingWindow import QDebriefingWindow
 from qt_ui.windows.basemenu.QBaseMenu2 import QBaseMenu2
 from qt_ui.windows.groundobject.QGroundObjectMenu import QGroundObjectMenu
@@ -96,11 +97,11 @@ class QLiberationWindow(QMainWindow):
         self.setWindowIcon(QIcon("./resources/icon.png"))
         self.statusBar().showMessage("Ready")
 
-        # The last debriefing and the turn it reports on, kept so the Misc bar can put
-        # it back up. It is a modal dialog and an alt-tab can leave it behind the main
-        # window, or close it before it has been read.
+        # The debriefing window, kept so the Misc bar can put it back up: it is modal
+        # and an alt-tab can leave it behind the main window, or close it before it has
+        # been read. The report it shows lives on the game, so the bar can also rebuild
+        # it in a session that never saw the mission flown.
         self.debriefing: Optional[QDebriefingWindow] = None
-        self._debriefing_turn: Optional[int] = None
 
         self.initUi(ui_flags)
         self.initActions()
@@ -642,31 +643,53 @@ class QLiberationWindow(QMainWindow):
 
     def onDebriefing(self, debrief: Debriefing):
         logging.info("On Debriefing")
-        self.debriefing = QDebriefingWindow(debrief)
-        self._debriefing_turn = debrief.game.turn
-        self.debriefing.show()
+        report = self.stored_debriefing_report()
+        if report is None:
+            # Keeping the report is best-effort during the commit. If it could not be
+            # kept, build one now so the window still opens -- it just will not be
+            # there in a later session.
+            from game.debriefingreport import DebriefingReport
+
+            report = DebriefingReport.from_debriefing(
+                debrief, max((self.game.turn if self.game else 1) - 1, 0)
+            )
+        self._show_debriefing(report)
         self.game_model.init_comms_registry()
-        # The turn does not advance until Pass Turn, so this is the report for the turn
-        # being played: the Misc bar can offer it from here on.
         self.top_panel.refresh_debriefing_button()
 
-    def has_debriefing_for_this_turn(self) -> bool:
-        """Whether there is a report for the turn being played.
+    def stored_debriefing_report(self) -> Optional[DebriefingReport]:
+        """The last mission's report, whether or not this session saw it flown."""
+        if self.game is None:
+            return None
+        return getattr(self.game, "last_debriefing_report", None)
 
-        A debriefing from an earlier turn is deliberately not offered: it would be a
-        stale report of a mission already accounted for.
-        """
-        if self.debriefing is None or self.game is None:
-            return False
-        return self._debriefing_turn == self.game.turn
+    def has_debriefing_to_show(self) -> bool:
+        return self.stored_debriefing_report() is not None
 
-    def show_last_debriefing(self) -> None:
-        """Put the debriefing back up, in front."""
-        if self.debriefing is None:
-            return
+    def _show_debriefing(self, report: DebriefingReport) -> None:
+        # The window reads settings and asks who is waiting for leave, so it needs the
+        # live game; the report is saved without it.
+        report.game = self.game
+        self.debriefing = QDebriefingWindow(report)
         self.debriefing.show()
         self.debriefing.raise_()
         self.debriefing.activateWindow()
+
+    def show_last_debriefing(self) -> None:
+        """Put the debriefing back up, in front, building it again if it was closed."""
+        try:
+            open_already = self.debriefing is not None and self.debriefing.isVisible()
+        except RuntimeError:
+            # Qt destroyed the C++ object under us.
+            self.debriefing, open_already = None, False
+        if open_already:
+            assert self.debriefing is not None
+            self.debriefing.raise_()
+            self.debriefing.activateWindow()
+            return
+        report = self.stored_debriefing_report()
+        if report is not None:
+            self._show_debriefing(report)
 
     def open_tgo_info_dialog(self, tgo: TheaterGroundObject) -> None:
         QGroundObjectMenu(self, tgo, tgo.control_point, self.game_model).show()
@@ -708,7 +731,6 @@ class QLiberationWindow(QMainWindow):
             super().closeEvent(event)
             self.dialog = None
             self.debriefing = None
-            self._debriefing_turn = None
             for window in QApplication.topLevelWidgets():
                 window.close()
         else:

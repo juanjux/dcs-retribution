@@ -9,8 +9,7 @@ The palette and the vocabulary -- five stars for a rank, a coloured dot for mora
 are the Air Wing's, so the two read as one program.
 """
 
-import logging
-from typing import Any, Callable, Dict, Optional, TypeVar
+from typing import Any, Optional
 
 from PySide6.QtCore import QRectF, Qt, QTimer
 from PySide6.QtGui import QCloseEvent, QColor, QFont, QIcon, QPainter
@@ -28,8 +27,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from game.cruise_raids import debrief_expenditures
-from game.debriefing import Debriefing
+from game.debriefingreport import DebriefingReport
 from game.squadrons.experience import (
     MoraleShift,
     PilotDeath,
@@ -47,8 +45,6 @@ from qt_ui.rankstars import (
     paint_rank_stars,
 )
 from qt_ui.windows.GameUpdateSignal import GameUpdateSignal
-
-T = TypeVar("T")
 
 # --- the palette ------------------------------------------------------------
 
@@ -136,7 +132,7 @@ def _caption(text: str, hint: str = "") -> QWidget:
     return holder
 
 
-def aircrew_reported(debriefing: Debriefing, records: list) -> list:
+def aircrew_reported(debriefing: DebriefingReport, records: list) -> list:
     """The aircrew this campaign is willing to tell you about.
 
     Losing THEIR aircraft is observable and always reported. What became of the men
@@ -162,7 +158,7 @@ def _card() -> QWidget:
 class SummaryStrip(QWidget):
     """Four numbers and a verdict, before anything is scrolled."""
 
-    def __init__(self, debriefing: Debriefing) -> None:
+    def __init__(self, debriefing: DebriefingReport) -> None:
         super().__init__()
         self.setFixedHeight(96)
         self.setStyleSheet(f"background: {BAND}; border-bottom: 1px solid {LINE};")
@@ -571,7 +567,7 @@ class MoraleRow(PilotRow):
 class FactionLosses(QWidget):
     """One side's losses: aircraft over ground, with the total in the header."""
 
-    def __init__(self, debriefing: Debriefing, player: Player) -> None:
+    def __init__(self, debriefing: DebriefingReport, player: Player) -> None:
         super().__init__()
         ours = player.is_blue
         counts = debriefing.loss_counts(player)
@@ -662,67 +658,21 @@ class FactionLosses(QWidget):
         return holder
 
     @staticmethod
-    def _air_rows(debriefing: Debriefing, player: Player) -> list:
-        doctrine_on = bool(
-            getattr(debriefing.game.settings, "ignore_non_combat_air_losses", False)
-        )
-        losses = (
-            debriefing.air_losses.player
-            if player.is_blue
-            else debriefing.air_losses.enemy
-        )
-        not_counted: Dict[object, int] = {}
-        if doctrine_on:
-            for loss in losses:
-                if debriefing.is_non_combat_loss(loss):
-                    unit_type = loss.flight.unit_type
-                    not_counted[unit_type] = not_counted.get(unit_type, 0) + 1
-        rows = []
-        for unit_type, count in debriefing.air_losses.by_type(player).items():
-            nc = not_counted.get(unit_type, 0)
-            try:
-                name = unit_type.display_name
-            except AttributeError:
-                name = unit_type.id
-            note = f"{nc} not counted — crashed-do-not-count" if nc else ""
-            rows.append((name, count - nc, note))
-        return rows
+    def _air_rows(debriefing: DebriefingReport, player: Player) -> list:
+        # Counted when the mission was flown; see game/debriefingreport.py.
+        return debriefing.air_rows(player)
 
     @staticmethod
-    def _ground_rows(debriefing: Debriefing, player: Player) -> list:
-        rows: list = []
-
-        def collect(losses: Dict[T, int], make_name: Callable[[T], str]) -> None:
-            for unit_type, count in losses.items():
-                try:
-                    name = make_name(unit_type)
-                except AttributeError:
-                    logging.exception(f"Could not make unit name for {unit_type}")
-                    name = str(getattr(unit_type, "id", unit_type))
-                rows.append((name, count, ""))
-
-        collect(debriefing.front_line_losses_by_type(player), lambda u: str(u))
-        collect(
-            debriefing.motorpool_losses_by_type(player), lambda u: f"{u} from motorpool"
-        )
-        collect(debriefing.convoy_losses_by_type(player), lambda u: f"{u} from convoy")
-        collect(
-            debriefing.cargo_ship_losses_by_type(player),
-            lambda u: f"{u} from cargo ship",
-        )
-        collect(
-            debriefing.airlift_losses_by_type(player), lambda u: f"{u} from airlift"
-        )
-        collect(debriefing.ground_object_losses_by_type(player), lambda u: str(u))
-        collect(debriefing.scenery_losses_by_type(player), lambda u: str(u))
-        return rows
+    def _ground_rows(debriefing: DebriefingReport, player: Player) -> list:
+        # Counted when the mission was flown; see game/debriefingreport.py.
+        return debriefing.ground_rows(player)
 
 
 # --- the window -------------------------------------------------------------
 
 
 class QDebriefingWindow(QDialog):
-    def __init__(self, debriefing: Debriefing):
+    def __init__(self, debriefing: DebriefingReport):
         super(QDebriefingWindow, self).__init__()
         self.debriefing = debriefing
         # This window can be put back up from the Misc bar, so the promotion box is
@@ -731,7 +681,9 @@ class QDebriefingWindow(QDialog):
         self._congratulated = False
 
         self.setModal(True)
-        self.setWindowTitle(f"Debriefing — Turn {debriefing.game.turn}")
+        # The report's own turn, not the game's: the turn is passed before the
+        # window is shown, and a report reopened later belongs to an older one.
+        self.setWindowTitle(f"Debriefing — Turn {debriefing.turn}")
         self.setWindowIcon(QIcon("./resources/icon.png"))
         self.setStyleSheet(f"QDialog {{ background: {PAGE}; }}")
 
@@ -787,7 +739,7 @@ class QDebriefingWindow(QDialog):
         column.addWidget(card)
         return column
 
-    def _pilots_section(self, debriefing: Debriefing) -> Optional[QVBoxLayout]:
+    def _pilots_section(self, debriefing: DebriefingReport) -> Optional[QVBoxLayout]:
         """Who did not come back, who was hurt, and who came out of it better.
 
         Omitted entirely when nothing happened to the aircrew, and so is any group
@@ -833,7 +785,7 @@ class QDebriefingWindow(QDialog):
             return None
         return self._section("Pilots", "only groups with entries are drawn", card)
 
-    def _losses_section(self, debriefing: Debriefing) -> QVBoxLayout:
+    def _losses_section(self, debriefing: DebriefingReport) -> QVBoxLayout:
         """Both sides side by side: stacked, the exchange took a scroll to read."""
         card = QWidget()
         grid = QGridLayout()
@@ -848,7 +800,9 @@ class QDebriefingWindow(QDialog):
             "Losses", "both sides, side by side · aircraft first, then ground", card
         )
 
-    def _front_line_section(self, debriefing: Debriefing) -> Optional[QVBoxLayout]:
+    def _front_line_section(
+        self, debriefing: DebriefingReport
+    ) -> Optional[QVBoxLayout]:
         captured = [
             capture.control_point.name
             for capture in debriefing.base_captures
@@ -889,12 +843,14 @@ class QDebriefingWindow(QDialog):
             "Front line & bases", "rows with nothing to report say none", card
         )
 
-    def _missiles_section(self, debriefing: Debriefing) -> Optional[QVBoxLayout]:
+    def _missiles_section(self, debriefing: DebriefingReport) -> Optional[QVBoxLayout]:
         """Shown after the turn-boundary debit, so what remains is next turn's stock.
 
         Enemy remainders stay hidden: a launch is observable, a magazine is not.
         """
-        expenditures = debrief_expenditures(debriefing.game, debriefing)
+        # Read at the turn boundary and kept: a shooter that has since sailed on,
+        # been sunk or been rearmed would answer differently now.
+        expenditures = debriefing.missile_rows
         if not expenditures:
             return None
 
@@ -947,7 +903,7 @@ class QDebriefingWindow(QDialog):
             column.addWidget(holder)
         return self._section("Cruise missiles expended", "", card)
 
-    def _footer(self, debriefing: Debriefing) -> QWidget:
+    def _footer(self, debriefing: DebriefingReport) -> QWidget:
         """The way out, and what closing it will bring up next."""
         footer = QWidget()
         footer.setFixedHeight(56)
@@ -979,7 +935,7 @@ class QDebriefingWindow(QDialog):
         return footer
 
     @staticmethod
-    def _leave_requests(debriefing: Debriefing) -> list:
+    def _leave_requests(debriefing: DebriefingReport) -> list:
         from qt_ui.windows.LeaveRequestsDialog import pending_leave_requests
 
         game = debriefing.game
