@@ -103,6 +103,7 @@ class MissionResultsProcessor:
                                     aircraft=str(squadron.aircraft),
                                     rank=self._short_rank(squadron, pilot),
                                     level=self._rank_level(squadron, pilot),
+                                    blue=squadron.player.is_blue,
                                     before=before,
                                     after=pilot.morale,
                                     reasons=sorted(set(reasons)),
@@ -412,6 +413,11 @@ class MissionResultsProcessor:
                     aircraft=str(loss.flight.unit_type),
                     rank=self._short_rank(squadron, pilot),
                     level=self._rank_level(squadron, pilot),
+                    # The same attribution the dead get: who put him there is the
+                    # interesting half, not that the medics reached him.
+                    killed_by=record.killed_by,
+                    friendly_fire=record.friendly_fire,
+                    blue=squadron.player.is_blue,
                 )
             )
             note(f"wounded, out for {turns_phrase(turns)}")
@@ -469,6 +475,7 @@ class MissionResultsProcessor:
             level=(
                 self._rank_level(squadron, loss.pilot) if loss.pilot is not None else 0
             ),
+            blue=squadron.player.is_blue,
         )
 
     def _describe_killer(
@@ -751,6 +758,7 @@ class MissionResultsProcessor:
                                 aircraft=str(squadron.aircraft),
                                 from_level=before_level,
                                 to_level=self._rank_level(squadron, pilot),
+                                blue=squadron.player.is_blue,
                             )
                         )
                     self.xp_log.collected(

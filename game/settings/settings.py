@@ -1840,6 +1840,18 @@ class Settings:
         default=True,
         detail='Replaces the "Pilot #2" part of a flight label with the pilot name.',
     )
+    live_pilots_debrief_enemy: bool = boolean_option(
+        "Report enemy aircrew in the debriefing",
+        page=LIVE_PILOTS_PAGE,
+        section=GENERAL_SECTION,
+        default=False,
+        detail=(
+            "Whether the debriefing lists what became of the OTHER side's pilots --"
+            " their dead, wounded, promotions and morale. Their aircraft and ground"
+            " losses are always reported; this is only about their aircrew, which you"
+            " would have no way of knowing about."
+        ),
+    )
     live_pilots_show_ranks: bool = boolean_option(
         "Show pilot ranks in mission",
         page=LIVE_PILOTS_PAGE,
