@@ -105,7 +105,7 @@ class QTopPanel(QFrame):
         self.debriefing = QPushButton("Debriefing")
         self.debriefing.setDisabled(True)
         self.debriefing.setProperty("style", "btn-primary")
-        self.debriefing.setToolTip("Show this turn's debriefing again")
+        self.debriefing.setToolTip("Show the last debriefing again")
         self.debriefing.clicked.connect(self.open_debriefing)
 
         self.intel_box = QIntelBox(self.game)
@@ -282,13 +282,14 @@ class QTopPanel(QFrame):
         return dialog
 
     def refresh_debriefing_button(self) -> None:
-        """Offer the report only while it is the current turn's.
+        """Offer the last mission's report whenever there is one.
 
-        Called both on a game update and the moment a debriefing arrives, because the
-        arrival is exactly when it can go missing behind the main window.
+        Called on a game update and the moment a debriefing arrives -- the arrival is
+        exactly when it can go missing behind the main window -- and the report is kept
+        on the game, so a campaign loaded in a later session still has it.
         """
         window = self.window()
-        available = getattr(window, "has_debriefing_for_this_turn", None)
+        available = getattr(window, "has_debriefing_to_show", None)
         self.debriefing.setEnabled(bool(available and available()))
 
     def open_debriefing(self) -> None:

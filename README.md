@@ -149,11 +149,14 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   ([#56](https://github.com/juanjux/dcs-retribution/pull/56),
   [#86](https://github.com/juanjux/dcs-retribution/pull/86))
 
-- **A Debriefing button in the Misc bar.** The debriefing is a modal dialog and an
-  alt-tab can leave it behind the main window, or close it before it has been read. The
-  button puts it back, and closing it again re-offers the leave requests still waiting
-  (the promotion box is told once, not on every reopening). Enabled only while the
-  report belongs to the turn being played, so it never shows a stale one.
+- **A Debriefing button in the Misc bar, and the report is kept in the save.** The
+  debriefing is a modal dialog and an alt-tab can leave it behind the main window, or
+  close it before it has been read; the button puts it back. The report itself no longer
+  dies with the session: a `Debriefing` is built from the mission's state file and its
+  unit map, so it was never storable, but the part the window shows -- counts, names and
+  the pilot records -- is now kept as plain data on the game and travels in the save,
+  1.6 KB of a 12 MB campaign. Reopening it re-offers the leave requests still waiting
+  (the promotion box is told once, not on every reopening).
 
 - **The squadron dialog fits its own text, and keeps the size you give it.** It opened
   at 1200 px, which left the notes column 35 px of the roster's 564 -- the identity

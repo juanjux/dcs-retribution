@@ -53,6 +53,7 @@ from .weather.conditions import Conditions
 
 if TYPE_CHECKING:
     from .ato.airtaaskingorder import AirTaskingOrder
+    from .debriefingreport import DebriefingReport
     from .factions.faction import Faction
     from .navmesh import NavMesh
     from .sim import GameUpdateEvents
@@ -145,6 +146,10 @@ class Game:
         self.stored_context: dict[str, str] = {}
         # Per-turn loss summaries for the OPFOR-AI prev_turns after-action.
         self.debrief_history: list[dict[str, int]] = []
+        # The last debriefing, as data. The window used to be the only place the report
+        # lived, so it was gone the moment Retribution was closed; kept here it can be
+        # reopened from the Misc bar in a later session.
+        self.last_debriefing_report: Optional[DebriefingReport] = None
         # Opaque JSON blob with the web client's map-layer panel state (which layers
         # are visible, base map, which groups are open). The client owns the
         # (de)serialization; the game just stores it so the choices travel with the
@@ -226,6 +231,8 @@ class Game:
             self.stored_context = {}
         if not hasattr(self, "debrief_history"):
             self.debrief_history = []
+        if not hasattr(self, "last_debriefing_report"):
+            self.last_debriefing_report = None
         if not hasattr(self, "client_map_layers"):
             self.client_map_layers = None
         if not hasattr(self, "cruise_missile_magazines"):
@@ -246,6 +253,19 @@ class Game:
 
         if not hasattr(self, "debrief_history"):
             self.debrief_history = []
+
+        # Keep the report the debriefing window shows, so it can be reopened in a later
+        # session. This runs while the results are being committed, before the turn is
+        # passed, so self.turn is the turn the mission was flown in. Best-effort like
+        # the summary below: failing here must never cost the player the turn.
+        try:
+            from game.debriefingreport import DebriefingReport
+
+            self.last_debriefing_report = DebriefingReport.from_debriefing(
+                debriefing, self.turn
+            )
+        except Exception:
+            logging.exception("Failed to record the debriefing report")
 
         def lost_by_type(player: Player) -> dict[str, int]:
             """What died, by airframe. "30 aircraft" does not tell a planner whether it
