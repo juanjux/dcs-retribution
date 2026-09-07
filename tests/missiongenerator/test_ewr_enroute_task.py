@@ -17,7 +17,14 @@ from game.theater.theatergroundobject import EwrGroundObject, VehicleGroupGround
 
 def _generator(ground_object: Any, perf_red_alert_state: bool = False) -> Any:
     game = SimpleNamespace(
-        settings=SimpleNamespace(perf_red_alert_state=perf_red_alert_state)
+        settings=SimpleNamespace(
+            perf_red_alert_state=perf_red_alert_state,
+            # set_alarm_state also asks whether the object falls outside the Skynet
+            # radius. With no IADS plugin there is no network to be outside of, which
+            # is what keeps these tests about the EWR branch alone.
+            plugin_option=lambda name: False,
+        ),
+        skynet_culled=lambda tgo: False,
     )
     return GroundObjectGenerator(
         ground_object, None, game, None, None  # type: ignore[arg-type]

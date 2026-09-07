@@ -452,12 +452,24 @@ class GroundObjectGenerator:
     def set_alarm_state(self, group: MovingGroup[Any], force_red: bool = False) -> None:
         # Ships pass force_red so they always defend; the perf toggle only exists
         # to let ground SAMs start "dark" for Skynet IADS, not to disarm fleets.
+        # Which is exactly why the Skynet radius has to be read here too.
         # EWR sites must likewise never start dark: a GREEN alarm state leaves the
         # radar passive (no emission), which would defeat the EWR() enroute task, so
         # they always come up RED regardless of the perf toggle. Skynet drives EWRs
         # live anyway, so this stays consistent with IADS control.
+        # A site outside the Skynet radius is not in the network, so nothing will
+        # ever wake it: at green it would sit there dark while a flight that strayed
+        # off the planned route flew over it. It comes up red and defends itself.
         ewr = isinstance(self.ground_object, EwrGroundObject)
-        if force_red or ewr or self.game.settings.perf_red_alert_state:
+        outside_the_network = self.game.settings.plugin_option(
+            "skynetiads"
+        ) and self.game.skynet_culled(self.ground_object)
+        if (
+            force_red
+            or ewr
+            or outside_the_network
+            or self.game.settings.perf_red_alert_state
+        ):
             group.points[0].tasks.append(OptAlarmState(2))
         else:
             group.points[0].tasks.append(OptAlarmState(1))
