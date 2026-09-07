@@ -2050,6 +2050,39 @@ class Settings:
         max=0,
         detail=("Applied to everyone else in his squadron, once per man lost."),
     )
+    morale_flight_death: int = bounded_int_option(
+        "Wingman killed (extra, his flight only)",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_MORALE_SECTION,
+        default=-6,
+        min=-50,
+        max=0,
+        detail=(
+            "On top of the squadron's loss, for the men who were in the same flight."
+            " The squadron hears about it; the flight watched it happen."
+        ),
+    )
+    morale_squadron_wound: int = bounded_int_option(
+        "Squadron mate wounded (per turn out)",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_MORALE_SECTION,
+        default=-2,
+        min=-50,
+        max=0,
+        detail=(
+            "Counted once per turn the medics keep him, up to three, so it can never"
+            " weigh as much as a death."
+        ),
+    )
+    morale_flight_wound: int = bounded_int_option(
+        "Wingman wounded (extra, his flight only)",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_MORALE_SECTION,
+        default=-2,
+        min=-50,
+        max=0,
+        detail="As above, again, for the men who were up there with him.",
+    )
     morale_base_lost: int = bounded_int_option(
         "A base lost",
         page=LIVE_PILOTS_PAGE,
