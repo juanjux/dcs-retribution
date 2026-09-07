@@ -246,7 +246,7 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   your side while you fly: who shot down whom and with what, which targets went down,
   who ejected, who crashed with nobody shooting. DCS has all of these events but calls
   the aircraft `STAG BARCAP|2|14|F-15C Eagle| Pilot #2` and does not know the pilot at
-  all, so the generator seeds `RETRIBUTION_PILOTS` (unit name → pilot name) and the
+  all, so the generator seeds `RETRIBUTION_PILOTS` (unit name → rank and pilot) and the
   script reads the aircraft type straight out of the unit name — mod aircraft come out
   right without a table of their own. Each message goes only to the coalition it is news
   for: a kill for the shooter, a loss for the other side. Every category has its own
@@ -301,7 +301,7 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
 - **Smart Threat Reaction** — a plugin that keeps AI aircraft at Passive Defense
   by default and switches only the flight a missile is actually guiding on to
   Evade Fire (read from the engine via `weapon:getTarget`), so one SAM launch no
-  longer sends every nearby package defensive. Prototype.
+  longer sends every nearby package defensive.
   ([#63](https://github.com/juanjux/dcs-retribution/pull/63))
 - **Custom cloud preset packs** — a campaign setting that makes a community
   cloud-preset weather mod's presets available to the mission generator: choose

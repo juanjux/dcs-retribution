@@ -346,7 +346,9 @@ class PilotDelegate(QStyledItemDelegate, PilotRowPainter):
             return None
         if pilot.refuses_to_fly:
             return "Will refuse to fly next mission", WARNING_BLOCKING
-        if pilot.wants_leave:
+        # A man in a hospital bed is not asking for a rest, whatever flag a save made
+        # before that rule still carries.
+        if pilot.wants_leave and not pilot.wounded:
             asked = pilot.leave_turns_requested
             return (
                 (

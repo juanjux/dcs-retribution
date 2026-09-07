@@ -10,7 +10,7 @@ are the Air Wing's, so the two read as one program.
 """
 
 import logging
-from typing import Callable, Dict, Optional, TypeVar
+from typing import Any, Callable, Dict, Optional, TypeVar
 
 from PySide6.QtCore import QRectF, Qt, QTimer
 from PySide6.QtGui import QCloseEvent, QColor, QFont, QIcon, QPainter
@@ -136,6 +136,18 @@ def _caption(text: str, hint: str = "") -> QWidget:
     return holder
 
 
+def aircrew_reported(debriefing: Debriefing, records: list) -> list:
+    """The aircrew this campaign is willing to tell you about.
+
+    Losing THEIR aircraft is observable and always reported. What became of the men
+    inside them is not, so it is off by default: a campaign that wants the whole
+    picture turns it on in Live Pilots.
+    """
+    if getattr(debriefing.game.settings, "live_pilots_debrief_enemy", False):
+        return list(records)
+    return [record for record in records if getattr(record, "blue", True)]
+
+
 def _card() -> QWidget:
     card = QWidget()
     card.setStyleSheet(
@@ -187,6 +199,11 @@ class SummaryStrip(QWidget):
         blue = debriefing.loss_counts(Player.BLUE)
         red = debriefing.loss_counts(Player.RED)
         outcomes = debriefing.pilot_outcomes
+        # The pilot figures have to count what the list below them shows, or the strip
+        # promises casualties the report never accounts for.
+        deaths = aircrew_reported(debriefing, outcomes.deaths)
+        wounded = aircrew_reported(debriefing, outcomes.wounded)
+        promotions = aircrew_reported(debriefing, outcomes.promotions)
         for caption, figures in (
             (
                 "AIRCRAFT LOST",
@@ -202,9 +219,9 @@ class SummaryStrip(QWidget):
             (
                 "PILOTS",
                 (
-                    (len(outcomes.deaths), "KIA", OURS),
-                    (len(outcomes.wounded), "wounded", WOUNDED),
-                    (len(outcomes.promotions), "promoted", ACCENT),
+                    (len(deaths), "KIA", OURS),
+                    (len(wounded), "wounded", WOUNDED),
+                    (len(promotions), "promoted", ACCENT),
                 ),
             ),
             (
@@ -370,10 +387,15 @@ class ShotDownRow(PilotRow):
         self.detail = detail
 
     def paint_detail(self, painter: QPainter, x: int) -> None:
-        if self.record.friendly_fire:
-            lead, killer = "lost to friendly fire from ", self.record.killed_by or ""
-        elif self.record.killed_by:
-            lead, killer = "shot down by ", self.record.killed_by
+        self.paint_attribution(painter, x, self.record)
+
+    @staticmethod
+    def paint_attribution(painter: QPainter, x: int, record: Any) -> None:
+        """Who brought him down. Shared with the wounded, who were brought down too."""
+        if record.friendly_fire:
+            lead, killer = "lost to friendly fire from ", record.killed_by or ""
+        elif record.killed_by:
+            lead, killer = "shot down by ", record.killed_by
         else:
             lead, killer = "lost, with nobody credited", ""
         painter.setFont(_font(12))
@@ -382,7 +404,7 @@ class ShotDownRow(PilotRow):
         if killer:
             after = x + painter.fontMetrics().horizontalAdvance(lead)
             painter.setFont(_font(12, QFont.Weight.Medium))
-            painter.setPen(QColor(OURS if self.record.friendly_fire else BODY))
+            painter.setPen(QColor(OURS if record.friendly_fire else BODY))
             painter.drawText(int(after), 27, killer)
 
     def paint_outcome(self, painter: QPainter, right: int) -> None:
@@ -406,6 +428,12 @@ class ShotDownRow(PilotRow):
 
 
 class WoundedRow(PilotRow):
+    """Who put him in the hospital, and for how long.
+
+    That the medics reached him is already the heading; what is worth the column is the
+    same thing the dead get -- who did it.
+    """
+
     def __init__(self, record: PilotWound):
         super().__init__(
             record.pilot_name,
@@ -414,12 +442,11 @@ class WoundedRow(PilotRow):
             record.aircraft,
             record.squadron,
         )
+        self.record = record
         self.turns = record.turns
 
     def paint_detail(self, painter: QPainter, x: int) -> None:
-        painter.setFont(_font(12))
-        painter.setPen(QColor(DIM))
-        painter.drawText(x, 27, "pulled out alive")
+        ShotDownRow.paint_attribution(painter, x, self.record)
 
     def paint_outcome(self, painter: QPainter, right: int) -> None:
         self._right(
@@ -766,6 +793,9 @@ class QDebriefingWindow(QDialog):
         if outcomes.empty:
             return None
 
+        def shown(records: list) -> list:
+            return aircrew_reported(debriefing, records)
+
         card = _card()
         column = QVBoxLayout()
         column.setContentsMargins(0, 0, 0, 0)
@@ -775,22 +805,28 @@ class QDebriefingWindow(QDialog):
         groups: list[tuple[str, list[QWidget]]] = [
             (
                 "KILLED IN ACTION",
-                [ShotDownRow(d, "KIA", OURS) for d in outcomes.deaths],
+                [ShotDownRow(d, "KIA", OURS) for d in shown(outcomes.deaths)],
             ),
             (
                 "SHOT DOWN & RECOVERED",
-                [ShotDownRow(s, "Unhurt", UNHURT) for s in outcomes.survivors],
+                [ShotDownRow(s, "Unhurt", UNHURT) for s in shown(outcomes.survivors)],
             ),
-            ("WOUNDED", [WoundedRow(w) for w in outcomes.wounded]),
-            ("PROMOTIONS", [PromotionRow(p) for p in outcomes.promotions]),
-            ("MORALE CHANGES", [MoraleRow(m) for m in outcomes.morale_shifts]),
+            ("WOUNDED", [WoundedRow(w) for w in shown(outcomes.wounded)]),
+            ("PROMOTIONS", [PromotionRow(p) for p in shown(outcomes.promotions)]),
+            ("MORALE CHANGES", [MoraleRow(m) for m in shown(outcomes.morale_shifts)]),
         ]
+        drawn = 0
         for title, rows in groups:
             if not rows:
                 continue
+            drawn += len(rows)
             column.addWidget(GroupHeader(title, len(rows)))
             for row in rows:
                 column.addWidget(row)
+        if not drawn:
+            # Everything that happened, happened to the other side, and this campaign
+            # does not report their aircrew.
+            return None
         return self._section("Pilots", "only groups with entries are drawn", card)
 
     def _losses_section(self, debriefing: Debriefing) -> QVBoxLayout:

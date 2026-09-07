@@ -161,22 +161,23 @@ def clamp(morale: int) -> int:
     return max(MORALE_MIN, min(MORALE_MAX, morale))
 
 
+#: How far a pilot settles back towards the middle each turn. Big enough that one very
+#: good or one very bad turn does not decide the rest of his campaign: a man knocked
+#: from 50 to 20 is back to Normal in three quiet turns, not thirty.
+DRIFT_PER_TURN = 5
+
+
 def drift(morale: int) -> int:
-    """One step back towards the middle, from either side.
+    """A step back towards the middle, from either side, never past it.
 
-    Without this a pilot who had one very good or one very bad turn stays there for the
-    rest of the campaign. It is applied once a turn, before anything else.
-
-    A man at rock bottom is the exception: he does not mend on his own. He will not fly,
-    so he can earn nothing back, and the only thing that lifts him is leave. That is what
-    makes the warning on his row worth reading -- ignore it and he is gone.
+    Applied once a turn before anything else. Rock bottom is not exempt -- he climbs
+    out of it like anyone else -- but the events of a hard turn can put him straight
+    back, and every turn he is there is another roll of :func:`desertion_chance`.
     """
-    if morale <= MORALE_MIN:
-        return 0
     if morale > MORALE_START:
-        return -1
+        return -min(DRIFT_PER_TURN, morale - MORALE_START)
     if morale < MORALE_START:
-        return 1
+        return min(DRIFT_PER_TURN, MORALE_START - morale)
     return 0
 
 

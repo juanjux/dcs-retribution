@@ -27,7 +27,7 @@ from .missiondata import MissionData
 
 if TYPE_CHECKING:
     from game import Game
-    from game.unitmap import UnitMap
+    from game.unitmap import FlyingUnit, UnitMap
 
 
 class LuaGenerator:
@@ -129,7 +129,7 @@ class LuaGenerator:
             if flying_unit.pilot is None:
                 continue
             name = escape_string_for_lua(unit_name)
-            pilot = escape_string_for_lua(flying_unit.pilot.name)
+            pilot = escape_string_for_lua(self._addressed(flying_unit))
             rows.append(f'  ["{name}"] = "{pilot}",')
         if not rows:
             return
@@ -139,6 +139,19 @@ class LuaGenerator:
         trigger.add_action(DoScript(String(preamble)))
         self.mission.triggerrules.triggers.append(trigger)
         logging.info("Seeded %d pilots for the mission log", len(rows))
+
+    @staticmethod
+    def _addressed(flying_unit: "FlyingUnit") -> str:
+        """The pilot as the rest of the game addresses him: rank first, when he holds one.
+
+        The in-mission log is the one place a pilot is named while you are flying with
+        him, so it should call him what the Air Wing does. Live Pilots off means nobody
+        holds a rank and it is just his name.
+        """
+        pilot = flying_unit.pilot
+        assert pilot is not None
+        rank = flying_unit.flight.squadron.pilot_rank(pilot)
+        return pilot.name if rank is None else f"{rank.abbreviation} {pilot.name}"
 
     def _inject_tic_script(self) -> None:
         """Inject TIC_v1.1.lua (Troops In Contact, by Grendel) as a core script.
