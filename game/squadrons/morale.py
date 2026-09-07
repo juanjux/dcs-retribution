@@ -58,27 +58,27 @@ class MoraleEvent:
 LOST_AIRCRAFT = MoraleEvent("morale_lost_aircraft", -15, "lost his aircraft")
 
 #: He flew a strike, a CAS or a SEAD and destroyed nothing at all.
-ACHIEVED_NOTHING = MoraleEvent("morale_achieved_nothing", -5, "came home empty")
+ACHIEVED_NOTHING = MoraleEvent("morale_achieved_nothing", -10, "came home empty")
 
 #: Per pilot of his own squadron killed. Friendship weighting is Tier IV.
-SQUADRON_DEATH = MoraleEvent("morale_squadron_death", -8, "lost a squadron mate")
+SQUADRON_DEATH = MoraleEvent("morale_squadron_death", -20, "lost a squadron mate")
 
 #: On top of the above, for the men who were in the same flight and watched it happen.
 #: The squadron hears about it; the flight saw it.
-FLIGHT_DEATH = MoraleEvent("morale_flight_death", -6, "watched his wingman go down")
+FLIGHT_DEATH = MoraleEvent("morale_flight_death", -10, "watched his wingman go down")
 
 #: Per turn a squadron mate will be in hospital, up to a cap. A wound is not a death,
 #: but a man carried out for four turns is felt more than one back next week.
-SQUADRON_WOUND = MoraleEvent("morale_squadron_wound", -2, "a squadron mate was wounded")
+SQUADRON_WOUND = MoraleEvent("morale_squadron_wound", -3, "a squadron mate was wounded")
 
 #: And again, extra, for the flight he was in.
-FLIGHT_WOUND = MoraleEvent("morale_flight_wound", -2, "a man in his flight was hit")
+FLIGHT_WOUND = MoraleEvent("morale_flight_wound", -1, "a man in his flight was hit")
 
 #: However long the medics keep him, a wound is never felt as hard as a grave.
 WOUND_TURNS_FELT = 3
 
 #: A base of his coalition changed hands.
-BASE_LOST = MoraleEvent("morale_base_lost", -6, "a base was lost")
+BASE_LOST = MoraleEvent("morale_base_lost", -2, "a base was lost")
 
 #: Turns a pilot will go without leave before it starts to tell on him.
 TURNS_BEFORE_LEAVE_IS_MISSED = 5
@@ -87,11 +87,11 @@ TURNS_BEFORE_LEAVE_IS_MISSED = 5
 NO_LEAVE = MoraleEvent("morale_no_leave", -2, "no leave in a long time")
 
 #: He asked for leave and was told no.
-LEAVE_REFUSED = MoraleEvent("morale_leave_refused", -6, "leave refused")
+LEAVE_REFUSED = MoraleEvent("morale_leave_refused", -5, "leave refused")
 
 #: He was on leave and was called back before it was up. Worse than never getting it:
 #: he had it in his hand.
-LEAVE_CANCELLED = MoraleEvent("morale_leave_cancelled", -10, "leave cut short")
+LEAVE_CANCELLED = MoraleEvent("morale_leave_cancelled", -8, "leave cut short")
 
 # --- what builds him up -----------------------------------------------------
 
@@ -102,13 +102,13 @@ AIR_KILL = MoraleEvent("morale_air_kill", 10, "shot one down")
 UNPLANNED_KILL = MoraleEvent("morale_unplanned_kill", 3, "took a target of opportunity")
 
 #: He flew the sortie and brought the aircraft home.
-MISSION_COMPLETE = MoraleEvent("morale_mission_complete", 4, "flew the mission")
+MISSION_COMPLETE = MoraleEvent("morale_mission_complete", 10, "flew the mission")
 
 #: His own promotion.
-PROMOTED = MoraleEvent("morale_promoted", 12, "promoted")
+PROMOTED = MoraleEvent("morale_promoted", 20, "promoted")
 
 #: Per turn of leave served.
-ON_LEAVE = MoraleEvent("morale_on_leave", 8, "on leave")
+ON_LEAVE = MoraleEvent("morale_on_leave", 15, "on leave")
 
 #: Every event, for the settings page and for tests that check nothing was forgotten.
 MORALE_EVENTS: tuple[MoraleEvent, ...] = (
@@ -133,6 +133,28 @@ MORALE_EVENTS: tuple[MoraleEvent, ...] = (
 def wound_is_felt_for(turns: int) -> int:
     """How many times a wound of this length is counted against a squadron."""
     return max(1, min(WOUND_TURNS_FELT, turns))
+
+
+#: What each of these was worth before the 2026-09-07 pass. Only the migrator reads it,
+#: to move a campaign already in progress onto the new figures -- and only where the save
+#: still holds the old default, so a number the player changed himself is left alone.
+PREVIOUS_DEFAULTS: dict[str, int] = {
+    "morale_lost_aircraft": -15,
+    "morale_achieved_nothing": -5,
+    "morale_squadron_death": -8,
+    "morale_flight_death": -6,
+    "morale_squadron_wound": -2,
+    "morale_flight_wound": -2,
+    "morale_base_lost": -6,
+    "morale_no_leave": -2,
+    "morale_leave_refused": -6,
+    "morale_leave_cancelled": -10,
+    "morale_air_kill": 10,
+    "morale_unplanned_kill": 3,
+    "morale_mission_complete": 4,
+    "morale_promoted": 12,
+    "morale_on_leave": 8,
+}
 
 
 def clamp(morale: int) -> int:
