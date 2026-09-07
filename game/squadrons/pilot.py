@@ -10,6 +10,7 @@ from dcs.unit import Skill
 
 from game.squadrons.morale import (
     MORALE_HISTORY_LIMIT,
+    SORTIE_HISTORY_LIMIT,
     MORALE_START,
     REFUSES_TO_FLY_AT,
     MoraleEvent,
@@ -98,6 +99,10 @@ class Pilot:
     #: campaign never depends on it.
     morale_log: list[MoraleLogEntry] = field(default_factory=list)
 
+    #: The turns he flew in, most recent last. Only the tail matters -- how hard he has
+    #: been worked lately is what decides whether he asks for a rest.
+    sorties_by_turn: list[int] = field(default_factory=list)
+
     def __setstate__(self, state: dict[str, Any]) -> None:
         state.setdefault("wounded_turns", 0)
         state.setdefault("wounded_on_turn", -1)
@@ -110,6 +115,7 @@ class Pilot:
         state.setdefault("leave_turns_requested", 0)
         state.setdefault("morale_last_turn", MORALE_START)
         state.setdefault("morale_log", [])
+        state.setdefault("sorties_by_turn", [])
         self.__dict__.update(state)
 
     @property
@@ -136,6 +142,21 @@ class Pilot:
     @property
     def wounded(self) -> bool:
         return self.status is PilotStatus.Wounded
+
+    def note_sortie(self, turn: int) -> None:
+        """He flew this turn. Only the recent tail is kept."""
+        self.sorties_by_turn.append(turn)
+        if len(self.sorties_by_turn) > SORTIE_HISTORY_LIMIT:
+            del self.sorties_by_turn[:-SORTIE_HISTORY_LIMIT]
+
+    def sorties_in_last(self, turns: int, current_turn: int) -> int:
+        """How many of the last ``turns`` turns he flew in.
+
+        Counted by turn rather than by sortie: two flights in one turn is one hard day,
+        not two.
+        """
+        floor = current_turn - turns
+        return len({t for t in self.sorties_by_turn if t > floor})
 
     def move_morale(
         self,
@@ -203,6 +224,10 @@ class Pilot:
         self.status = PilotStatus.Wounded
         self.wounded_turns = turns
         self.wounded_on_turn = turn
+        # He is already off the roster, in a bed. Asking for leave on top of it is
+        # nonsense, and any request he had made is overtaken by events.
+        self.wants_leave = False
+        self.leave_turns_requested = 0
 
     def serve_a_turn_wounded(self, turn: int) -> None:
         """One turn of the wound served. The last one puts him back on the roster.

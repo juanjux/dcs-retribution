@@ -53,6 +53,9 @@ class MissionResultsProcessor:
         self._xp_log: Optional[XpLog] = None
         #: Morale movements collected during the pass, applied once it is over.
         self._morale_events: dict[int, list[Any]] = {}
+        #: ``id()`` of the men the medics took this turn. A pilot does not mourn his
+        #: own wound, the way the dead do not mourn themselves.
+        self._wounded_this_turn: set[int] = set()
 
     def _note_morale(self, pilot: Any, event: Any, times: int = 1) -> None:
         """Remember that something happened to a pilot; it is applied at the end.
@@ -97,12 +100,15 @@ class MissionResultsProcessor:
                                 MoraleShift(
                                     pilot_name=pilot.name,
                                     squadron=str(squadron),
+                                    aircraft=str(squadron.aircraft),
+                                    rank=self._short_rank(squadron, pilot),
                                     before=before,
                                     after=pilot.morale,
                                     reasons=sorted(set(reasons)),
                                 )
                             )
         self._morale_events = {}
+        self._wounded_this_turn = set()
 
     def _note_shared_morale(self, debriefing: Debriefing) -> None:
         """What the whole squadron or the whole coalition felt.
@@ -115,6 +121,13 @@ class MissionResultsProcessor:
             dead_by_squadron[death.squadron] = (
                 dead_by_squadron.get(death.squadron, 0) + 1
             )
+        # A wound is counted by how long it keeps him, capped so it never weighs as
+        # much as a grave.
+        wounds_by_squadron: dict[str, int] = {}
+        for wound in debriefing.pilot_outcomes.wounded:
+            wounds_by_squadron[wound.squadron] = wounds_by_squadron.get(
+                wound.squadron, 0
+            ) + morale_rules.wound_is_felt_for(wound.turns)
 
         for coalition in (self.game.blue, self.game.red):
             lost = sum(
@@ -124,12 +137,24 @@ class MissionResultsProcessor:
             )
             for squadron in coalition.air_wing.iter_squadrons():
                 deaths = dead_by_squadron.get(str(squadron), 0)
+                wounds = wounds_by_squadron.get(str(squadron), 0)
                 for pilot in squadron.current_roster:
                     if not pilot.alive:
                         continue
-                    # A man does not mourn himself; the dead are already out of the
-                    # living roster by the time this runs.
+                    # A man does not mourn himself. The dead are already out of the
+                    # living roster by the time this runs; the wounded are not, so
+                    # their own wound is taken off their share.
+                    his_own = (
+                        morale_rules.wound_is_felt_for(hurt.turns)
+                        for hurt in debriefing.pilot_outcomes.wounded
+                        if id(pilot) in self._wounded_this_turn
+                        and hurt.pilot_name == pilot.name
+                        and hurt.squadron == str(squadron)
+                    )
                     self._note_morale(pilot, morale_rules.SQUADRON_DEATH, deaths)
+                    self._note_morale(
+                        pilot, morale_rules.SQUADRON_WOUND, wounds - sum(his_own)
+                    )
                     self._note_morale(pilot, morale_rules.BASE_LOST, lost)
 
     @property
@@ -374,8 +399,18 @@ class MissionResultsProcessor:
             if getattr(settings, "morale_enabled", True):
                 turns = morale_rules.recovery_turns(turns, pilot.morale)
             pilot.wound(turns, self.game.turn)
+            self._wounded_this_turn.add(id(pilot))
+            self._note_flight_morale(
+                loss.flight, pilot, morale_rules.FLIGHT_WOUND, turns
+            )
             debriefing.pilot_outcomes.wounded.append(
-                PilotWound(pilot.name, str(squadron), turns)
+                PilotWound(
+                    pilot.name,
+                    str(squadron),
+                    turns,
+                    aircraft=str(loss.flight.unit_type),
+                    rank=self._short_rank(squadron, pilot),
+                )
             )
             note(f"wounded, out for {turns_phrase(turns)}")
             logging.info(
@@ -385,7 +420,29 @@ class MissionResultsProcessor:
 
         note("died")
         pilot.kill()
+        self._note_flight_morale(loss.flight, pilot, morale_rules.FLIGHT_DEATH)
         debriefing.pilot_outcomes.deaths.append(record)
+
+    @staticmethod
+    def _short_rank(squadron: Any, pilot: Any) -> str:
+        rank = squadron.pilot_rank(pilot)
+        return "" if rank is None else rank.abbreviation
+
+    def _note_flight_morale(
+        self, flight: Any, casualty: Any, event: Any, turns: int = 1
+    ) -> None:
+        """The men who were up there with him take it harder than the rest.
+
+        Only the flight, not the package: the four who were on his wing saw it, and the
+        strike twenty miles away heard about it later like everybody else.
+        """
+        if not getattr(self.game.settings, "morale_enabled", True):
+            return
+        times = morale_rules.wound_is_felt_for(turns) if turns > 1 else 1
+        for mate in flight.roster.iter_pilots():
+            if mate is None or mate is casualty or not mate.alive:
+                continue
+            self._note_morale(mate, event, times)
 
     def _describe_loss(self, loss: Any, debriefing: Debriefing) -> PilotDeath:
         squadron = loss.flight.squadron
@@ -399,6 +456,9 @@ class MissionResultsProcessor:
             aircraft=str(loss.flight.unit_type),
             killed_by=killer,
             friendly_fire=friendly,
+            rank=(
+                self._short_rank(squadron, loss.pilot) if loss.pilot is not None else ""
+            ),
         )
 
     def _describe_killer(
@@ -601,6 +661,7 @@ class MissionResultsProcessor:
                         )
                         continue
                     pilot.record.missions_flown += 1
+                    pilot.note_sortie(self.game.turn)
                     self._note_mission_morale(
                         flight, squadron, pilot, debriefing, earned
                     )
@@ -676,6 +737,7 @@ class MissionResultsProcessor:
                                 to_rank=after.abbreviation,
                                 to_rank_full=after.name,
                                 player=pilot.player,
+                                aircraft=str(squadron.aircraft),
                             )
                         )
                     self.xp_log.collected(

@@ -36,8 +36,13 @@ class XpLog:
         )
 
     @staticmethod
-    def _who(pilot: Any, squadron: Any, aircraft: Any) -> str:
-        return f"{pilot.name} ({squadron}, {aircraft})"
+    def _who(pilot: Any, squadron: Any, aircraft: Any = None) -> str:
+        """A pilot as he is addressed: rank first, the way the rest of the game does."""
+        rank = squadron.pilot_rank(pilot) if hasattr(squadron, "pilot_rank") else None
+        name = pilot.name if rank is None else f"{rank.abbreviation} {pilot.name}"
+        if aircraft is None:
+            return f"{name} ({squadron})"
+        return f"{name} ({squadron}, {aircraft})"
 
     def fate(
         self,
@@ -79,7 +84,7 @@ class XpLog:
             reason if n == 1 else f"{reason} x{n}" for reason, n in tally.items()
         )
         self._lines.append(
-            f"  {pilot.name} ({squadron}) morale {before} -> {after} ({detail})"
+            f"  {self._who(pilot, squadron)} morale {before} -> {after} ({detail})"
         )
 
     def collected(

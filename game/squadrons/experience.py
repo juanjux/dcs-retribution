@@ -110,6 +110,8 @@ class PilotDeath:
     pilot_name: str
     squadron: str
     aircraft: str
+    #: His rank, abbreviated, as the debriefing addresses him.
+    rank: str = ""
     #: Already-formatted attribution: a roster pilot, a human's name, an airframe type,
     #: "a crash", or a friendly-fire note. None when nothing at all is known.
     killed_by: Optional[str] = None
@@ -128,6 +130,8 @@ class PilotWound:
     pilot_name: str
     squadron: str
     turns: int
+    aircraft: str = ""
+    rank: str = ""
 
 
 @dataclass
@@ -143,6 +147,8 @@ class PilotPromotion:
     #: Whether this is a pilot the human flies himself, who is told about it.
     player: bool = False
 
+    aircraft: str = ""
+
 
 @dataclass
 class MoraleShift:
@@ -153,6 +159,8 @@ class MoraleShift:
     before: int
     after: int
     reasons: list[str]
+    aircraft: str = ""
+    rank: str = ""
 
 
 @dataclass

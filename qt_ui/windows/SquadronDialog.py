@@ -4,6 +4,7 @@ from functools import partial
 from typing import Callable, Iterator, Optional, Type
 
 from PySide6.QtCore import (
+    QEvent,
     QItemSelection,
     QItemSelectionModel,
     QModelIndex,
@@ -11,7 +12,7 @@ from PySide6.QtCore import (
     QSize,
     Qt,
 )
-from PySide6.QtGui import QColor, QFont, QPainter, QPalette
+from PySide6.QtGui import QColor, QFont, QHelpEvent, QPainter, QPalette
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QApplication,
@@ -30,6 +31,7 @@ from PySide6.QtWidgets import (
     QStyle,
     QStyledItemDelegate,
     QStyleOptionViewItem,
+    QToolTip,
     QVBoxLayout,
     QWidget,
 )
@@ -48,6 +50,7 @@ from game.squadrons import Pilot, Squadron
 from game.theater import ConflictTheater, ControlPoint, ParkingType
 from game.squadrons.pilot import PilotStatus
 from qt_ui.delegates import painter_context
+from game.squadrons.morale import RANK_LEVELS
 from qt_ui.rankstars import (
     STAR_EMPTY,
     STAR_EMPTY_DIMMED,
@@ -125,10 +128,15 @@ LEFT_PANEL_WIDTH = 574
 PILOT_ROW_HEIGHT = 52
 FALLEN_ROW_HEIGHT = 36
 
-#: The left column ends here, and the notes column runs between these two.
+#: The left column ends here, and the notes column starts here. Where it *ends* is not
+#: fixed: it runs to wherever the morale and status block begins, so widening the window
+#: gives the warnings the room rather than leaving them clipped at a hard stop.
 COLUMN_A_RIGHT = 290
 NOTES_LEFT = 300
-NOTES_RIGHT = 430
+#: What the right-hand block needs at its widest ("Wounded · 4 turns to recover").
+STATE_BLOCK_WIDTH = 200
+#: Below this the notes are unreadable anyway, so let them clip rather than collide.
+NOTES_MIN_WIDTH = 60
 MARGIN = 14
 
 
@@ -206,7 +214,7 @@ class PilotDelegate(QStyledItemDelegate, PilotRowPainter):
             painter.fillRect(0, 51, width, 1, QColor(ROW_SEPARATOR))
 
             self._paint_identity(painter, pilot, selected)
-            self._paint_notes(painter, pilot)
+            self._paint_notes(painter, pilot, width)
             self._paint_state(painter, pilot, width, selected)
 
     # --- who he is ----------------------------------------------------------
@@ -281,7 +289,7 @@ class PilotDelegate(QStyledItemDelegate, PilotRowPainter):
 
     # --- what wants a decision ----------------------------------------------
 
-    def _paint_notes(self, painter: QPainter, pilot: Pilot) -> None:
+    def _paint_notes(self, painter: QPainter, pilot: Pilot, width: int) -> None:
         note = self.note_for(pilot)
         if note is None:
             return
@@ -291,10 +299,42 @@ class PilotDelegate(QStyledItemDelegate, PilotRowPainter):
         painter.drawText(NOTES_LEFT, 30, "▲")
         x = NOTES_LEFT + painter.fontMetrics().horizontalAdvance("▲") + 6
         painter.setFont(_font(11.5))
+        room = max(NOTES_MIN_WIDTH, width - MARGIN - STATE_BLOCK_WIDTH - x)
         text = painter.fontMetrics().elidedText(
-            text, Qt.TextElideMode.ElideRight, NOTES_RIGHT - x
+            text, Qt.TextElideMode.ElideRight, int(room)
         )
         painter.drawText(int(x), 30, text)
+
+    def helpEvent(
+        self,
+        event: QHelpEvent,
+        view: QAbstractItemView,
+        option: QStyleOptionViewItem,
+        index: QModelIndex,
+    ) -> bool:
+        """The whole row in words, for whatever the row had to shorten.
+
+        A painted row has no text for Qt to offer as a tooltip, so it is built here --
+        which also means the rank name and the warning survive being elided.
+        """
+        if event.type() != QEvent.Type.ToolTip or not index.isValid():
+            return super().helpEvent(event, view, option, index)
+        pilot = self.squadron_model.pilot_at_index(index)
+        level, rank_name = self.rank_of(pilot)
+        count, word = self.missions_of(pilot)
+        lines = [f"<b>{pilot.name}</b>{' — player' if pilot.player else ''}"]
+        if rank_name:
+            lines.append(f"{rank_name} ({level} of {RANK_LEVELS})")
+        lines.append(f"{count} {word} flown")
+        if self.morale_in_play:
+            lines.append(f"Morale: {morale_rules.morale_state(pilot.morale).name}")
+        status, _, detail, _ = self._status_of(pilot, False)
+        lines.append(f"{status} {detail}".strip())
+        note = self.note_for(pilot)
+        if note is not None:
+            lines.append(note[0])
+        QToolTip.showText(event.globalPos(), "<br>".join(lines), view)
+        return True
 
     def note_for(self, pilot: Pilot) -> Optional[tuple[str, str]]:
         """Anything the player could act on, never what the game has already decided.
@@ -1242,11 +1282,30 @@ class SquadronDialog(QDialog):
         )
 
     def toggle_leave(self) -> None:
+        """Grant leave for a length, or call a man back and pay for it."""
         index = self.pilot_list.currentIndex()
         if not index.isValid():
             logging.error("Cannot toggle on leave state: no pilot is selected")
             return
-        self.squadron_model.toggle_leave_state(index)
+        pilot = self.squadron_model.pilot_at_index(index)
+        turns = 0
+        if not pilot.on_leave:
+            # For how long, rather than until you remember him: leave granted here now
+            # runs down on its own like a wound.
+            turns, ok = QInputDialog.getInt(
+                self,
+                "Send on leave",
+                f"How many turns of leave for {pilot.name}?",
+                morale_rules.DEFAULT_LEAVE_TURNS,
+                1,
+                morale_rules.MAX_LEAVE_TURNS,
+            )
+            if not ok:
+                return
+        with report_errors("Could not change leave", self):
+            self.squadron_model.toggle_leave_state(index, turns)
+        self._refresh_roster_summary()
+        self.reset_button_states(self.pilot_list.currentIndex())
 
     def reset_leave_toggle_state(self, index: QModelIndex) -> None:
         if self.check_disabled_button_states(self.toggle_leave_button, index):

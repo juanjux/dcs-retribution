@@ -50,7 +50,13 @@ def _fate(settings: Settings, pilot: Pilot) -> Any:
     processor = MissionResultsProcessor(game)
     loss = SimpleNamespace(
         pilot=pilot,
-        flight=SimpleNamespace(squadron=_Squadron(settings), unit_type="F/A-18C"),
+        flight=SimpleNamespace(
+            squadron=_Squadron(settings),
+            unit_type="F/A-18C",
+            # The flight is asked who else was up there, to take it harder than the
+            # rest of the squadron.
+            roster=SimpleNamespace(iter_pilots=lambda: []),
+        ),
     )
     debriefing: Any = SimpleNamespace(
         pilot_outcomes=PilotOutcomes(),
