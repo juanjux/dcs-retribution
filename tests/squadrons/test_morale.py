@@ -155,6 +155,7 @@ def _squadron(settings: Settings) -> Any:
     squadron.country = None
     squadron.name = "Zero Company"
     squadron.nickname = None
+    squadron.available_pilots = []
     return squadron
 
 
@@ -320,6 +321,55 @@ def test_a_man_in_a_hospital_bed_does_not_ask_for_leave() -> None:
 
     squadron.tend_morale(2)
     assert not pilot.wants_leave
+
+
+# --- who is on offer --------------------------------------------------------
+
+
+def test_a_man_sent_on_leave_stops_being_offered_at_once() -> None:
+    """The pool is only rebuilt between turns, so taking him off duty has to say so."""
+    squadron = _squadron(_live_settings())
+    pilot = Pilot("Vega")
+    squadron.current_roster = [pilot]
+    squadron.available_pilots = [pilot]
+
+    squadron.send_on_leave(pilot, 2, turn=5)
+
+    assert squadron.available_pilots == []
+
+
+def test_and_he_is_offered_again_the_moment_he_is_back() -> None:
+    squadron = _squadron(_live_settings())
+    pilot = Pilot("Vega")
+    squadron.current_roster = [pilot]
+    squadron.available_pilots = [pilot]
+    squadron.send_on_leave(pilot, 2, turn=5)
+
+    squadron.return_from_leave(pilot)
+
+    assert [p.name for p in squadron.available_pilots] == ["Vega"]
+
+
+def test_a_discharged_pilot_is_not_offered() -> None:
+    squadron = _squadron(_live_settings())
+    pilot = Pilot("Vega")
+    squadron.current_roster = [pilot]
+    squadron.available_pilots = [pilot]
+
+    squadron.discharge(pilot)
+
+    assert squadron.available_pilots == []
+
+
+def test_nobody_is_offered_twice() -> None:
+    squadron = _squadron(_live_settings())
+    pilot = Pilot("Vega")
+    squadron.current_roster = [pilot]
+    squadron.available_pilots = [pilot]
+
+    squadron.joins_the_pool(pilot)
+
+    assert len(squadron.available_pilots) == 1
 
 
 # --- the end of a pilot -----------------------------------------------------
