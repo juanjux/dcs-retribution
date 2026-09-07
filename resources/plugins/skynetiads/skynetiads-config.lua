@@ -27,6 +27,7 @@ if dcsRetribution and SkynetIADS then
     local actMobileMaxEmissionTime_merad = 120
     local actMobileMinimumScootDistance_merad = 500
     local actMobileMaximumScootDistance_merad = 3000
+    local contactUpdateInterval = 15
     local adjustGoLiveRange = false
     local adjustGoLiveRange_SA5 = 100
     local adjustGoLiveRange_SA10 = 100
@@ -52,6 +53,7 @@ if dcsRetribution and SkynetIADS then
             actMobileMaxEmissionTime_merad = dcsRetribution.plugins.skynetiads.actMobileMaxEmissionTime_merad
             actMobileMinimumScootDistance_merad = dcsRetribution.plugins.skynetiads.actMobileMinimumScootDistance_merad
             actMobileMaximumScootDistance_merad = dcsRetribution.plugins.skynetiads.actMobileMaximumScootDistance_merad
+            contactUpdateInterval = dcsRetribution.plugins.skynetiads.contactUpdateInterval
             adjustGoLiveRange = dcsRetribution.plugins.skynetiads.adjustGoLiveRange
             adjustGoLiveRange_SA5 = dcsRetribution.plugins.skynetiads.adjustGoLiveRange_SA5
             adjustGoLiveRange_SA10 = dcsRetribution.plugins.skynetiads.adjustGoLiveRange_SA10
@@ -210,6 +212,15 @@ if dcsRetribution and SkynetIADS then
             --activate the radio menu to toggle IADS Status output
             env.info("DCSRetribution|Skynet-IADS plugin - adding in radio menu")
             iads:addRadioMenu()
+        end
+
+        -- How often the whole network re-reads its radars and re-decides who wakes.
+        -- Skynet's own default is 5 seconds, which is the single biggest cost it has on
+        -- a large map; MANTIS, for comparison, runs at 30. The price of raising it is
+        -- latency -- a site can take up to this long to notice something -- so it is a
+        -- setting rather than a number picked here.
+        if contactUpdateInterval and tonumber(contactUpdateInterval) then
+            iads:setUpdateInterval(tonumber(contactUpdateInterval))
         end
 
         --activate the IADS

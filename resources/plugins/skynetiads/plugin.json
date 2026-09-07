@@ -79,6 +79,11 @@
             "defaultValue": 3000
         },
         {
+            "nameInUI": "Network update interval (s) - raise it if the mission stutters",
+            "mnemonic": "contactUpdateInterval",
+            "defaultValue": 15
+        },
+        {
             "nameInUI": "Adjust default SAM go-live range",
             "mnemonic": "adjustGoLiveRange",
             "defaultValue": false

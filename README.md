@@ -59,6 +59,11 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   its emitters; package route lines show flight/package info on hover. (The
   click-to-select half of this made it upstream as #761.)
   ([#8](https://github.com/juanjux/dcs-retribution/pull/8))
+- **The IADS update interval is a setting.** Skynet re-reads every radar in the network
+  and re-decides who wakes every **5 seconds**, which is the single biggest cost it
+  carries on a large map -- MANTIS, for comparison, runs its equivalent at 30. It is now
+  a plugin option, default **15**. The price of raising it is latency: a site can take up
+  to that long to notice something.
 - **Skynet now comes from our own fork.** Upstream
   [walder/Skynet-IADS](https://github.com/walder/Skynet-IADS) has had no commit in about
   three years and every fork of it looks abandoned too, so the script lives at
