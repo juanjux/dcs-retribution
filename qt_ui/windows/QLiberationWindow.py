@@ -276,7 +276,10 @@ class QLiberationWindow(QMainWindow):
             (self.openSettingsAction, self.openStatsAction, self.openNotesAction),
         )
 
-        corner = QWidget()
+        # Held on the window: PySide does not take ownership of a corner widget, so a
+        # local would be collected the moment this returns and Qt would destroy it --
+        # which is exactly how the icons vanished the first time.
+        corner = self.menu_corner = QWidget()
         row = QHBoxLayout()
         row.setContentsMargins(0, 0, 6, 0)
         row.setSpacing(4)
