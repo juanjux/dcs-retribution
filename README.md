@@ -219,6 +219,12 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   state at each end. It reports a change of state now, which is the thing the row can
   show; the figures stay in the ledger.
 
+- **Settings pages index their own sections.** A page with several boxes was a scroll
+  rather than something to navigate -- Campaign Management now has seven. Any page with
+  more than one section gets a list of them beside it and shows one at a time, the same
+  move the dialog makes with its pages, and a section with nothing left to show drops out
+  of the list. "Campaign Management+" is folded into Campaign Management.
+
 ### Kneeboards
 - **Friendly-packages list** plus a **package-targets map** page.
   ([#11](https://github.com/juanjux/dcs-retribution/pull/11))

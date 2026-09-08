@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
     QDialog,
+    QFileDialog,
     QGridLayout,
     QGroupBox,
     QHBoxLayout,
@@ -20,13 +21,15 @@ from PySide6.QtWidgets import (
     QLayout,
     QLineEdit,
     QListView,
+    QListWidget,
+    QListWidgetItem,
     QPushButton,
     QScrollArea,
     QSpinBox,
     QStackedLayout,
+    QStackedWidget,
     QVBoxLayout,
     QWidget,
-    QFileDialog,
 )
 
 import qt_ui.uiconstants as CONST
@@ -658,15 +661,36 @@ class AutoSettingsGroup(QGroupBox):
         self.layout = AutoSettingsLayout(page, section, sc, write_full_settings)
         self.setLayout(self.layout)
 
-    def apply_visibility(self) -> None:
-        self.setVisible(self.layout.apply_visibility())
+    def apply_visibility(self, hide_self: bool = True) -> bool:
+        """Whether this section has anything left to show.
+
+        A page that puts its sections in a stack shows one at a time and asks the
+        stack to do it, so it passes hide_self=False and hides the section's entry in
+        the index instead.
+        """
+        shown = self.layout.apply_visibility()
+        if hide_self:
+            self.setVisible(shown)
+        return shown
 
     def update_from_settings(self) -> None:
         self.layout.update_from_settings()
         self.apply_visibility()
 
 
-class AutoSettingsPageLayout(QVBoxLayout):
+#: The index of sections down the left of a page, between the settings dialog's own
+#: list and the settings themselves.
+SECTION_LIST_WIDTH = 170
+
+
+class AutoSettingsPage(QWidget):
+    """A settings page: its sections, and an index of them when there are several.
+
+    A page with seven boxes on it is a scroll rather than a thing you navigate, so
+    anything with more than one section gets a list of them beside it and shows one
+    at a time -- the same move the dialog itself makes with its pages.
+    """
+
     def __init__(
         self,
         page: str,
@@ -674,50 +698,65 @@ class AutoSettingsPageLayout(QVBoxLayout):
         write_full_settings: Callable[[], None],
     ) -> None:
         super().__init__()
-        self.setAlignment(Qt.AlignmentFlag.AlignTop)
-
-        self.widgets = []
-        for section in Settings.sections(page):
-            self.widgets.append(
-                AutoSettingsGroup(page, section, sc, write_full_settings)
-            )
-            self.addWidget(self.widgets[-1])
-
-        for group in self.widgets:
+        self.groups = [
+            AutoSettingsGroup(page, section, sc, write_full_settings)
+            for section in Settings.sections(page)
+        ]
+        for group in self.groups:
             group.layout.on_settings_changed = self.refresh_page
+
+        row = QHBoxLayout()
+        row.setContentsMargins(0, 0, 0, 0)
+        row.setSpacing(12)
+        self.setLayout(row)
+
+        self.stack = QStackedWidget()
+        self.sections: Optional[QListWidget] = None
+        if len(self.groups) > 1:
+            self.sections = QListWidget()
+            self.sections.setFixedWidth(SECTION_LIST_WIDTH)
+            for group in self.groups:
+                self.sections.addItem(QListWidgetItem(group.title()))
+            self.sections.setCurrentRow(0)
+            self.sections.currentRowChanged.connect(self._show_section)
+            row.addWidget(self.sections)
+        for group in self.groups:
+            self.stack.addWidget(group)
+        row.addWidget(self.stack, 1)
+
+        # Only now do the group boxes have a parent, and only now is hiding one of
+        # them a layout change rather than a stray window.
+        self.refresh_page()
+
+    def _show_section(self, index: int) -> None:
+        if 0 <= index < self.stack.count():
+            self.stack.setCurrentIndex(index)
 
     def refresh_page(self) -> None:
         """Re-evaluate every group, since one section can hide another's settings.
 
-        Never call this while the layout is still being built. A group box added to
-        a layout that is not yet installed on a widget has no parent, and showing a
-        parentless widget in Qt makes it a window: the settings dialog flashed a
-        handful of white frames that resized and vanished as the real parent
-        arrived. The page calls it once its layout is in place."""
-        for group in self.widgets:
-            group.apply_visibility()
+        A section with nothing left to show drops out of the index rather than
+        leaving an empty box behind it.
+        """
+        stacked = self.sections is not None
+        first_shown = None
+        for index, group in enumerate(self.groups):
+            shown = group.apply_visibility(hide_self=not stacked)
+            if not stacked:
+                continue
+            assert self.sections is not None
+            self.sections.item(index).setHidden(not shown)
+            if shown and first_shown is None:
+                first_shown = index
+        if stacked and first_shown is not None:
+            assert self.sections is not None
+            if self.sections.item(self.sections.currentRow()).isHidden():
+                self.sections.setCurrentRow(first_shown)
 
     def update_from_settings(self) -> None:
-        for w in self.widgets:
-            w.update_from_settings()
-
-
-class AutoSettingsPage(QWidget):
-    def __init__(
-        self,
-        page: str,
-        sc: SettingsContainer,
-        write_full_settings: Callable[[], None],
-    ) -> None:
-        super().__init__()
-        self.layout = AutoSettingsPageLayout(page, sc, write_full_settings)
-        self.setLayout(self.layout)
-        # Only now do the group boxes have a parent, and only now is hiding one of
-        # them a layout change rather than a stray window.
-        self.layout.refresh_page()
-
-    def update_from_settings(self) -> None:
-        self.layout.update_from_settings()
+        for group in self.groups:
+            group.update_from_settings()
+        self.refresh_page()
 
 
 class QSettingsWindow(QDialog):

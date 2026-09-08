@@ -79,7 +79,6 @@ MISSION_DIFFICULTY_SECTION = "Mission Difficulty"
 MISSION_RESTRICTIONS_SECTION = "Mission Restrictions"
 
 CAMPAIGN_MANAGEMENT_PAGE = "Campaign Management"
-ADVANCED_CAMPAIGN_MANAGEMENT_PAGE = "Campaign Management+"
 
 GENERAL_SECTION = "General"
 PILOTS_AND_SQUADRONS_SECTION = "Pilots and Squadrons"
@@ -1021,10 +1020,10 @@ class Settings:
         " A smaller number will ignore squadrons with a matching primary task that are too far out.",
     )
 
-    # Campaign Management+
+    # Repairs, formerly the "Campaign Management+" page
     sam_repair_budget_fraction: float = bounded_float_option(
         "SAM repair budget fraction",
-        page=ADVANCED_CAMPAIGN_MANAGEMENT_PAGE,
+        page=CAMPAIGN_MANAGEMENT_PAGE,
         section=GROUND_OBJECT_REPAIR_TUNING_SECTION,
         min=0.0,
         max=1.0,
@@ -1034,7 +1033,7 @@ class Settings:
     )
     sam_repair_priority_threshold: float = bounded_float_option(
         "SAM repair priority threshold",
-        page=ADVANCED_CAMPAIGN_MANAGEMENT_PAGE,
+        page=CAMPAIGN_MANAGEMENT_PAGE,
         section=GROUND_OBJECT_REPAIR_TUNING_SECTION,
         min=0.0,
         max=5.0,
@@ -1044,7 +1043,7 @@ class Settings:
     )
     sam_repair_weight_threat: float = bounded_float_option(
         "SAM repair weight: threat range",
-        page=ADVANCED_CAMPAIGN_MANAGEMENT_PAGE,
+        page=CAMPAIGN_MANAGEMENT_PAGE,
         section=GROUND_OBJECT_REPAIR_TUNING_SECTION,
         min=0.0,
         max=5.0,
@@ -1054,7 +1053,7 @@ class Settings:
     )
     sam_repair_weight_frontline: float = bounded_float_option(
         "SAM repair weight: frontline",
-        page=ADVANCED_CAMPAIGN_MANAGEMENT_PAGE,
+        page=CAMPAIGN_MANAGEMENT_PAGE,
         section=GROUND_OBJECT_REPAIR_TUNING_SECTION,
         min=0.0,
         max=5.0,
@@ -1064,7 +1063,7 @@ class Settings:
     )
     sam_repair_weight_cp_coverage: float = bounded_float_option(
         "SAM repair weight: CP coverage",
-        page=ADVANCED_CAMPAIGN_MANAGEMENT_PAGE,
+        page=CAMPAIGN_MANAGEMENT_PAGE,
         section=GROUND_OBJECT_REPAIR_TUNING_SECTION,
         min=0.0,
         max=5.0,
@@ -1074,7 +1073,7 @@ class Settings:
     )
     sam_repair_weight_tgo_coverage: float = bounded_float_option(
         "SAM repair weight: TGO coverage",
-        page=ADVANCED_CAMPAIGN_MANAGEMENT_PAGE,
+        page=CAMPAIGN_MANAGEMENT_PAGE,
         section=GROUND_OBJECT_REPAIR_TUNING_SECTION,
         min=0.0,
         max=5.0,
@@ -1084,7 +1083,7 @@ class Settings:
     )
     sam_repair_weight_tgo_income: float = bounded_float_option(
         "SAM repair weight: TGO income",
-        page=ADVANCED_CAMPAIGN_MANAGEMENT_PAGE,
+        page=CAMPAIGN_MANAGEMENT_PAGE,
         section=GROUND_OBJECT_REPAIR_TUNING_SECTION,
         min=0.0,
         max=5.0,
@@ -1094,7 +1093,7 @@ class Settings:
     )
     building_repair_income_multiplier: float = bounded_float_option(
         "Building repair income multiplier",
-        page=ADVANCED_CAMPAIGN_MANAGEMENT_PAGE,
+        page=CAMPAIGN_MANAGEMENT_PAGE,
         section=BUILDING_REPAIR_TUNING_SECTION,
         min=0,
         max=20,
@@ -1104,7 +1103,7 @@ class Settings:
     )
     building_repair_ammo_bonus: float = bounded_float_option(
         "Building repair ammo bonus",
-        page=ADVANCED_CAMPAIGN_MANAGEMENT_PAGE,
+        page=CAMPAIGN_MANAGEMENT_PAGE,
         section=BUILDING_REPAIR_TUNING_SECTION,
         min=0,
         max=50,
@@ -1114,7 +1113,7 @@ class Settings:
     )
     building_repair_factory_bonus: float = bounded_float_option(
         "Building repair factory bonus",
-        page=ADVANCED_CAMPAIGN_MANAGEMENT_PAGE,
+        page=CAMPAIGN_MANAGEMENT_PAGE,
         section=BUILDING_REPAIR_TUNING_SECTION,
         min=0,
         max=50,
@@ -1124,7 +1123,7 @@ class Settings:
     )
     building_repair_weight_remote: float = bounded_float_option(
         "Building repair weight: remote",
-        page=ADVANCED_CAMPAIGN_MANAGEMENT_PAGE,
+        page=CAMPAIGN_MANAGEMENT_PAGE,
         section=BUILDING_REPAIR_TUNING_SECTION,
         min=0,
         max=5,
@@ -1137,7 +1136,7 @@ class Settings:
     )
     building_repair_weight_income: float = bounded_float_option(
         "Building repair weight: income",
-        page=ADVANCED_CAMPAIGN_MANAGEMENT_PAGE,
+        page=CAMPAIGN_MANAGEMENT_PAGE,
         section=BUILDING_REPAIR_TUNING_SECTION,
         min=0,
         max=5,
@@ -1150,7 +1149,7 @@ class Settings:
     )
     building_repair_weight_ammo_frontline: float = bounded_float_option(
         "Building repair weight: ammo frontline",
-        page=ADVANCED_CAMPAIGN_MANAGEMENT_PAGE,
+        page=CAMPAIGN_MANAGEMENT_PAGE,
         section=BUILDING_REPAIR_TUNING_SECTION,
         min=0,
         max=5,
