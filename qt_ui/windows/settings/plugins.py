@@ -153,12 +153,21 @@ class PluginRow(QWidget):
         head.addWidget(name)
 
         if plugin.options:
+            # The gears, the same icon the main toolbar opens settings with -- the
+            # plug belongs to the plugin list, not to its options. Framed, because
+            # flat it read as decoration rather than something to press.
             self.gear = QToolButton()
-            self.gear.setIcon(CONST.ICONS["PluginsOptions"])
+            self.gear.setIcon(CONST.ICONS["Settings"])
             self.gear.setIconSize(QSize(16, 16))
-            self.gear.setAutoRaise(True)
+            self.gear.setFixedSize(24, 24)
             self.gear.setToolTip(f"{plugin.name} options")
             self.gear.setCursor(Qt.CursorShape.PointingHandCursor)
+            self.gear.setStyleSheet(
+                "QToolButton { background: #2D3E50; border: 1px solid #3A4B5C;"
+                " border-radius: 3px; }"
+                "QToolButton:hover { background: #33475C; }"
+                "QToolButton:pressed { background: #22303B; }"
+            )
             self.gear.clicked.connect(self.open_options)
             head.addWidget(self.gear)
         head.addStretch()
