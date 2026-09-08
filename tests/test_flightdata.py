@@ -61,8 +61,8 @@ def test_every_flightdata_construction_passes_start_type() -> None:
     """Every `FlightData(...)` call in game/ must pass start_type=.
 
     Regression guard: a new required field was once added to FlightData
-    without updating PretenseFlightGroupConfigurator, which broke every
-    Pretense mission gen at runtime. AST scan catches this contract drift.
+    without updating one of its callers, which broke that mission generator
+    at runtime. AST scan catches this contract drift.
     """
     sites = _flightdata_construction_sites()
     assert sites, "expected to find FlightData construction sites in game/"

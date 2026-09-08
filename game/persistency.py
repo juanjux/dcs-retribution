@@ -440,10 +440,6 @@ def save_dir() -> Path:
     return _create_dir_if_needed(base_path() / "Retribution" / "Saves")
 
 
-def pre_pretense_backups_dir() -> Path:
-    return _create_dir_if_needed(save_dir() / "PrePretenseBackups")
-
-
 def server_port() -> int:
     global _server_port
     return _server_port

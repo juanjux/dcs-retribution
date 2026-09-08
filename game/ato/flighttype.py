@@ -58,12 +58,20 @@ class FlightType(Enum):
     FERRY = "Ferry"
     AIR_ASSAULT = "Air Assault"
     SEAD_SWEEP = "SEAD Sweep"  # Reintroduce legacy "engage-whatever-you-can-find" SEAD
-    PRETENSE_CARGO = "Cargo Transport"  # For Pretense campaign AI cargo planes
     ARMED_RECON = "Armed Recon"
     RECOVERY = "Recovery"
 
     def __str__(self) -> str:
         return self.value
+
+    @classmethod
+    def _missing_(cls, value: object) -> FlightType | None:
+        # Pretense support was removed, but a campaign that generated a Pretense
+        # mission kept its cargo flights in the save. Read them back as ordinary
+        # transports rather than failing to load the game.
+        if value == "Cargo Transport":
+            return cls.TRANSPORT
+        return None
 
     @classmethod
     def from_name(cls, name: str) -> FlightType:
@@ -127,6 +135,5 @@ class FlightType(Enum):
             FlightType.SWEEP: AirEntity.FIGHTER,
             FlightType.TARCAP: AirEntity.FIGHTER,
             FlightType.TRANSPORT: AirEntity.UTILITY,
-            FlightType.PRETENSE_CARGO: AirEntity.UTILITY,
             FlightType.AIR_ASSAULT: AirEntity.ROTARY_WING,
         }.get(self, AirEntity.UNSPECIFIED)

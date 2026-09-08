@@ -204,16 +204,6 @@ class Game:
         self.blue.configure_default_air_wing(air_wing_config)
         self.red.configure_default_air_wing(air_wing_config)
 
-        # Side, control point, mission type
-        self.pretense_ground_supply: dict[int, dict[str, List[str]]] = {1: {}, 2: {}}
-        self.pretense_ground_assault: dict[int, dict[str, List[str]]] = {1: {}, 2: {}}
-        self.pretense_air: dict[int, dict[str, dict[FlightType, List[str]]]] = {
-            1: {},
-            2: {},
-        }
-        self.pretense_air_groups: dict[str, Flight] = {}
-        self.pretense_carrier_zones: List[str] = []
-
         self.on_load(game_still_initializing=True)
 
     def __setstate__(self, state: dict[str, Any]) -> None:
