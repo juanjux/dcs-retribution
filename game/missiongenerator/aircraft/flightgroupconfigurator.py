@@ -368,10 +368,6 @@ class FlightGroupConfigurator:
         settings = self.game.settings
         if not settings.live_pilots_enabled:
             return
-        # The rank prefix is part of Live Pilots rather than a switch of its own.
-        show_ranks = True
-        show_names = settings.live_pilots_show_names
-
         squadron = self.flight.squadron
         used: set[str] = set()
         for index, (unit, member) in enumerate(
@@ -380,15 +376,13 @@ class FlightGroupConfigurator:
             pilot = member.pilot
             if pilot is None:
                 continue
+            # Rank and name both come with Live Pilots; neither is a switch of its
+            # own. Naming the men is most of what the feature is for.
             parts: list[str] = []
-            if show_ranks:
-                rank = squadron.pilot_rank(pilot)
-                if rank is not None:
-                    parts.append(rank.abbreviation)
-            if show_names:
-                parts.append(pilot.name)
-            if not parts:
-                continue
+            rank = squadron.pilot_rank(pilot)
+            if rank is not None:
+                parts.append(rank.abbreviation)
+            parts.append(pilot.name)
             head, separator, _ = str(unit.name).rpartition(PILOT_NAME_SEPARATOR)
             if not separator:
                 continue
