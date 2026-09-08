@@ -19,6 +19,8 @@ def boolean_option(
     tooltip: Optional[str] = None,
     causes_expensive_game_update: bool = False,
     visible_when: Optional[Callable[[Any], bool]] = None,
+    subsection: Optional[str] = None,
+    opens_section: Optional[str] = None,
     **kwargs: Any,
 ) -> bool:
     return field(
@@ -32,6 +34,8 @@ def boolean_option(
                 causes_expensive_game_update,
                 invert,
                 visible_when=visible_when,
+                subsection=subsection,
+                opens_section=opens_section,
             )
         },
         default=default,

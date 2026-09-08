@@ -50,6 +50,7 @@ from game.settings import (
 from game.settings.ISettingsContainer import SettingsContainer
 from game.settings.settings import (
     LIVE_PILOTS_MORALE_EVENTS_SECTION,
+    LIVE_PILOTS_MORALE_SECTION,
     LIVE_PILOTS_RANKS_SECTION,
     LIVE_PILOTS_SURVIVAL_SECTION,
     LIVE_PILOTS_PAGE,
@@ -59,9 +60,21 @@ from game.squadrons.pilotranks import RANK_NAMES_CUSTOM, ranks_for
 from game.weather.cloudpresetpacks import apply_cloud_preset_pack
 from game.sim import GameUpdateEvents
 from qt_ui.widgets.QLabeledWidget import QLabeledWidget
+from qt_ui.widgets.gearbutton import gear_button
 from qt_ui.widgets.spinsliders import FloatSpinSlider, TimeInputs
 from qt_ui.windows.GameUpdateSignal import GameUpdateSignal
 from qt_ui.windows.settings.plugins import PluginsPage
+
+#: Label, control, then slack. Without a column to send the leftovers to, a wide
+#: dialog pushes every switch out to its right-hand edge.
+SLACK_COLUMN = 2
+
+#: The rank ladder is three columns wide before its own slack.
+RANK_SLACK_COLUMN = 3
+
+#: The morale bands are set by a ladder rather than a row each, so the layout picks
+#: them out of the box they are declared in.
+MORALE_STATE_PREFIX = "morale_state_"
 
 
 class CheatSettingsBox(QGroupBox):
@@ -165,14 +178,22 @@ class AutoSettingsLayout(QGridLayout):
         section: str,
         sc: SettingsContainer,
         write_full_settings: Callable[[], None],
+        subsection: Optional[str] = None,
     ) -> None:
         super().__init__()
         self.page = page
         self.section = section
+        #: When set, this lays out one box within the section rather than the section.
+        self.subsection = subsection
         self.sc = sc
         self.write_full_settings = write_full_settings
         self.settings_map: Dict[str, QWidget] = {}
         self.label_map: Dict[str, QWidget] = {}
+        #: For a setting that is more than one widget -- a switch with a gear beside
+        #: it -- what to show, hide and grey out as a whole.
+        self.cell_map: Dict[str, QWidget] = {}
+        #: The boxes within this section, each laying itself out.
+        self.boxes: List["AutoSettingsLayout"] = []
         #: Set by the page once every group exists. A setting can hide one in
         #: another group, so a change here has to re-evaluate the whole page.
         self.on_settings_changed: Optional[Callable[[], None]] = None
@@ -188,10 +209,12 @@ class AutoSettingsLayout(QGridLayout):
     def init_ui(self):
         if self.section == LIVE_PILOTS_RANKS_SECTION:
             self._build_rank_grid()
+            self._settle(RANK_SLACK_COLUMN)
             return
-        for row, (name, description) in enumerate(
-            Settings.fields(self.page, self.section)
-        ):
+        row = 0
+        for name, description in self.own_fields():
+            if name.startswith(MORALE_STATE_PREFIX):
+                continue  # laid out as a ladder below, not as a row of its own
             self.label_map[name] = self.add_label(row, description)
             if isinstance(description, BooleanOption):
                 self.add_checkbox_for(row, name, description)
@@ -207,18 +230,63 @@ class AutoSettingsLayout(QGridLayout):
                 self.add_line_edit_for(row, name, description)
             else:
                 raise TypeError(f"Unhandled option type: {description}")
+            row += 1
+        if self.subsection == LIVE_PILOTS_MORALE_EVENTS_SECTION:
+            self._build_morale_state_ladder()
+        self._build_boxes()
         self.apply_visibility()
         if self.section == OPFOR_AI_SECTION:
             self._wire_opfor_ai()
         if self.page == LIVE_PILOTS_PAGE:
             self._wire_live_pilots_master()
-        if self.section == LIVE_PILOTS_MORALE_EVENTS_SECTION:
+        if self.section == LIVE_PILOTS_MORALE_SECTION:
+            # Everything here, boxes included, is a detail of morale being on.
             self._wire_dependents_on(
                 "morale_enabled",
-                [name for name, _ in Settings.fields(self.page, self.section)],
+                [name for name in self.settings_map if name != "morale_enabled"],
             )
         if self.section == LIVE_PILOTS_SURVIVAL_SECTION:
             self._wire_survival_odds()
+        self._settle()
+
+    def own_fields(self) -> Iterable[Tuple[str, OptionDescription]]:
+        return Settings.fields(self.page, self.section, self.subsection)
+
+    def control_for(self, name: str) -> Optional[QWidget]:
+        """What to grey out for this setting: its whole cell where it has one."""
+        return self.cell_map.get(name) or self.settings_map.get(name)
+
+    def _build_boxes(self) -> None:
+        """The section's own boxes, each a grid of its own, after its plain rows.
+
+        Their widgets are folded into this layout's maps so everything that greys a
+        section out, or reads it back from the settings, keeps working unchanged.
+        """
+        if self.subsection is not None:
+            return  # one level of nesting is a box; two is a filing cabinet
+        for name in Settings.subsections(self.page, self.section):
+            layout = AutoSettingsLayout(
+                self.page, self.section, self.sc, self.write_full_settings, name
+            )
+            layout.on_settings_changed = self.settings_changed
+            box = QGroupBox(name)
+            box.setLayout(layout)
+            self.addWidget(box, self.rowCount(), 0, 1, SLACK_COLUMN + 1)
+            self.boxes.append(layout)
+            self.settings_map.update(layout.settings_map)
+            self.label_map.update(layout.label_map)
+            self.cell_map.update(layout.cell_map)
+
+    def _settle(self, stretch_column: int = SLACK_COLUMN) -> None:
+        """Send the slack to the bottom and the right, not between the rows.
+
+        A grid given more room than it needs shares it out among its rows and
+        columns, which on a tall dialog with four settings on it puts a hand's width
+        between one row and the next, and the switches out at the far edge of the
+        window. The boxes span the slack column so they still fill the width.
+        """
+        self.setRowStretch(self.rowCount(), 1)
+        self.setColumnStretch(stretch_column, 1)
 
     def _build_rank_grid(self) -> None:
         """The rank ladder: five rungs, short and full form side by side.
@@ -267,6 +335,86 @@ class AutoSettingsLayout(QGridLayout):
         self.setColumnStretch(3, 1)
         self.refresh_hooks.append(self._sync_rank_boxes)
         self._sync_rank_boxes()
+
+    def _build_morale_state_ladder(self) -> None:
+        """What the player is told instead of a number, and where each band starts.
+
+        A row per band, with the span it covers written out beside it, because the
+        thing being set is a boundary and a boundary is only legible next to the one
+        above it. The bottom band has no setting: it is the bottom of the scale.
+        """
+        from game.squadrons.morale import MORALE_MAX, MORALE_MIN, MORALE_STATES
+
+        row = self.rowCount()
+        caption = QLabel(
+            "<strong>Morale states</strong><br />"
+            "What each band is called and where it starts. A Triumphant pilot flies "
+            "one rung above his rank; a Shattered or Broken one, a rung below it."
+        )
+        caption.setWordWrap(True)
+        self.addWidget(caption, row, 0, 1, SLACK_COLUMN + 1)
+        row += 1
+
+        self._morale_state_rows: List[Tuple[str, QSpinBox, QLabel]] = []
+        for state in MORALE_STATES:
+            label = QLabel(f"<strong>{state.name}</strong>")
+            self.addWidget(label, row, 0)
+            span = QLabel()
+            if state.key is None:
+                span.setText(f"{MORALE_MIN} only")
+                self.addWidget(span, row, 1)
+                self._morale_state_span_bottom = span
+            else:
+                spinner = QSpinBox()
+                spinner.setMinimum(MORALE_MIN)
+                spinner.setMaximum(MORALE_MAX)
+                spinner.setValue(int(self.sc.settings.__dict__[state.key]))
+                spinner.setFixedWidth(70)
+                spinner.valueChanged.connect(
+                    lambda value, key=state.key: self._set_morale_floor(key, value)
+                )
+                cell = QWidget()
+                line = QHBoxLayout(cell)
+                line.setContentsMargins(0, 0, 0, 0)
+                line.setSpacing(8)
+                line.addWidget(spinner)
+                line.addWidget(span, 1)
+                self.addWidget(cell, row, 1, 1, SLACK_COLUMN)
+                self.settings_map[state.key] = spinner
+                self.label_map[state.key] = label
+                self._morale_state_rows.append((state.key, spinner, span))
+            row += 1
+
+        self.refresh_hooks.append(self._sync_morale_states)
+        self._sync_morale_states()
+
+    def _set_morale_floor(self, key: str, value: int) -> None:
+        self.sc.settings.__dict__[key] = value
+        self._sync_morale_states()
+        self.settings_changed()
+
+    def _sync_morale_states(self) -> None:
+        """Keep the ladder a ladder: no band may start below the one under it."""
+        from game.squadrons.morale import MORALE_MAX, MORALE_MIN
+
+        rows = getattr(self, "_morale_state_rows", [])
+        if not rows:
+            return
+        floors = [int(self.sc.settings.__dict__[key]) for key, _, _ in rows]
+        for index, (key, spinner, span) in enumerate(rows):
+            below = floors[index + 1] + 1 if index + 1 < len(floors) else MORALE_MIN + 1
+            above = floors[index - 1] - 1 if index else MORALE_MAX
+            spinner.blockSignals(True)
+            spinner.setMinimum(min(below, above))
+            spinner.setMaximum(max(below, above))
+            spinner.setValue(floors[index])
+            spinner.blockSignals(False)
+            top = floors[index - 1] - 1 if index else MORALE_MAX
+            span.setText(f"to {top}" if top > floors[index] else "only")
+        bottom = getattr(self, "_morale_state_span_bottom", None)
+        if bottom is not None:
+            top = floors[-1] - 1
+            bottom.setText(f"to {top}" if top > MORALE_MIN else f"{MORALE_MIN} only")
 
     def _rank_edit(
         self, name: str, width: int, max_length: Optional[int] = None
@@ -339,7 +487,7 @@ class AutoSettingsLayout(QGridLayout):
         if not isinstance(master, QCheckBox):
             return
         dependents = [
-            (self.settings_map.get(name), self.label_map.get(name))
+            (self.control_for(name), self.label_map.get(name))
             for name in dependent_names
         ]
 
@@ -366,10 +514,12 @@ class AutoSettingsLayout(QGridLayout):
         def refresh() -> None:
             if self.sc.settings.live_pilots_enabled:
                 return
-            for name, widget in self.settings_map.items():
+            for name in list(self.settings_map):
                 if name == "live_pilots_enabled":
                     continue
-                widget.setEnabled(False)
+                widget = self.control_for(name)
+                if widget is not None:
+                    widget.setEnabled(False)
                 label = self.label_map.get(name)
                 if label is not None:
                     label.setEnabled(False)
@@ -391,7 +541,7 @@ class AutoSettingsLayout(QGridLayout):
         def refresh() -> None:
             enabled = bool(getattr(self.sc.settings, master_name, False))
             for name in dependent_names:
-                widget = self.settings_map.get(name)
+                widget = self.control_for(name)
                 if widget is not None:
                     widget.setEnabled(enabled)
                 label = self.label_map.get(name)
@@ -424,7 +574,7 @@ class AutoSettingsLayout(QGridLayout):
                 ("live_pilots_rank_survival", live),
                 ("live_pilots_wounded_chance", live),
             ] + [(rung, rolling) for rung in rungs]:
-                for target in (self.settings_map.get(name), self.label_map.get(name)):
+                for target in (self.control_for(name), self.label_map.get(name)):
                     if isinstance(target, QWidget):
                         target.setEnabled(enabled)
 
@@ -443,7 +593,7 @@ class AutoSettingsLayout(QGridLayout):
         v.addWidget(QLabel("<b>Connect your LLM (paste a URL):</b>"))
         self._opfor_ai_rest = self._url_row(v, "REST — any HTTP/REST client or curl")
         self._opfor_ai_mcp = self._url_row(v, "MCP — any MCP-compatible client")
-        self.addWidget(box, self.rowCount(), 0, 1, 2)
+        self.addWidget(box, self.rowCount(), 0, 1, SLACK_COLUMN + 1)
         self._opfor_ai_box = box
 
         def refresh() -> None:
@@ -505,8 +655,36 @@ class AutoSettingsLayout(QGridLayout):
             value = not value
         checkbox.setChecked(value)
         checkbox.toggled.connect(on_toggle)
-        self.addWidget(checkbox, row, 1, Qt.AlignmentFlag.AlignRight)
         self.settings_map[name] = checkbox
+
+        if description.opens_section is None:
+            self.addWidget(checkbox, row, 1, Qt.AlignmentFlag.AlignRight)
+            return
+
+        # A switch with its own tuning behind it: the knobs open from the row rather
+        # than filling a section the player has to find, and are dead until the
+        # switch that uses them is on.
+        cell = QWidget()
+        line = QHBoxLayout(cell)
+        line.setContentsMargins(0, 0, 0, 0)
+        line.setSpacing(6)
+        line.addStretch()
+        line.addWidget(checkbox)
+        gear = gear_button(f"{description.text} options")
+        section = description.opens_section
+        gear.clicked.connect(lambda: self.open_section_dialog(section))
+        line.addWidget(gear)
+        self.addWidget(cell, row, 1, Qt.AlignmentFlag.AlignRight)
+        self.cell_map[name] = cell
+        checkbox.toggled.connect(gear.setEnabled)
+        gear.setEnabled(checkbox.isChecked())
+
+    def open_section_dialog(self, section: str) -> None:
+        self._section_dialog = SectionDialog(
+            self.page, section, self.sc, self.write_full_settings, self.parentWidget()
+        )
+        self._section_dialog.exec()
+        self.settings_changed()
 
     def add_combobox_for(self, row: int, name: str, description: ChoicesOption) -> None:
         combobox = QComboBox()
@@ -603,14 +781,14 @@ class AutoSettingsLayout(QGridLayout):
         conditional can hide its own group box instead of leaving an empty frame.
         """
         any_visible = False
-        for name, description in Settings.fields(self.page, self.section):
+        for name, description in self.own_fields():
             if description.visible_when is None:
                 any_visible = True
                 continue
             visible = bool(description.visible_when(self.sc.settings))
             any_visible = any_visible or visible
             self.label_map[name].setVisible(visible)
-            entry = self.settings_map[name]
+            entry = self.cell_map.get(name) or self.settings_map[name]
             # The spinner and time options register a layout rather than a widget,
             # and a layout cannot be hidden -- its contents can.
             if isinstance(entry, QLayout):
@@ -619,14 +797,18 @@ class AutoSettingsLayout(QGridLayout):
                         child.setVisible(visible)
             else:
                 entry.setVisible(visible)
+        for box in self.boxes:
+            any_visible = box.apply_visibility() or any_visible
         for hook in self.refresh_hooks:
             hook()
         return any_visible
 
     def update_from_settings(self) -> None:
+        for box in self.boxes:
+            box.update_from_settings()
         for hook in self.refresh_hooks:
             hook()
-        for name, description in Settings.fields(self.page, self.section):
+        for name, description in self.own_fields():
             widget = self.settings_map[name]
             value = self.sc.settings.__dict__[name]
             if isinstance(widget, QCheckBox):
@@ -676,6 +858,35 @@ class AutoSettingsGroup(QGroupBox):
     def update_from_settings(self) -> None:
         self.layout.update_from_settings()
         self.apply_visibility()
+
+
+class SectionDialog(QDialog):
+    """A section a switch owns, opened from the gear on its row."""
+
+    def __init__(
+        self,
+        page: str,
+        section: str,
+        sc: SettingsContainer,
+        write_full_settings: Callable[[], None],
+        parent: Optional[QWidget] = None,
+    ) -> None:
+        super().__init__(parent)
+        self.setWindowTitle(section)
+        self.setWindowIcon(CONST.ICONS["Settings"])
+        self.setModal(True)
+
+        column = QVBoxLayout()
+        self.setLayout(column)
+        self.group = AutoSettingsGroup(page, section, sc, write_full_settings)
+        column.addWidget(self.group)
+
+        buttons = QHBoxLayout()
+        buttons.addStretch()
+        close = QPushButton("Close")
+        close.clicked.connect(self.accept)
+        buttons.addWidget(close)
+        column.addLayout(buttons)
 
 
 #: The index of sections down the left of a page, between the settings dialog's own

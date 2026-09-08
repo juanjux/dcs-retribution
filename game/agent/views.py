@@ -1317,7 +1317,7 @@ def build_leave_requests(game: Game, side: str) -> list[LeaveRequestView]:
                     pilot_name=pilot.name,
                     rank="" if rank is None else rank.abbreviation,
                     morale=pilot.morale,
-                    state=morale_state(pilot.morale).name,
+                    state=morale_state(pilot.morale, game.settings).name,
                     asked_turns=pilot.leave_turns_requested,
                     spare_pilots=squadron.spare_pilots(excluding=pilot),
                     aircraft=squadron.owned_aircraft,
@@ -1395,24 +1395,19 @@ def _all_settings(s: Any) -> list[SettingView]:
     from game.settings import Settings
 
     out: list[SettingView] = []
-    for page in Settings.pages():
-        for section in Settings.sections(page):
-            for key, description in Settings.fields(page, section):
-                if (
-                    description.visible_when is not None
-                    and not description.visible_when(s)
-                ):
-                    continue  # a setting the campaign is not offering right now
-                out.append(
-                    SettingView(
-                        key=key,
-                        page=page,
-                        section=section,
-                        label=description.text,
-                        value=_setting_value(getattr(s, key, None)),
-                        detail=description.detail,
-                    )
-                )
+    for key, description in Settings.all_fields():
+        if description.visible_when is not None and not description.visible_when(s):
+            continue  # a setting the campaign is not offering right now
+        out.append(
+            SettingView(
+                key=key,
+                page=description.page,
+                section=description.subsection or description.section,
+                label=description.text,
+                value=_setting_value(getattr(s, key, None)),
+                detail=description.detail,
+            )
+        )
     return out
 
 

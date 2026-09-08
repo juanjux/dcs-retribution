@@ -178,6 +178,11 @@ class MoraleShift:
     rank: str = ""
     level: int = 0
     blue: bool = True
+    #: What he was and what he is, named at the time. Recorded rather than worked out
+    #: again later, because the campaign's own band thresholds are a setting and the
+    #: debriefing is a record of the turn, not a view of the current rules.
+    before_state: str = ""
+    after_state: str = ""
 
     @property
     def reason(self) -> str:

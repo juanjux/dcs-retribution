@@ -13,7 +13,7 @@ the survival odds.
 from __future__ import annotations
 
 import random
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING, Any, Optional
 
 from dcs.task import OptReactOnThreat
@@ -238,23 +238,33 @@ STRIKE_TASKS: frozenset[str] = frozenset(
 
 # --- what it does -----------------------------------------------------------
 
-#: Above the first he flies a rung better, below the second a rung worse.
-SKILL_SHIFT_HIGH = 85
-SKILL_SHIFT_LOW = 15
+#: The state a pilot flies a rung above his rank in, and the one he drops a rung
+#: below it at -- and everything worse than it, so Broken is not steadier than
+#: Shattered. There is nothing to set here: they are the bands themselves.
+SKILL_SHIFT_UP_STATE = "Triumphant"
+SKILL_SHIFT_DOWN_STATE = "Shattered"
 
 
 def skill_shift(morale: int, settings: Any = None) -> int:
-    """-1, 0 or +1 rungs, from how he is holding up."""
-    high = SKILL_SHIFT_HIGH
-    low = SKILL_SHIFT_LOW
-    if settings is not None:
-        high = getattr(settings, "morale_skill_high", high)
-        low = getattr(settings, "morale_skill_low", low)
-    if morale > high:
+    """-1, 0 or +1 rungs, from how he is holding up.
+
+    A pilot flying Triumphant is a rung above the rank he holds; one who has fallen
+    to Shattered -- or below it -- is a rung below it.
+    """
+    if morale >= state_named(SKILL_SHIFT_UP_STATE, settings).floor:
         return 1
-    if morale < low:
+    if morale < band_ceiling(SKILL_SHIFT_DOWN_STATE, settings):
         return -1
     return 0
+
+
+def band_ceiling(name: str, settings: Any = None) -> int:
+    """One past the top of this band: the floor of the one sitting on it."""
+    states = morale_states(settings)
+    for above, state in zip(states, states[1:]):
+        if state.name == name:
+            return above.floor
+    return MORALE_MAX + 1
 
 
 def shifted_skill(skill: Skill, morale: int, settings: Any = None) -> Skill:
@@ -275,30 +285,54 @@ class MoraleState:
 
     ``floor`` is the bottom of the band, taken inclusively. ``severity`` is what the
     player should read into it: 0 nothing, 1 worth an eye, 2 do something about it now.
+    ``key`` is the setting that moves the floor; Broken has none because it is the
+    bottom of the scale.
     """
 
     floor: int
     name: str
     severity: int
+    key: Optional[str] = None
 
 
 #: The figure itself is for the pilot dialog, the ledger and the API. Everywhere the
 #: player looks he gets the name, exactly as a rank stands in for a skill level.
 MORALE_STATES: tuple[MoraleState, ...] = (
-    MoraleState(85, "Triumphant", 0),
-    MoraleState(60, "Confident", 0),
-    MoraleState(40, "Normal", 0),
-    MoraleState(15, "Shaken", 1),
-    MoraleState(1, "Shattered", 2),
+    MoraleState(85, "Triumphant", 0, "morale_state_triumphant"),
+    MoraleState(60, "Confident", 0, "morale_state_confident"),
+    MoraleState(40, "Normal", 0, "morale_state_normal"),
+    MoraleState(15, "Shaken", 1, "morale_state_shaken"),
+    MoraleState(1, "Shattered", 2, "morale_state_shattered"),
     MoraleState(MORALE_MIN, "Broken", 2),
 )
 
 
-def morale_state(morale: int) -> MoraleState:
-    for state in MORALE_STATES:
+def morale_states(settings: Any = None) -> tuple[MoraleState, ...]:
+    """The bands as this campaign has them set, top down."""
+    if settings is None:
+        return MORALE_STATES
+    return tuple(
+        (
+            state
+            if state.key is None
+            else replace(state, floor=int(getattr(settings, state.key, state.floor)))
+        )
+        for state in MORALE_STATES
+    )
+
+
+def morale_state(morale: int, settings: Any = None) -> MoraleState:
+    for state in morale_states(settings):
         if morale >= state.floor:
             return state
     return MORALE_STATES[-1]
+
+
+def state_named(name: str, settings: Any = None) -> MoraleState:
+    for state in morale_states(settings):
+        if state.name == name:
+            return state
+    raise ValueError(f"no morale state named {name}")
 
 
 #: Multiplier on everything a sortie pays. A band's number is its lower bound, taken
@@ -365,10 +399,10 @@ def rtb_on_bingo(morale: int) -> bool:
 
 
 #: A wound keeps a hollow man out longer and a cheerful one less.
-def recovery_turns(turns: int, morale: int) -> int:
+def recovery_turns(turns: int, morale: int, settings: Any = None) -> int:
     if morale < SHAKEN_BELOW:
         return turns + 1
-    if morale > SKILL_SHIFT_HIGH:
+    if morale >= state_named(SKILL_SHIFT_UP_STATE, settings).floor:
         return max(1, turns - 1)
     return turns
 
@@ -438,7 +472,7 @@ def leave_request_chance(
     return max(0.0, min(1.0, base_percent / 100.0 * factor))
 
 
-def worth_reporting(before: int, after: int) -> bool:
+def worth_reporting(before: int, after: int, settings: Any = None) -> bool:
     """Whether this movement earns a line in the debriefing.
 
     When it moved the pilot from one state to another, and only then. The row says
@@ -447,7 +481,7 @@ def worth_reporting(before: int, after: int) -> bool:
     used to fill the section with rows reading "Normal -> Normal". The figures
     themselves are in the ledger.
     """
-    return morale_state(before) is not morale_state(after)
+    return morale_state(before, settings).name != morale_state(after, settings).name
 
 
 #: The chance, per turn spent at rock bottom, that a pilot simply stops coming --

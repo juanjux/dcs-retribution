@@ -149,6 +149,55 @@ def test_every_point_has_a_word() -> None:
         assert morale_rules.morale_state(morale).name
 
 
+def test_a_campaign_can_move_the_bands() -> None:
+    """The words are the game's; where each one starts is the campaign's."""
+    settings = Settings()
+    settings.morale_state_shaken = 30
+    settings.morale_state_normal = 55
+
+    assert morale_rules.morale_state(29, settings).name == "Shattered"
+    assert morale_rules.morale_state(30, settings).name == "Shaken"
+    assert morale_rules.morale_state(54, settings).name == "Shaken"
+    assert morale_rules.morale_state(55, settings).name == "Normal"
+    # Nothing was said about the others, so they stand where they were.
+    assert morale_rules.morale_state(60, settings).name == "Confident"
+
+
+def test_the_bottom_band_stays_at_the_bottom() -> None:
+    """Broken is the floor of the scale and has no setting of its own."""
+    assert [s.key for s in morale_rules.MORALE_STATES][-1] is None
+    assert morale_rules.MORALE_STATES[-1].floor == morale_rules.MORALE_MIN
+
+
+def test_flying_a_rung_better_or_worse_is_the_band_and_not_a_number() -> None:
+    """Triumphant flies above his rank; Shattered, and worse, below it."""
+    assert morale_rules.skill_shift(85) == 1, "the bottom of Triumphant counts"
+    assert morale_rules.skill_shift(84) == 0
+    assert morale_rules.skill_shift(15) == 0, "Shaken flies at his rank"
+    assert morale_rules.skill_shift(14) == -1, "Shattered"
+    assert morale_rules.skill_shift(0) == -1, "and Broken is no steadier"
+
+
+def test_moving_the_bands_moves_who_flies_better() -> None:
+    settings = Settings()
+    settings.morale_state_triumphant = 70
+    settings.morale_state_shaken = 30
+
+    assert morale_rules.skill_shift(70, settings) == 1
+    assert morale_rules.skill_shift(69, settings) == 0
+    assert morale_rules.skill_shift(30, settings) == 0
+    assert morale_rules.skill_shift(29, settings) == -1
+
+
+def test_a_movement_is_reported_when_the_word_changes() -> None:
+    settings = Settings()
+    settings.morale_state_normal = 55
+
+    assert morale_rules.worth_reporting(54, 55, settings), "Shaken -> Normal"
+    assert not morale_rules.worth_reporting(39, 45, settings), "both Shaken now"
+    assert morale_rules.worth_reporting(39, 45), "though it would be under the defaults"
+
+
 # --- how he flies -----------------------------------------------------------
 
 

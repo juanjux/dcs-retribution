@@ -92,7 +92,9 @@ class MissionResultsProcessor:
                         self.xp_log.morale(
                             pilot, squadron, before, pilot.morale, reasons
                         )
-                        if morale_rules.worth_reporting(before, pilot.morale):
+                        if morale_rules.worth_reporting(
+                            before, pilot.morale, self.game.settings
+                        ):
                             debriefing.pilot_outcomes.morale_shifts.append(
                                 MoraleShift(
                                     pilot_name=pilot.name,
@@ -103,6 +105,12 @@ class MissionResultsProcessor:
                                     blue=squadron.player.is_blue,
                                     before=before,
                                     after=pilot.morale,
+                                    before_state=morale_rules.morale_state(
+                                        before, self.game.settings
+                                    ).name,
+                                    after_state=morale_rules.morale_state(
+                                        pilot.morale, self.game.settings
+                                    ).name,
                                     reasons=sorted(set(reasons)),
                                 )
                             )
@@ -396,7 +404,7 @@ class MissionResultsProcessor:
         ):
             turns = random.randint(*WOUNDED_TURNS)
             if getattr(settings, "morale_enabled", True):
-                turns = morale_rules.recovery_turns(turns, pilot.morale)
+                turns = morale_rules.recovery_turns(turns, pilot.morale, settings)
             pilot.wound(turns, self.game.turn)
             self._wounded_this_turn.add(id(pilot))
             self._note_flight_morale(
