@@ -516,21 +516,18 @@ def test_going_without_leave_costs_the_same_every_turn() -> None:
 # --- what earns a line in the debriefing ------------------------------------
 
 
-def test_flying_the_mission_does_not_fill_the_debriefing() -> None:
-    """It is worth exactly the reporting threshold, so every man who came home used
-    to get a row -- and the row read "Normal -> Normal", because he had not moved
-    state."""
-    assert not morale_rules.worth_reporting(45, 55)
-
-
 def test_a_move_that_changes_his_state_is_reported() -> None:
     assert morale_rules.worth_reporting(50, 60), "Normal -> Confident"
+    assert morale_rules.worth_reporting(59, 39), "Normal -> Shaken"
+    assert morale_rules.worth_reporting(40, 39), "one point, but he is Shaken now"
 
 
-def test_a_big_move_is_reported_even_inside_one_state() -> None:
-    """Falling from the top of Normal to the bottom of it is worth knowing about."""
-    assert morale_rules.worth_reporting(59, 41)
+def test_a_move_that_leaves_him_where_he_was_is_not() -> None:
+    """The row has nothing to show: it names the state at each end.
 
-
-def test_ordinary_churn_is_still_left_to_the_ledger() -> None:
-    assert not morale_rules.worth_reporting(50, 55)
+    Flying the mission moves every man who came home, which is why the section used
+    to be twenty rows of "Normal -> Normal".
+    """
+    assert not morale_rules.worth_reporting(45, 55)
+    assert not morale_rules.worth_reporting(59, 41), "18 points, still Normal"
+    assert not morale_rules.worth_reporting(50, 50)

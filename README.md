@@ -213,11 +213,11 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   options in their own dialog. Turning CTLD on and setting it up used to be two pages
   apart, and the options page was a wall of boxes for plugins you had not enabled.
 
-- **The debriefing's morale section listed everyone who flew.** Flying the mission is
-  worth exactly the reporting threshold, so every man who came home earned a row -- and
-  the row named his state at each end, so it read "Normal -> Normal". A pilot is listed
-  now when the mission moved him from one state to another, or moved him a long way
-  inside one, and that second case shows the figure rather than the same word twice.
+- **The debriefing's morale section listed everyone who flew.** It reported any
+  movement past a fixed size, and flying the mission is exactly that size, so every man
+  who came home earned a row -- reading "Normal -> Normal", since the row names his
+  state at each end. It reports a change of state now, which is the thing the row can
+  show; the figures stay in the ledger.
 
 ### Kneeboards
 - **Friendly-packages list** plus a **package-targets map** page.

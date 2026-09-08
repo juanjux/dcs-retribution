@@ -522,19 +522,6 @@ class MoraleRow(PilotRow):
         now = morale_state(self.record.after).name
         cursor = float(x)
         colour = MORALE_COLOURS.get(now, MUTED)
-
-        if was == now:
-            # He ended where he started, so the arrow would read "Normal -> Normal".
-            # A movement only reaches this row if it was a big one, so say how big.
-            moved = self.record.after - self.record.before
-            cursor = self._paint_state(
-                painter, cursor, now, colour, colour, medium=True
-            )
-            painter.setFont(_font(11.5, QFont.Weight.DemiBold))
-            painter.setPen(QColor(THEIRS if moved > 0 else OURS))
-            painter.drawText(int(cursor), 27, f"{moved:+d}")
-            return
-
         cursor = self._paint_state(painter, cursor, was, DIM, DIM)
         painter.setFont(_font(12))
         painter.setPen(QColor(DIM))
