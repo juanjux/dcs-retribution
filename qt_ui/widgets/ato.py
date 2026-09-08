@@ -34,41 +34,8 @@ from game.ato.package import Package
 from game.server import EventStream
 from game.sim import GameUpdateEvents
 from .QLabeledWidget import QLabeledWidget
-from ..delegates import TwoColumnRowDelegate
 from ..models import AtoModel, GameModel, NullListModel, PackageModel
-
-
-class FlightDelegate(TwoColumnRowDelegate):
-    def __init__(self, package: Package) -> None:
-        super().__init__(rows=3, columns=2, font_size=10)
-        self.package = package
-
-    @staticmethod
-    def flight(index: QModelIndex) -> Flight:
-        return index.data(PackageModel.FlightRole)
-
-    def text_for(self, index: QModelIndex, row: int, column: int) -> str:
-        flight = self.flight(index)
-        if (row, column) == (0, 0):
-            return f"{flight}"
-        elif (row, column) == (0, 1):
-            clients = self.num_clients(index)
-            return f"Player Slots: {clients}" if clients else ""
-        elif (row, column) == (1, 0):
-            origin = flight.departure.name
-            if flight.arrival != flight.departure:
-                return f"From {origin} to {flight.arrival.name}"
-            return f"From {origin}"
-        elif (row, column) == (1, 1):
-            missing_pilots = flight.missing_pilots
-            return f"Missing pilots: {flight.missing_pilots}" if missing_pilots else ""
-        elif (row, column) == (2, 0):
-            return flight.state.description.title()
-        return ""
-
-    def num_clients(self, index: QModelIndex) -> int:
-        flight = self.flight(index)
-        return flight.client_count
+from .atodelegates import FlightRowDelegate, PackageRowDelegate
 
 
 class QFlightList(QListView):
@@ -82,7 +49,9 @@ class QFlightList(QListView):
         self.package_model = package_model
         self.set_package(package_model)
         if package_model is not None:
-            self.setItemDelegate(FlightDelegate(package_model.package))
+            self.setItemDelegate(FlightRowDelegate())
+            self.setMouseTracking(True)
+            self.setUniformItemSizes(True)
         self.setIconSize(QSize(91, 24))
         self.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectItems)
         self.doubleClicked.connect(self.on_double_click)
@@ -93,7 +62,9 @@ class QFlightList(QListView):
             self.disconnect_model()
         else:
             self.package_model = model
-            self.setItemDelegate(FlightDelegate(model.package))
+            self.setItemDelegate(FlightRowDelegate())
+            self.setMouseTracking(True)
+            self.setUniformItemSizes(True)
             self.setModel(model)
             # noinspection PyUnresolvedReferences
             model.deleted.connect(self.disconnect_model)
@@ -272,41 +243,6 @@ class QFlightPanel(QGroupBox):
         self.flight_list.cancel_or_abort_flight(index)
 
 
-class PackageDelegate(TwoColumnRowDelegate):
-    def __init__(self, game_model: GameModel) -> None:
-        super().__init__(rows=2, columns=2)
-        self.game_model = game_model
-
-    @staticmethod
-    def package(index: QModelIndex) -> Package:
-        return index.data(AtoModel.PackageRole)
-
-    def text_for(self, index: QModelIndex, row: int, column: int) -> str:
-        package = self.package(index)
-        if (row, column) == (0, 0):
-            string = f"{package.package_description} {package.target.name}"
-            if package.custom_name:
-                string = string + f" ({package.custom_name})"
-            return string
-        elif (row, column) == (0, 1):
-            clients = self.num_clients(index)
-            return f"Player Slots: {clients}" if clients else ""
-        elif (row, column) == (1, 0):
-            return f"TOT at {package.time_over_target:%H:%M:%S}"
-        elif (row, column) == (1, 1):
-            unassigned_pilots = self.missing_pilots(index)
-            return f"Missing pilots: {unassigned_pilots}" if unassigned_pilots else ""
-        return ""
-
-    def num_clients(self, index: QModelIndex) -> int:
-        package = self.package(index)
-        return sum(f.client_count for f in package.flights)
-
-    def missing_pilots(self, index: QModelIndex) -> int:
-        package = self.package(index)
-        return sum(f.missing_pilots for f in package.flights)
-
-
 class QPackageList(QListView):
     """List view for displaying the packages of an ATO."""
 
@@ -314,7 +250,9 @@ class QPackageList(QListView):
         super().__init__()
         self.ato_model = model
         self.setModel(model)
-        self.setItemDelegate(PackageDelegate(game_model))
+        self.setItemDelegate(PackageRowDelegate())
+        self.setMouseTracking(True)
+        self.setUniformItemSizes(True)
         self.setIconSize(QSize(0, 0))
         self.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectItems)
         self.model().rowsInserted.connect(self.on_new_packages)
