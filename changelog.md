@@ -1,6 +1,8 @@
 ﻿# Retribution v1.6.3 (414th)
 
 ## Features/Improvements
+* **[Plugins]** Four dropped. **EWRS** is the 2016 script BigEye EWR was built from, so BigEye stays and EWRS goes. **Mbot's Call Artillery** only ever answered a player flying an Armed Recon flight, while Carsten's Arty Spotter answers any player within spotting range and has four tunables to its one, so Carsten's stays. **The C-130 cargo script** goes with the Hercules mod we do not support. And the **EW Jammer Script** goes: jamming cannot be modelled honestly without engine support, which is why the feature that used it was parked in June.
+* **[Plugins]** Skynet IADS is listed as *Skynet IADS (juanjux's fork)*, since it is not the stock build, and Splash Damage, Moose's MarkerOps and Troops In Contact finally say what they do.
 * **[FIX]** Player pilots were playing the morale game: the debriefing told you how you felt about your own turn, and a figure you never asked for could shift the skill you flew at, weigh your XP or ground you. Morale is now for the AI pilots only.
 * **[UI]** Settings pages no longer spread four rows over the height of the window, and a switch sits beside its label instead of out at the right-hand edge.
 * **[UI]** *Automate ground object repairs* carries its own tuning behind a gear, so the *Ground Object Repairs* page is gone; *Building Repairs* moved up under *HQ Automation*; and *Morale Event Values* is now a box at the end of *Morale* rather than a page of its own.
