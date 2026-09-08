@@ -913,6 +913,27 @@ and it is longer than this section.
   ([#105](https://github.com/juanjux/dcs-retribution/pull/105), porting the
   capability-weighted half of 414Ret #68)
 
+## Removed from upstream
+
+- **DCS: Pretense support.** Upstream can export the running campaign as a
+  [Pretense](https://github.com/Dzsek/pretense) mission — a self-contained Lua campaign
+  where zones earn resources, buy their own defences and frag their own AI missions. That
+  is a second, parallel game: nothing that happens in it ever comes back to the
+  Retribution campaign, the export is one-way, and it is why the generator pickled a
+  backup of the save before running. The upstream project has stopped maintaining it and
+  Pretense itself is abandoned, so it was ~5,400 lines of Python plus 590 KB of
+  third-party Lua (`pretense_compiled.lua`, 15,862 lines) that nobody here can debug,
+  carried through every upstream sync — and it reached into the engine, adding a
+  `FlightType` member, a flight plan, a settings page and a contract test of its own.
+  Gone: `game/pretense/`, the Pretense plugin resources, the toolbar actions, the
+  settings page, `FlightType.PRETENSE_CARGO`, and the four `*_full` campaigns that were
+  tuned for Pretense generation (their own descriptions warn they play unbalanced as
+  ordinary campaigns).
+
+  **Saves still load.** A campaign that had generated a Pretense mission kept its cargo
+  flights in the save, so `FlightType` maps the old `"Cargo Transport"` value onto
+  `TRANSPORT` on load instead of failing.
+
 ## Queued
 
 Planned, not started. Enough detail here to pick each one up cold.

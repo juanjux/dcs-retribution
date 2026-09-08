@@ -102,7 +102,6 @@ SUPPORT = {
     FlightType.FERRY,
     FlightType.AIR_ASSAULT,
     FlightType.RECOVERY,
-    FlightType.PRETENSE_CARGO,
 }
 
 CHIP_FAMILIES = {
