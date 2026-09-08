@@ -185,6 +185,10 @@ class PilotRowPainter:
     def morale_in_play(self) -> bool:
         return bool(self.squadron.morale_in_play)
 
+    def morale_shown_for(self, pilot: Pilot) -> bool:
+        """The player has no morale to show: he knows how his own week went."""
+        return self.morale_in_play and pilot.has_morale
+
     @property
     def settings(self) -> Settings:
         """The campaign's own morale bands, which it is free to have moved."""
@@ -350,7 +354,7 @@ class PilotDelegate(QStyledItemDelegate, PilotRowPainter):
         if rank_name:
             lines.append(f"{rank_name} ({level} of {RANK_LEVELS})")
         lines.append(f"{count} {word} flown")
-        if self.morale_in_play:
+        if self.morale_shown_for(pilot):
             state = morale_rules.morale_state(pilot.morale, self.settings)
             lines.append(f"Morale: {state.name}")
         status, _, detail, _ = self._status_of(pilot, False)
@@ -367,7 +371,7 @@ class PilotDelegate(QStyledItemDelegate, PilotRowPainter):
         A wound is a state and lives under morale; a request for leave is a question
         addressed to the player, and belongs here.
         """
-        if not self.morale_in_play:
+        if not self.morale_shown_for(pilot):
             return None
         if pilot.refuses_to_fly:
             return "Will refuse to fly next mission", WARNING_BLOCKING
@@ -396,7 +400,7 @@ class PilotDelegate(QStyledItemDelegate, PilotRowPainter):
         self, painter: QPainter, pilot: Pilot, width: int, selected: bool
     ) -> None:
         right = width - MARGIN
-        if self.morale_in_play:
+        if self.morale_shown_for(pilot):
             state = morale_rules.morale_state(pilot.morale, self.settings)
             dot = MORALE_COLOURS.get(state.name, MUTED)
             override = (

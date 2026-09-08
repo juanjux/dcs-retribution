@@ -370,7 +370,7 @@ class MissionResultsProcessor:
         chance = (
             survival_chance(squadron.pilot_skill(pilot), settings) if rolls else 0.0
         )
-        if rolls and getattr(settings, "morale_enabled", True):
+        if rolls and getattr(settings, "morale_enabled", True) and pilot.has_morale:
             # The steady man gets out of the aircraft; the hollow one does not.
             chance = max(
                 0.0, min(1.0, chance + morale_rules.survival_modifier(pilot.morale))
@@ -799,9 +799,10 @@ class MissionResultsProcessor:
             )
             if SKILL_LADDER.index(skill) > SKILL_LADDER.index(best):
                 best = skill
-        return morale_rules.xp_multiplier(pilot.morale) + morale_rules.learning_bonus(
-            squadron.pilot_skill(pilot), best
-        )
+        # The player has no morale to be worth more or less for; flying with someone
+        # better than you is not morale, so he keeps that half of it.
+        state = morale_rules.xp_multiplier(pilot.morale) if pilot.has_morale else 1.0
+        return state + morale_rules.learning_bonus(squadron.pilot_skill(pilot), best)
 
     def _note_mission_morale(
         self,

@@ -1,6 +1,7 @@
 ﻿# Retribution v1.6.3 (414th)
 
 ## Features/Improvements
+* **[FIX]** Player pilots were playing the morale game: the debriefing told you how you felt about your own turn, and a figure you never asked for could shift the skill you flew at, weigh your XP or ground you. Morale is now for the AI pilots only.
 * **[UI]** Settings pages no longer spread four rows over the height of the window, and a switch sits beside its label instead of out at the right-hand edge.
 * **[UI]** *Automate ground object repairs* carries its own tuning behind a gear, so the *Ground Object Repairs* page is gone; *Building Repairs* moved up under *HQ Automation*; and *Morale Event Values* is now a box at the end of *Morale* rather than a page of its own.
 * **[Live Pilots]** The morale bands are settings: you choose where Triumphant, Confident, Normal, Shaken and Shattered start. *Flies a rank better above* and *Flies a rank worse below* are gone with them -- a Triumphant pilot flies a rung above the rank he holds, a Shattered or Broken one a rung below.
