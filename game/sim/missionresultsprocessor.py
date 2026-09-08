@@ -92,10 +92,7 @@ class MissionResultsProcessor:
                         self.xp_log.morale(
                             pilot, squadron, before, pilot.morale, reasons
                         )
-                        if (
-                            abs(pilot.morale - before)
-                            >= morale_rules.MORALE_WORTH_REPORTING
-                        ):
+                        if morale_rules.worth_reporting(before, pilot.morale):
                             debriefing.pilot_outcomes.morale_shifts.append(
                                 MoraleShift(
                                     pilot_name=pilot.name,

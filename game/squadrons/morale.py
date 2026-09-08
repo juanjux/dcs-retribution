@@ -438,9 +438,17 @@ def leave_request_chance(
     return max(0.0, min(1.0, base_percent / 100.0 * factor))
 
 
-#: A movement this big is worth telling the player about in the debriefing; smaller
-#: ones are the ordinary churn of a campaign and only go to the ledger.
-MORALE_WORTH_REPORTING = 10
+def worth_reporting(before: int, after: int) -> bool:
+    """Whether this movement earns a line in the debriefing.
+
+    When it moved the pilot from one state to another, and only then. The row says
+    what he was and what he is, so a movement that leaves him where he was has
+    nothing to show -- and flying the mission moves everyone who came home, which
+    used to fill the section with rows reading "Normal -> Normal". The figures
+    themselves are in the ledger.
+    """
+    return morale_state(before) is not morale_state(after)
+
 
 #: The chance, per turn spent at rock bottom, that a pilot simply stops coming --
 #: one entry per rung of the ladder, from cadet to squadron leader. Rank is what keeps

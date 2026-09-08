@@ -521,12 +521,12 @@ class MoraleRow(PilotRow):
         was = morale_state(self.record.before).name
         now = morale_state(self.record.after).name
         cursor = float(x)
+        colour = MORALE_COLOURS.get(now, MUTED)
         cursor = self._paint_state(painter, cursor, was, DIM, DIM)
         painter.setFont(_font(12))
         painter.setPen(QColor(DIM))
         painter.drawText(int(cursor), 27, "→")
         cursor += painter.fontMetrics().horizontalAdvance("→") + 8
-        colour = MORALE_COLOURS.get(now, MUTED)
         self._paint_state(painter, cursor, now, colour, colour, medium=True)
 
     @staticmethod
