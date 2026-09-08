@@ -267,17 +267,19 @@ def test_a_worn_out_pilot_asks_more_often_than_a_contented_one() -> None:
 
 
 def test_a_wound_is_felt_by_how_long_it_keeps_him() -> None:
+    """Every turn the medics keep him, with no ceiling: four turns out is four."""
     assert morale_rules.wound_is_felt_for(1) == 1
     assert morale_rules.wound_is_felt_for(3) == 3
-    assert morale_rules.wound_is_felt_for(9) == morale_rules.WOUND_TURNS_FELT
+    assert morale_rules.wound_is_felt_for(4) == 4
+    assert morale_rules.wound_is_felt_for(9) == 9
 
 
-def test_a_wound_never_weighs_as_much_as_a_grave() -> None:
-    """However long the medics keep him, he came back."""
-    worst_wound = abs(
-        morale_rules.SQUADRON_WOUND.default
-    ) * morale_rules.wound_is_felt_for(99)
-    assert worst_wound < abs(morale_rules.SQUADRON_DEATH.default)
+def test_a_short_wound_weighs_less_than_a_grave() -> None:
+    """A long enough one can outweigh it, which is what a long wound is for."""
+    wound = abs(morale_rules.SQUADRON_WOUND.default)
+    assert wound * morale_rules.wound_is_felt_for(4) < abs(
+        morale_rules.SQUADRON_DEATH.default
+    )
 
 
 def test_the_flight_takes_it_harder_than_the_squadron() -> None:
@@ -479,12 +481,12 @@ def test_the_log_does_not_grow_without_end() -> None:
     assert pilot.morale_log[-1].turn == morale_rules.MORALE_HISTORY_LIMIT * 3 - 1
 
 
-def test_going_without_leave_gets_worse_the_longer_it_lasts() -> None:
+def test_going_without_leave_costs_the_same_every_turn() -> None:
     """Counted in what the penalty costs, not in where he ends up.
 
-    The settling drift pulls the other way every turn and is worth more than the first
-    few of these, so measuring his morale would be measuring the two rules against each
-    other rather than this one.
+    The settling drift pulls the other way every turn and is worth more than one of
+    these, so measuring his morale would be measuring the two rules against each other
+    rather than this one.
     """
     settings = _live_settings()
     settings.morale_leave_request_chance = 0  # keep the dice out of it
@@ -508,4 +510,4 @@ def test_going_without_leave_gets_worse_the_longer_it_lasts() -> None:
     second_overdue = knocks_this_turn(100)
 
     assert first_overdue == 1
-    assert second_overdue == 2, "it compounds"
+    assert second_overdue == 1, "the same every turn, not compounding"

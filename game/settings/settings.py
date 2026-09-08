@@ -100,6 +100,7 @@ LIVE_PILOTS_PAGE = "Live Pilots"
 LIVE_PILOTS_RANKS_SECTION = "Rank Names"
 LIVE_PILOTS_SURVIVAL_SECTION = "Survival Chance"
 LIVE_PILOTS_MORALE_SECTION = "Morale"
+LIVE_PILOTS_MORALE_EVENTS_SECTION = "Morale Event Values"
 
 
 GAMEPLAY_SECTION = "Gameplay"
@@ -1847,10 +1848,7 @@ class Settings:
         page=LIVE_PILOTS_PAGE,
         section=GENERAL_SECTION,
         default=False,
-        detail=(
-            "Pilots hold a rank rather than a bare AI skill level, and can be named "
-            "in the mission itself."
-        ),
+        detail=("Pilots hold a rank, have morale, friendship and other features."),
     )
     live_pilots_show_names: bool = boolean_option(
         "Show pilot names in mission",
@@ -1865,18 +1863,10 @@ class Settings:
         section=GENERAL_SECTION,
         default=False,
         detail=(
-            "Whether the debriefing lists what became of the OTHER side's pilots --"
-            " their dead, wounded, promotions and morale. Their aircraft and ground"
-            " losses are always reported; this is only about their aircrew, which you"
-            " would have no way of knowing about."
+            "Show OPFOR dead, wounded, promotions and morale. Their aircraft and"
+            " ground losses are always reported; this is only about their aircrew,"
+            " which you would have no way of knowing about."
         ),
-    )
-    live_pilots_show_ranks: bool = boolean_option(
-        "Show pilot ranks in mission",
-        page=LIVE_PILOTS_PAGE,
-        section=GENERAL_SECTION,
-        default=True,
-        detail="Prefixes the label with the pilot's abbreviated rank.",
     )
     live_pilots_rank_names: str = choices_option(
         "Rank names",
@@ -1889,11 +1879,7 @@ class Settings:
             "Use skill names": "skill",
             "Custom names (define below)": "custom",
         },
-        detail=(
-            "Country ranks name each squadron in its own service -- FltLt for the "
-            "RAF, Hptm for the Luftwaffe -- falling back to the generic ladder for a "
-            "country with none of its own. Skill names use what DCS calls the level."
-        ),
+        detail=("Mapping of the internal skill level to real world like ranks."),
     )
     live_pilots_rank_cadet_short: str = text_option(
         "Cadet",
@@ -1961,16 +1947,11 @@ class Settings:
         default="Lieutenant Colonel",
     )
     live_pilots_rank_survival: bool = boolean_option(
-        "Rank decides who survives a loss",
+        "Rank influences who survives a loss",
         page=LIVE_PILOTS_PAGE,
         section=LIVE_PILOTS_SURVIVAL_SECTION,
         default=True,
-        detail=(
-            "Whether a pilot walks away from a crash or a shoot-down is rolled here, "
-            "against his rank, and owes nothing to whether he ejected in DCS -- the "
-            "engine reports neither an ejection nor a rescue. With this off, losing "
-            "the aircraft loses the pilot, as it always did."
-        ),
+        detail=("Base chance of the pilot surviving a crash or being shot down."),
     )
     live_pilots_survival_cadet: int = bounded_int_option(
         "Cadet (%)",
@@ -2018,10 +1999,9 @@ class Settings:
         section=LIVE_PILOTS_MORALE_SECTION,
         default=True,
         detail=(
-            "Pilots hold up or wear down, 0 to 100 from a starting 50. It decides what"
-            " a sortie is worth to them, how steady the flight is under fire, and"
-            " whether a man asks for leave -- or stops turning up at all. Needs Live"
-            " Pilots."
+            "Morale decides how steady the flight is under fire, how well they fly and"
+            " whether a man asks for leave -- or stops turning up at all. It can also"
+            " influence wound curing times."
         ),
     )
     morale_skill_high: int = bounded_int_option(
@@ -2032,9 +2012,8 @@ class Settings:
         min=50,
         max=100,
         detail=(
-            "A pilot above this flies one rung above the rank he holds, up to Ace. His"
-            " rank does not change: this is how he is flying this week, not what he has"
-            " earned."
+            "A pilot with morale above this and below Ace flies one rung above the"
+            " rank he really holds."
         ),
     )
     morale_skill_low: int = bounded_int_option(
@@ -2045,100 +2024,95 @@ class Settings:
         min=0,
         max=50,
         detail=(
-            "And below this, one rung worse. Worth knowing what that costs: the height"
-            " an aircraft will attack from belongs to the pilot, so a rung down can"
-            " leave a flight overflying its target without firing."
+            "A pilot with morale below this and above Cadet flies one rung below the"
+            " rank he really holds."
         ),
     )
     morale_lost_aircraft: int = bounded_int_option(
         "Lost his aircraft",
         page=LIVE_PILOTS_PAGE,
-        section=LIVE_PILOTS_MORALE_SECTION,
+        section=LIVE_PILOTS_MORALE_EVENTS_SECTION,
         default=-15,
         min=-50,
         max=0,
-        detail=(
-            "He came home without it. The engine reports no ejections, but a pilot who lost the aircraft and lived is the same man in the same parachute."
-        ),
+        detail="He came home without it.",
     )
     morale_achieved_nothing: int = bounded_int_option(
         "Came home empty",
         page=LIVE_PILOTS_PAGE,
-        section=LIVE_PILOTS_MORALE_SECTION,
-        default=-10,
+        section=LIVE_PILOTS_MORALE_EVENTS_SECTION,
+        default=-7,
         min=-50,
         max=0,
         detail=(
-            "Flew a strike, a CAS or a SEAD and destroyed nothing at all. A CAP that saw no one does not count -- there was nothing to fail at."
+            "Flew a strike, a CAS or a SEAD and destroyed nothing at all. A CAP that"
+            " saw no one does not count."
         ),
     )
     morale_squadron_death: int = bounded_int_option(
         "A squadron mate killed",
         page=LIVE_PILOTS_PAGE,
-        section=LIVE_PILOTS_MORALE_SECTION,
+        section=LIVE_PILOTS_MORALE_EVENTS_SECTION,
         default=-20,
         min=-50,
         max=0,
-        detail=("Applied to everyone else in his squadron, once per man lost."),
+        detail=(
+            "Applied to everyone else in his squadron and friends from other"
+            " squadrons, once per man lost."
+        ),
     )
     morale_flight_death: int = bounded_int_option(
         "Wingman killed (extra, his flight only)",
         page=LIVE_PILOTS_PAGE,
-        section=LIVE_PILOTS_MORALE_SECTION,
+        section=LIVE_PILOTS_MORALE_EVENTS_SECTION,
         default=-10,
         min=-50,
         max=0,
         detail=(
             "On top of the squadron's loss, for the men who were in the same flight."
-            " The squadron hears about it; the flight watched it happen."
         ),
     )
     morale_squadron_wound: int = bounded_int_option(
         "Squadron mate wounded (per turn out)",
         page=LIVE_PILOTS_PAGE,
-        section=LIVE_PILOTS_MORALE_SECTION,
-        default=-3,
+        section=LIVE_PILOTS_MORALE_EVENTS_SECTION,
+        default=-2,
         min=-50,
         max=0,
-        detail=(
-            "Counted once per turn the medics keep him, up to three, so it can never"
-            " weigh as much as a death."
-        ),
+        detail="Counted once per turn the medics keep him.",
     )
     morale_flight_wound: int = bounded_int_option(
         "Wingman wounded (extra, his flight only)",
         page=LIVE_PILOTS_PAGE,
-        section=LIVE_PILOTS_MORALE_SECTION,
+        section=LIVE_PILOTS_MORALE_EVENTS_SECTION,
         default=-1,
         min=-50,
         max=0,
         detail="As above, again, for the men who were up there with him.",
     )
     morale_base_lost: int = bounded_int_option(
-        "A base lost",
+        "Base lost",
         page=LIVE_PILOTS_PAGE,
-        section=LIVE_PILOTS_MORALE_SECTION,
-        default=-2,
+        section=LIVE_PILOTS_MORALE_EVENTS_SECTION,
+        default=-10,
         min=-50,
         max=0,
-        detail=("Any base of his coalition changing hands."),
+        detail="Any base of the coalition changing hands.",
     )
     morale_no_leave: int = bounded_int_option(
         "Each turn overdue leave",
         page=LIVE_PILOTS_PAGE,
-        section=LIVE_PILOTS_MORALE_SECTION,
-        default=-2,
+        section=LIVE_PILOTS_MORALE_EVENTS_SECTION,
+        default=-4,
         min=-50,
         max=0,
-        detail=(
-            "From the sixth turn without leave, and it compounds: the eighth turn costs three times what the sixth did."
-        ),
+        detail="From the sixth turn without leave.",
     )
     morale_leave_refused: int = bounded_int_option(
         "Leave refused",
         page=LIVE_PILOTS_PAGE,
-        section=LIVE_PILOTS_MORALE_SECTION,
-        default=-5,
+        section=LIVE_PILOTS_MORALE_EVENTS_SECTION,
+        default=-10,
         min=-50,
         max=0,
         detail=("He asked, and was told no."),
@@ -2146,8 +2120,8 @@ class Settings:
     morale_leave_cancelled: int = bounded_int_option(
         "Leave cut short",
         page=LIVE_PILOTS_PAGE,
-        section=LIVE_PILOTS_MORALE_SECTION,
-        default=-8,
+        section=LIVE_PILOTS_MORALE_EVENTS_SECTION,
+        default=-7,
         min=-50,
         max=0,
         detail=(
@@ -2158,7 +2132,7 @@ class Settings:
     morale_air_kill: int = bounded_int_option(
         "Shot one down",
         page=LIVE_PILOTS_PAGE,
-        section=LIVE_PILOTS_MORALE_SECTION,
+        section=LIVE_PILOTS_MORALE_EVENTS_SECTION,
         default=10,
         min=0,
         max=50,
@@ -2167,8 +2141,8 @@ class Settings:
     morale_unplanned_kill: int = bounded_int_option(
         "Target of opportunity",
         page=LIVE_PILOTS_PAGE,
-        section=LIVE_PILOTS_MORALE_SECTION,
-        default=3,
+        section=LIVE_PILOTS_MORALE_EVENTS_SECTION,
+        default=5,
         min=0,
         max=50,
         detail=("Per thing destroyed that was not what his package was sent for."),
@@ -2176,7 +2150,7 @@ class Settings:
     morale_mission_complete: int = bounded_int_option(
         "Flew the mission",
         page=LIVE_PILOTS_PAGE,
-        section=LIVE_PILOTS_MORALE_SECTION,
+        section=LIVE_PILOTS_MORALE_EVENTS_SECTION,
         default=10,
         min=0,
         max=50,
@@ -2185,23 +2159,23 @@ class Settings:
     morale_promoted: int = bounded_int_option(
         "Promoted",
         page=LIVE_PILOTS_PAGE,
-        section=LIVE_PILOTS_MORALE_SECTION,
-        default=20,
+        section=LIVE_PILOTS_MORALE_EVENTS_SECTION,
+        default=25,
         min=0,
         max=50,
     )
     morale_on_leave: int = bounded_int_option(
         "Each turn of leave",
         page=LIVE_PILOTS_PAGE,
-        section=LIVE_PILOTS_MORALE_SECTION,
+        section=LIVE_PILOTS_MORALE_EVENTS_SECTION,
         default=15,
         min=0,
         max=50,
     )
     morale_leave_request_chance: int = bounded_int_option(
-        "Chance of asking for leave (%)",
+        "Base chance of asking for leave (%)",
         page=LIVE_PILOTS_PAGE,
-        section=LIVE_PILOTS_MORALE_SECTION,
+        section=LIVE_PILOTS_MORALE_EVENTS_SECTION,
         default=8,
         min=0,
         max=100,
@@ -2219,7 +2193,7 @@ class Settings:
         min=0,
         max=100,
         detail=(
-            "Chance that a pilot who would have died is wounded instead. Wounded "
+            "Base chance that a pilot who would have died is wounded instead. Wounded "
             "pilots are unavailable for 1-4 turns."
         ),
     )

@@ -46,6 +46,7 @@ from game.settings import (
 )
 from game.settings.ISettingsContainer import SettingsContainer
 from game.settings.settings import (
+    LIVE_PILOTS_MORALE_EVENTS_SECTION,
     LIVE_PILOTS_RANKS_SECTION,
     LIVE_PILOTS_SURVIVAL_SECTION,
     LIVE_PILOTS_PAGE,
@@ -207,12 +208,11 @@ class AutoSettingsLayout(QGridLayout):
         if self.section == OPFOR_AI_SECTION:
             self._wire_opfor_ai()
         if self.page == LIVE_PILOTS_PAGE:
-            self._wire_dependents(
-                "live_pilots_enabled",
-                (
-                    "live_pilots_show_names",
-                    "live_pilots_show_ranks",
-                ),
+            self._wire_live_pilots_master()
+        if self.section == LIVE_PILOTS_MORALE_EVENTS_SECTION:
+            self._wire_dependents_on(
+                "morale_enabled",
+                [name for name, _ in Settings.fields(self.page, self.section)],
             )
         if self.section == LIVE_PILOTS_SURVIVAL_SECTION:
             self._wire_survival_odds()
@@ -348,6 +348,54 @@ class AutoSettingsLayout(QGridLayout):
                         target.setEnabled(enabled)
 
         master.toggled.connect(lambda _=None: refresh())
+        refresh()
+
+    def _wire_live_pilots_master(self) -> None:
+        """Everything on the page is a detail of Live Pilots, so it all follows it.
+
+        Named by page rather than by a list of settings: whatever is added later --
+        friendship, say -- is covered without anyone remembering to come back here.
+        It only ever disables, so the finer rules below (survival odds, morale event
+        values) still decide what is live while Live Pilots itself is on, whatever
+        order the hooks run in.
+        """
+
+        def refresh() -> None:
+            if self.sc.settings.live_pilots_enabled:
+                return
+            for name, widget in self.settings_map.items():
+                if name == "live_pilots_enabled":
+                    continue
+                widget.setEnabled(False)
+                label = self.label_map.get(name)
+                if label is not None:
+                    label.setEnabled(False)
+            for label in self._rank_labels:
+                label.setEnabled(False)
+
+        self.refresh_hooks.append(refresh)
+        refresh()
+
+    def _wire_dependents_on(
+        self, master_name: str, dependent_names: Iterable[str]
+    ) -> None:
+        """Grey out settings whose master lives in another section.
+
+        Read from the settings rather than from a checkbox for that reason: the page
+        re-runs every group when anything changes, so the value is always current.
+        """
+
+        def refresh() -> None:
+            enabled = bool(getattr(self.sc.settings, master_name, False))
+            for name in dependent_names:
+                widget = self.settings_map.get(name)
+                if widget is not None:
+                    widget.setEnabled(enabled)
+                label = self.label_map.get(name)
+                if label is not None:
+                    label.setEnabled(enabled)
+
+        self.refresh_hooks.append(refresh)
         refresh()
 
     def _wire_survival_odds(self) -> None:

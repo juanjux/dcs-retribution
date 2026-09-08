@@ -75,7 +75,6 @@ SQUADRON_WOUND = MoraleEvent("morale_squadron_wound", -3, "a squadron mate was w
 FLIGHT_WOUND = MoraleEvent("morale_flight_wound", -1, "a man in his flight was hit")
 
 #: However long the medics keep him, a wound is never felt as hard as a grave.
-WOUND_TURNS_FELT = 3
 
 #: A base of his coalition changed hands.
 BASE_LOST = MoraleEvent("morale_base_lost", -2, "a base was lost")
@@ -131,29 +130,34 @@ MORALE_EVENTS: tuple[MoraleEvent, ...] = (
 
 
 def wound_is_felt_for(turns: int) -> int:
-    """How many times a wound of this length is counted against a squadron."""
-    return max(1, min(WOUND_TURNS_FELT, turns))
+    """How many times a wound of this length is counted against a squadron.
+
+    Every turn the medics keep him, not the first three: four turns out is four
+    times the cost, which is the point of a long wound.
+    """
+    return max(1, turns)
 
 
-#: What each of these was worth before the 2026-09-07 pass. Only the migrator reads it,
-#: to move a campaign already in progress onto the new figures -- and only where the save
-#: still holds the old default, so a number the player changed himself is left alone.
-PREVIOUS_DEFAULTS: dict[str, int] = {
-    "morale_lost_aircraft": -15,
-    "morale_achieved_nothing": -5,
-    "morale_squadron_death": -8,
-    "morale_flight_death": -6,
-    "morale_squadron_wound": -2,
-    "morale_flight_wound": -2,
-    "morale_base_lost": -6,
-    "morale_no_leave": -2,
-    "morale_leave_refused": -6,
-    "morale_leave_cancelled": -10,
-    "morale_air_kill": 10,
-    "morale_unplanned_kill": 3,
-    "morale_mission_complete": 4,
-    "morale_promoted": 12,
-    "morale_on_leave": 8,
+#: Every value each of these has had as a default, oldest first. Only the migrator reads
+#: it, to move a campaign already in progress onto the current figures -- and only where
+#: the save still holds one of them, so a number the player set himself is left alone.
+#: A campaign can have sat out more than one re-weighing, which is why it is a list.
+PREVIOUS_DEFAULTS: dict[str, tuple[int, ...]] = {
+    "morale_lost_aircraft": (-15,),
+    "morale_achieved_nothing": (-5, -10),
+    "morale_squadron_death": (-8,),
+    "morale_flight_death": (-6,),
+    "morale_squadron_wound": (-2, -3),
+    "morale_flight_wound": (-2,),
+    "morale_base_lost": (-6, -2),
+    "morale_no_leave": (-2,),
+    "morale_leave_refused": (-6, -5),
+    "morale_leave_cancelled": (-10, -8),
+    "morale_air_kill": (10,),
+    "morale_unplanned_kill": (3,),
+    "morale_mission_complete": (4,),
+    "morale_promoted": (12, 20),
+    "morale_on_leave": (8,),
 }
 
 

@@ -372,16 +372,13 @@ class Squadron:
 
             pilot.turns_since_leave += 1
             if pilot.turns_since_leave > TURNS_BEFORE_LEAVE_IS_MISSED:
-                # It gets worse the longer it goes on: one event per turn beyond the
-                # fifth, so the eighth turn costs three times the sixth.
-                overdue = pilot.turns_since_leave - TURNS_BEFORE_LEAVE_IS_MISSED
-                for _ in range(overdue):
-                    pilot.move_morale(
-                        morale_rules.NO_LEAVE,
-                        self.pilot_skill(pilot),
-                        self.settings,
-                        turn,
-                    )
+                # The same cost every turn from the sixth on, not a compounding one.
+                pilot.move_morale(
+                    morale_rules.NO_LEAVE,
+                    self.pilot_skill(pilot),
+                    self.settings,
+                    turn,
+                )
             before_drift = pilot.morale
             pilot.morale = morale_rules.clamp(
                 pilot.morale + morale_rules.drift(pilot.morale)

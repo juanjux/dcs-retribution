@@ -368,10 +368,9 @@ class FlightGroupConfigurator:
         settings = self.game.settings
         if not settings.live_pilots_enabled:
             return
-        show_ranks = settings.live_pilots_show_ranks
+        # The rank prefix is part of Live Pilots rather than a switch of its own.
+        show_ranks = True
         show_names = settings.live_pilots_show_names
-        if not show_ranks and not show_names:
-            return
 
         squadron = self.flight.squadron
         used: set[str] = set()

@@ -200,6 +200,14 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   one category, and the panel shows this turn until you ask for all of them. The full
   timestamp lives in the tooltip.
 
+- **Live Pilots is one master switch, and the morale numbers have their own box.**
+  Turning it off used to leave morale, the enemy-aircrew report and the rank ladder
+  live; the rule is by page now, so everything on it greys out together and whatever is
+  added later is covered without anyone remembering. With morale off, its sixteen event
+  values grey out too. "Show pilot ranks in mission" is gone -- it is part of Live
+  Pilots, not a choice of its own. Two rules changed with the re-weighing: a wound is
+  felt every turn the medics keep him rather than the first three, and going without
+  leave costs the same each turn rather than compounding.
 ### Kneeboards
 - **Friendly-packages list** plus a **package-targets map** page.
   ([#11](https://github.com/juanjux/dcs-retribution/pull/11))

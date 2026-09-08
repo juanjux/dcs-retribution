@@ -182,13 +182,12 @@ class Migrator:
         settings = self.game.settings
         moved = []
         for event in morale.MORALE_EVENTS:
-            was = morale.PREVIOUS_DEFAULTS.get(event.key)
-            if was is None or was == event.default:
-                continue
-            if getattr(settings, event.key, event.default) != was:
-                continue  # he set it himself, or it is already the new figure
+            olds = morale.PREVIOUS_DEFAULTS.get(event.key, ())
+            held = getattr(settings, event.key, event.default)
+            if held == event.default or held not in olds:
+                continue  # already current, or he set it himself
             setattr(settings, event.key, event.default)
-            moved.append(f"{event.key} {was} -> {event.default}")
+            moved.append(f"{event.key} {held} -> {event.default}")
         if moved:
             logging.info("Morale event sizes brought up to date: %s", "; ".join(moved))
 
