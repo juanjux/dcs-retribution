@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
     QApplication,
     QFileDialog,
     QFrame,
+    QMenuBar,
     QHBoxLayout,
     QMainWindow,
     QMessageBox,
@@ -279,11 +280,17 @@ class QLiberationWindow(QMainWindow):
         # Held on the window: PySide does not take ownership of a corner widget, so a
         # local would be collected the moment this returns and Qt would destroy it --
         # which is exactly how the icons vanished the first time.
-        corner = self.menu_corner = QWidget()
+        # Qt has no way to add widgets after the last menu -- a corner widget goes to
+        # the far right of the row, not next to Help -- so the menu bar and the icons
+        # share one strip and that strip becomes the window's menu widget.
+        self.menu_bar = QMenuBar()
+        self.menu_strip = QWidget()
         row = QHBoxLayout()
         row.setContentsMargins(0, 0, 6, 0)
         row.setSpacing(4)
-        corner.setLayout(row)
+        self.menu_strip.setLayout(row)
+        row.addWidget(self.menu_bar)
+        row.addSpacing(10)
         for index, group in enumerate(groups):
             if index:
                 divider = QFrame()
@@ -302,10 +309,13 @@ class QLiberationWindow(QMainWindow):
                     "QToolButton:hover { background: #33475C; }"
                 )
                 row.addWidget(button)
-        self.menuBar().setCornerWidget(corner, Qt.Corner.TopRightCorner)
+        row.addStretch()
+        self.setMenuWidget(self.menu_strip)
 
     def initMenuBar(self):
-        self.menu = self.menuBar()
+        # The strip's own bar: self.menuBar() would build a second, empty one, because
+        # the window's menu area is a widget now.
+        self.menu = self.menu_bar
 
         file_menu = self.menu.addMenu("&File")
         file_menu.addAction(self.newGameAction)

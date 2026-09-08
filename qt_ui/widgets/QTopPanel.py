@@ -190,14 +190,22 @@ class QTopPanel(QFrame):
             if divider is not None:
                 self.layout.addWidget(divider, 0, Qt.AlignmentFlag.AlignVCenter)
             self.layout.addWidget(cell, 0, Qt.AlignmentFlag.AlignVCenter)
+        # The dialogs sit with the status they belong to, not across the window from
+        # it; only what ends the turn is pinned to the right.
+        self.layout.addWidget(commandbar.Divider(), 0, Qt.AlignmentFlag.AlignVCenter)
+        dialogs = QHBoxLayout()
+        dialogs.setContentsMargins(0, 0, 0, 0)
+        dialogs.setSpacing(8)
+        for widget in (self.air_wing, self.transfers, self.debriefing):
+            dialogs.addWidget(widget)
+        dialogs.addWidget(self.ai_status_button)
+        self.layout.addLayout(dialogs)
+
         self.layout.addStretch(1)
 
         actions = QHBoxLayout()
         actions.setContentsMargins(0, 0, 0, 0)
         actions.setSpacing(8)
-        for widget in (self.air_wing, self.transfers, self.debriefing):
-            actions.addWidget(widget)
-        actions.addWidget(self.ai_status_button)
         if ui_flags.show_sim_speed_controls:
             actions.addLayout(self.simSpeedControls)
         players = MaxPlayerCount(self.game_model.ato_model)
@@ -732,7 +740,11 @@ class QTopPanel(QFrame):
         # would swap the game underneath the still-running poll thread. Reproduce that
         # block by disabling those + the top-panel controls for the panel's lifetime.
         self.setControls(False)
-        menu_bar = window.menuBar() if hasattr(window, "menuBar") else None
+        # The menu lives in a strip with the toolbar icons now; disabling the
+        # strip blocks both, which is what the block below is for.
+        menu_bar = getattr(window, "menu_strip", None)
+        if menu_bar is None and hasattr(window, "menuBar"):
+            menu_bar = window.menuBar()
         chrome = [
             w for w in [menu_bar, *window.findChildren(QToolBar)] if w is not None
         ]
