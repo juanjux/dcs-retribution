@@ -511,3 +511,26 @@ def test_going_without_leave_costs_the_same_every_turn() -> None:
 
     assert first_overdue == 1
     assert second_overdue == 1, "the same every turn, not compounding"
+
+
+# --- what earns a line in the debriefing ------------------------------------
+
+
+def test_flying_the_mission_does_not_fill_the_debriefing() -> None:
+    """It is worth exactly the reporting threshold, so every man who came home used
+    to get a row -- and the row read "Normal -> Normal", because he had not moved
+    state."""
+    assert not morale_rules.worth_reporting(45, 55)
+
+
+def test_a_move_that_changes_his_state_is_reported() -> None:
+    assert morale_rules.worth_reporting(50, 60), "Normal -> Confident"
+
+
+def test_a_big_move_is_reported_even_inside_one_state() -> None:
+    """Falling from the top of Normal to the bottom of it is worth knowing about."""
+    assert morale_rules.worth_reporting(59, 41)
+
+
+def test_ordinary_churn_is_still_left_to_the_ledger() -> None:
+    assert not morale_rules.worth_reporting(50, 55)

@@ -442,6 +442,26 @@ def leave_request_chance(
 #: ones are the ordinary churn of a campaign and only go to the ledger.
 MORALE_WORTH_REPORTING = 10
 
+#: A move that does not change a pilot's state is only worth a line if it was this
+#: big. Flying the mission is worth exactly MORALE_WORTH_REPORTING, so without this
+#: every man who came home filled the debriefing with a row reading "Normal -> Normal".
+#: Fifteen rather than twenty because the narrower bands are only twenty wide, so a
+#: bigger figure could never be reached inside one.
+MORALE_BIG_SWING = 15
+
+
+def worth_reporting(before: int, after: int) -> bool:
+    """Whether this movement earns a line in the debriefing.
+
+    Either it moved the pilot from one state to another -- which is what the row can
+    show -- or it was large enough to matter even though he ended in the same one.
+    """
+    moved = abs(after - before)
+    if moved < MORALE_WORTH_REPORTING:
+        return False
+    return morale_state(before) is not morale_state(after) or moved >= MORALE_BIG_SWING
+
+
 #: The chance, per turn spent at rock bottom, that a pilot simply stops coming --
 #: one entry per rung of the ladder, from cadet to squadron leader. Rank is what keeps
 #: a man in his seat when nothing else does, so the veteran is the last to go.
