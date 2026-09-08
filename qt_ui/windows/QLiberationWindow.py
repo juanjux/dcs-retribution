@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
     QFileDialog,
     QFrame,
     QMenuBar,
+    QSizePolicy,
     QHBoxLayout,
     QMainWindow,
     QMessageBox,
@@ -289,7 +290,12 @@ class QLiberationWindow(QMainWindow):
         row.setContentsMargins(0, 0, 6, 0)
         row.setSpacing(4)
         self.menu_strip.setLayout(row)
-        row.addWidget(self.menu_bar)
+        # Never wider than its menus: left to itself the bar expands and pushes the
+        # icons into the middle of the row instead of leaving them beside Help.
+        self.menu_bar.setSizePolicy(
+            QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Preferred
+        )
+        row.addWidget(self.menu_bar, 0)
         row.addSpacing(10)
         for index, group in enumerate(groups):
             if index:
