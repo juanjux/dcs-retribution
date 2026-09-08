@@ -200,6 +200,11 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   one category, and the panel shows this turn until you ask for all of them. The full
   timestamp lives in the tooltip.
 
+- **One Mission Plugins page instead of two.** A row per plugin -- switch, name, and a
+  gear where there is something to set -- with the description underneath, and the
+  options in their own dialog. Turning CTLD on and setting it up used to be two pages
+  apart, and the options page was a wall of boxes for plugins you had not enabled.
+
 ### Kneeboards
 - **Friendly-packages list** plus a **package-targets map** page.
   ([#11](https://github.com/juanjux/dcs-retribution/pull/11))
