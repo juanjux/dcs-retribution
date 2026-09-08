@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING
 
@@ -8,8 +7,6 @@ from .atdeparture import AtDeparture
 from .navigating import Navigating
 from ..starttype import StartType
 from ...utils import LBS_TO_KG
-
-from game.settings.settings import FastForwardStopCondition
 
 if TYPE_CHECKING:
     from game.ato.flight import Flight
@@ -48,32 +45,6 @@ class Takeoff(AtDeparture):
         if self.flight.unit_type.fuel_consumption is None:
             return initial_fuel
         return initial_fuel - self.flight.unit_type.fuel_consumption.taxi * LBS_TO_KG
-
-    def should_halt_sim(self) -> bool:
-        if (
-            self.flight.client_count > 0
-            and self.settings.fast_forward_stop_condition
-            == FastForwardStopCondition.PLAYER_TAKEOFF
-        ):
-            logging.info(
-                f"Interrupting simulation because {self.flight} has players and has "
-                "reached takeoff time"
-            )
-            return True
-
-        if (
-            self.settings.fast_forward_stop_condition
-            in {
-                FastForwardStopCondition.PLAYER_TAXI,
-                FastForwardStopCondition.PLAYER_STARTUP,
-            }
-            and self.flight.client_count > 0
-        ):
-            logging.info(
-                f"Interrupting simulation because {self.flight} has players and is already taking off "
-            )
-            return True
-        return False
 
     @property
     def description(self) -> str:

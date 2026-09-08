@@ -102,13 +102,6 @@ class Flight(
         # if it was captured, otherwise they are lost. Player/planner toggled.
         self.remain_at_destination = False
 
-        # Transient (not persisted): when set, the next time this flight
-        # transitions out of WaitingForStart the simulation halts. Used by
-        # the pre-launch mismatch dialog so the user can opt to "halt
-        # fast-forward at this flight's start" when the configured stop
-        # condition targets a state this flight's start type would skip.
-        self.halt_sim_on_spawn = False
-
         self.frequency = frequency
         if self.unit_type.dcs_unit_type.tacan:
             self.tacan = channel
@@ -190,16 +183,12 @@ class Flight(
         # we will need to persist the flight state, but for now keep it out of save
         # compat (it also contains a generator that cannot be pickled).
         del state["state"]
-        # halt_sim_on_spawn is a transient per-mission opt-in; never persist
-        # so that an old save can't carry a stale halt request into a new run.
-        state.pop("halt_sim_on_spawn", None)
         return state
 
     def __setstate__(self, state: dict[str, Any]) -> None:
         state["state"] = Uninitialized(self, state["squadron"].settings)
         if "use_same_loadout_for_all_members" not in state:
             state["use_same_loadout_for_all_members"] = True
-        state.setdefault("halt_sim_on_spawn", False)
         state.setdefault("release_at_ingress", False)
         state.setdefault("remain_at_destination", False)
         self.__dict__.update(state)
@@ -358,9 +347,6 @@ class Flight(
         self, events: GameUpdateEvents, time: datetime, duration: timedelta
     ) -> None:
         self.state.on_game_tick(events, time, duration)
-
-    def should_halt_sim(self) -> bool:
-        return self.state.should_halt_sim()
 
     @property
     def alive(self) -> bool:

@@ -1,6 +1,7 @@
 ﻿# Retribution v1.6.3 (414th)
 
 ## Features/Improvements
+* **[Sim]** Fast forward is gone, and with it *Fast forward until* and *Resolve combat when fast forwarding by*. Take Off now hands DCS the mission at the time it was planned for instead of running a clock forward first. Existing saves load unchanged.
 * **[FIX]** Player pilots were playing the morale game: the debriefing told you how you felt about your own turn, and a figure you never asked for could shift the skill you flew at, weigh your XP or ground you. Morale is now for the AI pilots only.
 * **[UI]** Settings pages no longer spread four rows over the height of the window, and a switch sits beside its label instead of out at the right-hand edge.
 * **[UI]** *Automate ground object repairs* carries its own tuning behind a gear, so the *Ground Object Repairs* page is gone; *Building Repairs* moved up under *HQ Automation*; and *Morale Event Values* is now a box at the end of *Morale* rather than a page of its own.
