@@ -131,9 +131,20 @@ class Pilot:
         return self.status is PilotStatus.Deserted
 
     @property
+    def has_morale(self) -> bool:
+        """Whether the morale rules are about this man at all.
+
+        They are not about the player. He decides for himself whether he is up to a
+        sortie, so a figure moved behind his back can only get in the way: it cannot
+        ground him, hand him a week off or make him walk away, and the debriefing
+        telling him how he feels about his own turn reads as a joke.
+        """
+        return not self.player
+
+    @property
     def refuses_to_fly(self) -> bool:
         """Rock bottom. He is not offered for a sortie, the way a wounded man is not."""
-        return self.morale <= REFUSES_TO_FLY_AT
+        return self.has_morale and self.morale <= REFUSES_TO_FLY_AT
 
     @property
     def on_leave(self) -> bool:
@@ -170,12 +181,17 @@ class Pilot:
         Every morale change goes through here so that nothing can move a pilot without
         it being written down -- the log is what the pilot dialog reads back.
         """
+        if not self.has_morale:
+            return 0
         before = self.morale
         self.morale = apply_morale(before, event, skill, settings)
         return self.note_morale_change(before, event.reason, turn)
 
     def note_morale_change(self, before: int, reason: str, turn: int = -1) -> int:
         """Write down a change already made to :attr:`morale`."""
+        if not self.has_morale:
+            self.morale = before
+            return 0
         moved = self.morale - before
         if not moved:
             return 0

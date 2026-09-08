@@ -382,6 +382,79 @@ def test_a_man_in_a_hospital_bed_does_not_ask_for_leave() -> None:
     assert not pilot.wants_leave
 
 
+# --- the player is not in this ----------------------------------------------
+
+
+def test_nothing_moves_the_player() -> None:
+    """He was told in the debriefing how he felt about his own turn. He is not."""
+    pilot = Pilot("Vega", player=True)
+    assert not pilot.has_morale
+
+    moved = pilot.move_morale(morale_rules.PROMOTED, Skill.Good, _live_settings(), 4)
+
+    assert moved == 0
+    assert pilot.morale == morale_rules.MORALE_START
+    assert pilot.morale_log == [], "and nothing is written down about it"
+
+
+def test_a_change_made_behind_the_choke_point_is_put_back() -> None:
+    """The turn's drift assigns before it reports, so reporting has to undo it."""
+    pilot = Pilot("Vega", player=True)
+    before = pilot.morale
+    pilot.morale = 90
+
+    assert pilot.note_morale_change(before, "time passing", 4) == 0
+    assert pilot.morale == before
+
+
+def test_the_turn_passing_does_nothing_to_him() -> None:
+    settings = _live_settings()
+    settings.morale_leave_request_chance = 100  # anyone else would ask every turn
+    squadron = _squadron(settings)
+    pilot = Pilot("Vega", player=True)
+    pilot.morale = 20
+    squadron.current_roster = [pilot]
+
+    for turn in range(1, 12):
+        squadron.tend_morale(turn)
+
+    assert pilot.morale == 20, "no drift"
+    assert pilot.turns_since_leave == 0, "and never overdue a rest"
+    assert not pilot.wants_leave
+    assert pilot.status is PilotStatus.Active, "nor deserting"
+
+
+def test_but_leave_he_granted_himself_still_runs_out() -> None:
+    squadron = _squadron(_live_settings())
+    pilot = Pilot("Vega", player=True)
+    squadron.current_roster = [pilot]
+    squadron.available_pilots = [pilot]
+
+    squadron.send_on_leave(pilot, 2, turn=1)
+    squadron.tend_morale(2)
+    squadron.tend_morale(3)
+
+    assert pilot.status is PilotStatus.Active
+
+
+def test_he_is_never_refused_by_his_own_state_of_mind() -> None:
+    pilot = Pilot("Vega", player=True)
+    pilot.morale = morale_rules.MORALE_MIN
+
+    assert not pilot.refuses_to_fly
+
+
+def test_he_flies_at_the_rank_he_holds() -> None:
+    squadron = _squadron(_live_settings())
+    pilot = Pilot("Vega", player=True)
+    pilot.record.xp = 2000
+
+    pilot.morale = 95
+    assert squadron.mission_skill(pilot) is squadron.pilot_skill(pilot)
+    pilot.morale = 5
+    assert squadron.mission_skill(pilot) is squadron.pilot_skill(pilot)
+
+
 # --- who is on offer --------------------------------------------------------
 
 
