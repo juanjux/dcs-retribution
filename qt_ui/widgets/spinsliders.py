@@ -7,6 +7,10 @@ from PySide6.QtWidgets import QSlider, QHBoxLayout
 
 from qt_ui.widgets.floatspinners import FloatSpinner
 
+#: Wide enough to aim with, narrow enough that the settings stay a column rather
+#: than stretching across whatever width the dialog happens to have.
+SLIDER_WIDTH = 260
+
 
 class FloatSpinSlider(QHBoxLayout):
     def __init__(
@@ -15,6 +19,7 @@ class FloatSpinSlider(QHBoxLayout):
         super().__init__()
 
         slider = QSlider(Qt.Orientation.Horizontal)
+        slider.setMinimumWidth(SLIDER_WIDTH)
         slider.setMinimum(int(minimum * divisor))
         slider.setMaximum(int(maximum * divisor))
         slider.setValue(int(initial * divisor))
@@ -37,6 +42,7 @@ class TimeInputs(QtWidgets.QHBoxLayout):
         initial_minutes = int(initial.total_seconds() / 60)
 
         slider = QtWidgets.QSlider(Qt.Orientation.Horizontal)
+        slider.setMinimumWidth(SLIDER_WIDTH)
         slider.setMinimum(minimum)
         slider.setMaximum(maximum)
         slider.setValue(initial_minutes)

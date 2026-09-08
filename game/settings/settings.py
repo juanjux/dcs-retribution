@@ -126,12 +126,14 @@ class Settings:
         page=DIFFICULTY_PAGE,
         section=AI_DIFFICULTY_SECTION,
         default="High",
+        detail="Using Cadet is strongly recommended if you are enabling Live Pilots.",
     )
     enemy_skill: str = pilot_skill_option(
         "Enemy coalition skill",
         page=DIFFICULTY_PAGE,
         section=AI_DIFFICULTY_SECTION,
         default="High",
+        detail="Using Cadet is strongly recommended if you are enabling Live Pilots.",
     )
     enemy_vehicle_skill: str = skill_option(
         "Enemy AA and vehicles skill",
@@ -813,8 +815,9 @@ class Settings:
         default=False,
         detail=(
             "If enabled, AI can spend budget to repair destroyed ground object units "
-            "such as SAMs and EWRs."
+            "such as SAMs and EWRs. The gear tunes what it repairs first."
         ),
+        opens_section=GROUND_OBJECT_REPAIR_TUNING_SECTION,
     )
     ground_object_repair_turns: int = bounded_int_option(
         "Ground object repair turns",
@@ -975,6 +978,75 @@ class Settings:
         ),
     )
 
+    building_repair_income_multiplier: float = bounded_float_option(
+        "Building repair income multiplier",
+        page=CAMPAIGN_MANAGEMENT_PAGE,
+        section=BUILDING_REPAIR_TUNING_SECTION,
+        min=0,
+        max=20,
+        divisor=10,
+        default=4.0,
+        detail=("Multiplier applied to building income to compute repair cost."),
+    )
+    building_repair_ammo_bonus: float = bounded_float_option(
+        "Building repair ammo bonus",
+        page=CAMPAIGN_MANAGEMENT_PAGE,
+        section=BUILDING_REPAIR_TUNING_SECTION,
+        min=0,
+        max=50,
+        divisor=5,
+        default=10.0,
+        detail=("Added cost for ammo depots to reflect frontline value."),
+    )
+    building_repair_factory_bonus: float = bounded_float_option(
+        "Building repair factory bonus",
+        page=CAMPAIGN_MANAGEMENT_PAGE,
+        section=BUILDING_REPAIR_TUNING_SECTION,
+        min=0,
+        max=50,
+        divisor=10,
+        default=12.0,
+        detail=("Added cost for factories to reflect production value."),
+    )
+    building_repair_weight_remote: float = bounded_float_option(
+        "Building repair weight: remote",
+        page=CAMPAIGN_MANAGEMENT_PAGE,
+        section=BUILDING_REPAIR_TUNING_SECTION,
+        min=0,
+        max=5,
+        divisor=10,
+        default=1.2,
+        detail=(
+            "Weight for remoteness from enemy control points in repair priority. "
+            + "Buildings farther from enemy control points will be prioritized for repair."
+        ),
+    )
+    building_repair_weight_income: float = bounded_float_option(
+        "Building repair weight: income",
+        page=CAMPAIGN_MANAGEMENT_PAGE,
+        section=BUILDING_REPAIR_TUNING_SECTION,
+        min=0,
+        max=5,
+        divisor=10,
+        default=1.0,
+        detail=(
+            "Weight for building income in repair priority. "
+            + "Buildings that generate more income will be prioritized for repair."
+        ),
+    )
+    building_repair_weight_ammo_frontline: float = bounded_float_option(
+        "Building repair weight: ammo frontline",
+        page=CAMPAIGN_MANAGEMENT_PAGE,
+        section=BUILDING_REPAIR_TUNING_SECTION,
+        min=0,
+        max=5,
+        divisor=10,
+        default=1.1,
+        detail=(
+            "Weight for frontline proximity when prioritizing ammo depots. "
+            + "Ammo depots closer to the frontline will be prioritized for repair."
+        ),
+    )
     # Flight Planner Automation
     #: The weight used for 2-ships.
     fpa_2ship_weight: int = bounded_int_option(
@@ -1090,75 +1162,6 @@ class Settings:
         divisor=10,
         default=0.4,
         detail="Weight applied to covered ground object income.",
-    )
-    building_repair_income_multiplier: float = bounded_float_option(
-        "Building repair income multiplier",
-        page=CAMPAIGN_MANAGEMENT_PAGE,
-        section=BUILDING_REPAIR_TUNING_SECTION,
-        min=0,
-        max=20,
-        divisor=10,
-        default=4.0,
-        detail=("Multiplier applied to building income to compute repair cost."),
-    )
-    building_repair_ammo_bonus: float = bounded_float_option(
-        "Building repair ammo bonus",
-        page=CAMPAIGN_MANAGEMENT_PAGE,
-        section=BUILDING_REPAIR_TUNING_SECTION,
-        min=0,
-        max=50,
-        divisor=5,
-        default=10.0,
-        detail=("Added cost for ammo depots to reflect frontline value."),
-    )
-    building_repair_factory_bonus: float = bounded_float_option(
-        "Building repair factory bonus",
-        page=CAMPAIGN_MANAGEMENT_PAGE,
-        section=BUILDING_REPAIR_TUNING_SECTION,
-        min=0,
-        max=50,
-        divisor=10,
-        default=12.0,
-        detail=("Added cost for factories to reflect production value."),
-    )
-    building_repair_weight_remote: float = bounded_float_option(
-        "Building repair weight: remote",
-        page=CAMPAIGN_MANAGEMENT_PAGE,
-        section=BUILDING_REPAIR_TUNING_SECTION,
-        min=0,
-        max=5,
-        divisor=10,
-        default=1.2,
-        detail=(
-            "Weight for remoteness from enemy control points in repair priority. "
-            + "Buildings farther from enemy control points will be prioritized for repair."
-        ),
-    )
-    building_repair_weight_income: float = bounded_float_option(
-        "Building repair weight: income",
-        page=CAMPAIGN_MANAGEMENT_PAGE,
-        section=BUILDING_REPAIR_TUNING_SECTION,
-        min=0,
-        max=5,
-        divisor=10,
-        default=1.0,
-        detail=(
-            "Weight for building income in repair priority. "
-            + "Buildings that generate more income will be prioritized for repair."
-        ),
-    )
-    building_repair_weight_ammo_frontline: float = bounded_float_option(
-        "Building repair weight: ammo frontline",
-        page=CAMPAIGN_MANAGEMENT_PAGE,
-        section=BUILDING_REPAIR_TUNING_SECTION,
-        min=0,
-        max=5,
-        divisor=10,
-        default=1.1,
-        detail=(
-            "Weight for frontline proximity when prioritizing ammo depots. "
-            + "Ammo depots closer to the frontline will be prioritized for repair."
-        ),
     )
     # Mission Generator
     # Gameplay
@@ -2002,34 +2005,11 @@ class Settings:
             " influence wound curing times."
         ),
     )
-    morale_skill_high: int = bounded_int_option(
-        "Flies a rank better above",
-        page=LIVE_PILOTS_PAGE,
-        section=LIVE_PILOTS_MORALE_SECTION,
-        default=85,
-        min=50,
-        max=100,
-        detail=(
-            "A pilot with morale above this and below Ace flies one rung above the"
-            " rank he really holds."
-        ),
-    )
-    morale_skill_low: int = bounded_int_option(
-        "Flies a rank worse below",
-        page=LIVE_PILOTS_PAGE,
-        section=LIVE_PILOTS_MORALE_SECTION,
-        default=15,
-        min=0,
-        max=50,
-        detail=(
-            "A pilot with morale below this and above Cadet flies one rung below the"
-            " rank he really holds."
-        ),
-    )
     morale_lost_aircraft: int = bounded_int_option(
         "Lost his aircraft",
         page=LIVE_PILOTS_PAGE,
-        section=LIVE_PILOTS_MORALE_EVENTS_SECTION,
+        section=LIVE_PILOTS_MORALE_SECTION,
+        subsection=LIVE_PILOTS_MORALE_EVENTS_SECTION,
         default=-15,
         min=-50,
         max=0,
@@ -2038,7 +2018,8 @@ class Settings:
     morale_achieved_nothing: int = bounded_int_option(
         "Came home empty",
         page=LIVE_PILOTS_PAGE,
-        section=LIVE_PILOTS_MORALE_EVENTS_SECTION,
+        section=LIVE_PILOTS_MORALE_SECTION,
+        subsection=LIVE_PILOTS_MORALE_EVENTS_SECTION,
         default=-7,
         min=-50,
         max=0,
@@ -2050,7 +2031,8 @@ class Settings:
     morale_squadron_death: int = bounded_int_option(
         "A squadron mate killed",
         page=LIVE_PILOTS_PAGE,
-        section=LIVE_PILOTS_MORALE_EVENTS_SECTION,
+        section=LIVE_PILOTS_MORALE_SECTION,
+        subsection=LIVE_PILOTS_MORALE_EVENTS_SECTION,
         default=-20,
         min=-50,
         max=0,
@@ -2062,7 +2044,8 @@ class Settings:
     morale_flight_death: int = bounded_int_option(
         "Wingman killed (extra, his flight only)",
         page=LIVE_PILOTS_PAGE,
-        section=LIVE_PILOTS_MORALE_EVENTS_SECTION,
+        section=LIVE_PILOTS_MORALE_SECTION,
+        subsection=LIVE_PILOTS_MORALE_EVENTS_SECTION,
         default=-10,
         min=-50,
         max=0,
@@ -2073,7 +2056,8 @@ class Settings:
     morale_squadron_wound: int = bounded_int_option(
         "Squadron mate wounded (per turn out)",
         page=LIVE_PILOTS_PAGE,
-        section=LIVE_PILOTS_MORALE_EVENTS_SECTION,
+        section=LIVE_PILOTS_MORALE_SECTION,
+        subsection=LIVE_PILOTS_MORALE_EVENTS_SECTION,
         default=-2,
         min=-50,
         max=0,
@@ -2082,7 +2066,8 @@ class Settings:
     morale_flight_wound: int = bounded_int_option(
         "Wingman wounded (extra, his flight only)",
         page=LIVE_PILOTS_PAGE,
-        section=LIVE_PILOTS_MORALE_EVENTS_SECTION,
+        section=LIVE_PILOTS_MORALE_SECTION,
+        subsection=LIVE_PILOTS_MORALE_EVENTS_SECTION,
         default=-1,
         min=-50,
         max=0,
@@ -2091,7 +2076,8 @@ class Settings:
     morale_base_lost: int = bounded_int_option(
         "Base lost",
         page=LIVE_PILOTS_PAGE,
-        section=LIVE_PILOTS_MORALE_EVENTS_SECTION,
+        section=LIVE_PILOTS_MORALE_SECTION,
+        subsection=LIVE_PILOTS_MORALE_EVENTS_SECTION,
         default=-10,
         min=-50,
         max=0,
@@ -2100,7 +2086,8 @@ class Settings:
     morale_no_leave: int = bounded_int_option(
         "Each turn overdue leave",
         page=LIVE_PILOTS_PAGE,
-        section=LIVE_PILOTS_MORALE_EVENTS_SECTION,
+        section=LIVE_PILOTS_MORALE_SECTION,
+        subsection=LIVE_PILOTS_MORALE_EVENTS_SECTION,
         default=-4,
         min=-50,
         max=0,
@@ -2109,7 +2096,8 @@ class Settings:
     morale_leave_refused: int = bounded_int_option(
         "Leave refused",
         page=LIVE_PILOTS_PAGE,
-        section=LIVE_PILOTS_MORALE_EVENTS_SECTION,
+        section=LIVE_PILOTS_MORALE_SECTION,
+        subsection=LIVE_PILOTS_MORALE_EVENTS_SECTION,
         default=-10,
         min=-50,
         max=0,
@@ -2118,7 +2106,8 @@ class Settings:
     morale_leave_cancelled: int = bounded_int_option(
         "Leave cut short",
         page=LIVE_PILOTS_PAGE,
-        section=LIVE_PILOTS_MORALE_EVENTS_SECTION,
+        section=LIVE_PILOTS_MORALE_SECTION,
+        subsection=LIVE_PILOTS_MORALE_EVENTS_SECTION,
         default=-7,
         min=-50,
         max=0,
@@ -2130,7 +2119,8 @@ class Settings:
     morale_air_kill: int = bounded_int_option(
         "Shot one down",
         page=LIVE_PILOTS_PAGE,
-        section=LIVE_PILOTS_MORALE_EVENTS_SECTION,
+        section=LIVE_PILOTS_MORALE_SECTION,
+        subsection=LIVE_PILOTS_MORALE_EVENTS_SECTION,
         default=10,
         min=0,
         max=50,
@@ -2139,7 +2129,8 @@ class Settings:
     morale_unplanned_kill: int = bounded_int_option(
         "Target of opportunity",
         page=LIVE_PILOTS_PAGE,
-        section=LIVE_PILOTS_MORALE_EVENTS_SECTION,
+        section=LIVE_PILOTS_MORALE_SECTION,
+        subsection=LIVE_PILOTS_MORALE_EVENTS_SECTION,
         default=5,
         min=0,
         max=50,
@@ -2148,7 +2139,8 @@ class Settings:
     morale_mission_complete: int = bounded_int_option(
         "Flew the mission",
         page=LIVE_PILOTS_PAGE,
-        section=LIVE_PILOTS_MORALE_EVENTS_SECTION,
+        section=LIVE_PILOTS_MORALE_SECTION,
+        subsection=LIVE_PILOTS_MORALE_EVENTS_SECTION,
         default=10,
         min=0,
         max=50,
@@ -2157,7 +2149,8 @@ class Settings:
     morale_promoted: int = bounded_int_option(
         "Promoted",
         page=LIVE_PILOTS_PAGE,
-        section=LIVE_PILOTS_MORALE_EVENTS_SECTION,
+        section=LIVE_PILOTS_MORALE_SECTION,
+        subsection=LIVE_PILOTS_MORALE_EVENTS_SECTION,
         default=25,
         min=0,
         max=50,
@@ -2165,7 +2158,8 @@ class Settings:
     morale_on_leave: int = bounded_int_option(
         "Each turn of leave",
         page=LIVE_PILOTS_PAGE,
-        section=LIVE_PILOTS_MORALE_EVENTS_SECTION,
+        section=LIVE_PILOTS_MORALE_SECTION,
+        subsection=LIVE_PILOTS_MORALE_EVENTS_SECTION,
         default=15,
         min=0,
         max=50,
@@ -2173,7 +2167,8 @@ class Settings:
     morale_leave_request_chance: int = bounded_int_option(
         "Base chance of asking for leave (%)",
         page=LIVE_PILOTS_PAGE,
-        section=LIVE_PILOTS_MORALE_EVENTS_SECTION,
+        section=LIVE_PILOTS_MORALE_SECTION,
+        subsection=LIVE_PILOTS_MORALE_EVENTS_SECTION,
         default=8,
         min=0,
         max=100,
@@ -2182,6 +2177,51 @@ class Settings:
             " as he picks up, so a contented man asks now and then and a hollow one"
             " asks often. You answer at the end of the turn."
         ),
+    )
+    morale_state_triumphant: int = bounded_int_option(
+        "Triumphant",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_MORALE_SECTION,
+        subsection=LIVE_PILOTS_MORALE_EVENTS_SECTION,
+        default=85,
+        min=0,
+        max=100,
+    )
+    morale_state_confident: int = bounded_int_option(
+        "Confident",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_MORALE_SECTION,
+        subsection=LIVE_PILOTS_MORALE_EVENTS_SECTION,
+        default=60,
+        min=0,
+        max=100,
+    )
+    morale_state_normal: int = bounded_int_option(
+        "Normal",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_MORALE_SECTION,
+        subsection=LIVE_PILOTS_MORALE_EVENTS_SECTION,
+        default=40,
+        min=0,
+        max=100,
+    )
+    morale_state_shaken: int = bounded_int_option(
+        "Shaken",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_MORALE_SECTION,
+        subsection=LIVE_PILOTS_MORALE_EVENTS_SECTION,
+        default=15,
+        min=0,
+        max=100,
+    )
+    morale_state_shattered: int = bounded_int_option(
+        "Shattered",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_MORALE_SECTION,
+        subsection=LIVE_PILOTS_MORALE_EVENTS_SECTION,
+        default=1,
+        min=0,
+        max=100,
     )
     live_pilots_wounded_chance: int = bounded_int_option(
         "Wounded instead of killed (%)",
@@ -2373,19 +2413,64 @@ class Settings:
 
     @classmethod
     def sections(cls, page: str) -> Iterator[str]:
+        """The sections the page shows in its index.
+
+        A section that some switch opens with a gear is not one of them: it is a
+        detail of that switch and is reached from its row.
+        """
+        owned = cls.sections_opened_from_a_switch()
         seen: set[str] = set()
         for settings_field in cls._user_fields():
             description = cls._field_description(settings_field)
-            if description.page == page and description.section not in seen:
+            if description.page != page or description.section in seen:
+                continue
+            seen.add(description.section)
+            if description.section not in owned:
                 yield description.section
-                seen.add(description.section)
 
     @classmethod
-    def fields(cls, page: str, section: str) -> Iterator[tuple[str, OptionDescription]]:
+    def sections_opened_from_a_switch(cls) -> set[str]:
+        return {
+            opened
+            for settings_field in cls._user_fields()
+            if (opened := cls._field_description(settings_field).opens_section)
+            is not None
+        }
+
+    @classmethod
+    def subsections(cls, page: str, section: str) -> Iterator[str]:
+        """The boxes within a section, in the order their settings are declared."""
+        seen: set[str] = set()
+        for _, description in cls.all_fields():
+            if description.page != page or description.section != section:
+                continue
+            name = description.subsection
+            if name is not None and name not in seen:
+                yield name
+                seen.add(name)
+
+    @classmethod
+    def fields(
+        cls, page: str, section: str, subsection: Optional[str] = None
+    ) -> Iterator[tuple[str, OptionDescription]]:
         for settings_field in cls._user_fields():
             description = cls._field_description(settings_field)
-            if description.page == page and description.section == section:
+            if (
+                description.page == page
+                and description.section == section
+                and description.subsection == subsection
+            ):
                 yield settings_field.name, description
+
+    @classmethod
+    def all_fields(cls) -> Iterator[tuple[str, OptionDescription]]:
+        """Every setting there is, whatever page, section or box it is shown in.
+
+        The page walk above is about how the dialog is laid out; this is about what
+        exists, which is what anything reading the settings wants.
+        """
+        for settings_field in cls._user_fields():
+            yield settings_field.name, cls._field_description(settings_field)
 
     @classmethod
     def _user_fields(cls) -> Iterator[Field[Any]]:

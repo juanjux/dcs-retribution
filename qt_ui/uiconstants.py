@@ -111,6 +111,9 @@ def load_icons():
         "./resources/ui/misc/" + get_theme_icons() + "/pluginsoptions.png"
     )
     ICONS["Notes"] = QPixmap("./resources/ui/misc/" + get_theme_icons() + "/notes.png")
+    ICONS["Live Pilots"] = QPixmap(
+        "./resources/ui/misc/" + get_theme_icons() + "/pilots.png"
+    )
     ICONS["Reload"] = QPixmap(
         "./resources/ui/misc/" + get_theme_icons() + "/reload.png"
     )

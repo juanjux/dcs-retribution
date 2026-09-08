@@ -49,6 +49,7 @@ from game.ato.flightplans.custom import CustomFlightPlan
 from game.ato.flighttype import FlightType
 from game.ato.flightwaypointtype import FlightWaypointType
 from game.dcs.aircrafttype import AircraftType
+from game.settings import Settings
 from game.squadrons import morale as morale_rules
 from game.squadrons.experience import turns_phrase
 from game.purchaseadapter import AircraftPurchaseAdapter, TransactionError
@@ -183,6 +184,11 @@ class PilotRowPainter:
     @property
     def morale_in_play(self) -> bool:
         return bool(self.squadron.morale_in_play)
+
+    @property
+    def settings(self) -> Settings:
+        """The campaign's own morale bands, which it is free to have moved."""
+        return self.squadron.settings
 
     def rank_of(self, pilot: Pilot) -> tuple[int, str]:
         """His rung, and what his own air force calls it."""
@@ -345,7 +351,8 @@ class PilotDelegate(QStyledItemDelegate, PilotRowPainter):
             lines.append(f"{rank_name} ({level} of {RANK_LEVELS})")
         lines.append(f"{count} {word} flown")
         if self.morale_in_play:
-            lines.append(f"Morale: {morale_rules.morale_state(pilot.morale).name}")
+            state = morale_rules.morale_state(pilot.morale, self.settings)
+            lines.append(f"Morale: {state.name}")
         status, _, detail, _ = self._status_of(pilot, False)
         lines.append(f"{status} {detail}".strip())
         note = self.note_for(pilot)
@@ -378,7 +385,7 @@ class PilotDelegate(QStyledItemDelegate, PilotRowPainter):
             )
         if (
             pilot.morale < pilot.morale_last_turn
-            and morale_rules.morale_state(pilot.morale).severity
+            and morale_rules.morale_state(pilot.morale, self.settings).severity
         ):
             return "Morale dropping — consider leave", WARNING_ADVISORY
         return None
@@ -390,7 +397,7 @@ class PilotDelegate(QStyledItemDelegate, PilotRowPainter):
     ) -> None:
         right = width - MARGIN
         if self.morale_in_play:
-            state = morale_rules.morale_state(pilot.morale)
+            state = morale_rules.morale_state(pilot.morale, self.settings)
             dot = MORALE_COLOURS.get(state.name, MUTED)
             override = (
                 MORALE_LABEL_OVERRIDE_SELECTED if selected else MORALE_LABEL_OVERRIDE

@@ -1,6 +1,9 @@
 ﻿# Retribution v1.6.3 (414th)
 
 ## Features/Improvements
+* **[UI]** Settings pages no longer spread four rows over the height of the window, and a switch sits beside its label instead of out at the right-hand edge.
+* **[UI]** *Automate ground object repairs* carries its own tuning behind a gear, so the *Ground Object Repairs* page is gone; *Building Repairs* moved up under *HQ Automation*; and *Morale Event Values* is now a box at the end of *Morale* rather than a page of its own.
+* **[Live Pilots]** The morale bands are settings: you choose where Triumphant, Confident, Normal, Shaken and Shattered start. *Flies a rank better above* and *Flies a rank worse below* are gone with them -- a Triumphant pilot flies a rung above the rank he holds, a Shattered or Broken one a rung below.
 * **[UI]** The Air Wing squadron list was redesigned: the aircraft type is now the one large, bold thing on a fixed rail so you can scan for an airframe, the primary task shows as a colour-coded chip, and the list gained a live filter, a sort order, grouping by aircraft type or base, and a running count.
 * **[UI]** The unit transfer dialog gets "All >>" and "None <<" buttons, so a whole garrison no longer has to be queued one unit type at a time.
 * **[FIX]** A CAP guarding its own base could be given a patrol route so short that DCS deleted the flight the moment it spawned, without it flying a metre. Patrol routes are now lengthened away from the enemy until they are long enough to be flown.

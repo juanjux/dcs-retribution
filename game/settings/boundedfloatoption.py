@@ -21,6 +21,7 @@ def bounded_float_option(
     divisor: int,
     detail: Optional[str] = None,
     tooltip: Optional[str] = None,
+    subsection: Optional[str] = None,
     **kwargs: Any,
 ) -> float:
     return field(
@@ -35,6 +36,7 @@ def bounded_float_option(
                 min=min,
                 max=max,
                 divisor=divisor,
+                subsection=subsection,
             )
         },
         default=default,

@@ -518,8 +518,10 @@ class MoraleRow(PilotRow):
         self.record = record
 
     def paint_detail(self, painter: QPainter, x: int) -> None:
-        was = morale_state(self.record.before).name
-        now = morale_state(self.record.after).name
+        # Named when the turn was scored; only a report from before that was recorded
+        # has to be worked out here, and then from the standard bands.
+        was = self.record.before_state or morale_state(self.record.before).name
+        now = self.record.after_state or morale_state(self.record.after).name
         cursor = float(x)
         colour = MORALE_COLOURS.get(now, MUTED)
         cursor = self._paint_state(painter, cursor, was, DIM, DIM)

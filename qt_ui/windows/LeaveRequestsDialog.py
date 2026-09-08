@@ -93,7 +93,7 @@ class LeaveRequestsDialog(QDialog):
             grid.addWidget(QLabel(str(squadron)), row, 1)
             grid.addWidget(QLabel(str(squadron.aircraft)), row, 2)
 
-            state = morale_rules.morale_state(pilot.morale)
+            state = morale_rules.morale_state(pilot.morale, self.game.settings)
             morale = QLabel(state.name)
             if state.severity:
                 morale.setText(f"<b>{state.name}</b>")
