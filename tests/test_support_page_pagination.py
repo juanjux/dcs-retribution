@@ -75,6 +75,14 @@ class FakeAwacs:
 
 
 @dataclass
+class FakeEwr:
+    callsign: str
+    unit_type: str = "EWR AN/FPS-117 Radar"
+    location: str = "Batumi"
+    freq: str = "251.000 MHz"
+
+
+@dataclass
 class FakeTanker:
     callsign: str
     variant: str = "KC-135"
@@ -98,12 +106,14 @@ def _paginate(
     awacs: List[FakeAwacs],
     tankers: List[FakeTanker],
     jtacs: List[FakeJtac],
+    ewrs: List[FakeEwr] | None = None,
 ) -> List[SupportPage]:
     return SupportPage.paginate(
         flight,  # type: ignore[arg-type]
         package_flights,  # type: ignore[arg-type]
         [],  # comms (paginate appends the intra-flight entry itself)
         awacs,  # type: ignore[arg-type]
+        ewrs or [],  # type: ignore[arg-type]
         tankers,  # type: ignore[arg-type]
         jtacs,  # type: ignore[arg-type]
         datetime.datetime(2020, 1, 1, 8, 0, 0),
@@ -209,3 +219,41 @@ def test_pagination_never_overflows_page_height(tmp_path: Path) -> None:
 
         used = margin + KneeboardPageWriter.measure(render)
         assert used <= max_y, f"page {idx} overflowed: {used} > {max_y}"
+
+
+def test_ewr_sites_are_listed_with_their_frequency(tmp_path: Path) -> None:
+    """An EWR site appears with the label the F10 menu shows and its channel."""
+    flight = FakeFlight("Colt 1-1")
+    ewrs = [FakeEwr("WYVERN", freq="287.000 MHz")]
+
+    pages = _paginate(flight, [], [FakeAwacs("Overlord")], [], [], ewrs=ewrs)
+
+    text = "\n".join(
+        _sidecar_text(page, tmp_path, idx) for idx, page in enumerate(pages)
+    )
+    for token in ("EWR", "WYVERN", "EWR AN/FPS-117 Radar", "287.000 MHz"):
+        assert token in text, f"{token!r} missing from the Support page"
+
+
+def test_no_ewr_section_when_there_are_none(tmp_path: Path) -> None:
+    """A theatre with no EWR must not gain an empty table."""
+    flight = FakeFlight("Colt 1-1")
+    pages = _paginate(flight, [], [FakeAwacs("Overlord")], [FakeTanker("Texaco")], [])
+
+    text = _sidecar_text(pages[0], tmp_path, 0)
+    assert "Site" not in text, "empty EWR table was rendered"
+
+
+def test_many_ewrs_paginate_without_losing_rows(tmp_path: Path) -> None:
+    """A dense EWR network spills onto further pages instead of being cut off."""
+    flight = FakeFlight("Colt 1-1")
+    ewrs = [FakeEwr(f"Site {i:02}") for i in range(40)]
+
+    pages = _paginate(flight, [], [FakeAwacs("Overlord")], [], [], ewrs=ewrs)
+
+    assert len(pages) > 1, "40 EWR sites must not fit on one page"
+    all_text = "\n".join(
+        _sidecar_text(page, tmp_path, idx) for idx, page in enumerate(pages)
+    )
+    for i in range(40):
+        assert f"Site {i:02}" in all_text, f"EWR row {i} was lost during pagination"

@@ -403,6 +403,10 @@ class MissionGenerator:
                 if aewc.blue.is_blue:
                     gen.add_awacs(aewc)
 
+            for ewr in mission_data.ewrs:
+                if ewr.blue.is_blue:
+                    gen.add_ewr(ewr)
+
             for jtac in mission_data.jtacs:
                 if jtac.blue.is_blue:
                     gen.add_jtac(jtac)

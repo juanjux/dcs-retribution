@@ -1,6 +1,7 @@
 ﻿# Retribution v1.6.3 (414th)
 
 ## Features/Improvements
+* **[Mission Generation]** **EWR sites are contactable.** DCS lists any group with the EWR enroute task in the F10 "AWACS" menu, with the full Declare / Picture / Vector submenu, but the sites were generated without a radio -- the menu entry had nobody behind it, and the AWACS frequency did not reach them. Each site now gets its own UHF channel, published in the briefing (the AWACS section becomes **AWACS & EWRs**) and in a new **EWR** table on the kneeboard Support page, showing the site, the radar's DCS display name (the label the menu shows), its base and the frequency.
 * **[UI]** The Air Wing squadron list was redesigned: the aircraft type is now the one large, bold thing on a fixed rail so you can scan for an airframe, the primary task shows as a colour-coded chip, and the list gained a live filter, a sort order, grouping by aircraft type or base, and a running count.
 * **[UI]** The unit transfer dialog gets "All >>" and "None <<" buttons, so a whole garrison no longer has to be queued one unit type at a time.
 * **[FIX]** A CAP guarding its own base could be given a patrol route so short that DCS deleted the flight the moment it spawned, without it flying a metre. Patrol routes are now lengthened away from the enemy until they are long enough to be flown.

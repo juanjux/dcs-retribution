@@ -44,6 +44,19 @@ class AwacsInfo(GroupInfo):
 
 
 @dataclass
+class EwrInfo(GroupInfo):
+    """Early-warning radar site information for the briefing and kneeboard.
+
+    ``callsign`` is the site's campaign name; ``unit_type`` is the radar's DCS
+    display name, which is what the in-game F10 AWACS menu labels the site with,
+    so the pilot can match the kneeboard row to the menu entry.
+    """
+
+    unit_type: str
+    location: str
+
+
+@dataclass
 class TankerInfo(GroupInfo):
     """Tanker information for the kneeboard."""
 
@@ -114,6 +127,7 @@ class FrontlineUnitGroupsInfo:
 @dataclass
 class MissionData:
     awacs: list[AwacsInfo] = field(default_factory=list)
+    ewrs: list[EwrInfo] = field(default_factory=list)
     runways: list[RunwayData] = field(default_factory=list)
     carriers: list[CarrierInfo] = field(default_factory=list)
     flights: list[FlightData] = field(default_factory=list)

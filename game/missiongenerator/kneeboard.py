@@ -60,7 +60,7 @@ from .kneeboard_recon.atis import (
     has_thunderstorm_cells,
     wind_from_deg,
 )
-from .missiondata import AwacsInfo, TankerInfo
+from .missiondata import AwacsInfo, EwrInfo, TankerInfo
 from ..persistency import kneeboards_dir
 
 if TYPE_CHECKING:
@@ -683,6 +683,7 @@ class SupportPage(KneeboardPage):
         package_flights: List[FlightData],
         comms: List[CommInfo],
         awacs: List[AwacsInfo],
+        ewrs: List[EwrInfo],
         tankers: List[TankerInfo],
         jtacs: List[JtacInfo],
         start_time: datetime.datetime,
@@ -698,7 +699,7 @@ class SupportPage(KneeboardPage):
         first of its pages).
         """
         sections = cls._build_sections(
-            flight, package_flights, comms, awacs, tankers, jtacs, start_time
+            flight, package_flights, comms, awacs, ewrs, tankers, jtacs, start_time
         )
 
         # Height budget for section content on a page = usable content height
@@ -790,11 +791,12 @@ class SupportPage(KneeboardPage):
         package_flights: List[FlightData],
         comms: List[CommInfo],
         awacs: List[AwacsInfo],
+        ewrs: List[EwrInfo],
         tankers: List[TankerInfo],
         jtacs: List[JtacInfo],
         start_time: datetime.datetime,
     ) -> List[_SupportSection]:
-        """Builds the four Support sections (Package, AEW&C, Tankers, JTAC).
+        """Builds the Support sections (Package, AEW&C, EWR, Tankers, JTAC).
 
         Row contents are exactly what the single-page layout produced; only the
         splitting across pages is new.
@@ -879,6 +881,27 @@ class SupportPage(KneeboardPage):
                 aewc_ladder,
             )
         )
+
+        # EWR sites. They answer on the F10 "AWACS" menu like an AEW&C does, so
+        # they sit right under it -- the Type column is the label the menu shows.
+        ewr_ladder = []
+        for ewr in ewrs:
+            ewr_ladder.append(
+                [
+                    ewr.callsign,
+                    KneeboardPageWriter.wrap_line(ewr.unit_type, 23),
+                    KneeboardPageWriter.wrap_line(ewr.location, 18),
+                    cls._format_frequency(flight, ewr.freq, stack=True),
+                ]
+            )
+        if ewr_ladder:
+            sections.append(
+                _SupportSection(
+                    lambda w: w.heading("EWR"),
+                    ["Site", "Type", "Location", "FREQ"],
+                    ewr_ladder,
+                )
+            )
 
         # Tankers
         tanker_ladder = []
@@ -1507,6 +1530,7 @@ class KneeboardGenerator(MissionInfoGenerator):
                 package_flights,
                 self.comms,
                 self.awacs,
+                self.ewrs,
                 self.tankers,
                 self.jtacs,
                 zoned_time,

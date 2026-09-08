@@ -99,10 +99,11 @@ TACAN : {{ runway.tacan }} {{ runway.tacan_callsign }}
 {% endif %}
 
 {% endfor %}
-{%- if awacs|length > 0 %}
-AWACS:
+{%- if awacs|length > 0 or ewrs|length > 0 %}
+AWACS & EWRs:
 ====================
 {% for i in awacs %}{{ i.callsign }} -- Fréq : {{i.freq.mhz}}
+{% endfor %}{% for i in ewrs %}{{ i.callsign }} ({{ i.unit_type }}) -- Fréq : {{i.freq.mhz}}
 {% endfor %}
 {% endif %}
 

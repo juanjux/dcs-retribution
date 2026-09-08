@@ -19,7 +19,7 @@ from game.runways import RunwayData
 from game.theater import ControlPoint, FrontLine
 from .aircraft.flightdata import FlightData
 from .flotgenerator import JtacInfo
-from .missiondata import AwacsInfo, TankerInfo
+from .missiondata import AwacsInfo, EwrInfo, TankerInfo
 
 if TYPE_CHECKING:
     from game import Game
@@ -67,6 +67,7 @@ class MissionInfoGenerator:
         self.mission = mission
         self.game = game
         self.awacs: List[AwacsInfo] = []
+        self.ewrs: List[EwrInfo] = []
         self.comms: List[CommInfo] = []
         self.flights: List[FlightData] = []
         self.player_flights: List[FlightData] = []
@@ -82,6 +83,14 @@ class MissionInfoGenerator:
             awacs: AWACS information.
         """
         self.awacs.append(awacs)
+
+    def add_ewr(self, ewr: EwrInfo) -> None:
+        """Adds an early-warning radar site to the mission.
+
+        Args:
+            ewr: EWR site information.
+        """
+        self.ewrs.append(ewr)
 
     def add_comm(self, name: str, freq: RadioFrequency) -> None:
         """Adds communications info to the mission.

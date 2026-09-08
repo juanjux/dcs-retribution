@@ -236,6 +236,18 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   [#20](https://github.com/juanjux/dcs-retribution/pull/20))
 
 ### Missions, AI & tasking
+- **EWR sites you can actually talk to.** DCS builds the F10 "AWACS" menu from the EWR
+  enroute task, so every early-warning site has always appeared there with the full
+  Declare / Request Picture / Vector submenu -- but a vehicle group has no radio unless
+  the mission gives it one, and nothing did: the entry was there with nobody behind it,
+  and tuning the AWACS frequency did not help because that channel belongs to the AWACS.
+  Each site now draws a UHF channel from the same pool as the AWACS and tankers, and the
+  frequency is published in the briefing (its AWACS section is now **AWACS & EWRs**) and
+  in a new **EWR** table on the kneeboard's Support page, listing the site, the radar's
+  DCS display name (the label the menu itself shows), its base and the channel. The
+  Support page already paginates by measured height, so a dense radar network spills onto
+  further pages instead of being cut off.
+  (branch [`juanjux/ewr-radio`](https://github.com/juanjux/dcs-retribution/tree/juanjux/ewr-radio))
 - **The LLM can see and choose its pilots, and read every setting.** Two parity gaps the
   OPFOR agent reported: it could see a flight's uncrewed count and nothing else about the
   people in it, and `/settings` was a hand-written subset that happened not to include

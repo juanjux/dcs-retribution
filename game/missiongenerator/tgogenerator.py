@@ -57,7 +57,7 @@ from game.missiongenerator.groundforcepainter import (
     NavalForcePainter,
     GroundForcePainter,
 )
-from game.missiongenerator.missiondata import CarrierInfo, MissionData
+from game.missiongenerator.missiondata import CarrierInfo, EwrInfo, MissionData
 from game.point_with_heading import PointWithHeading
 from game.radio.RadioFrequencyContainer import RadioFrequencyContainer
 from game.radio.radios import RadioFrequency, RadioRegistry
@@ -578,6 +578,64 @@ class GroundObjectGenerator:
             position=unit.position,
             heading=unit.position.heading.degrees,
             dead=not unit.alive,  # Also spawn as dead!
+        )
+
+
+class EwrGenerator(GroundObjectGenerator):
+    """An EWR site, generated with a radio so the player can actually call it.
+
+    DCS builds the F10 "AWACS" menu for any group carrying the EWR enroute task,
+    so an EWR site has always shown up there with the full Declare / Picture /
+    Vector submenu -- but a vehicle group has no radio unless the mission asks
+    for one, and without a frequency to tune there is nobody on the other end.
+    The site gets a UHF channel from the same pool as the AWACS and tankers, and
+    is published to the briefing and the kneeboard so the pilot can find it.
+    """
+
+    def __init__(
+        self,
+        ground_object: TheaterGroundObject,
+        country: Country,
+        game: Game,
+        mission: Mission,
+        unit_map: UnitMap,
+        radio_registry: RadioRegistry,
+        mission_data: MissionData,
+    ) -> None:
+        super().__init__(ground_object, country, game, mission, unit_map)
+        self.radio_registry = radio_registry
+        self.mission_data = mission_data
+
+    def enable_ewr(self, group: VehicleGroup) -> None:
+        super().enable_ewr(group)
+
+        side = self.ground_object.control_point.captured
+        if side is Player.NEUTRAL:
+            # Nobody to talk to it, and no briefing it would appear in.
+            return
+
+        # The F10 menu labels the site with the radar's DCS display name, so that
+        # is what the briefing and kneeboard have to print for the pilot to match
+        # the row to the menu entry.
+        dcs_type = group.units[0].type
+        radar = vehicle_map[dcs_type].name if dcs_type in vehicle_map else dcs_type
+
+        freq = self.radio_registry.alloc_uhf()
+        group.communication = True
+        group.modulation = 0  # AM, matching the UHF channel it was allocated.
+        # pydcs types a group's frequency as whole MHz; the UHF pool steps in
+        # 1 MHz, so nothing is lost here.
+        group.frequency = int(freq.mhz)
+
+        self.mission_data.ewrs.append(
+            EwrInfo(
+                group_name=group.name,
+                callsign=self.ground_object.name,
+                unit_type=radar,
+                location=self.ground_object.control_point.name,
+                freq=freq,
+                blue=side,
+            )
         )
 
 
@@ -1782,6 +1840,16 @@ class TgoGenerator:
                         self.icls_alloc,
                         self.runways,
                         self.unit_map,
+                        self.mission_data,
+                    )
+                elif isinstance(ground_object, EwrGroundObject):
+                    generator = EwrGenerator(
+                        ground_object,
+                        country,
+                        self.game,
+                        self.m,
+                        self.unit_map,
+                        self.radio_registry,
                         self.mission_data,
                     )
                 elif isinstance(ground_object, MissileSiteGroundObject):

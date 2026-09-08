@@ -47,6 +47,7 @@ def test_generate_flight_kneeboard_calls_generate_recon_pages() -> None:
         gen.dark_kneeboard = False
         gen.comms = []
         gen.awacs = []
+        gen.ewrs = []
         gen.tankers = []
         gen.jtacs = []
         gen.flights = []
@@ -98,6 +99,7 @@ def test_generate_flight_kneeboard_passes_dark_mode_when_enabled() -> None:
         gen.dark_kneeboard = True
         gen.comms = []
         gen.awacs = []
+        gen.ewrs = []
         gen.tankers = []
         gen.jtacs = []
         gen.flights = []
@@ -144,6 +146,7 @@ def test_generate_flight_kneeboard_skips_recon_when_setting_off() -> None:
         gen.dark_kneeboard = False
         gen.comms = []
         gen.awacs = []
+        gen.ewrs = []
         gen.tankers = []
         gen.jtacs = []
         gen.flights = []
