@@ -188,7 +188,7 @@ class Squadron:
         so shifting it for morale would demote a Major to Captain on a bad week and
         promote him back on a good one. Only the mission file reads this.
         """
-        if not self.morale_in_play:
+        if not self.morale_in_play or not pilot.has_morale:
             return self.pilot_skill(pilot)
         return shifted_skill(self.pilot_skill(pilot), pilot.morale, self.settings)
 
@@ -373,7 +373,14 @@ class Squadron:
                 pilot.move_morale(
                     morale_rules.ON_LEAVE, self.pilot_skill(pilot), self.settings, turn
                 )
+                # Served whether or not morale is his: leave the player granted
+                # himself still has to run out, or he never comes back.
                 pilot.serve_a_turn_of_leave(turn)
+                continue
+
+            if not pilot.has_morale:
+                # The player is not worn down by the turn passing, is never overdue a
+                # rest he can take whenever he likes, and does not desert.
                 continue
 
             # Judged on the state he arrived in. The drift below lifts a man who is

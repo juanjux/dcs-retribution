@@ -129,7 +129,8 @@ class AircraftBehavior:
         ):
             return react_on_threat, rtb_winchester
         lead = next(iter(flight.roster.iter_pilots()), None)
-        if lead is None:
+        if lead is None or not lead.has_morale:
+            # The player leads his own flight; how careful it is stays his call.
             return react_on_threat, rtb_winchester
         wanted = morale_rules.threat_reaction(lead.morale)
         if wanted.value > react_on_threat.value:
