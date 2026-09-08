@@ -10,6 +10,7 @@ structured per-item result so partial failures are reported, not raised.
 from __future__ import annotations
 
 import contextlib
+import logging
 import math
 from datetime import datetime, timedelta
 from typing import Any, TYPE_CHECKING, Union
@@ -1731,6 +1732,23 @@ def answer_leave_request(
     return schemas.OpResult(ok=False, error=f"no squadron with id {squadron_id!r}")
 
 
+def _reconcile_pool(game: Game, side: str) -> None:
+    """Cross-check the squadron pools before answering anything about crews.
+
+    A pilot who has fallen off his squadron's available list with nothing holding him
+    reads as free in the roster and is refused a seat, which from outside is a dead end
+    -- the API can only say he is dead, wounded, on leave or flying, and he is none of
+    them. Checking the list against the roster turns that into a log line.
+
+    Best effort: this is hygiene, not the answer. A caller with a stand-in game still
+    gets its answer.
+    """
+    try:
+        views.coalition_for_side(game, side).reconcile_pilot_pools()
+    except Exception:
+        logging.debug("Could not reconcile the pilot pools", exc_info=True)
+
+
 def squadron_pilots(game: Game, side: str, squadron_id: str) -> dict[str, Any]:
     """Every pilot on a squadron's books, and where each one is.
 
@@ -1738,6 +1756,8 @@ def squadron_pilots(game: Game, side: str, squadron_id: str) -> dict[str, Any]:
     and whether he is dead, on leave, in hospital or ready. ``assigned_to`` names the
     flight he is already crewing, so the free ones are the entries without it.
     """
+    _reconcile_pool(game, side)
+
     from game.ato import FlightType  # noqa: F401  (kept for symmetry with callers)
 
     for coalition in (game.blue, game.red):
@@ -1778,6 +1798,7 @@ def flight_crew(game: Game, side: str, flight_id: str) -> dict[str, Any]:
     ``seats`` is indexed the way ``set_flight_crew`` expects. ``available`` lists the
     squadron's pilots who are not flying anything yet, most senior first.
     """
+    _reconcile_pool(game, side)
     flight = flight_for_side(game, side, flight_id)
     if flight is None:
         return {"error": f"no flight with id {flight_id!r}"}
@@ -1809,6 +1830,7 @@ def set_flight_crew(
     leave or already crewing something else is refused, because the squadron only counts
     him once and the alternative is the same man flying two missions at once.
     """
+    _reconcile_pool(game, side)
     flight = flight_for_side(game, side, flight_id)
     if flight is None:
         return schemas.OpResult(ok=False, error=f"no flight with id {flight_id!r}")
