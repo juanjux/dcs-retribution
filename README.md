@@ -208,6 +208,11 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   Pilots, not a choice of its own. Two rules changed with the re-weighing: a wound is
   felt every turn the medics keep him rather than the first three, and going without
   leave costs the same each turn rather than compounding.
+- **One Mission Plugins page instead of two.** A row per plugin -- switch, name, and a
+  gear where there is something to set -- with the description underneath, and the
+  options in their own dialog. Turning CTLD on and setting it up used to be two pages
+  apart, and the options page was a wall of boxes for plugins you had not enabled.
+
 ### Kneeboards
 - **Friendly-packages list** plus a **package-targets map** page.
   ([#11](https://github.com/juanjux/dcs-retribution/pull/11))

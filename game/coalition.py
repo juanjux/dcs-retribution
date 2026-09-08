@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+
 from datetime import datetime
 from typing import Any, Optional, TYPE_CHECKING
 
@@ -146,6 +148,32 @@ class Coalition:
 
     def set_bullseye(self, bullseye: Bullseye) -> None:
         self.bullseye = bullseye
+
+    def reconcile_pilot_pools(self) -> list[str]:
+        """Cross-check every squadron's pool of available pilots against its roster.
+
+        Cheap -- it walks the ATO once -- and it turns a desync from a dead end into
+        a log line: a fit, unassigned pilot who has fallen off the list is put back
+        rather than being unassignable until the turn ends.
+        """
+        flying = {
+            id(member.pilot)
+            for package in self.ato.packages
+            for flight in package.flights
+            for member in flight.iter_members()
+            if member.pilot is not None
+        }
+        restored = []
+        for squadron in self.air_wing.iter_squadrons():
+            for pilot in squadron.reconcile_available_pilots(flying):
+                restored.append(f"{pilot.name} ({squadron.name})")
+        if restored:
+            logging.warning(
+                "Pilots were off their squadron's available list with nothing "
+                "holding them; put back: %s",
+                ", ".join(restored),
+            )
+        return restored
 
     def end_turn(self) -> None:
         """Processes coalition-specific turn finalization.

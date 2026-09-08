@@ -291,21 +291,31 @@ class Squadron:
         return self.available_pilots.pop()
 
     def claim_pilot(self, pilot: Pilot) -> None:
-        if pilot not in self.available_pilots:
+        """Take this man off the list -- this man, not one who looks like him.
+
+        Pilot is a dataclass, so two men with the same name and record compare equal
+        and ``list.remove`` takes whichever comes first. leaves_the_pool has always
+        compared by identity for that reason; these three did not, so claiming a copy
+        of a pilot would strike the original off the list and leave him unassignable
+        while his record still read Active and unassigned.
+        """
+        if not any(p is pilot for p in self.available_pilots):
             raise ValueError(
                 f"Cannot assign {pilot} to {self} because they are not available"
             )
-        self.available_pilots.remove(pilot)
+        self.available_pilots = [p for p in self.available_pilots if p is not pilot]
 
     def return_pilot(self, pilot: Pilot) -> None:
-        self.available_pilots.append(pilot)
+        if not any(p is pilot for p in self.available_pilots):
+            self.available_pilots.append(pilot)
 
     def return_pilots(self, pilots: Sequence[Pilot]) -> None:
         # Return in reverse so that returning two pilots and then getting two more
         # results in the same ordering. This happens commonly when resetting rosters in
         # the UI, when we clear the roster because the UI is updating, then end up
         # repopulating the same size flight from the same squadron.
-        self.available_pilots.extend(reversed(pilots))
+        for pilot in reversed(pilots):
+            self.return_pilot(pilot)
 
     def _recruit_pilots(self, count: int) -> None:
         new_pilots = self.pilot_pool[:count]
@@ -481,6 +491,31 @@ class Squadron:
     def replenish_lost_pilots(self) -> None:
         if self.pilot_limits_enabled and self.replenish_count > 0:
             self._recruit_pilots(self.replenish_count)
+
+    def reconcile_available_pilots(self, flying: set[int]) -> list[Pilot]:
+        """Put back anyone fit, unassigned and missing from the pool.
+
+        The pool is a stored list, rebuilt from the roster only between turns, so a
+        claim that goes astray anywhere leaves a man who is Active, unhurt and in
+        nobody's flight yet cannot be given a seat -- his record says one thing and
+        the list says another, with no way to tell which is wrong from the outside.
+
+        The list is derivable from the roster and the ATO, so it is derived rather
+        than trusted. ``flying`` is the identity of every pilot currently sitting in
+        some flight; anyone else fit for duty belongs on the list.
+
+        Returns whoever had to be put back, so the caller can say so.
+        """
+        on_list = {id(p) for p in self.available_pilots}
+        restored = []
+        for pilot in self.active_pilots:
+            if id(pilot) in on_list or id(pilot) in flying:
+                continue
+            if self.morale_in_play and pilot.refuses_to_fly:
+                continue
+            self.available_pilots.append(pilot)
+            restored.append(pilot)
+        return restored
 
     def return_all_pilots_and_aircraft(self) -> None:
         # A man at rock bottom is not offered, the same way a wounded one is not. He is
@@ -817,8 +852,10 @@ class Squadron:
         self.plan_ferry_flights(now)
 
     def cancel_ferry_flights(self) -> None:
-        for package in self.coalition.ato.packages:
-            # Copy the list so our iterator remains consistent throughout the removal.
+        # Both lists are copied: removing a package from the one being walked makes
+        # Python skip the next, so an emptied package used to leave the one behind it
+        # untouched -- with its ferry flights, and the pilots they hold, still claimed.
+        for package in list(self.coalition.ato.packages):
             for flight in list(package.flights):
                 if flight.squadron == self and flight.flight_type is FlightType.FERRY:
                     package.remove_flight(flight)

@@ -58,7 +58,7 @@ from game.sim import GameUpdateEvents
 from qt_ui.widgets.QLabeledWidget import QLabeledWidget
 from qt_ui.widgets.spinsliders import FloatSpinSlider, TimeInputs
 from qt_ui.windows.GameUpdateSignal import GameUpdateSignal
-from qt_ui.windows.settings.plugins import PluginOptionsPage, PluginsPage
+from qt_ui.windows.settings.plugins import PluginsPage
 
 
 class CheatSettingsBox(QGroupBox):
@@ -758,7 +758,6 @@ class QSettingsWidget(QtWidgets.QWizardPage, SettingsContainer):
         self._page_scrolls: dict[int, QScrollArea] = {}
 
         self.pluginsPage = PluginsPage(self)
-        self.pluginsOptionsPage = PluginOptionsPage(self)
 
         self.updating_ui = False
 
@@ -798,22 +797,17 @@ class QSettingsWidget(QtWidgets.QWizardPage, SettingsContainer):
         self.categoryModel.appendRow(cheat)
         self.right_layout.addWidget(self.cheatPage)
 
-        plugins = QStandardItem("LUA Plugins")
+        # One page, not two: the switch and what it turns on belong together, and the
+        # options open from the row rather than filling a page of their own.
+        plugins = QStandardItem("Mission Plugins")
         plugins.setIcon(CONST.ICONS["Plugins"])
         plugins.setEditable(False)
         plugins.setSelectable(True)
         self.categoryModel.appendRow(plugins)
-        self.right_layout.addWidget(self.pluginsPage)
-
-        pluginsOptions = QStandardItem("LUA Plugins Options")
-        pluginsOptions.setIcon(CONST.ICONS["PluginsOptions"])
-        pluginsOptions.setEditable(False)
-        pluginsOptions.setSelectable(True)
-        self.categoryModel.appendRow(pluginsOptions)
-        scroll = QScrollArea()
-        scroll.setWidget(self.pluginsOptionsPage)
-        scroll.setWidgetResizable(True)
-        self.right_layout.addWidget(scroll)
+        plugin_scroll = QScrollArea()
+        plugin_scroll.setWidget(self.pluginsPage)
+        plugin_scroll.setWidgetResizable(True)
+        self.right_layout.addWidget(plugin_scroll)
 
         self.categoryList.setSelectionBehavior(
             QAbstractItemView.SelectionBehavior.SelectRows
@@ -954,7 +948,6 @@ class QSettingsWidget(QtWidgets.QWizardPage, SettingsContainer):
         )
 
         self.pluginsPage.update_from_settings()
-        self.pluginsOptionsPage.update_from_settings()
 
         self.updating_ui = False
 
