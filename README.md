@@ -183,6 +183,14 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   old row back to the map. Narrow windows drop Intel first, then the winds.
   ([design by Claude Design](https://claude.ai/))
 
+- **Packages and flights are rows, not prose.** Both ATO lists were four blocks of the
+  same 10 pt text in a two-by-two grid — name and TOT on the left, "Player Slots: 2" and
+  "Missing pilots: 1" on the right. They are 56 px rows now in the vocabulary the Air
+  Wing list already taught: the task chip first in the same three colour families, the
+  target or the airframe as the only large bold text, and the times in mono where they
+  line up down the column. A package with no flights, an unfilled flight or a missing
+  pilot is the one amber thing in the row, so it is not discovered at take-off.
+
 ### Kneeboards
 - **Friendly-packages list** plus a **package-targets map** page.
   ([#11](https://github.com/juanjux/dcs-retribution/pull/11))
