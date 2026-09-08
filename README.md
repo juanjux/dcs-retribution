@@ -191,6 +191,15 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   line up down the column. A package with no flights, an unfilled flight or a missing
   pilot is the one amber thing in the row, so it is not discovered at take-off.
 
+- **The log became an event list.** Every line began
+  `[2012-05-18 21:03:44][11]` — twenty-eight characters of prefix on every row, and the
+  wall clock is when the message object was built, which is not a fact about the
+  campaign. A row now carries the turn in mono, a category chip (repair, allied, enemy,
+  info, classified from the wording the twenty-odd message sites use) and the message
+  with its subject in bold. This turn's entries get an amber bar, the filter narrows to
+  one category, and the panel shows this turn until you ask for all of them. The full
+  timestamp lives in the tooltip.
+
 ### Kneeboards
 - **Friendly-packages list** plus a **package-targets map** page.
   ([#11](https://github.com/juanjux/dcs-retribution/pull/11))
