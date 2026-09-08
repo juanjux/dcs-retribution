@@ -47,7 +47,7 @@ from game.debriefingreport import DebriefingReport
 from qt_ui.windows.QDebriefingWindow import QDebriefingWindow
 from qt_ui.windows.basemenu.QBaseMenu2 import QBaseMenu2
 from qt_ui.windows.groundobject.QGroundObjectMenu import QGroundObjectMenu
-from qt_ui.windows.infos.QInfoPanel import QInfoPanel
+from qt_ui.windows.infos.eventlist import EventsPanel
 from qt_ui.windows.logs.QLogsWindow import QLogsWindow
 from qt_ui.windows.newgame.QNewGameWizard import NewGameWizard
 from qt_ui.windows.notes.QNotesWindow import QNotesWindow
@@ -90,7 +90,7 @@ class QLiberationWindow(QMainWindow):
         )
         Dialog.set_game(self.game_model)
         self.ato_panel = QAirTaskingOrderPanel(self.game_model)
-        self.info_panel = QInfoPanel(self.game)
+        self.info_panel = EventsPanel(self.game)
         self.liberation_map = QLiberationMap(
             self.game_model, ui_flags.dev_ui_webserver, self
         )
