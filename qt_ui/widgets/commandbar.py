@@ -18,6 +18,7 @@ from PySide6.QtCore import QSize, Qt
 from PySide6.QtGui import QColor, QFont, QMouseEvent, QPainter, QPixmap
 from PySide6.QtWidgets import (
     QFrame,
+    QLayout,
     QHBoxLayout,
     QLabel,
     QPushButton,
@@ -101,28 +102,37 @@ class Divider(QFrame):
 class Cell(QWidget):
     """A caption over its content. Sized by what it holds, never fixed."""
 
-    def __init__(self, caption: str, *, clickable: bool = False) -> None:
+    def __init__(
+        self, caption: str, *, clickable: bool = False, chevron: bool = True
+    ) -> None:
         super().__init__()
         self.clickable = clickable
+        # An object name, not the class name: a Qt type selector matches the exact
+        # class, so `Cell { ... }` never reached BudgetCell or IntelCell and the two
+        # cells that open dialogs were drawn with no frame at all.
+        self.setObjectName("commandCell")
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         column = QVBoxLayout()
         # A framed cell needs padding inside its border; a bare one does not.
         column.setContentsMargins(*((10, 8, 10, 8) if clickable else (0, 6, 0, 6)))
         column.setSpacing(3)
         self.setLayout(column)
 
-        self.caption = _caption(caption, ACCENT if clickable else CAPTION)
+        self.caption = _caption(caption, ACCENT if chevron and clickable else CAPTION)
         if clickable:
             row = QHBoxLayout()
             row.setContentsMargins(0, 0, 0, 0)
             row.setSpacing(4)
             row.addWidget(self.caption)
-            row.addWidget(_label("›", 11, ACCENT, QFont.Weight.Bold))
+            if chevron:
+                row.addWidget(_label("›", 11, ACCENT, QFont.Weight.Bold))
             row.addStretch()
             column.addLayout(row)
             self.setCursor(Qt.CursorShape.PointingHandCursor)
             self._paint_frame(CELL_BG)
         else:
             column.addWidget(self.caption)
+            self._paint_bare()
         self.body = QHBoxLayout()
         self.body.setContentsMargins(0, 0, 0, 0)
         self.body.setSpacing(10)
@@ -131,9 +141,13 @@ class Cell(QWidget):
 
     def _paint_frame(self, background: str) -> None:
         self.setStyleSheet(
-            f"Cell {{ background: {background}; border: 1px solid {CELL_BORDER};"
-            " border-radius: 3px; }"
+            f"#commandCell {{ background: {background};"
+            f" border: 1px solid {CELL_BORDER}; border-radius: 3px; }}"
         )
+
+    def _paint_bare(self) -> None:
+        """No frame, and no inherited fill from the application stylesheet either."""
+        self.setStyleSheet("#commandCell { background: transparent; border: none; }")
 
     def enterEvent(self, event: object) -> None:  # noqa: N802 - Qt naming
         if self.clickable:
@@ -164,7 +178,9 @@ class TurnCell(Cell):
     """Which turn it is, and when that is."""
 
     def __init__(self) -> None:
-        super().__init__("Turn")
+        # Framed without a chevron: a double click opens the conditions dialog, so it
+        # is not read-only, but it is not a button either.
+        super().__init__("Turn", clickable=True, chevron=False)
         self.number = _label("—", 24, VALUE, QFont.Weight.DemiBold, mono=True)
         self.body.addWidget(self.number)
         stack = QVBoxLayout()
@@ -189,9 +205,10 @@ class WeatherCell(Cell):
     """What the sky is doing, and the winds at the three levels that matter."""
 
     def __init__(self, on_refresh: Callable[[], None]) -> None:
-        super().__init__("Weather")
+        super().__init__("Weather", clickable=True, chevron=False)
         self.icon = QLabel()
         self.icon.setFixedSize(24, 24)
+        self.icon.setStyleSheet("background: transparent;")
         self.body.addWidget(self.icon)
 
         stack = QVBoxLayout()
@@ -204,6 +221,7 @@ class WeatherCell(Cell):
         self.body.addLayout(stack)
 
         self.winds_holder = QWidget()
+        self.winds_holder.setStyleSheet("background: transparent;")
         winds = QVBoxLayout()
         winds.setContentsMargins(12, 0, 0, 0)
         winds.setSpacing(0)
@@ -215,13 +233,16 @@ class WeatherCell(Cell):
             self.winds.append(line)
         self.body.addWidget(self.winds_holder)
 
-        self.refresh = QPushButton("↻")
+        self.refresh = QPushButton("⟳")
         self.refresh.setFixedSize(24, 24)
+        glyph = self.refresh.font()
+        glyph.setPointSize(14)
+        self.refresh.setFont(glyph)
         self.refresh.setToolTip("Fetch a fresh observation")
         self.refresh.setCursor(Qt.CursorShape.PointingHandCursor)
         self.refresh.setStyleSheet(
             f"QPushButton {{ background: {CELL_BG}; border: 1px solid {CELL_BORDER};"
-            f" border-radius: 3px; color: {SECONDARY}; font-size: 13px; }}"
+            f" border-radius: 3px; color: {SECONDARY}; }}"
             f"QPushButton:hover {{ background: {CELL_HOVER}; }}"
         )
         self.refresh.clicked.connect(on_refresh)
@@ -411,3 +432,23 @@ def intel_ratios(game: Game) -> list[float]:
             int(Income(game, player=Player.RED).total),
         ),
     ]
+
+
+def blend_into_bar(layout: QLayout) -> None:
+    """Take a shared widget's own colours off it so it sits in the strip.
+
+    MaxPlayerCount is a QLabeledWidget used only here, and its labels carry whatever
+    the application stylesheet gives a QLabel -- which in the strip reads as a patch of
+    a different colour. The count goes mono, like the other numbers.
+    """
+    for index in range(layout.count()):
+        widget = layout.itemAt(index).widget()
+        if not isinstance(widget, QLabel):
+            continue
+        mono = widget.text().strip().isdigit()
+        widget.setFont(
+            _font(11, QFont.Weight.DemiBold if mono else QFont.Weight.Normal, mono)
+        )
+        widget.setStyleSheet(
+            f"color: {SECONDARY if mono else TERTIARY}; background: transparent;"
+        )

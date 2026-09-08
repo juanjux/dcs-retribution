@@ -200,7 +200,9 @@ class QTopPanel(QFrame):
         actions.addWidget(self.ai_status_button)
         if ui_flags.show_sim_speed_controls:
             actions.addLayout(self.simSpeedControls)
-        actions.addLayout(MaxPlayerCount(self.game_model.ato_model))
+        players = MaxPlayerCount(self.game_model.ato_model)
+        commandbar.blend_into_bar(players)
+        actions.addLayout(players)
         actions.addWidget(self.passTurnButton)
         actions.addWidget(self.proceedButton)
         self.layout.addLayout(actions)
