@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Callable, List, Optional
+from typing import Any, Callable, List, Optional
 
 from PySide6.QtCore import Qt, QTimer, QSize
 from PySide6.QtGui import QAction, QIcon, QMovie
@@ -10,7 +10,6 @@ from PySide6.QtWidgets import (
     QDialog,
     QFileDialog,
     QFrame,
-    QGroupBox,
     QHBoxLayout,
     QMessageBox,
     QProgressDialog,
@@ -38,14 +37,17 @@ from game.sim import GameUpdateEvents
 from qt_ui.models import GameModel
 from qt_ui.simcontroller import SimController
 from qt_ui.uiflags import UiFlags
-from qt_ui.widgets.QBudgetBox import QBudgetBox
+from qt_ui.widgets import commandbar
+from qt_ui.widgets.QConditionsDialog import QConditionsDialog
 from qt_ui.widgets.QConditionsWidget import QConditionsWidget
-from qt_ui.widgets.QFactionsInfos import QFactionsInfos
-from qt_ui.widgets.QIntelBox import QIntelBox
 from qt_ui.widgets.clientslots import MaxPlayerCount
 from qt_ui.widgets.QMissionProgressPanel import MissionProgressPanel
 from qt_ui.widgets.simspeedcontrols import SimSpeedControls
+from game.income import Income
+from game.theater import Player
 from qt_ui.windows.AirWingDialog import AirWingDialog
+from qt_ui.windows.finances.QFinancesMenu import QFinancesMenu
+from qt_ui.windows.intel import IntelWindow
 from qt_ui.windows.GameUpdateSignal import GameUpdateSignal
 from qt_ui.windows.PendingTransfersDialog import PendingTransfersDialog
 from qt_ui.windows.QWaitingForMissionResultWindow import DebriefingFileWrittenSignal
@@ -63,13 +65,26 @@ class QTopPanel(QFrame):
         self.air_wing_dialog: Optional[QDialog] = None
         self.transfers_dialog: Optional[QDialog] = None
 
-        self.setMaximumHeight(70)
+        # One strip instead of six group boxes. See qt_ui/widgets/commandbar.py for
+        # the cells; the mission-launch machinery below is untouched.
+        self.setFixedHeight(commandbar.BAR_HEIGHT)
+        self.setStyleSheet(f"QTopPanel {{ background: {commandbar.BAR_BG}; }}")
 
+        # Kept alive but not shown: it holds the turn and weather widgets that
+        # QConditionsDialog is built from, which the cells open on a double click.
         self.conditionsWidget = QConditionsWidget(sim_controller)
         self.conditionsWidget.refresh_weather_requested.connect(
             self.refresh_live_weather
         )
-        self.budgetBox = QBudgetBox(self.game)
+        self.conditionsWidget.hide()
+
+        self.turn_cell = commandbar.TurnCell()
+        self.weather_cell = commandbar.WeatherCell(self.refresh_live_weather)
+        for cell in (self.turn_cell, self.weather_cell):
+            cell.mouseDoubleClickEvent = self._open_conditions  # type: ignore[method-assign]
+        self.factions_cell = commandbar.FactionsCell()
+        self.budget_cell = commandbar.BudgetCell(self.open_finances)
+        self.intel_cell = commandbar.IntelCell(self.open_intel)
 
         pass_turn_text = "Pass Turn"
         if not self.game or self.game.turn == 0:
@@ -87,8 +102,6 @@ class QTopPanel(QFrame):
         self.proceedButton.clicked.connect(self.launch_mission)
         if not self.game or self.game.turn == 0:
             self.proceedButton.setEnabled(False)
-
-        self.factionsInfos = QFactionsInfos(self.game)
 
         self.air_wing = QPushButton("Air Wing")
         self.air_wing.setDisabled(True)
@@ -108,13 +121,6 @@ class QTopPanel(QFrame):
         self.debriefing.setToolTip("Show the last debriefing again")
         self.debriefing.clicked.connect(self.open_debriefing)
 
-        self.intel_box = QIntelBox(self.game)
-
-        self.buttonBox = QGroupBox("Misc")
-        self.buttonBoxLayout = QHBoxLayout()
-        self.buttonBoxLayout.addWidget(self.air_wing)
-        self.buttonBoxLayout.addWidget(self.transfers)
-        self.buttonBoxLayout.addWidget(self.debriefing)
         # OPFOR-AI commander indicator (only shown when the setting is on); lights up for
         # a few seconds on each API call the LLM makes (no manual on/off), and Take Off
         # is blocked while it's lit.
@@ -137,23 +143,12 @@ class QTopPanel(QFrame):
                 QIcon(self._ai_thinking_movie.currentPixmap())
             )
         )
-        self.buttonBoxLayout.addWidget(self.ai_status_button)
-        self.buttonBox.setLayout(self.buttonBoxLayout)
 
         self._ai_status_timer = QTimer(self)
         self._ai_status_timer.timeout.connect(self._refresh_ai_status)
         self._ai_status_timer.start(1000)
 
         self.simSpeedControls = SimSpeedControls(sim_controller)
-
-        self.proceedBox = QGroupBox("Proceed")
-        self.proceedBoxLayout = QHBoxLayout()
-        if ui_flags.show_sim_speed_controls:
-            self.proceedBoxLayout.addLayout(self.simSpeedControls)
-        self.proceedBoxLayout.addLayout(MaxPlayerCount(self.game_model.ato_model))
-        self.proceedBoxLayout.addWidget(self.passTurnButton)
-        self.proceedBoxLayout.addWidget(self.proceedButton)
-        self.proceedBox.setLayout(self.proceedBoxLayout)
 
         self.controls = [
             self.air_wing,
@@ -163,17 +158,52 @@ class QTopPanel(QFrame):
             self.proceedButton,
         ]
 
+        for button in (
+            self.air_wing,
+            self.transfers,
+            self.debriefing,
+            self.ai_status_button,
+            self.passTurnButton,
+            self.proceedButton,
+        ):
+            button.setFixedHeight(30)
+
         self.layout = QHBoxLayout()
-
-        self.layout.addWidget(self.factionsInfos)
-        self.layout.addWidget(self.conditionsWidget)
-        self.layout.addWidget(self.budgetBox)
-        self.layout.addWidget(self.intel_box)
-        self.layout.addWidget(self.buttonBox)
+        self.layout.setContentsMargins(16, 0, 16, 0)
+        self.layout.setSpacing(16)
+        # Status on the left, in the order you read a turn: when, then who, then what
+        # you have to spend it on.
+        self._intel_divider = commandbar.Divider()
+        for cell in (
+            self.turn_cell,
+            self.weather_cell,
+            self.factions_cell,
+            self.budget_cell,
+            self.intel_cell,
+        ):
+            if cell is self.intel_cell:
+                divider: Optional[commandbar.Divider] = self._intel_divider
+            elif cell is self.turn_cell:
+                divider = None
+            else:
+                divider = commandbar.Divider()
+            if divider is not None:
+                self.layout.addWidget(divider, 0, Qt.AlignmentFlag.AlignVCenter)
+            self.layout.addWidget(cell, 0, Qt.AlignmentFlag.AlignVCenter)
         self.layout.addStretch(1)
-        self.layout.addWidget(self.proceedBox)
 
-        self.layout.setContentsMargins(0, 0, 0, 0)
+        actions = QHBoxLayout()
+        actions.setContentsMargins(0, 0, 0, 0)
+        actions.setSpacing(8)
+        for widget in (self.air_wing, self.transfers, self.debriefing):
+            actions.addWidget(widget)
+        actions.addWidget(self.ai_status_button)
+        if ui_flags.show_sim_speed_controls:
+            actions.addLayout(self.simSpeedControls)
+        actions.addLayout(MaxPlayerCount(self.game_model.ato_model))
+        actions.addWidget(self.passTurnButton)
+        actions.addWidget(self.proceedButton)
+        self.layout.addLayout(actions)
 
         self.setLayout(self.layout)
 
@@ -219,14 +249,28 @@ class QTopPanel(QFrame):
         self.transfers.setEnabled(True)
         self.refresh_debriefing_button()
 
-        # The widget writes its own tooltip now, with everything it has no room for.
-        self.conditionsWidget.setCurrentTurn(
-            game.turn, game.conditions, live_weather_enabled(game.settings)
-        )
+        # The hidden conditions widget still does the work: it owns the icon, the
+        # tooltip with everything the strip has no room for, and the two widgets
+        # QConditionsDialog is built from.
+        can_refresh = live_weather_enabled(game.settings)
+        self.conditionsWidget.setCurrentTurn(game.turn, game.conditions, can_refresh)
+        weather_widget = self.conditionsWidget.weather_widget
 
-        self.intel_box.set_game(game)
-        self.budgetBox.setGame(game)
-        self.factionsInfos.setGame(game)
+        self.turn_cell.set_turn(game.turn, game.conditions)
+        self.weather_cell.set_weather(game.conditions, can_refresh)
+        self.weather_cell.set_icon(weather_widget.weather_icon.pixmap())
+        for cell in (self.turn_cell, self.weather_cell):
+            cell.setToolTip(weather_widget.toolTip())
+        self.factions_cell.set_factions(game.blue.faction.name, game.red.faction.name)
+        self.budget_cell.set_budget(
+            game.blue.budget, Income(game, player=Player.BLUE).total
+        )
+        self.budget_cell.set_enabled(True)
+        self.intel_cell.set_intel(
+            commandbar.intel_ratios(game), gathering=game.turn == 0
+        )
+        self.intel_cell.set_enabled(True)
+        self._fit_cells()
 
         self.setControls(True)
 
@@ -921,7 +965,36 @@ class QTopPanel(QFrame):
         self.setControls(True)
 
     def budget_update(self, game: Game):
-        self.budgetBox.setGame(game)
+        self.budget_cell.set_budget(
+            game.blue.budget, Income(game, player=Player.BLUE).total
+        )
+
+    def resizeEvent(self, event: Any) -> None:  # noqa: N802 - Qt naming
+        super().resizeEvent(event)
+        self._fit_cells()
+
+    def _fit_cells(self) -> None:
+        """Narrow windows give up Intel first, then the winds."""
+        width = self.width()
+        shows_intel = width >= commandbar.MIN_WIDTH_FOR_INTEL
+        self.intel_cell.setVisible(shows_intel)
+        self._intel_divider.setVisible(shows_intel)
+        self.weather_cell.show_winds(width >= commandbar.MIN_WIDTH_FOR_WINDS)
+
+    def _open_conditions(self, event: Any) -> None:
+        """Double-clicking the turn or weather opens the full conditions dialog."""
+        QConditionsDialog(
+            self.conditionsWidget.time_turn_widget,
+            self.conditionsWidget.weather_widget,
+        ).exec()
+
+    def open_finances(self) -> None:
+        self.finances_dialog = QFinancesMenu(self.game)
+        self.finances_dialog.show()
+
+    def open_intel(self) -> None:
+        self.intel_dialog = IntelWindow(self.game)
+        self.intel_dialog.show()
 
     def setControls(self, enabled: bool):
         for controller in self.controls:

@@ -5,14 +5,17 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from PySide6.QtCore import QSettings, Qt, QTimer, Signal
+from PySide6.QtCore import QSettings, QSize, Qt, QTimer, Signal
 from PySide6.QtGui import QCloseEvent, QIcon, QAction, QGuiApplication, QActionGroup
 from PySide6.QtWidgets import (
     QApplication,
     QFileDialog,
+    QFrame,
+    QHBoxLayout,
     QMainWindow,
     QMessageBox,
     QSplitter,
+    QToolButton,
     QVBoxLayout,
     QWidget,
 )
@@ -253,23 +256,50 @@ class QLiberationWindow(QMainWindow):
         self.saveAsAction.setEnabled(enabled)
         self.saveAsAction.setVisible(enabled)
 
-    def initToolbar(self):
-        self.tool_bar = self.addToolBar("File")
-        self.tool_bar.addAction(self.newGameAction)
-        self.tool_bar.addAction(self.openAction)
-        self.tool_bar.addAction(self.saveGameAction)
+    def initToolbar(self) -> None:
+        """The icons move into the menu row, at its right end.
 
-        self.links_bar = self.addToolBar("Links")
-        self.links_bar.addAction(self.openDiscordAction)
-        self.links_bar.addAction(self.openGithubAction)
-        self.links_bar.addAction(self.ukraineAction)
-        self.links_bar.addAction(self.pretenseLinkAction)
-        self.links_bar.addAction(self.newPretenseAction)
+        They used to have a toolbar row of their own under the menu, which cost about
+        30 px of window for three groups of small buttons. As flat 22 px buttons in the
+        menu bar's corner they take no height at all, and the strip below is free for
+        status and actions.
+        """
+        groups = (
+            (self.newGameAction, self.openAction, self.saveGameAction),
+            (
+                self.openDiscordAction,
+                self.openGithubAction,
+                self.ukraineAction,
+                self.pretenseLinkAction,
+                self.newPretenseAction,
+            ),
+            (self.openSettingsAction, self.openStatsAction, self.openNotesAction),
+        )
 
-        self.actions_bar = self.addToolBar("Actions")
-        self.actions_bar.addAction(self.openSettingsAction)
-        self.actions_bar.addAction(self.openStatsAction)
-        self.actions_bar.addAction(self.openNotesAction)
+        corner = QWidget()
+        row = QHBoxLayout()
+        row.setContentsMargins(0, 0, 6, 0)
+        row.setSpacing(4)
+        corner.setLayout(row)
+        for index, group in enumerate(groups):
+            if index:
+                divider = QFrame()
+                divider.setFixedSize(1, 16)
+                divider.setStyleSheet("background: #3A4B5C;")
+                row.addWidget(divider, 0, Qt.AlignmentFlag.AlignVCenter)
+            for action in group:
+                button = QToolButton()
+                button.setDefaultAction(action)
+                button.setAutoRaise(True)
+                button.setFixedSize(22, 22)
+                button.setIconSize(QSize(16, 16))
+                button.setStyleSheet(
+                    "QToolButton { background: #26343F; border: none;"
+                    " border-radius: 2px; }"
+                    "QToolButton:hover { background: #33475C; }"
+                )
+                row.addWidget(button)
+        self.menuBar().setCornerWidget(corner, Qt.Corner.TopRightCorner)
 
     def initMenuBar(self):
         self.menu = self.menuBar()

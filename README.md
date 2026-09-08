@@ -172,6 +172,17 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   only one the transfers dialog had. A closed dialog is rebuilt rather than shown again,
   so it never returns with a turn-old view.
 
+- **The six boxes above the map became one command bar.** Turn, weather, factions,
+  budget and intel used to be five group boxes with five frames, five sets of margins
+  and their own type sizes, next to a sixth full of buttons. They are one 80 px strip
+  now, with hairline dividers, the same 10.5 px caps captions as everywhere else, and
+  two big mono numbers -- turn and budget -- as the anchors. Intel is three bars with a
+  one-word verdict instead of "strong advantage" three times in 9 px type. A frame means
+  you can click it: Budget and Intel open dialogs and are framed, the read-only cells are
+  not. The toolbar icons move into the menu row as flat 22 px buttons, which gives their
+  old row back to the map. Narrow windows drop Intel first, then the winds.
+  ([design by Claude Design](https://claude.ai/))
+
 ### Kneeboards
 - **Friendly-packages list** plus a **package-targets map** page.
   ([#11](https://github.com/juanjux/dcs-retribution/pull/11))
