@@ -225,6 +225,17 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   move the dialog makes with its pages, and a section with nothing left to show drops out
   of the list. "Campaign Management+" is folded into Campaign Management.
 
+- **Search box for the settings.** Two hundred settings over six pages, plus the
+  plugins' own options behind their gears. Type a word, pick a hit, and it opens the
+  page, the gear or the plugin's options and flashes the setting. ([#181](https://github.com/juanjux/dcs-retribution/pull/181))
+- **The settings dialog got a working-over.** It opens wide enough that nothing is
+  cut off, sections index themselves without the index scrolling away, a switch with
+  tuning behind it carries a gear instead of a page, and *Mission Start* and *AI* are
+  their own sections. ([#170](https://github.com/juanjux/dcs-retribution/pull/170), [#174](https://github.com/juanjux/dcs-retribution/pull/174), [#179](https://github.com/juanjux/dcs-retribution/pull/179))
+- **Ranks, with a price.** *Rank Names* is *Ranks*, and what each rung costs in XP is
+  set there beside its name. The morale bands are settings too, and a pilot's rank
+  shift follows them. ([#174](https://github.com/juanjux/dcs-retribution/pull/174), [#179](https://github.com/juanjux/dcs-retribution/pull/179))
+
 ### Kneeboards
 - **Friendly-packages list** plus a **package-targets map** page.
   ([#11](https://github.com/juanjux/dcs-retribution/pull/11))
@@ -528,6 +539,22 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   (branch [`juanjux/ch_china_1.1.6`](https://github.com/juanjux/dcs-retribution/tree/juanjux/ch_china_1.1.6))
 
 ### Fixes
+
+- **The search box stretched the settings page list across the dialog**, a section name
+  returned one row per setting inside it, and four letters were short enough to match
+  almost anything. ([#182](https://github.com/juanjux/dcs-retribution/pull/182))
+
+- **Player pilots were playing the morale game.** The debriefing told you how you felt
+  about your own turn, and the same figure moved the skill you flew at, your XP and
+  your survival roll. Morale is for the AI pilots. ([#173](https://github.com/juanjux/dcs-retribution/pull/173))
+- **Three Splash Damage options had never done anything.** The parked-aircraft boost
+  and the anti-radiation ship-radar kill called a `getAGL()` that is defined nowhere,
+  so they raised on every blast wave; the cluster bomblet reduction was written to a
+  key spelled differently from the one the script reads. All three came in with
+  upstream's own 3.4.2 update. ([#177](https://github.com/juanjux/dcs-retribution/pull/177))
+- **Turning Live Pilots off and back on left its settings dead.** The master switch
+  only ever disabled, and it could not reach the pages it did not own.
+  ([#174](https://github.com/juanjux/dcs-retribution/pull/174), [#179](https://github.com/juanjux/dcs-retribution/pull/179))
 
 - **A pilot on leave held no place, so squadrons grew past their own limit.** The count
   of free slots looked at the active and the wounded and forgot leave, so every absence
@@ -926,6 +953,15 @@ and it is longer than this section.
   capability-weighted half of 414Ret #68)
 
 ## Removed from upstream
+
+- **Fast forward.** It never worked well enough to be worth the machinery: a loop
+  timer, sim-speed controls, per-state halt conditions and a pre-launch dialog for
+  when the stop condition could not be reached. Take Off hands DCS the mission at the
+  time it was planned for. ([#176](https://github.com/juanjux/dcs-retribution/pull/176))
+- **Four plugins.** EWRS is the 2016 script BigEye EWR was rewritten from; Mbot's Call
+  Artillery only ever answered a player flying Armed Recon, while Carsten's answers
+  anyone in range; the C-130 cargo script is for a mod we do not support; and the EW
+  Jammer script cannot model jamming honestly without engine support. ([#175](https://github.com/juanjux/dcs-retribution/pull/175))
 
 - **DCS: Pretense support.** Upstream can export the running campaign as a
   [Pretense](https://github.com/Dzsek/pretense) mission — a self-contained Lua campaign

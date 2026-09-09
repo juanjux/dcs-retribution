@@ -22,7 +22,10 @@ from typing import Any, Iterator, Optional
 #: a run of letters buried in the explanation probably is not.
 SCORE_LABEL_WORD_START = 100
 SCORE_LABEL = 60
-SCORE_WHERE = 30
+#: A section whose name matches is offered as one row, not as every setting inside
+#: it: "rank" used to answer with fifteen rows called Cadet, Good and High, which is
+#: the section's name showing through each of its members.
+SCORE_SECTION = 50
 SCORE_DETAIL = 20
 SCORE_KEY = 15
 SCORE_SUBSEQUENCE = 8
@@ -41,9 +44,15 @@ def fold(text: str) -> str:
 SUBSEQUENCE_SLACK = 3
 
 
+#: Below this a word is too short for the net to mean anything. "rank" is a tight
+#: subsequence of "recovery tanker" -- the r of recovery and the ank of tanker -- and
+#: it found four tanker settings that have nothing to do with ranks.
+SUBSEQUENCE_MINIMUM = 6
+
+
 def is_subsequence(needle: str, haystack: str) -> bool:
     """Every letter of needle, in order and close together. The typo net."""
-    if len(needle) < 4:
+    if len(needle) < SUBSEQUENCE_MINIMUM:
         return False
     limit = len(needle) + SUBSEQUENCE_SLACK
     for start in range(len(haystack)):
@@ -68,6 +77,9 @@ class SettingHit:
     section: str
     subsection: Optional[str]
     score: int
+    #: The hit is the section itself rather than a setting in it, so following it
+    #: means opening that section and stopping there.
+    is_section: bool = False
     #: Set when the hit is a plugin's option rather than a setting of the game's, in
     #: which case reaching it means opening that plugin's gear.
     plugin: Optional[str] = None
@@ -80,16 +92,18 @@ class SettingHit:
         return " › ".join(parts)
 
 
-def score_one(token: str, label: str, detail: str, where: str, key: str) -> int:
+def score_one(token: str, label: str, detail: str, key: str) -> int:
     """What this token is worth against one setting, or 0 if it is not there."""
     if token in label:
         starts = any(word.startswith(token) for word in label.split())
         return SCORE_LABEL_WORD_START if starts else SCORE_LABEL
-    if token in where:
-        return SCORE_WHERE
     if token in detail:
         return SCORE_DETAIL
-    if token in key:
+    # Only when it is plainly a key that is being typed. Otherwise an ordinary word
+    # matches every setting whose key happens to contain it: "rank" found all ten
+    # rank-name boxes through live_pilots_rank_good_short and the like, which is the
+    # section's name showing through again.
+    if "_" in token and token in key:
         return SCORE_KEY
     if is_subsequence(token, label):
         return SCORE_SUBSEQUENCE
@@ -119,14 +133,11 @@ def search(query: str, settings: Any = None, limit: int = 40) -> list[SettingHit
         label = fold(description.text)
         detail = fold(description.detail or "")
         subsection = description.subsection
-        where = fold(
-            " ".join(filter(None, [description.page, description.section, subsection]))
-        )
         folded_key = fold(key)
 
         total = 0
         for token in tokens:
-            worth = score_one(token, label, detail, where, folded_key)
+            worth = score_one(token, label, detail, folded_key)
             if not worth:
                 total = 0
                 break
@@ -147,9 +158,34 @@ def search(query: str, settings: Any = None, limit: int = 40) -> list[SettingHit
             )
         )
 
+    hits.extend(_section_hits(tokens))
     hits.extend(_plugin_hits(tokens))
     hits.sort(key=lambda hit: (-hit.score, hit.label))
     return hits[:limit]
+
+
+def _section_hits(tokens: list[str]) -> Iterator[SettingHit]:
+    """One row per section whose name matches, instead of all of its contents."""
+    from game.settings import Settings
+
+    for page in Settings.pages():
+        for section in Settings.sections(page):
+            places = [(section, None)] + [
+                (box, box) for box in Settings.subsections(page, section)
+            ]
+            for name, subsection in places:
+                where = fold(f"{page} {section} {subsection or ''}")
+                if not all(token in where for token in tokens):
+                    continue
+                yield SettingHit(
+                    key="",
+                    label=name,
+                    page=page,
+                    section=section,
+                    subsection=subsection,
+                    score=SCORE_SECTION * len(tokens) * 100 - len(name),
+                    is_section=True,
+                )
 
 
 #: What the plugin page is called in the dialog's own list.
@@ -168,13 +204,12 @@ def _plugin_hits(tokens: list[str]) -> Iterator[SettingHit]:
     for plugin in LuaPluginManager.plugins():
         if not plugin.show_in_ui:
             continue
-        where = fold(f"{PLUGINS_PAGE} {plugin.name}")
         for option in plugin.options:
             label = fold(option.name)
             key = fold(option.identifier)
             total = 0
             for token in tokens:
-                worth = score_one(token, label, "", where, key)
+                worth = score_one(token, label, "", key)
                 if not worth:
                     total = 0
                     break

@@ -75,6 +75,9 @@ SLACK_COLUMN = 2
 RANK_PRICE_COLUMN = 3
 RANK_SLACK_COLUMN = 4
 
+#: The dialog's own list of pages, and the search results that replace it.
+CATEGORY_LIST_WIDTH = 175
+
 #: The morale bands are set by a ladder rather than a row each, so the layout picks
 #: them out of the box they are declared in.
 MORALE_STATE_PREFIX = "morale_state_"
@@ -1098,6 +1101,17 @@ class AutoSettingsPage(QWidget):
             group.update_from_settings()
         self.refresh_page()
 
+    def show_section_named(self, section: str) -> bool:
+        for index, group in enumerate(self.groups):
+            if group.title() != section:
+                continue
+            if self.sections is not None:
+                self.sections.setCurrentRow(index)
+            else:
+                self.stack.setCurrentIndex(index)
+            return True
+        return False
+
     def reveal(self, name: str) -> bool:
         """Show the section holding this setting, scroll to it and flash its label.
 
@@ -1127,9 +1141,10 @@ class AutoSettingsPage(QWidget):
     def _flash(self, label: QWidget) -> None:
         self.scroll.ensureWidgetVisible(label, 0, 80)
         was = label.styleSheet()
-        label.setStyleSheet(
-            "background: palette(highlight); color: palette(highlighted-text);"
-        )
+        # Amber rather than the palette's highlight, which in this theme is the red
+        # it uses for warnings: a setting you asked to be shown should not look like
+        # something has gone wrong with it.
+        label.setStyleSheet("background: #E0A86B; color: #14202B;")
         QTimer.singleShot(1600, lambda: label.setStyleSheet(was))
 
 
@@ -1202,7 +1217,7 @@ class QSettingsWidget(QtWidgets.QWizardPage, SettingsContainer):
         self.categoryList = QListView()
         self.right_layout = QStackedLayout()
 
-        self.categoryList.setMaximumWidth(175)
+        self.categoryList.setMaximumWidth(CATEGORY_LIST_WIDTH)
 
         self.categoryModel = QStandardItemModel(self.categoryList)
 
@@ -1261,6 +1276,7 @@ class QSettingsWidget(QtWidgets.QWizardPage, SettingsContainer):
         self.layout.addWidget(self.search, 0, 0, 1, 1)
         self.layout.addWidget(self.left_stack, 1, 0, 1, 1)
         self.layout.addLayout(self.right_layout, 0, 1, 5, 1)
+        self.layout.setColumnStretch(1, 1)
 
         load = QPushButton("Load Settings")
         load.clicked.connect(self.load_settings)
@@ -1282,16 +1298,20 @@ class QSettingsWidget(QtWidgets.QWizardPage, SettingsContainer):
         self.search = QLineEdit()
         self.search.setPlaceholderText("Search settings...")
         self.search.setClearButtonEnabled(True)
-        self.search.setMaximumWidth(175)
+        self.search.setMaximumWidth(CATEGORY_LIST_WIDTH)
         self.search.textChanged.connect(self.on_search)
 
         self.results = QListWidget()
-        self.results.setMaximumWidth(175)
+        self.results.setMaximumWidth(CATEGORY_LIST_WIDTH)
         self.results.setWordWrap(True)
         self.results.itemActivated.connect(self.on_result_chosen)
         self.results.itemClicked.connect(self.on_result_chosen)
 
         self.left_stack = QStackedWidget()
+        # The cap has to be on the stack as well as on what it holds: a stack asks
+        # for room enough for its widest child and ignores their own limits, so
+        # without this the column swallowed a third of the dialog.
+        self.left_stack.setMaximumWidth(CATEGORY_LIST_WIDTH)
         self.left_stack.addWidget(self.categoryList)
         self.left_stack.addWidget(self.results)
 
@@ -1326,10 +1346,17 @@ class QSettingsWidget(QtWidgets.QWizardPage, SettingsContainer):
         """Open whatever has to be opened for this setting to be on the screen."""
         if hit.plugin is not None:
             self.show_page(self.categoryModel.rowCount() - 1)
-            self.pluginsPage.open_options_for(hit.plugin)
+            self.pluginsPage.open_options_for(hit.plugin, hit.key)
             return
 
         page, section = hit.page, hit.section
+        if hit.is_section:
+            self.show_page(self._page_names.index(page))
+            shown = self.pages.get(page)
+            if shown is not None:
+                shown.show_section_named(section)
+            return
+
         # A section behind a gear is on no page: go to the switch that opens it and
         # open it.
         owner = Settings.switch_that_opens(section)

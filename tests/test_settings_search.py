@@ -26,14 +26,27 @@ def test_every_word_has_to_match() -> None:
     assert not keys("skynet marzipan")
 
 
-def test_the_page_and_the_section_are_searchable_too() -> None:
-    """You remember it was something under Live Pilots before you remember what."""
-    assert any(hit.page == "Live Pilots" for hit in search("live pilots"))
+def test_a_section_is_offered_once_and_not_through_every_setting_in_it() -> None:
+    """ "rank" used to answer with ten rows called Cadet, Good and High.
+
+    They were the section's name showing through its members, twice over: through
+    the page and section they sit in, and through keys like
+    live_pilots_rank_good_short.
+    """
+    hits = search("rank")
+    assert any(hit.is_section and hit.label == "Ranks" for hit in hits)
+    rungs = [hit for hit in hits if hit.label in {"Cadet", "Good", "High", "Average"}]
+    assert not rungs, [hit.label for hit in rungs]
 
 
-def test_the_stored_key_is_searchable() -> None:
-    """For when the name in a bug report is the Python one."""
+def test_the_key_is_only_searched_when_a_key_is_what_was_typed() -> None:
     assert "never_delay_player_flights" in keys("never_delay")
+    assert "live_pilots_rank_good_short" not in keys("rank")
+
+
+def test_a_box_is_offered_as_well_as_its_section() -> None:
+    labels = {hit.label for hit in search("morale") if hit.is_section}
+    assert {"Morale", "Morale States", "Morale Event Values"} <= labels
 
 
 def test_a_typo_still_finds_it_but_ranks_below_the_real_thing() -> None:
@@ -50,8 +63,15 @@ def test_a_subsequence_scattered_over_a_long_label_is_not_a_match() -> None:
 
 
 def test_a_short_word_never_matches_by_subsequence() -> None:
-    """Three letters land inside almost any sentence in the right order."""
+    """Four letters land inside almost any label in the right order.
+
+    "rank" is a tight subsequence of "recovery tanker" -- the r of recovery and the
+    ank of tanker -- and it was answering with four tanker settings.
+    """
     assert not is_subsequence("air", "a big irregular")
+    assert not is_subsequence("rank", fold("Enable Airboss Recovery Tanker"))
+    assert "rank" not in [hit.label.lower() for hit in search("rank")]
+    assert not [hit for hit in search("rank") if "tanker" in hit.label.lower()]
 
 
 def test_nothing_typed_finds_nothing() -> None:
