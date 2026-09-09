@@ -1,4 +1,5 @@
 """Offline structural + instrument smoke tests; absolutely not a DCS AI simulator."""
+
 from pathlib import Path
 import argparse
 import json
@@ -10,7 +11,7 @@ from dcs.planes import plane_map
 from dcs.helicopters import helicopter_map
 from lupa.lua51 import LuaRuntime
 
-MOCK = r'''
+MOCK = r"""
 _logs={}; _clock=0; _pending={}; _units={}; _groups={}; _commands={}
 env={info=function(s) _logs[#_logs+1]=s end,mission=mission}
 timer={getTime=function() return _clock end,
@@ -70,56 +71,62 @@ Unit={getByName=function(n) return _units[n] end}
 Group={getByName=function(n) return _groups[n] end}
 function c_time_after(t) return _clock>=t end
 function a_do_script(s) assert(loadstring(s))() end
-'''
+"""
 
 
 def verify(path):
     with zipfile.ZipFile(path) as z:
         assert z.testzip() is None
-        text=z.read("mission").decode()
-        cfg=json.loads(z.read("rcas_manifest.json"))
-    m=lua.loads(text)["mission"]
+        text = z.read("mission").decode()
+        cfg = json.loads(z.read("rcas_manifest.json"))
+    m = lua.loads(text)["mission"]
     units, groups, group_names, names = {}, {}, set(), set()
     for coal in m["coalition"].values():
-        for country in coal.get("country",{}).values():
-            for category in ("vehicle","plane","helicopter"):
-                for g in country.get(category,{}).get("group",{}).values():
+        for country in coal.get("country", {}).values():
+            for category in ("vehicle", "plane", "helicopter"):
+                for g in country.get(category, {}).get("group", {}).values():
                     assert g["groupId"] not in groups
-                    groups[g["groupId"]]=g
+                    groups[g["groupId"]] = g
                     assert g["name"] not in group_names
                     group_names.add(g["name"])
                     for u in g["units"].values():
                         assert u["skill"] == "Average"
                         assert u["unitId"] not in units and u["name"] not in names
-                        units[u["unitId"]]=u; names.add(u["name"])
+                        units[u["unitId"]] = u
+                        names.add(u["name"])
+
     def references(obj):
-        if isinstance(obj,dict):
-            if obj.get("id") in ("AttackUnit","EngageUnit"):
+        if isinstance(obj, dict):
+            if obj.get("id") in ("AttackUnit", "EngageUnit"):
                 assert obj["params"]["unitId"] in units
-            if obj.get("id") in ("AttackGroup","EngageGroup"):
+            if obj.get("id") in ("AttackGroup", "EngageGroup"):
                 assert obj["params"]["groupId"] in groups
-            for v in obj.values(): references(v)
-        elif isinstance(obj,list):
-            for v in obj: references(v)
+            for v in obj.values():
+                references(v)
+        elif isinstance(obj, list):
+            for v in obj:
+                references(v)
+
     references(m)
     references(cfg)
     # Load our explicit stores only; do not scan unrelated installed mod presets.
-    types={**plane_map, **helicopter_map}
+    types = {**plane_map, **helicopter_map}
     for u in units.values():
         if u["type"] in types:
-            types[u["type"]].payloads={}
-    parsed=Mission()
+            types[u["type"]].payloads = {}
+    parsed = Mission()
     assert not parsed.load_file(str(path)), "pydcs returned mission load warnings"
     for a in cfg["actions"]:
         if "target" in a:
-            assert a["target"] in names|group_names
-        if "other" in a: assert a["other"] in names
-    runtime=LuaRuntime()
+            assert a["target"] in names | group_names
+        if "other" in a:
+            assert a["other"] in names
+    runtime = LuaRuntime()
     runtime.execute(text)
     runtime.execute(MOCK)
     # Execute the *serialized mission trigger*, not just its copy in the ZIP.
     runtime.execute("assert(loadstring(mission.trig.actions[1]))()")
-    runtime.execute('''
+    runtime.execute("""
       local names={}; for n in pairs(_units) do names[#names+1]=n end
       table.sort(names)
       local src,dst=_units['CAS-1'] or _units[names[1]],_units[names[2]]
@@ -139,24 +146,29 @@ def verify(path):
         if again then _pending[#_pending+1]={f=p.f,a=p.a,t=again} end
         iterations=iterations+1; assert(iterations<2000,'scheduler never finishes')
       end
-    ''')
-    logs=list(runtime.globals()._logs.values())
-    errors=[line for line in logs if "|ERROR|" in line]
+    """)
+    logs = list(runtime.globals()._logs.values())
+    errors = [line for line in logs if "|ERROR|" in line]
     assert not errors, errors
     assert any("FIN. Captura" in line for line in logs)
     assert any("WEAPON_TRACK" in line for line in logs)
     assert any("WEAPON_GONE" in line for line in logs)
     if "experiment" in cfg:
-        assert not any("INVALID" in line for line in logs), "happy-path mock became invalid"
+        assert not any(
+            "INVALID" in line for line in logs
+        ), "happy-path mock became invalid"
         assert any("knowType=true/knowDistance=true/lastTime=" in line for line in logs)
-    print(f"PASS {path.name}: IDs/tasks/AI-only, serialized trigger, {len(logs)} mock log lines, zero Lua errors")
+    print(
+        f"PASS {path.name}: IDs/tasks/AI-only, serialized trigger, {len(logs)} mock log lines, zero Lua errors"
+    )
 
 
-if __name__=="__main__":
-    parser=argparse.ArgumentParser()
-    parser.add_argument("directory",type=Path)
-    args=parser.parse_args()
-    files=sorted(args.directory.glob("*.miz"))
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("directory", type=Path)
+    args = parser.parse_args()
+    files = sorted(args.directory.glob("*.miz"))
     assert files, "No missions found"
-    for p in files: verify(p)
+    for p in files:
+        verify(p)
     print("Offline checks only: no DCS detection or weapon behavior has been verified.")

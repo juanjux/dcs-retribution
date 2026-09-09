@@ -6,7 +6,7 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from .realisticcasenvironment import export_environment
+from .realisticcasenvironment import SunTimes, export_environment
 from .realisticcasluadata import SCRIPT_ORDER, collect_registry, render_startup
 
 
@@ -20,8 +20,8 @@ def suppress_legacy_jtac(plugins: Any) -> bool:
 
 
 def prepare_campaign(
-    generator: Any, plugins: Any, *, sun_times: Any = None
-) -> dict | None:
+    generator: Any, plugins: Any, *, sun_times: SunTimes | None = None
+) -> dict[str, Any] | None:
     plugins = list(plugins)
     plugin = next(
         (p for p in plugins if p.identifier == "realisticcas" and p.enabled), None
@@ -114,7 +114,7 @@ def prepare_campaign(
     return config
 
 
-def inject_campaign(generator: Any, config: dict | None) -> None:
+def inject_campaign(generator: Any, config: dict[str, Any] | None) -> None:
     if config is None:
         return
     startup = render_startup(config)

@@ -96,7 +96,9 @@ class CombatLogTests(unittest.TestCase):
           getController=function()return {setOption=function(_,id,value)
             assert(id==0 and value==4);options[#options+1]=value end}end}
         """)
-        self.rt.execute(Path(__file__).with_name("combat_smoke.lua").read_text(encoding="utf-8"))
+        self.rt.execute(
+            Path(__file__).with_name("combat_smoke.lua").read_text(encoding="utf-8")
+        )
         self.rt.execute("""
         event(1,'jet');event(23,'blue');finish()
         local r=RCAS_COMBAT_TEST_RESULT
@@ -110,7 +112,9 @@ class CombatLogTests(unittest.TestCase):
         self.rt.execute("""
         function units.jet:getAmmo()return {{count=6,desc={typeName='weapons.missiles.AGM_65D'}}}end
         """)
-        self.rt.execute(Path(__file__).with_name("combat_smoke.lua").read_text(encoding="utf-8"))
+        self.rt.execute(
+            Path(__file__).with_name("combat_smoke.lua").read_text(encoding="utf-8")
+        )
         self.rt.execute("""
         local weapon={getTypeName=function()return 'AGM_65D'end}
         for i=1,7 do

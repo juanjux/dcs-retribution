@@ -11,6 +11,8 @@ import math
 from collections.abc import Collection, Mapping
 from typing import TYPE_CHECKING, Any
 
+from dcs.flyingunit import FlyingUnit
+
 if TYPE_CHECKING:
     from dcs import Mission
     from game.unitmap import UnitMap
@@ -157,10 +159,10 @@ def collect_registry(
     roles: dict[str, str] = {}
     for flight in mission_data.flights:
         role = flight.flight_type.value
-        for unit in flight.units:
-            if unit.name in roles:
-                raise ValueError(f"Duplicate FlightData unit: {unit.name}")
-            roles[unit.name] = role
+        for flight_unit in flight.units:
+            if flight_unit.name in roles:
+                raise ValueError(f"Duplicate FlightData unit: {flight_unit.name}")
+            roles[flight_unit.name] = role
     for jtac in mission_data.jtacs:
         previous = roles.get(jtac.unit_name)
         if previous is not None and previous != "JTAC":
@@ -262,6 +264,10 @@ def collect_registry(
                             "coalition": side,
                         }
                         if category == "air":
+                            if not isinstance(unit, FlyingUnit):
+                                raise ValueError(
+                                    f"Non-aircraft unit in flying group: {unit.name}"
+                                )
                             if unit.name not in roles:
                                 result["warnings"].append(
                                     f"No FlightData/JTAC role; observer omitted: {unit.name}"

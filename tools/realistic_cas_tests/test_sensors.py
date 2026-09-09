@@ -1,4 +1,5 @@
 """Lua 5.1 model, spatial scheduler and DCS bridge contract tests (no engine claims)."""
+
 import unittest
 
 from lupa.lua51 import LuaRuntime
@@ -404,22 +405,24 @@ class BridgeTests(unittest.TestCase):
             """)
         runner = PLUGIN.parents[2] / "tools/realistic_cas_tests/night_smoke.lua"
         self.rt.execute(runner.read_text(encoding="utf-8"))
-        self.check("run(2000);assert(#pending==0 and not RealisticCAS._running and not red.hidden)")
-        return '\n'.join(self.rt.globals().logs.values())
+        self.check(
+            "run(2000);assert(#pending==0 and not RealisticCAS._running and not red.hidden)"
+        )
+        return "\n".join(self.rt.globals().logs.values())
 
     def test_night_runner_exact_channels_expiry_and_recovery(self):
         logs = self.run_night_mission()
-        self.assertIn('failures=0|inconclusive=0|checks=11', logs)
-        self.assertNotIn('|ERROR|', logs)
-        self.assertIn('NIGHT_IR_ON exact channel ir', logs)
+        self.assertIn("failures=0|inconclusive=0|checks=11", logs)
+        self.assertNotIn("|ERROR|", logs)
+        self.assertIn("NIGHT_IR_ON exact channel ir", logs)
 
     def test_night_runner_blocked_is_inconclusive(self):
         logs = self.run_night_mission(blocked=True)
-        self.assertIn('failures=0|inconclusive=1|checks=0', logs)
+        self.assertIn("failures=0|inconclusive=1|checks=0", logs)
 
     def test_night_runner_catches_missing_ir(self):
         logs = self.run_night_mission(missing_ir=True)
-        self.assertIn('failures=1|inconclusive=0|checks=11', logs)
+        self.assertIn("failures=1|inconclusive=0|checks=11", logs)
 
     def run_cloud_mission(self, blocked=False, ignore_clouds=False):
         self.check("""
@@ -438,23 +441,25 @@ class BridgeTests(unittest.TestCase):
             """)
         runner = PLUGIN.parents[2] / "tools/realistic_cas_tests/cloud_smoke.lua"
         self.rt.execute(runner.read_text(encoding="utf-8"))
-        self.check("run(3000);assert(#pending==0 and not RealisticCAS._running and not red.hidden)")
-        return '\n'.join(self.rt.globals().logs.values())
+        self.check(
+            "run(3000);assert(#pending==0 and not RealisticCAS._running and not red.hidden)"
+        )
+        return "\n".join(self.rt.globals().logs.values())
 
     def test_cloud_runner_channels_and_expiry(self):
         logs = self.run_cloud_mission()
-        self.assertIn('failures=0|inconclusive=0|checks=13', logs)
-        self.assertNotIn('|ERROR|', logs)
+        self.assertIn("failures=0|inconclusive=0|checks=13", logs)
+        self.assertNotIn("|ERROR|", logs)
 
     def test_cloud_runner_no_los_not_false_pass(self):
         logs = self.run_cloud_mission(blocked=True)
-        self.assertIn('failures=0|inconclusive=4|checks=9', logs)
+        self.assertIn("failures=0|inconclusive=4|checks=9", logs)
 
     def test_cloud_runner_catches_missing_cloud_attenuation(self):
         logs = self.run_cloud_mission(ignore_clouds=True)
-        self.assertIn('|FAIL|', logs)
-        self.assertIn('failures=4|inconclusive=0|checks=13', logs)
-        self.assertNotIn('|ERROR|', logs)
+        self.assertIn("|FAIL|", logs)
+        self.assertIn("failures=4|inconclusive=0|checks=13", logs)
+        self.assertNotIn("|ERROR|", logs)
 
     def run_radar_mission(self, radar=True, moving=True, broken_gmti=False):
         self.check("""
@@ -490,25 +495,25 @@ class BridgeTests(unittest.TestCase):
         run(4000);assert(#pending==0 and not RealisticCAS._running)
         assert(not red.hidden and not groups.far.hidden and not groups.near.hidden)
         """)
-        return '\n'.join(self.rt.globals().logs.values())
+        return "\n".join(self.rt.globals().logs.values())
 
     def test_radar_runner_exact_channels_and_roles(self):
         logs = self.run_radar_mission()
-        self.assertIn('failures=0|inconclusive=0|checks=36', logs)
-        self.assertNotIn('|ERROR|', logs)
+        self.assertIn("failures=0|inconclusive=0|checks=36", logs)
+        self.assertNotIn("|ERROR|", logs)
 
     def test_radar_runner_no_radar_is_inconclusive(self):
         logs = self.run_radar_mission(radar=False)
-        self.assertIn('failures=0|inconclusive=15|checks=6', logs)
+        self.assertIn("failures=0|inconclusive=15|checks=6", logs)
 
     def test_radar_runner_stuck_convoy_is_inconclusive(self):
         logs = self.run_radar_mission(moving=False)
-        self.assertIn('failures=0|inconclusive=5|checks=26', logs)
+        self.assertIn("failures=0|inconclusive=5|checks=26", logs)
 
     def test_radar_runner_catches_missing_gmti(self):
         logs = self.run_radar_mission(broken_gmti=True)
-        self.assertIn('failures=3|inconclusive=0|checks=36', logs)
-        self.assertNotIn('|ERROR|', logs)
+        self.assertIn("failures=3|inconclusive=0|checks=36", logs)
+        self.assertNotIn("|ERROR|", logs)
 
     def run_ground_mission(self, blocked):
         self.check("""
@@ -537,20 +542,20 @@ class BridgeTests(unittest.TestCase):
           assert(not line:find('|ERROR|',1,true) and not line:find('|FAIL|',1,true),line)
         end
         """)
-        return '\n'.join(self.rt.globals().logs.values())
+        return "\n".join(self.rt.globals().logs.values())
 
     def test_ground_runner_clear_los_and_decision_trace(self):
         logs = self.run_ground_mission(False)
-        self.assertIn('failures=0|inconclusive=0|checks=3', logs)
-        self.assertIn('|LOS_CLEAR|', logs)
-        self.assertIn('|ENVELOPE_REJECT|', logs)
-        self.assertIn('city cover rejects previously observed identical geometry', logs)
+        self.assertIn("failures=0|inconclusive=0|checks=3", logs)
+        self.assertIn("|LOS_CLEAR|", logs)
+        self.assertIn("|ENVELOPE_REJECT|", logs)
+        self.assertIn("city cover rejects previously observed identical geometry", logs)
 
     def test_ground_runner_blocked_controls_are_inconclusive(self):
         logs = self.run_ground_mission(True)
-        self.assertIn('failures=0|inconclusive=2|checks=1', logs)
-        self.assertIn('|LOS_BLOCKED|', logs)
-        self.assertIn('no usable LOS pair; not a sensor failure', logs)
+        self.assertIn("failures=0|inconclusive=2|checks=1", logs)
+        self.assertIn("|LOS_BLOCKED|", logs)
+        self.assertIn("no usable LOS pair; not a sensor failure", logs)
 
 
 class SiteSelectionTests(unittest.TestCase):
@@ -589,34 +594,36 @@ class SiteSelectionTests(unittest.TestCase):
         """)
 
     def run_selector(self):
-        source=PLUGIN.parents[2]/'tools/realistic_cas_tests/select_ground_site.lua'
-        self.rt.execute(source.read_text(encoding='utf-8'))
-        self.rt.execute('drain()')
-        return '\n'.join(self.rt.globals().logs.values())
+        source = PLUGIN.parents[2] / "tools/realistic_cas_tests/select_ground_site.lua"
+        self.rt.execute(source.read_text(encoding="utf-8"))
+        self.rt.execute("drain()")
+        return "\n".join(self.rt.globals().logs.values())
 
     def test_selects_new_site_and_starts_after_spawn_settles(self):
-        logs=self.run_selector()
-        self.rt.execute('assert(#spawns==3 and ran==1 and now>=4);assert(spawns[1].x==10)')
-        self.assertIn('candidate=2',logs)
-        self.assertNotIn('|ERROR|',logs)
+        logs = self.run_selector()
+        self.rt.execute(
+            "assert(#spawns==3 and ran==1 and now>=4);assert(spawns[1].x==10)"
+        )
+        self.assertIn("candidate=2", logs)
+        self.assertNotIn("|ERROR|", logs)
 
     def test_no_clear_site_is_inconclusive_without_spawning(self):
-        self.rt.execute('land.isVisible=function()return false end')
-        logs=self.run_selector()
-        self.rt.execute('assert(#spawns==0 and ran==0)')
-        self.assertIn('|INCONCLUSIVE|',logs)
+        self.rt.execute("land.isVisible=function()return false end")
+        logs = self.run_selector()
+        self.rt.execute("assert(#spawns==0 and ran==0)")
+        self.assertIn("|INCONCLUSIVE|", logs)
 
     def test_water_sites_are_not_used(self):
-        self.rt.execute('land.getSurfaceType=function()return 3 end')
-        logs=self.run_selector()
-        self.rt.execute('assert(#spawns==0 and ran==0)')
-        self.assertIn('|INCONCLUSIVE|',logs)
+        self.rt.execute("land.getSurfaceType=function()return 3 end")
+        logs = self.run_selector()
+        self.rt.execute("assert(#spawns==0 and ran==0)")
+        self.assertIn("|INCONCLUSIVE|", logs)
 
     def test_spawn_failure_never_runs_detector_test(self):
         self.rt.execute("coalition.addGroup=function()error('spawn unavailable')end")
-        logs=self.run_selector()
-        self.rt.execute('assert(ran==0)')
-        self.assertIn('|ERROR|',logs)
+        logs = self.run_selector()
+        self.rt.execute("assert(ran==0)")
+        self.assertIn("|ERROR|", logs)
 
 
 if __name__ == "__main__":

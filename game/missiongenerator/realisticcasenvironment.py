@@ -9,10 +9,11 @@ from __future__ import annotations
 
 import math
 import re
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from typing import Any, Callable
 
 COVERS = frozenset({"desert", "grassland", "tundra", "forest", "city"})
+SunTimes = Callable[[float, float, timezone, date], tuple[datetime, datetime] | None]
 
 
 def _number(value: Any, label: str, low: float, high: float) -> float:
@@ -37,7 +38,7 @@ def export_environment(
     theater: Any,
     *,
     default_cover: str,
-    sun_times: Callable | None = None,
+    sun_times: SunTimes | None = None,
 ) -> tuple[dict[str, Any], list[str]]:
     """Use the FINAL pydcs mission (including live-weather overrides).
 
@@ -67,7 +68,7 @@ def export_environment(
         f"Approximate homogeneous terrain cover: {default_cover}; no city/forest map exported",
         "Solar schedule uses the campaign reference position, not a per-unit ephemeris; horizon 3 local days",
     ]
-    days = []
+    days: list[dict[str, float]] = []
     for index in range(3):
         date = start.date() + timedelta(days=index)
         times = sun_times(lat, lon, tz, date)
@@ -122,6 +123,7 @@ def export_environment(
         "zones": [],
     }
     preset = weather.clouds_preset
+    thickness: float
     if preset is not None:
         # Names such as Preset1 are reused by different cloud packs. Classify
         # descriptive text instead; unsupported custom text has a logged fallback.

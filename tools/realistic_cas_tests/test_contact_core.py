@@ -2,11 +2,11 @@
 
 Lua 5.1 contract tests, not a simulation of DCS detection or weapon behavior.
 """
+
 from pathlib import Path
 import unittest
 
 from lupa.lua51 import LuaRuntime
-
 
 PLUGIN = Path(__file__).resolve().parents[2] / "resources/plugins/realisticcas"
 CORE = (PLUGIN / "core.lua").read_text(encoding="utf-8")
@@ -277,7 +277,9 @@ class DcsAdapterTests(unittest.TestCase):
           function g:getUnit() return {getPoint=function()return {x=1,y=2,z=3}end} end
         end
         """)
-        self.rt.execute((Path(__file__).parent / "core_smoke.lua").read_text(encoding="utf-8"))
+        self.rt.execute(
+            (Path(__file__).parent / "core_smoke.lua").read_text(encoding="utf-8")
+        )
         if simulate_fire:
             self.check("""
             timer.scheduleFunction(function()emit(1,groups.RED_ARMOUR)end,nil,50)

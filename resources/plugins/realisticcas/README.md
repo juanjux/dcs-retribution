@@ -218,6 +218,19 @@ stopping the fog owner restores visibility and terminates detection on its next 
 
 Run all tests with `python -B -m unittest discover -s tools/realistic_cas_tests -p "test_*.py" -v`.
 
+Before opening or updating a PR, also run the repository-wide CI lint commands:
+
+```text
+python -m black --check .
+python -m mypy game
+python -m mypy tests
+```
+
+Use the versions used by CI (Black26.3.1 and mypy1.15.0 at the time of this
+integration). Black checks the diagnostic builders too, not only runtime code.
+Passing the Lua/functional tests is not a substitute for these checks. Resolve
+typing errors in the code rather than weakening the repository's mypy rules.
+
 ## Exported mission entry point
 
 Load the filenames in Python `SCRIPT_ORDER`, then call
