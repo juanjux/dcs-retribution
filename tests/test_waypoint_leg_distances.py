@@ -1,10 +1,7 @@
 """Leg distances down the waypoint table, and what the route total leaves out.
 
-Target points and the bullseye are in the list but not on the ground track: a strike
-with six aimpoints a few hundred metres apart would otherwise pile six meaningless
-hops into the total, and the bullseye is a map reference the flight never goes near.
-They show 0 and contribute nothing, and the leg after one of them is measured from
-the last waypoint actually flown.
+Target points and the bullseye are in the list but not on the ground track. They show
+0, and the leg after one is measured from the last waypoint actually flown.
 """
 
 from __future__ import annotations

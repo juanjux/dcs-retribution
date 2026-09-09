@@ -23,6 +23,7 @@ from game.ato.flightplans.waypointbuilder import WaypointBuilder
 from game.ato.flighttype import FlightType
 from game.ato.flightwaypoint import FlightWaypoint
 from game.ato.flightwaypointtype import FlightWaypointType
+from game.ato.fuelestimate import estimate_fuel
 from game.utils import feet
 from game.ato.loadouts import Loadout
 from game.ato.package import Package
@@ -86,13 +87,11 @@ class QFlightWaypointTab(QFrame):
         self.flight_waypoint_list = QFlightWaypointList(self.package, self.flight)
         layout.addWidget(self.flight_waypoint_list, 0, 0)
 
-        # Under the table rather than as a last row: on_changed walks the rows against
-        # flight_plan.waypoints, so a row that is not a waypoint would index past the
-        # end of it on the first edit.
+        # Under the table, not a last row: on_changed indexes the rows against
+        # flight_plan.waypoints.
         self.route_length = QLabel()
         self.flight_waypoint_list.route_length_changed.connect(self.show_route_length)
-        # The list built itself in its constructor, before there was anything connected
-        # to hear the total, so ask it again.
+        # It built itself in its constructor, before this was connected.
         self.flight_waypoint_list.update_list()
         layout.addWidget(self.route_length, 1, 0)
 
@@ -325,7 +324,19 @@ class QFlightWaypointTab(QFrame):
             self.on_change()
 
     def show_route_length(self, nautical_miles: float) -> None:
-        self.route_length.setText(f"<strong>Route:</strong> {nautical_miles:.0f} nm")
+        parts = [f"<strong>Route:</strong> {nautical_miles:.0f} nm"]
+        fuel = estimate_fuel(self.flight)
+        if fuel is not None:
+            text = (
+                f"<strong>Fuel:</strong> ~{fuel.required.pounds:,.0f} lb"
+                f" of {fuel.carried.pounds:,.0f} lb"
+            )
+            if not fuel.enough:
+                # Loud on purpose: the estimate errs high, so it saying no is still
+                # worth a look before you launch.
+                text = f"<span style='color:#E0A86B'>{text} &mdash; tight</span>"
+            parts.append(text)
+        self.route_length.setText(" &nbsp;&nbsp; ".join(parts))
 
     def on_change(self):
         self.flight_waypoint_list.update_list()
