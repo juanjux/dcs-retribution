@@ -20,11 +20,9 @@ from qt_ui.windows.mission.flight.waypoints.QFlightWaypointItem import QWaypoint
 
 HEADER_LABELS = ["Name", "Alt (ft)", "Alt Type", "TOT/DEPART", "Leg (nm)"]
 
-#: Waypoints that are not part of the ground track, so they neither start a leg nor
-#: end one: a fixed map reference, an alternate field, and the target points, which
-#: are engaged from the ingress rather than overflown -- a strike with six aimpoints
-#: a few hundred metres apart would otherwise pile six meaningless hops into the
-#: total. They show a blank leg and contribute nothing.
+#: Not on the ground track, so they neither start a leg nor end one: a map reference,
+#: an alternate field, and the target points, which are engaged from the ingress
+#: rather than overflown.
 NOT_FLOWN = frozenset(
     {
         FlightWaypointType.BULLSEYE,
