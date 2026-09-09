@@ -60,10 +60,8 @@ class DcsFuelSelector(QHBoxLayout):
         self.flight = flight
         self.unit_changing = False
 
-        # "Internal" was the honest name while the box knew nothing about tanks. It
-        # still SETS the internal quantity -- that is the only fuel figure DCS takes,
-        # and a tank is always full -- but it now says what the aircraft is actually
-        # carrying, which is the number the player is after.
+        # Still SETS the internal quantity, the only fuel figure DCS takes, but says
+        # what the aircraft carries with its tanks.
         self.label = QLabel("Fuel Quantity: ")
         self.addWidget(self.label)
 

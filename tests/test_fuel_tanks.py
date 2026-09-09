@@ -1,10 +1,7 @@
-"""Reading how much fuel an external tank carries out of what DCS says about it.
+"""Reading a tank's fuel out of what DCS says about it.
 
-DCS has no "this holds N pounds of fuel" field, only a name, a CLSID and a laden
-weight, so the figure is read off the name's stated volume where there is one and
-sanity-checked against the weight. The point is the payload editor's fuel figure and
-the flight plan's fuel estimate, both of which were internal-only -- which understates
-a strike loadout by a third or more.
+There is no fuel figure on a store, so it comes from the volume in the name, bounded
+by the laden weight.
 """
 
 from __future__ import annotations

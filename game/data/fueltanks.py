@@ -1,13 +1,8 @@
-"""How much fuel an external tank actually carries.
+"""How much fuel an external tank carries.
 
-DCS has no "this is a fuel tank, holding N pounds" field: a store is a name, a CLSID
-and a laden weight. So the fuel is read off the three things that are there, in
-descending order of how much they can be trusted.
-
-Wanted because the payload editor's fuel figure was internal only, which understates a
-strike loadout by a third or more, and the flight plan's fuel estimate was reading the
-same number -- the mission generator's own warning about running out already says
-"this estimate does not account for external fuel tanks".
+DCS gives a store a name, a CLSID and a laden weight, and no fuel figure. So it is
+read off the volume in the name, then an "(Empty)" twin's weight, then a share of the
+laden weight -- and never more than the store weighs.
 """
 
 from __future__ import annotations
@@ -27,9 +22,8 @@ if TYPE_CHECKING:
 KG_PER_LITRE = 0.81
 LITRES_PER_US_GALLON = 3.785412
 
-#: Share of a tank's laden weight that is fuel, for the ones that state no volume and
-#: ship no empty twin. Deliberately low: a tank is mostly fuel, but guessing high here
-#: would flatter a loadout that cannot actually make it home.
+#: Fuel share of the laden weight, for a tank that states no volume and ships no
+#: empty twin. Low on purpose.
 ASSUMED_FUEL_SHARE = 0.85
 
 _VOLUME = re.compile(
