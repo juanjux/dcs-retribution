@@ -55,7 +55,9 @@
     "Infantry M4",
     "MANPADS Stinger"
   ],
-  "air_defense_units": [],
+  "air_defense_units": [
+    "EWR AN/FPS-117 Radar"
+  ],
   "preset_groups": [
     "Hawk",
     "Roland"
