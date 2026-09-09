@@ -737,7 +737,7 @@ class MissionResultsProcessor:
                         )
                     raw = had + paid
                     pilot.record.xp = one_promotion_at_most(
-                        had, raw, squadron.base_skill
+                        had, raw, squadron.base_skill, self.game.settings
                     )
                     if pilot.record.xp < raw:
                         extras.append(
