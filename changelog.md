@@ -1,6 +1,7 @@
 ﻿# Retribution v1.6.3 (414th)
 
 ## Features/Improvements
+* **[UI]** The settings dialog has a search box. Type a word and it lists every setting that matches -- across all six pages, inside the boxes, behind the gears, and including the plugins' own options -- with the page and section it lives on. Pick one and it opens the page, the section or the plugin's options and flashes the setting. Matching is forgiving: it looks at the label, the explanation, the page and section names and the stored key, and a near miss still finds it.
 * **[FIX]** Settings dialog: the boxes inside a section had lost their frame and read as stray labels, and a section long enough to scroll gave every short section beside it a scrollbar it did not need.
 * **[UI]** *Mission Generator* gained two sections: **Mission Start** (start types, spawn-immediately, the Nevatim parking fix, the sixpack) and **AI** (radio callouts, combat landing, roadbases, unlimited fuel), both carved out of *Gameplay*. The DCS automatic fog setting and the Skynet IADS radius now say what they do, and the frontline width sits with the other frontline settings.
 * **[FIX]** Settings dialog: a page opened where the last one was left scrolled to, a setting could not grey out one on another page (Live Pilots and AI pilot levelling), a box's caption was drawn over its first row, a section with a single switch put it hard against its label, and a plugin with more options than fit --  Splash Damage has 65 -- had no way to scroll them.

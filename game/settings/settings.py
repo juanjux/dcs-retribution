@@ -2367,6 +2367,18 @@ class Settings:
         }
 
     @classmethod
+    def switch_that_opens(cls, section: str) -> Optional[tuple[str, str, str]]:
+        """The setting whose gear opens this section, as (name, page, its section).
+
+        A section reached from a gear is not on any page, so anything navigating to
+        one of its settings has to be sent to the switch that opens it instead.
+        """
+        for name, description in cls.all_fields():
+            if description.opens_section == section:
+                return name, description.page, description.section
+        return None
+
+    @classmethod
     def subsections(cls, page: str, section: str) -> Iterator[str]:
         """The boxes within a section, in the order their settings are declared."""
         seen: set[str] = set()
