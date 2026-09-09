@@ -238,6 +238,10 @@ class LandUnitEntity(Entity):
     ARMOR_ARMORED_MECHANIZED_SELF_PROPELLED_TRACKED = 120500
     AIR_DEFENSE = 130100
     MISSILE = 130700
+    #: Electronic warfare / jamming. Rendered by milsymbol as the EW icon with the
+    #: jamming bolt, which is what tells a jamming site apart from the radar and the
+    #: missile battery it can be swapped with.
+    ELECTRONIC_WARFARE_JAMMING = 150504
 
 
 @unique

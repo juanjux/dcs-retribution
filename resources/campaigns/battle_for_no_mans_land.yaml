@@ -36,6 +36,7 @@ recommended_start_date: 2001-11-10
 version: "10.9"
 settings:
   squadron_start_full: true
+
 squadrons:
   #Port Stanley
   1:

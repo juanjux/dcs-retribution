@@ -65,22 +65,18 @@ iads_config:
     - R-POWER-N1
     - R-TOWER-N1
 #NATO
-  - NATO K-1:
-    - NATO CP
-  - NATO K-2:
-    - NATO CP
-  - NATO K-3:
-    - NATO CP
-  - NATO S-1:
-    - NATO CP
-  - NATO S-2:
-    - NATO CP
-  - NATO S-3:
-    - NATO CP
-  - NATO S-4:
-    - NATO CP
-  - NATO S-5:
-    - NATO CP  
+  - NATO K-1
+  - NATO K-2
+  - NATO K-3
+  - NATO S-1
+  - NATO S-2
+  - NATO S-3
+  - NATO S-4
+  - NATO S-5
+# Command centres only reach Skynet as KEYS -- as a dependency of a site
+# they are never handed to the plugin, and an empty command centre list
+# reads as working command, so the bunker could not be bombed at all.
+  - NATO CP
 squadrons:
 # Senaki-Kholki
   23:
@@ -225,7 +221,12 @@ squadrons:
         - Su-30 Flanker-C  
       size: 16
   # Retribution SAM site override:
+# GPS jamming: one site on the enemy EWR marker whose 15 nm radius covers the
+# most of its own air defences. No radar on it, so it is a STRIKE target, not
+# SEAD, and a satellite-guided weapon aimed inside the bubble lands wide.
 ground_forces:
+  R-EWR-A1: GPS Jamming Site (Red)
+
   R-SAM-A1: SA-10/S-300PS
   R-SAM-A2: SA-11
   R-SAM-A3: SA-2/S-75

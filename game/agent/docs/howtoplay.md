@@ -556,6 +556,14 @@ the site keeps shooting. Bring enough shooters to service **both** radars, and r
 site, whatever fraction of its launchers you killed.
 
 
+**A radar site, a missile battery and a jamming site are one and the same slot.**
+Wherever any of the three stands you can buy any of the other two, and the map icon
+follows what is parked there rather than what the campaign built: a radar dish for a
+site that only watches, an air-defence symbol for one that shoots, and the electronic
+warfare symbol for a jammer. So a quiet EWR marker is a place you can put a SAM, and a
+SAM site you cannot afford to replace can become an EWR that still feeds the network.
+Read `detection_nm` and `threat_nm` together to tell which one you are looking at.
+
 When the campaign runs an advanced IADS (`GET /iads` → `advanced:true`), the enemy air
 defenses are a NETWORK, not a set of independent sites. `targets[]` marks each site's
 part with `iads_role`, and `/iads` gives the links (`depends_on`). Use it — otherwise a
@@ -1154,6 +1162,12 @@ means none/empty** (stated once so the per-turn payloads stay small).
   driving or sailing. It is **moving** — plan the intercept along the route, not at
   `pos`, and remember a convoy dies once for units that would otherwise have to be
   killed one by one at the front),
+  `detection_nm`? (how far the site SEES, in nm. A site with `detection_nm` and no
+  `threat_nm` is a **radar**, not a battery: an EWR or a GPS jamming site. It cannot
+  shoot you — it tells the batteries where you are, so killing one blinds the network
+  over that radius and is worth a STRIKE even though nothing there ever fires. An EWR
+  typically reaches 160 nm, several times any launcher, so it usually sees you long
+  before anything can engage),
   `iads_role`? (this site's part in the enemy air-defense network: `PowerSource` /
   `ConnectionNode` / `CommandCenter` / `Ewr` / `Sam` / `SamAsEwr`; omitted when it plays
   none. **This is what tells a code-named building apart from a warehouse** — a

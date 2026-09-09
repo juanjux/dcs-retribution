@@ -2,6 +2,13 @@
 
 ## Features/Improvements
 * **[Campaign]** New *Ignore parking space at airbases* option.
+* **[UI]** Radar sites, missile batteries and jamming sites are interchangeable: buy any of the three where one stands, and the icon follows what is parked there.
+* **[Map]** A site that only watches draws its detection range dashed, in its faction's colour.
+* **[FIX]** A site pinned by a campaign generated without its point defence.
+* **[Factions]** WRL Task Force Blue gets an AN/FPS-117, so its EWR markers stop fielding Patriot search radars.
+* **[FIX]** A campaign's `ground_forces` pin was ignored on EWR markers, so GPS jamming sites never generated.
+* **[Campaigns]** Every modern campaign gets a GPS jamming site on its enemy's EWR belt.
+* **[FIX]** IADS configs named 39 buildings their missions never had, and hung command centres off sites, which does nothing.
 * **[UI]** Added a search box to the settings dialog. It covers the plugins' options too.
 * **[FIX]** Boxes inside a settings section had no frame, and short sections showed a scrollbar they did not need.
 * **[UI]** New *Mission Start* and *AI* sections in Mission Generator, split out of *Gameplay*.

@@ -260,6 +260,11 @@ class TargetView(BaseModel):
         None  # air-defense umbrella radius (nm) — danger to ANY flight transiting it,
         # not only the attacker; ships carry it too (naval SAMs like SM-6 reach far)
     )
+    detection_nm: int | None = (
+        None  # how far the site SEES (nm). A radar site -- an EWR, or a GPS jamming
+        # site -- has this and no threat_nm: it cannot shoot you, it tells the SAMs
+        # where you are. Killing one blinds the network over that radius.
+    )
     friendly_cp_id: str | None = None  # fronts only: your control point (for stances)
     enemy_cp_id: str | None = None  # fronts only: the enemy control point
     group_id: str | None = (
@@ -849,6 +854,14 @@ def _build_target(game: Game, tgo, kind: str, task: str) -> TargetView:
             threat = int(rng.nautical_miles) if rng else None
         except Exception:
             threat = None
+    detection = None
+    max_detection = getattr(tgo, "max_detection_range", None)
+    if max_detection is not None:
+        try:
+            rng = max_detection()
+            detection = int(rng.nautical_miles) if rng else None
+        except Exception:
+            detection = None
     group_id = None
     composition = None
     if kind == "ship":
@@ -866,6 +879,7 @@ def _build_target(game: Game, tgo, kind: str, task: str) -> TargetView:
         suggested_task=task,
         pos=[_r(ll.lat), _r(ll.lng)],
         threat_nm=threat or None,
+        detection_nm=detection or None,
         group_id=group_id,
         composition=composition,
         damage=_damage_word(tgo),

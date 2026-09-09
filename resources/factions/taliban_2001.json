@@ -33,6 +33,8 @@
     "SPAAA HL with ZU-23",
     "ZU-23 on Ural-375 Insurgent"
   ],
-  "preset_groups": [],
+  "preset_groups": [
+    "GPS Jamming Site (Red)"
+  ],
   "naval_units": []
 }
