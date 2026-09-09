@@ -252,15 +252,22 @@ def _live_jammers(group: Any) -> Iterator[tuple[Any, Any]]:
             yield unit, props
 
 
+def _plugin_option(game: "Game", name: str) -> Any:
+    try:
+        return game.settings.plugin_option(f"gpsjamming.{name}")
+    except KeyError:
+        return None
+
+
 def _campaign_default_reach(game: "Game") -> Distance:
-    value = getattr(game.settings, "gps_jamming_default_reach_nm", None)
+    value = _plugin_option(game, "defaultReachNm")
     if not value:
         return DEFAULT_REACH
     return nautical_miles(float(value))
 
 
 def _campaign_default_miss(game: "Game") -> Distance:
-    value = getattr(game.settings, "gps_jamming_miss_radius_m", None)
+    value = _plugin_option(game, "missRadiusM")
     if not value:
         return DEFAULT_MISS_RADIUS
     return meters(float(value))

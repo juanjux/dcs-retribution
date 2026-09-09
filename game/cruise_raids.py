@@ -27,8 +27,8 @@ The missiles are real DCS weapons fired by a real, tracked ship, so kills are re
 through the ordinary debrief path, point defense gets to intercept them, and sinking
 the shooter ends the raids. Symmetric: red Kalibr hulls raid blue exactly the same way.
 
-Gated by ``cruise_missile_strikes`` (the magazines and the plugin's F10 call-for-fire)
-and ``cruise_missile_auto_raids`` (the planner), both off by default.
+Gated by the ``cruisemissiles`` plugin (the magazines and its F10 call-for-fire) and
+by that plugin's ``autoRaids`` option (the planner).
 """
 
 from __future__ import annotations
@@ -191,9 +191,9 @@ def plan_cruise_raids(game: Game) -> list[CruiseRaid]:
     the magazine does not move until the debrief.
     """
     settings = game.settings
-    if not settings.cruise_missile_strikes:
+    if not settings.plugin_option_or("cruisemissiles", False):
         return []
-    if not settings.cruise_missile_auto_raids:
+    if not settings.plugin_option_or("cruisemissiles.autoRaids", False):
         return []
     raids = []
     for side in ("blue", "red"):
@@ -235,7 +235,7 @@ def player_briefing_info(game: Game) -> tuple[list[LacmShip], list[CruiseRaid]]:
     briefing (which, like the rest of the briefing, is written from the player
     coalition's point of view). Ships are listed even with auto-raids off, because the
     magazine still matters to the F10 call-for-fire."""
-    if not game.settings.cruise_missile_strikes:
+    if not game.settings.plugin_option_or("cruisemissiles", False):
         return [], []
     ships = [s for s in lacm_ships(game) if s.coalition == "blue"]
     if not ships:
@@ -248,7 +248,7 @@ def tgo_magazines(game: Game, tgo: TheaterGroundObject) -> list[tuple[str, int]]
     """``(group_name, remaining)`` per launching group of *tgo*, for the ground object
     dialog. The caller owns the friendly-side gate: what the enemy has left in its tubes
     is not intel a click should hand out."""
-    if not game.settings.cruise_missile_strikes:
+    if not game.settings.plugin_option_or("cruisemissiles", False):
         return []
     if not _is_naval_tgo(tgo):
         return []

@@ -49,6 +49,22 @@
             "nameInUI": "Give up tracking a released weapon after (s)",
             "mnemonic": "maxTrackS",
             "defaultValue": 600
+        },
+        {
+            "nameInUI": "Default reach (nm)",
+            "descriptionInUI": "The floor for every jammer's bubble: a site reaches this or whatever its own unit declares, whichever is larger. It is the size of the GPS-denied TARGET area, not a denied release area -- a weapon aimed at anything inside flies through it whatever range it was released from, so standing off does not help a covered target.",
+            "mnemonic": "defaultReachNm",
+            "defaultValue": 30.0,
+            "minimumValue": 5.0,
+            "maximumValue": 150.0
+        },
+        {
+            "nameInUI": "Miss distance at full strength (m)",
+            "descriptionInUI": "How far off the aimpoint a degraded weapon lands when released over the emitter. It scales down to zero at the bubble's edge, so a store clipping the fringe is nudged and one released overhead is thrown clear.",
+            "mnemonic": "missRadiusM",
+            "defaultValue": 200.0,
+            "minimumValue": 25.0,
+            "maximumValue": 1000.0
         }
     ],
     "scriptsWorkOrders": [],

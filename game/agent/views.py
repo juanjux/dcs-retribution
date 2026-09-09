@@ -1393,8 +1393,10 @@ def build_settings(game: Game) -> SettingsView:
             else None
         ),
         runway_repair_turns=RUNWAY_REPAIR_TURNS,
-        cruise_missile_strikes=s.cruise_missile_strikes,
-        cruise_missile_auto_raids=s.cruise_missile_auto_raids,
+        cruise_missile_strikes=bool(s.plugin_option_or("cruisemissiles", False)),
+        cruise_missile_auto_raids=bool(
+            s.plugin_option_or("cruisemissiles.autoRaids", False)
+        ),
         all_settings=_all_settings(s),
     )
 

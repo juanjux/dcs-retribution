@@ -218,7 +218,7 @@ def tgo_magazines(game: "Game", tgo: "TheaterGroundObject") -> list[tuple[str, i
     like every other magazine read. The caller owns the friendly-side gate —
     enemy stock is not a click away, by design.
     """
-    if not getattr(game.settings, "naval_magazines", False):
+    if not game.settings.plugin_option_or("navalmagazines", False):
         return []
     if not _is_naval_tgo(tgo):
         return []
@@ -239,7 +239,7 @@ def winchester_lines(game: "Game", debriefing: "Debriefing") -> list[str]:
     emptied its tubes says so. Blue only — enemy residual stock stays hidden,
     like every other magazine readout.
     """
-    if not getattr(game.settings, "naval_magazines", False):
+    if not game.settings.plugin_option_or("navalmagazines", False):
         return []
     reports = getattr(debriefing.state_data, "naval_magazines_state", None)
     if not reports:

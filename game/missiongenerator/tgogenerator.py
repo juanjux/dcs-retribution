@@ -504,7 +504,7 @@ class GroundObjectGenerator:
         # "in range" is true at t=0 and an unstaggered fleet empties its tubes in the
         # opening minute. ReturnFire and never WeaponHold -- the point is to delay who
         # INITIATES, and a holding ship would be a defenceless one while it waits.
-        if getattr(self.game.settings, "naval_weapon_release_stagger", False):
+        if self.game.settings.plugin_option_or("navalmagazines.releaseStagger", False):
             group.points[0].tasks.append(OptROE(OptROE.Values.ReturnFire))
             return
         group.points[0].tasks.append(OptROE(OptROE.Values.WeaponFree))

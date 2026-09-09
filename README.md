@@ -245,6 +245,12 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   set there beside its name. The morale bands are settings too, and a pilot's rank
   shift follows them. ([#174](https://github.com/juanjux/dcs-retribution/pull/174), [#179](https://github.com/juanjux/dcs-retribution/pull/179))
 
+- **A plugin's settings live with the plugin.** GPS jamming, cruise missile strikes and
+  naval magazines each had a switch in Mission Generator that did nothing unless the
+  plugin was on as well; the plugin's own switch is the only one now, and their numbers
+  moved behind its gear along with the Skynet IADS radius. Old campaigns keep what they
+  had set. ([#186](https://github.com/juanjux/dcs-retribution/pull/186))
+
 ### Kneeboards
 - **Friendly-packages list** plus a **package-targets map** page.
   ([#11](https://github.com/juanjux/dcs-retribution/pull/11))

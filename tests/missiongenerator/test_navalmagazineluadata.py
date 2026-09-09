@@ -46,9 +46,12 @@ def _game(*, stagger: bool = True, metered: bool = True, naval: bool = True) -> 
         red_cp.ground_objects.append(_ship_tgo(red_cp, "PLAN | Type 055", TYPE055))
     game = SimpleNamespace(
         theater=SimpleNamespace(controlpoints=[blue_cp, red_cp]),
+        # Both switches are navalmagazines plugin options now.
         settings=SimpleNamespace(
-            naval_weapon_release_stagger=stagger,
-            naval_magazines=metered,
+            plugin_option_or=lambda identifier, default=None: {
+                "navalmagazines": metered,
+                "navalmagazines.releaseStagger": stagger,
+            }.get(identifier, default)
         ),
     )
     game.naval_magazines = {}

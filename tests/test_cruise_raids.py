@@ -90,6 +90,15 @@ def _target_tgo(name: str, category: str, pos: _Pos, *, alive: bool = True) -> A
     )
 
 
+def _settings(options: dict[str, Any]) -> Any:
+    """A settings stub that answers plugin_option_or and nothing else."""
+    return SimpleNamespace(
+        plugin_option_or=lambda identifier, default=None: options.get(
+            identifier, default
+        )
+    )
+
+
 def _cp(owner: Player) -> Any:
     return SimpleNamespace(captured=owner, ground_objects=[])
 
@@ -97,9 +106,9 @@ def _cp(owner: Player) -> Any:
 def _game(cps: list[Any], *, master: bool = True, auto: bool = True) -> Any:
     return SimpleNamespace(
         theater=SimpleNamespace(controlpoints=cps),
-        settings=SimpleNamespace(
-            cruise_missile_strikes=master,
-            cruise_missile_auto_raids=auto,
+        # Both switches live on the cruisemissiles plugin now.
+        settings=_settings(
+            {"cruisemissiles": master, "cruisemissiles.autoRaids": auto}
         ),
         cruise_missile_magazines={},
     )
@@ -538,7 +547,8 @@ def test_raid_targets_and_shooters_get_culling_exclusions() -> None:
     assert ship_tgo.position in zones, "the launching ship must be un-culled"
 
     # Feature off: the zone pass contributes nothing.
-    game.settings.cruise_missile_strikes = False
+    game.settings = _settings({"cruisemissiles": False})
+    game.settings.perf_do_not_cull_carrier = False
     captured.clear()
     Game.compute_unculled_zones(cast(Any, game), cast(Any, events))
     assert captured[0] == []

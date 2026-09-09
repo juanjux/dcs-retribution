@@ -47,6 +47,12 @@
             "nameInUI": "Defender wake held past estimated missile arrival (s)",
             "mnemonic": "defenderWakeExtraS",
             "defaultValue": 300
+        },
+        {
+            "nameInUI": "Auto-plan raids",
+            "descriptionInUI": "Each turn, a side with a cruise-missile ship in range commits one raid: a salvo fired early in the mission at its highest-value reachable enemy ground object -- command centers and comms first, then war industry, then anything strikeable. Watch for the LAUNCH WARNING: an enemy raid is your point-defense SAMs' problem, or yours.",
+            "mnemonic": "autoRaids",
+            "defaultValue": false
         }
     ],
     "scriptsWorkOrders": [],

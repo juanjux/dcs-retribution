@@ -37,8 +37,8 @@ def populate_naval_magazines_lua(
 ) -> None:
     """Build the ``dcsRetribution.navalMagazines`` subtree."""
     settings = game.settings
-    stagger = bool(getattr(settings, "naval_weapon_release_stagger", False))
-    metered = bool(getattr(settings, "naval_magazines", False))
+    stagger = bool(settings.plugin_option_or("navalmagazines.releaseStagger", False))
+    metered = bool(settings.plugin_option_or("navalmagazines", False))
     if not (stagger or metered):
         return
 
