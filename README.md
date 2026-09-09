@@ -585,6 +585,11 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
 
 ### Fixes
 
+- **Take Off crashed on any flight with a racetrack.** The EW jamming plugin was
+  dropped, but five places still read its options, and the check for whether it was
+  there sat after the read. Any campaign started since then died on its first BARCAP,
+  AEW&C or tanker. ([#194](https://github.com/juanjux/dcs-retribution/pull/194))
+
 - **"Apply to all" skipped every AGL waypoint**, which froze a helicopter's whole flight
   plan -- an Apache cruises AGL, so there was nothing left for it to set -- and most of a
   low-level one. It goes by waypoint type now; the points tied to the ground were already
