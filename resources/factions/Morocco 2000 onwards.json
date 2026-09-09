@@ -53,7 +53,8 @@
   "preset_groups": [
     "Hawk",
     "Patriot",
-    "SA-10B/S-300PS"
+    "SA-10B/S-300PS",
+    "GPS Jamming Site (Red)"
   ],
   "naval_units": [
     "DDG Arleigh Burke IIa",
@@ -62,8 +63,7 @@
   "missiles": [],
   "air_defense_units": [
     "M163 Vulcan Air Defense System",
-    "AAA ZU-23 Emplacement",
-    "EW Radio Jammer (Red)"
+    "AAA ZU-23 Emplacement"
   ],
   "requirements": {},
   "has_jtac": false,

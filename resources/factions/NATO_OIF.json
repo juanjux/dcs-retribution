@@ -83,7 +83,8 @@
     "Hawk",
     "Rapier",
     "Roland",
-    "Patriot"
+    "Patriot",
+    "GPS Jamming Site (Blue)"
   ],
   "naval_units": [
     "FFG Oliver Hazard Perry",
@@ -98,8 +99,7 @@
     "M163 Vulcan Air Defense System",
     "M1097 Heavy HMMWV Avenger",
     "HEMTT C-RAM Phalanx",
-    "M48 Chaparral",
-    "EW Radio Jammer (Blue)"
+    "M48 Chaparral"
   ],
   "requirements": {},
   "carrier_names": [

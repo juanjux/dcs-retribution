@@ -17,6 +17,9 @@
 # an ordinary site. Registering this preset in a faction's `preset_groups` is
 # what makes its units accessible.
 name: GPS Jamming Site (Blue)
+# Offered to the player wherever an air-defence site can be bought, but never rolled
+# by the generator: a jamming site belongs where a campaign or a player put it.
+never_random: true
 tasks:
   - EarlyWarningRadar
 units:

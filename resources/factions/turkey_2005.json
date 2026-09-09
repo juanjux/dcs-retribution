@@ -57,7 +57,8 @@
   "preset_groups": [
     "Hawk",
     "SA-3/S-125",
-    "Rapier"
+    "Rapier",
+    "GPS Jamming Site (Red)"
   ],
   "naval_units": [
     "FFG Oliver Hazard Perry"
@@ -65,8 +66,7 @@
   "air_defense_units": [
     "EWR AN/FPS-117 Radar",
     "M1097 Heavy HMMWV Avenger",
-    "ZSU-23-4 Shilka",
-    "EW Radio Jammer (Red)"
+    "ZSU-23-4 Shilka"
   ],
   "has_jtac": true,
   "jtac_unit": "MQ-9 Reaper",

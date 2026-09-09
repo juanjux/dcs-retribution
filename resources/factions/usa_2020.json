@@ -125,7 +125,8 @@
     "MIM-104 Patriot (Mobile)",
     "MIM-104 Patriot (Stationary)",
     "NASAMS 3",
-    "THAAD"
+    "THAAD",
+    "GPS Jamming Site (Blue)"
   ],
   "naval_units": [
     "FFG Oliver Hazard Perry",
@@ -148,8 +149,7 @@
     "HEMTT C-RAM Phalanx",
     "M6 Linebacker",
     "[CH] Centurion C-RAM",
-    "[CH] LAV-AD SPAAGM",
-    "EW Radio Jammer (Blue)"
+    "[CH] LAV-AD SPAAGM"
   ],
   "requirements": {
     "CurrentHill USA Asset Pack": "https://www.currenthill.com/usa"

@@ -61,13 +61,13 @@
     "Hawk",
     "Roland",
     "Patriot",
-    "NASAMS AIM-120B"
+    "NASAMS AIM-120B",
+    "GPS Jamming Site (Blue)"
   ],
   "air_defense_units": [
     "EWR AN/FPS-117 Radar",
     "MANPADS Stinger",
-    "Flakpanzer Gepard",
-    "EW Radio Jammer (Blue)"
+    "Flakpanzer Gepard"
   ],
   "naval_units": [
     "FFG Oliver Hazard Perry",

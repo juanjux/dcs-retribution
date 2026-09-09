@@ -295,8 +295,12 @@ class QGroundObjectBuyMenu(QDialog):
         elif isinstance(ground_object, VehicleGroupGroundObject):
             role = GroupRole.GROUND_FORCE
         elif isinstance(ground_object, EwrGroundObject):
+            # The whole air-defence band, the same as a SAM site offers. A radar
+            # site, a missile battery and a jamming site are interchangeable: any of
+            # the three can be bought where any one of them stands, and the map icon
+            # follows what is actually parked there. Pinning an EWR marker to the EWR
+            # task alone made the swap one-way.
             role = GroupRole.AIR_DEFENSE
-            tasks.append(GroupTask.EARLY_WARNING_RADAR)
         elif isinstance(ground_object, ShipGroundObject):
             role = GroupRole.NAVAL
             tasks.append(GroupTask.NAVY)

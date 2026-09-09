@@ -162,7 +162,8 @@
     "SA-6",
     "Cold-War-Flak",
     "KS-19/SON-9",
-    "Russian Navy"
+    "Russian Navy",
+    "GPS Jamming Site (Red)"
   ],
   "naval_units": [
     "Frigate 1135M Rezky",
@@ -177,8 +178,7 @@
     "SPAAA LC with ZU-23",
     "SPAAA HL with ZU-23",
     "ZU-23 on Ural-375 Insurgent",
-    "ZSU-23-4 Shilka",
-    "EW Radio Jammer (Red)"
+    "ZSU-23-4 Shilka"
   ],
   "helicopter_carrier_names": [],
   "requirements": {},

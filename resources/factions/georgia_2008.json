@@ -42,13 +42,13 @@
     "SA-15 Tor",
     "AAA ZU-23 Closed Emplacement",
     "ZU-23 on Ural-375",
-    "ZSU-23-4 Shilka",
-    "EW Radio Jammer (Red)"
+    "ZSU-23-4 Shilka"
   ],
   "preset_groups": [
     "SA-3/S-125",
     "SA-6",
-    "SA-11"
+    "SA-11",
+    "GPS Jamming Site (Red)"
   ],
   "naval_units": [
     "FAC La Combattante IIa"

@@ -65,8 +65,7 @@
   ],
   "air_defense_units": [
     "EWR AN/FPS-117 Radar",
-    "MANPADS Stinger",
-    "EW Radio Jammer (Blue)"
+    "MANPADS Stinger"
   ],
   "missiles": [],
   "requirements": {},
@@ -74,7 +73,8 @@
     "Hawk",
     "Roland",
     "Patriot",
-    "NASAMS AIM-120B"
+    "NASAMS AIM-120B",
+    "GPS Jamming Site (Blue)"
   ],
   "naval_units": [
     "L61 Juan Carlos I",

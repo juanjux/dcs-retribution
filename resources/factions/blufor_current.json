@@ -165,7 +165,8 @@
     "Sky Sabre Battery (Mobile)",
     "Stormer HVM Battery",
     "THAAD",
-    "IRIS-T SLM"
+    "IRIS-T SLM",
+    "GPS Jamming Site (Blue)"
   ],
   "naval_units": [
     "DDG Arleigh Burke IIa",
@@ -204,8 +205,7 @@
     "[CH] Sky Sabre Giraffe AMB STR (HX)",
     "[CH] Sky Sabre iLauncher LN (HX)",
     "[CH] Sky Sabre C2 (HX)",
-    "[CH] Stormer HVM SHORAD",
-    "EW Radio Jammer (Blue)"
+    "[CH] Stormer HVM SHORAD"
   ],
   "requirements": {
     "CurrentHill USA Asset Pack": "https://www.currenthill.com/usa",

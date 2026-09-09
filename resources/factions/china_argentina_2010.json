@@ -58,7 +58,8 @@
     "SA-10/S-300PS",
     "SA-20B/S-300PMU-2",
     "Silkworm",
-    "Chinese Navy"
+    "Chinese Navy",
+    "GPS Jamming Site (Red)"
   ],
   "naval_units": [
     "Type 052B Destroyer",
@@ -76,8 +77,7 @@
     "ZSU-57-2 'Sparka'",
     "AAA ZU-23 Closed Emplacement",
     "ZU-23 on Ural-375",
-    "ZSU-23-4 Shilka",
-    "EW Radio Jammer (Red)"
+    "ZSU-23-4 Shilka"
   ],
   "carrier_names": [
     "001 Liaoning",

@@ -11,6 +11,7 @@ from dcs.countries import country_dict
 
 from game import Game
 from game.factions.faction import Faction
+from game.layout.layout import LayoutException
 from game.naming import namegen
 from game.scenery_group import SceneryGroup
 from game.theater import (
@@ -246,17 +247,26 @@ class ControlPointGroundObjectGenerator:
             and task in fg.tasks
             and all([u in self.faction.accessible_units for u in fg.units])
         )
+        unit_group: Optional[ForceGroup] = None
         if valid_fg:
             assert fg
-            for layout in fg.layouts:
-                for lg in layout.groups:
-                    for ug in lg.unit_groups:
-                        if not fg.has_unit_for_layout_group(ug) and ug.fill:
-                            for g in self.faction.ground_units:
-                                if g.unit_class in ug.unit_classes:
-                                    fg.units.append(g)
-            unit_group: Optional[ForceGroup] = fg
-        else:
+            # Filled the same way a preset group is when the faction adopts it.
+            # The hand-rolled loop this replaces searched faction.ground_units --
+            # artillery, frontline and logistics -- so a layout group asking for
+            # SHORAD or AAA found nothing, because air defence lives in
+            # air_defense_units. Every pinned site came out without its point
+            # defence. possible_types_for_faction reads accessible_units, which is
+            # the same list the gate above checks.
+            try:
+                unit_group = fg.initialize_for_faction(self.faction)
+            except LayoutException as error:
+                logging.warning(
+                    "Override in ground_forces at %s cannot be fielded by %s: %s",
+                    position.original_name,
+                    self.faction_name,
+                    error,
+                )
+        if unit_group is None:
             if fg:
                 logging.warning(
                     f"Override in ground_forces failed for {fg} at {position.original_name}"

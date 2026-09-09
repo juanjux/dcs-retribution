@@ -104,7 +104,8 @@
     "SA-20/S-300PMU-1",
     "SA-20B/S-300PMU-2",
     "SA-23/S-300VM",
-    "Chinese Navy"
+    "Chinese Navy",
+    "GPS Jamming Site (Red)"
   ],
   "naval_units": [
     "Frigate 1135M Rezky",
@@ -134,8 +135,7 @@
     "[CH] LD-3000 C-RAM Stationary",
     "[CH] PGZ-09 SPAAG",
     "[CH] PGZ-95 SPAAG",
-    "[CH] HQ-17A SHORAD",
-    "EW Radio Jammer (Red)"
+    "[CH] HQ-17A SHORAD"
   ],
   "carrier_names": [
     "001 Liaoning",

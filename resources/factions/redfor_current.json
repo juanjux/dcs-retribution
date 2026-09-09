@@ -133,7 +133,8 @@
     "S-350",
     "Silkworm",
     "Chinese Navy",
-    "[CH] Russian Navy"
+    "[CH] Russian Navy",
+    "GPS Jamming Site (Red)"
   ],
   "naval_units": [
     "SSK 877V Kilo",
@@ -183,8 +184,7 @@
     "[CH] LD-3000 C-RAM Stationary",
     "[CH] PGZ-09 SPAAG",
     "[CH] PGZ-95 SPAAG",
-    "[CH] HQ-17A SHORAD",
-    "EW Radio Jammer (Red)"
+    "[CH] HQ-17A SHORAD"
   ],
   "helicopter_carrier_names": [
     "Ivan Rogov",

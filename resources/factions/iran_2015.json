@@ -69,7 +69,9 @@
     "Rapier",
     "SA-17",
     "KS-19/SON-9",
-    "Silkworm"
+    "Silkworm",
+    "GPS Jamming Site (Blue)",
+    "GPS Jamming Site (Red)"
   ],
   "naval_units": [
     "Corvette 1124.4 Grish",
@@ -83,9 +85,7 @@
     "ZSU-57-2 'Sparka'",
     "ZU-23 on Ural-375",
     "AAA ZU-23 Insurgent Closed Emplacement",
-    "ZSU-23-4 Shilka",
-    "EW Radio Jammer (Blue)",
-    "EW Radio Jammer (Red)"
+    "ZSU-23-4 Shilka"
   ],
   "helicopter_carrier_names": [],
   "requirements": {},

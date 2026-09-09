@@ -57,7 +57,8 @@
   ],
   "preset_groups": [
     "Hawk",
-    "Rapier"
+    "Rapier",
+    "GPS Jamming Site (Blue)"
   ],
   "naval_units": [
     "FFG Oliver Hazard Perry",
@@ -69,8 +70,7 @@
   "missiles": [],
   "air_defense_units": [
     "EWR AN/FPS-117 Radar",
-    "M1097 Heavy HMMWV Avenger",
-    "EW Radio Jammer (Blue)"
+    "M1097 Heavy HMMWV Avenger"
   ],
   "requirements": {},
   "carrier_names": [

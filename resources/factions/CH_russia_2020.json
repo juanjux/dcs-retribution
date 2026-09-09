@@ -85,7 +85,8 @@
     "SA-10/S-300PS",
     "SA-10B/S-300PS",
     "SA-11",
-    "S-350"
+    "S-350",
+    "GPS Jamming Site (Red)"
   ],
   "naval_units": [
     "Project 22160 Patrol Ship [CH]",
@@ -112,8 +113,7 @@
     "[CH] Tor M2M SHORAD",
     "AAA ZU-23 Closed Emplacement",
     "ZU-23 on Ural-375",
-    "ZSU-23-4 Shilka",
-    "EW Radio Jammer (Red)"
+    "ZSU-23-4 Shilka"
   ],
   "helicopter_carrier_names": [],
   "requirements": {

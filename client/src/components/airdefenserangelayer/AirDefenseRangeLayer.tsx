@@ -49,10 +49,28 @@ function summarizeUnits(units: string[]): string[] {
   return Array.from(counts, ([name, n]) => (n > 1 ? `${n}x ${name}` : name));
 }
 
+// A site that sees but does not shoot: an EWR, or a jamming site. Its only reach is
+// its detection range, so it never appears on the threat layer and its ring was only
+// visible with SAM detection ranges turned on. It draws on the threat layer instead,
+// in the faction colour like a SAM, dashed so it does not read as a threat.
+function isRadarOnly(props: RangeCirclesProps) {
+  return props.threat_ranges.length === 0 && props.detection_ranges.length > 0;
+}
+
 const RangeCircles = (props: RangeCirclesProps) => {
-  const radii = props.detection ? props.detection_ranges : props.threat_ranges;
+  const radarOnly = isRadarOnly(props);
+  // Drawn once: on the threat layer when the site only detects, on the detection
+  // layer otherwise. Both would be the same circle twice.
+  const radii = props.detection
+    ? radarOnly
+      ? []
+      : props.detection_ranges
+    : radarOnly
+      ? props.detection_ranges
+      : props.threat_ranges;
   const color = colorFor(props.blue, props.detection === true);
   const baseWeight = props.detection ? 1 : 2;
+  const dashArray = radarOnly && !props.detection ? "10 12" : undefined;
   const dispatch = useAppDispatch();
 
   // Highlight when the feature is enabled and this emitter is the hovered one.
@@ -105,6 +123,7 @@ const RangeCircles = (props: RangeCirclesProps) => {
               color: highlighted ? HIGHLIGHT_COLOR : color,
               weight: highlighted ? baseWeight + 2 : baseWeight,
               fill: false,
+              dashArray: dashArray,
             }}
             interactive={false}
           />

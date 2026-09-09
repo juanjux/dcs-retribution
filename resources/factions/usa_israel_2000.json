@@ -77,7 +77,8 @@
   ],
   "preset_groups": [
     "Hawk",
-    "Patriot"
+    "Patriot",
+    "GPS Jamming Site (Blue)"
   ],
   "naval_units": [
     "FFG Oliver Hazard Perry",
@@ -92,8 +93,7 @@
     "M1097 Heavy HMMWV Avenger",
     "M6 Linebacker",
     "M163 Vulcan Air Defense System",
-    "M48 Chaparral",
-    "EW Radio Jammer (Blue)"
+    "M48 Chaparral"
   ],
   "requirements": {},
   "carrier_names": [

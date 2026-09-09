@@ -65,7 +65,8 @@
     "SA-11",
     "SA-17",
     "Cold-War-Flak",
-    "KS-19/SON-9"
+    "KS-19/SON-9",
+    "GPS Jamming Site (Red)"
   ],
   "naval_units": [
     "Corvette 1124.4 Grish",
@@ -80,8 +81,7 @@
     "SA-19 Grison (2K22 Tunguska)",
     "AAA ZU-23 Closed Emplacement",
     "ZU-23 on Ural-375",
-    "ZSU-23-4 Shilka",
-    "EW Radio Jammer (Red)"
+    "ZSU-23-4 Shilka"
   ],
   "missiles": [
     "SSM SS-1C Scud-B"

@@ -61,7 +61,8 @@
     "SA-20/S-300PMU-1",
     "Hawk",
     "Patriot",
-    "NASAMS AIM-120C"
+    "NASAMS AIM-120C",
+    "GPS Jamming Site (Blue)"
   ],
   "naval_units": [],
   "air_defense_units": [
@@ -72,8 +73,7 @@
     "SA-15 Tor",
     "SA-19 Grison (2K22 Tunguska)",
     "ZSU-23-4 Shilka",
-    "M1097 Heavy HMMWV Avenger",
-    "EW Radio Jammer (Blue)"
+    "M1097 Heavy HMMWV Avenger"
   ],
   "requirements": {
     "Currenthill Ukraine Asset Pack": "https://www.currenthill.com/ukraine"

@@ -121,7 +121,8 @@
     "Hawk",
     "Patriot",
     "NASAMS AIM-120C",
-    "SAMP/T"
+    "SAMP/T",
+    "GPS Jamming Site (Blue)"
   ],
   "naval_units": [
     "DDG Arleigh Burke IIa",
@@ -141,8 +142,7 @@
     "Flakpanzer Gepard",
     "M163 Vulcan Air Defense System",
     "HEMTT C-RAM Phalanx",
-    "M1097 Heavy HMMWV Avenger",
-    "EW Radio Jammer (Blue)"
+    "M1097 Heavy HMMWV Avenger"
   ],
   "requirements": {},
   "carrier_names": [

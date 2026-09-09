@@ -56,12 +56,12 @@
   "preset_groups": [
     "Hawk",
     "Patriot",
-    "SA-10B/S-300PS"
+    "SA-10B/S-300PS",
+    "GPS Jamming Site (Red)"
   ],
   "air_defense_units": [
     "AAA ZU-23 Emplacement",
-    "M163 Vulcan Air Defense System",
-    "EW Radio Jammer (Red)"
+    "M163 Vulcan Air Defense System"
   ],
   "naval_units": [
     "FAC La Combattante IIa",
