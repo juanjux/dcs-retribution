@@ -171,8 +171,7 @@
     "SA-20B/S-300PMU-2",
     "SA-23/S-300VM",
     "KS-19/SON-9",
-    "Russian Navy",
-    "GPS Jamming Site (Red)"
+    "Russian Navy"
   ],
   "naval_units": [
     "Frigate 1135M Rezky",
@@ -190,7 +189,8 @@
     "ZSU-57-2 'Sparka'",
     "AAA KS-19 100mm",
     "ZU-23 on Ural-375",
-    "ZSU-23-4 Shilka"
+    "ZSU-23-4 Shilka",
+    "EW Radio Jammer (Red)"
   ],
   "helicopter_carrier_names": [],
   "requirements": {},

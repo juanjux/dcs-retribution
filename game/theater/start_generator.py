@@ -523,8 +523,13 @@ class AirbaseGroundObjectGenerator(ControlPointGroundObjectGenerator):
 
     def generate_ewrs(self) -> None:
         for position in self.control_point.preset_locations.ewrs:
-            unit_group = self.armed_forces.random_group_for_task(
-                GroupTask.EARLY_WARNING_RADAR
+            # Through get_unit_group_for_task like every other band, so a campaign can
+            # pin an EWR marker in ground_forces. Going straight to the random roll
+            # meant an override on an EWR marker was read, matched and then ignored --
+            # silently, since nothing on this path logs. It falls back to the same
+            # random roll when the campaign pins nothing.
+            unit_group = self.get_unit_group_for_task(
+                position, GroupTask.EARLY_WARNING_RADAR
             )
             if not unit_group:
                 logging.error(f"{self.faction_name} has no ForceGroup for EWR")

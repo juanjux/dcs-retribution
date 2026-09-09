@@ -60,7 +60,8 @@
   ],
   "air_defense_units": [
     "AAA ZU-23 Emplacement",
-    "M163 Vulcan Air Defense System"
+    "M163 Vulcan Air Defense System",
+    "EW Radio Jammer (Red)"
   ],
   "naval_units": [
     "FAC La Combattante IIa",

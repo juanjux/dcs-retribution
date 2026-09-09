@@ -386,7 +386,12 @@ iads_config:
   - BLUE L-LONG 4:
       - BLUE POWER
       - BLUE COMMS 5
+# GPS jamming: one site on the enemy EWR marker whose 15 nm radius covers the
+# most of its own air defences. No radar on it, so it is a STRIKE target, not
+# SEAD, and a satellite-guided weapon aimed inside the bubble lands wide.
 ground_forces:
+  RED EWR 3: GPS Jamming Site (Red)
+
   RED L-LONG 1: SA-10/S-300PS
   RED L-LONG 2: SA-5/S-200
   RED L-LONG 3: SA-5/S-200

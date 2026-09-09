@@ -31,7 +31,8 @@
   "air_defense_units": [
     "SPAAA LC with ZU-23",
     "SPAAA HL with ZU-23",
-    "ZU-23 on Ural-375 Insurgent"
+    "ZU-23 on Ural-375 Insurgent",
+    "EW Radio Jammer (Red)"
   ],
   "preset_groups": [],
   "naval_units": []

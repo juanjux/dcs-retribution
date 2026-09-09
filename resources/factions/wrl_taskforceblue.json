@@ -156,8 +156,7 @@
   "preset_groups": [
     "Hawk",
     "Patriot",
-    "NASAMS AIM-120C",
-    "GPS Jamming Site (Blue)"
+    "NASAMS AIM-120C"
   ],
   "naval_units": [
     "DDG Arleigh Burke IIa",
@@ -171,7 +170,8 @@
     "M163 Vulcan Air Defense System",
     "HEMTT C-RAM Phalanx",
     "M1097 Heavy HMMWV Avenger",
-    "M48 Chaparral"
+    "M48 Chaparral",
+    "EW Radio Jammer (Blue)"
   ],
   "requirements": {},
   "carrier_names": [

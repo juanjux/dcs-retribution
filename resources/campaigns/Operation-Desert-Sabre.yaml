@@ -17,6 +17,12 @@ advanced_iads: false
 settings:
   max_frontline_width: 30
   player_income_multiplier: 1.5
+# GPS jamming: one site on the enemy EWR marker whose 15 nm radius covers the
+# most of its own air defences. No radar on it, so it is a STRIKE target, not
+# SEAD, and a satellite-guided weapon aimed inside the bubble lands wide.
+ground_forces:
+  Ground-28: GPS Jamming Site (Red)
+
 squadrons:
   CVN-74 John Stennis:
     - primary: BARCAP

@@ -502,7 +502,12 @@ iads_config:
 # Pins the composition of a naval group to its marker. Without this every fleet is
 # whatever the faction happens to roll per marker, so "the heavy one" and "the patrol
 # boats" cannot be told apart.
+# GPS jamming: one site on the enemy EWR marker whose 15 nm radius covers the
+# most of its own air defences. No radar on it, so it is a STRIKE target, not
+# SEAD, and a satellite-guided weapon aimed inside the bubble lands wide.
 ground_forces:
+  Morocco EWR Ramat: GPS Jamming Site (Red)
+
   Morocco SAG: Morocco Surface Action Group
   Morocco Frigates: Morocco Frigate Pair
   Morocco FAC: Morocco Fast Attack Pair

@@ -65,7 +65,8 @@
   ],
   "air_defense_units": [
     "EWR AN/FPS-117 Radar",
-    "MANPADS Stinger"
+    "MANPADS Stinger",
+    "EW Radio Jammer (Blue)"
   ],
   "missiles": [],
   "requirements": {},

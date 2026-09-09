@@ -33,6 +33,12 @@ settings:
   hercules: true
   uh_60l: true
   squadron_start_full: true
+# GPS jamming: one site on the enemy EWR marker whose 15 nm radius covers the
+# most of its own air defences. No radar on it, so it is a STRIKE target, not
+# SEAD, and a satellite-guided weapon aimed inside the bubble lands wide.
+ground_forces:
+  Ground-73: GPS Jamming Site (Red)
+
 squadrons:
   #Ownfor Carrier
   Blue CV-1:

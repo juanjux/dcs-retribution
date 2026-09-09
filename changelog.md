@@ -1,6 +1,9 @@
 ﻿# Retribution v1.6.3 (414th)
 
 ## Features/Improvements
+* **[FIX]** A campaign's `ground_forces` pin was ignored on EWR markers, so GPS jamming sites never generated.
+* **[Campaigns]** Every modern campaign gets a GPS jamming site on its enemy's EWR belt.
+* **[FIX]** IADS configs named 39 buildings their missions never had, and hung command centres off sites, which does nothing.
 * **[UI]** Added a search box to the settings dialog. It covers the plugins' options too.
 * **[FIX]** Boxes inside a settings section had no frame, and short sections showed a scrollbar they did not need.
 * **[UI]** New *Mission Start* and *AI* sections in Mission Generator, split out of *Gameplay*.

@@ -62,7 +62,8 @@
   "missiles": [],
   "air_defense_units": [
     "M163 Vulcan Air Defense System",
-    "AAA ZU-23 Emplacement"
+    "AAA ZU-23 Emplacement",
+    "EW Radio Jammer (Red)"
   ],
   "requirements": {},
   "has_jtac": false,

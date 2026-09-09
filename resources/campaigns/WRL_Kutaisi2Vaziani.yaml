@@ -221,7 +221,12 @@ squadrons:
         - Su-30 Flanker-C  
       size: 16
   # Retribution SAM site override:
+# GPS jamming: one site on the enemy EWR marker whose 15 nm radius covers the
+# most of its own air defences. No radar on it, so it is a STRIKE target, not
+# SEAD, and a satellite-guided weapon aimed inside the bubble lands wide.
 ground_forces:
+  R-EWR-A1: GPS Jamming Site (Red)
+
   R-SAM-A1: SA-10/S-300PS
   R-SAM-A2: SA-11
   R-SAM-A3: SA-2/S-75

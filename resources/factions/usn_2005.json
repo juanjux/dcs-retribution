@@ -61,7 +61,8 @@
     "EWR AN/FPS-117 Radar",
     "M163 Vulcan Air Defense System",
     "HEMTT C-RAM Phalanx",
-    "M48 Chaparral"
+    "M48 Chaparral",
+    "EW Radio Jammer (Blue)"
   ],
   "requirements": {},
   "carrier_names": [

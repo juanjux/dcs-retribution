@@ -337,7 +337,12 @@ squadrons:
       aircraft:
         - MiG-29S Fulcrum-C
       size: 12  
+# GPS jamming: one site on the enemy EWR marker whose 15 nm radius covers the
+# most of its own air defences. No radar on it, so it is a STRIKE target, not
+# SEAD, and a satellite-guided weapon aimed inside the bubble lands wide.
 ground_forces:
+  B-RADAR-1: GPS Jamming Site (Red)
+
   NATO SAM: Hawk
   NATO SAM-1: Hawk
   NATO SAM-2: Hawk

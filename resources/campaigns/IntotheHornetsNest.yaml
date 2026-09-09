@@ -410,7 +410,12 @@ squadrons:
       size: 4
 # QABR AS SITT
 #  29:
+# GPS jamming: one site on the enemy EWR marker whose 15 nm radius covers the
+# most of its own air defences. No radar on it, so it is a STRIKE target, not
+# SEAD, and a satellite-guided weapon aimed inside the bubble lands wide.
 ground_forces:
+  M-EWR-1: GPS Jamming Site (Red)
+
 # REDFOR DEFENSE AL-DUMAYR AIRBASE AREA (North)
   A-LRSAM-1: SA-20/S-300PMU-1    # options: SA-10B/S-300PS, SA-12/S-300V
   A-LRPNTDEF-1: SA-15 SHORAD

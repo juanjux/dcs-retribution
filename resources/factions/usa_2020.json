@@ -148,7 +148,8 @@
     "HEMTT C-RAM Phalanx",
     "M6 Linebacker",
     "[CH] Centurion C-RAM",
-    "[CH] LAV-AD SPAAGM"
+    "[CH] LAV-AD SPAAGM",
+    "EW Radio Jammer (Blue)"
   ],
   "requirements": {
     "CurrentHill USA Asset Pack": "https://www.currenthill.com/usa"

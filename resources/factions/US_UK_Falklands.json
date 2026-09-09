@@ -69,7 +69,8 @@
   "missiles": [],
   "air_defense_units": [
     "EWR AN/FPS-117 Radar",
-    "M1097 Heavy HMMWV Avenger"
+    "M1097 Heavy HMMWV Avenger",
+    "EW Radio Jammer (Blue)"
   ],
   "requirements": {},
   "carrier_names": [
