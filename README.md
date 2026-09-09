@@ -558,6 +558,10 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
 
 ### Fixes
 
+- **A GPS jamming site drew the wrong circle.** The map showed the couple of miles its
+  point defence reaches instead of the jamming bubble, and drew it solid. The bubble is
+  its own dashed ring now. ([#185](https://github.com/juanjux/dcs-retribution/pull/185))
+
 - **A campaign's `ground_forces` pin was ignored on early-warning radar markers.** The
   override was read, matched the marker's band and passed the faction gate, and was then
   dropped without a line in the log, because that one band went straight to the random

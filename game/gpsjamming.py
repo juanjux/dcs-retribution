@@ -120,8 +120,12 @@ class GpsJammerSite:
 
 
 def gps_jamming_enabled(game: "Game") -> bool:
-    """Whether the feature is switched on for this campaign."""
-    return bool(getattr(game.settings, "gps_jamming", False))
+    """Whether the feature is switched on for this campaign.
+
+    The plugin's own switch, and nothing else: a setting that only said "yes, if the
+    plugin is on too" is one switch too many.
+    """
+    return bool(game.settings.plugin_option("gpsjamming"))
 
 
 def gps_jammer_sites(game: "Game") -> list[GpsJammerSite]:
@@ -142,6 +146,24 @@ def gps_jammer_sites(game: "Game") -> list[GpsJammerSite]:
             if site is not None:
                 sites.append(site)
     return sites
+
+
+def jamming_reach_for(game: "Game", tgo: Any) -> Optional[Distance]:
+    """The denial reach of the site at ``tgo``, or None if it is not one.
+
+    Ground truth, the same record the runtime is handed, so the ring the map draws is
+    the bubble the weapons actually eat -- including the campaign default winning over
+    a unit that declares a shorter one.
+    """
+    if not gps_jamming_enabled(game):
+        return None
+    cp = getattr(tgo, "control_point", None)
+    if cp is None:
+        return None
+    site = _site_for_tgo(
+        tgo, cp, _campaign_default_reach(game), _campaign_default_miss(game)
+    )
+    return site.reach if site is not None else None
 
 
 def briefed_jammer_areas(game: "Game", viewer: Any) -> list[GpsJammerSite]:

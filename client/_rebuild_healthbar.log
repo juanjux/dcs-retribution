@@ -1,0 +1,19 @@
+
+> liberation-client@0.1.0 build
+> react-scripts build && generate-license-file --input package.json --output build/NOTICE
+
+(node:20576) [DEP0176] DeprecationWarning: fs.F_OK is deprecated, use fs.constants.F_OK instead
+(Use `node --trace-deprecation ...` to show where the warning was created)
+Creating an optimized production build...
+Failed to compile.
+
+TS2741: Property 'repairing' is missing in type '{ id: string; name: string; control_point_name: string; category: string; blue: false; position: { lat: number; lng: number; }; units: never[]; threat_ranges: never[]; detection_ranges: number[]; dead: false; purchasable: true; sidc: string; task: never[]; mobile: false; }' but required in type '{ id: string; name: string; control_point_name: string; category: string; blue: boolean; position: { lat: number; lng: number; }; units: string[]; threat_ranges: number[]; detection_ranges: number[]; dead: boolean; ... 5 more ...; destination?: { ...; } | undefined; }'.
+    44 |         tgos: {
+    45 |           tgos: {
+  > 46 |             foo: {
+       |             ^^^
+    47 |               id: "foo",
+    48 |               name: "Foo",
+    49 |               control_point_name: "Bar",
+
+

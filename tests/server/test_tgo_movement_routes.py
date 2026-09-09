@@ -31,10 +31,14 @@ def _ship(blue: bool = True) -> ShipGroundObject:
         starts_blue=player,
     )
     # This fork's TgoJs.for_tgo also reads tgo.repairable (the destroyed-object
-    # map layers), which resolves to control_point.coalition.game.turn, so the
-    # fake coalition needs a game stub the upstream test didn't require.
+    # map layers), which resolves to control_point.coalition.game.turn, and asks
+    # whether the site jams GPS, which reads the plugin switch. So the fake
+    # coalition needs a game stub the upstream test didn't require.
     cp._coalition = SimpleNamespace(  # type: ignore[assignment]
-        player=player, game=SimpleNamespace(turn=1)
+        player=player,
+        game=SimpleNamespace(
+            turn=1, settings=SimpleNamespace(plugin_option=lambda name: False)
+        ),
     )
     return ShipGroundObject(name="ship", location=location, control_point=cp)
 

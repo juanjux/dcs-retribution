@@ -1,0 +1,191 @@
+
+> liberation-client@0.1.0 build
+> react-scripts build && generate-license-file --input package.json --output build/NOTICE
+
+(node:47516) [DEP0176] DeprecationWarning: fs.F_OK is deprecated, use fs.constants.F_OK instead
+(Use `node --trace-deprecation ...` to show where the warning was created)
+Creating an optimized production build...
+Compiled successfully.
+
+File sizes after gzip:
+
+  382.6 kB  build\static\js\main.b7ac35c1.js
+  9.47 kB   build\static\css\main.a4618d33.css
+
+The project was built assuming it is hosted at ./.
+You can control this with the homepage field in your package.json.
+
+The build folder is ready to be deployed.
+
+Find out more about deployment here:
+
+  https://cra.link/deployment
+
+- Resolving licenses...
+270 INFO: PyInstaller: 6.19.0, contrib hooks: 2026.0
+270 INFO: Python: 3.11.15
+281 INFO: Platform: Windows-10-10.0.26200-SP0
+281 INFO: Python environment: C:\Users\juanj\Saved Games\DCS\dcs-retribution-juanjux\.venv
+2207 INFO: Module search paths (PYTHONPATH):
+['C:\\Users\\juanj\\Saved '
+ 'Games\\DCS\\dcs-retribution-juanjux\\.venv\\Scripts\\pyinstaller.exe',
+ 'C:\\Users\\juanj\\AppData\\Roaming\\uv\\python\\cpython-3.11-windows-x86_64-none\\python311.zip',
+ 'C:\\Users\\juanj\\AppData\\Roaming\\uv\\python\\cpython-3.11-windows-x86_64-none\\DLLs',
+ 'C:\\Users\\juanj\\AppData\\Roaming\\uv\\python\\cpython-3.11-windows-x86_64-none\\Lib',
+ 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Scripts',
+ 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv',
+ 'C:\\Users\\juanj\\Saved '
+ 'Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages',
+ 'C:\\Users\\juanj\\Saved '
+ 'Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\win32',
+ 'C:\\Users\\juanj\\Saved '
+ 'Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\win32\\lib',
+ 'C:\\Users\\juanj\\Saved '
+ 'Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\pythonwin',
+ 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux']
+2801 INFO: Appending 'binaries' from .spec
+2801 INFO: Appending 'datas' from .spec
+2898 INFO: checking Analysis
+3058 INFO: Building because _input_datas changed
+3058 INFO: Looking for Python shared library...
+3058 INFO: Using Python shared library: C:\Users\juanj\AppData\Roaming\uv\python\cpython-3.11-windows-x86_64-none\python311.dll
+3058 INFO: Running Analysis Analysis-00.toc
+3058 INFO: Target bytecode optimization level: 0
+3058 INFO: Initializing module dependency graph...
+3060 INFO: Initializing module graph hook caches...
+3148 INFO: Analyzing modules for base_library.zip ...
+4717 INFO: Processing standard module hook 'hook-heapq.py' from 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+4772 INFO: Processing standard module hook 'hook-encodings.py' from 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+8610 INFO: Processing standard module hook 'hook-pickle.py' from 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+10282 INFO: Caching module dependency graph...
+10304 INFO: Analyzing C:\Users\juanj\Saved Games\DCS\dcs-retribution-juanjux\qt_ui\main.py
+10501 INFO: Processing standard module hook 'hook-PySide6.py' from 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+10926 INFO: Processing standard module hook 'hook-shiboken6.py' from 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+10997 INFO: Processing standard module hook 'hook-PySide6.QtNetwork.py' from 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+12489 INFO: Processing standard module hook 'hook-PySide6.QtCore.py' from 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+13784 INFO: Processing standard module hook 'hook-PySide6.QtWidgets.py' from 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+16859 INFO: Processing standard module hook 'hook-PySide6.QtGui.py' from 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+26546 INFO: Processing standard module hook 'hook-pyproj.py' from 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+26587 WARNING: Datas for pyproj not found at:
+C:\Users\juanj\Saved Games\DCS\dcs-retribution-juanjux\.venv\Library\share\proj
+26611 INFO: Processing standard module hook 'hook-certifi.py' from 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+26653 INFO: Processing standard module hook 'hook-platform.py' from 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+32746 INFO: Processing pre-safe-import-module hook 'hook-typing_extensions.py' from 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+32750 INFO: SetuptoolsInfo: initializing cached setuptools info...
+33780 INFO: Processing standard module hook 'hook-multiprocessing.util.py' from 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+33845 INFO: Processing standard module hook 'hook-xml.py' from 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+34053 INFO: Processing standard module hook 'hook-_ctypes.py' from 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+34864 INFO: Processing standard module hook 'hook-shapely.py' from 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+34908 INFO: Processing standard module hook 'hook-numpy.py' from 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+35632 INFO: Processing standard module hook 'hook-difflib.py' from 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+35709 INFO: Processing standard module hook 'hook-sysconfig.py' from 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+36018 INFO: Processing standard module hook 'hook-psutil.py' from 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+37341 INFO: Processing pre-safe-import-module hook 'hook-packaging.py' from 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+37428 INFO: Processing standard module hook 'hook-faker.py' from 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+43845 INFO: Processing standard module hook 'hook-pydantic.py' from 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+45161 INFO: Processing standard module hook 'hook-pygments.py' from 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+51066 INFO: Processing standard module hook 'hook-zoneinfo.py' from 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+52083 INFO: Processing standard module hook 'hook-anyio.py' from 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+54282 INFO: Processing standard module hook 'hook-uvicorn.py' from 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+57490 INFO: Processing pre-safe-import-module hook 'hook-importlib_metadata.py' from 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+57491 INFO: Setuptools: 'importlib_metadata' appears to be a setuptools-vendored copy - creating alias to 'setuptools._vendor.importlib_metadata'!
+57500 INFO: Processing standard module hook 'hook-setuptools.py' from 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+57531 INFO: Processing pre-safe-import-module hook 'hook-distutils.py' from 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+57531 INFO: Processing pre-find-module-path hook 'hook-distutils.py' from 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\pre_find_module_path'
+58093 INFO: Processing standard module hook 'hook-distutils.py' from 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+58119 INFO: Processing standard module hook 'hook-distutils.util.py' from 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+58232 INFO: Processing standard module hook 'hook-_osx_support.py' from 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+58409 INFO: Processing pre-safe-import-module hook 'hook-jaraco.py' from 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+58411 INFO: Setuptools: 'jaraco' appears to be a full setuptools-vendored copy - creating alias to 'setuptools._vendor.jaraco'!
+58421 INFO: Processing standard module hook 'hook-setuptools._vendor.jaraco.text.py' from 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+58423 INFO: Processing pre-safe-import-module hook 'hook-importlib_resources.py' from 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+58434 INFO: Processing pre-safe-import-module hook 'hook-backports.py' from 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+58434 INFO: Setuptools: 'backports' appears to be a full setuptools-vendored copy - creating alias to 'setuptools._vendor.backports'!
+58498 INFO: Processing pre-safe-import-module hook 'hook-more_itertools.py' from 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+58498 INFO: Setuptools: 'more_itertools' appears to be a setuptools-vendored copy - creating alias to 'setuptools._vendor.more_itertools'!
+59011 INFO: Processing pre-safe-import-module hook 'hook-tomli.py' from 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+59636 INFO: Processing pre-safe-import-module hook 'hook-wheel.py' from 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+59637 INFO: Setuptools: 'wheel' appears to be a setuptools-vendored copy - creating alias to 'setuptools._vendor.wheel'!
+59703 INFO: Processing standard module hook 'hook-setuptools._vendor.importlib_metadata.py' from 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+59772 INFO: Processing pre-safe-import-module hook 'hook-zipp.py' from 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+59772 INFO: Setuptools: 'zipp' appears to be a setuptools-vendored copy - creating alias to 'setuptools._vendor.zipp'!
+60103 INFO: Processing standard module hook 'hook-websockets.py' from 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+61197 INFO: Processing standard module hook 'hook-PIL.py' from 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+61300 INFO: Processing standard module hook 'hook-PIL.Image.py' from 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+64797 INFO: Processing standard module hook 'hook-xml.etree.cElementTree.py' from 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+64925 INFO: Processing standard module hook 'hook-PIL.ImageFilter.py' from 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+66198 INFO: Processing standard module hook 'hook-jsonschema.py' from 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+66395 INFO: Processing standard module hook 'hook-jsonschema_specifications.py' from 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+66633 INFO: Processing standard module hook 'hook-pywintypes.py' from 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+67616 INFO: Processing standard module hook 'hook-jinja2.py' from 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+68906 INFO: Processing standard module hook 'hook-PySide6.QtWebEngineCore.py' from 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+70156 INFO: Processing standard module hook 'hook-PySide6.QtWebChannel.py' from 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+72028 INFO: Processing standard module hook 'hook-PySide6.QtWebEngineWidgets.py' from 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+73114 INFO: Processing standard module hook 'hook-PySide6.QtPrintSupport.py' from 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+73886 INFO: Processing standard module hook 'hook-PySide6.QtCharts.py' from 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+74554 INFO: Analyzing hidden import 'mcp.cli'
+74910 INFO: Analyzing hidden import 'mcp.client.__main__'
+74918 INFO: Analyzing hidden import 'mcp.client.auth'
+74957 INFO: Analyzing hidden import 'mcp.client.auth.extensions'
+74957 INFO: Analyzing hidden import 'mcp.client.auth.extensions.client_credentials'
+75060 INFO: Processing standard module hook 'hook-cryptography.py' from 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+76833 INFO: hook-cryptography: cryptography does not seem to be using dynamically linked OpenSSL.
+77223 INFO: Analyzing hidden import 'mcp.client.websocket'
+77230 INFO: Analyzing hidden import 'mcp.server.__main__'
+77239 INFO: Analyzing hidden import 'mcp.server.websocket'
+77247 INFO: Analyzing hidden import 'mcp.shared.memory'
+77255 INFO: Analyzing hidden import 'mcp.shared.metadata_utils'
+77262 INFO: Analyzing hidden import 'mcp.shared.progress'
+77268 INFO: Processing module hooks (post-graph stage)...
+85412 INFO: Processing standard module hook 'hook-PIL.SpiderImagePlugin.py' from 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+89652 INFO: Processing standard module hook 'hook-PySide6.QtOpenGL.py' from 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+91462 INFO: Processing standard module hook 'hook-PySide6.QtOpenGLWidgets.py' from 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+92052 INFO: Processing standard module hook 'hook-PySide6.QtPositioning.py' from 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+92996 INFO: Processing standard module hook 'hook-PySide6.QtQuick.py' from 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+93843 INFO: Processing standard module hook 'hook-PySide6.QtQml.py' from 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+111379 INFO: Processing standard module hook 'hook-PySide6.QtQuickWidgets.py' from 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+114186 INFO: Processing standard module hook 'hook-tzdata.py' from 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+114926 INFO: Performing binary vs. data reclassification (7676 entries)
+124410 INFO: Looking for ctypes DLLs
+124470 INFO: Analyzing run-time hooks ...
+124504 INFO: Including run-time hook 'pyi_rth_pkgutil.py' from 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks'
+124514 INFO: Including run-time hook 'pyi_rth_inspect.py' from 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks'
+124521 INFO: Including run-time hook 'pyi_rth_multiprocessing.py' from 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks'
+124527 INFO: Including run-time hook 'pyi_rth_setuptools.py' from 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks'
+124534 INFO: Including run-time hook 'pyi_rth_pywintypes.py' from 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\rthooks'
+124539 INFO: Including run-time hook 'pyi_rth_cryptography_openssl.py' from 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\rthooks'
+124544 INFO: Including run-time hook 'pyi_rth_pyproj.py' from 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\rthooks'
+124550 INFO: Including run-time hook 'pyi_rth_pyside6.py' from 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks'
+124555 INFO: Processing pre-find-module-path hook 'hook-_pyi_rth_utils.py' from 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\pre_find_module_path'
+124562 INFO: Processing standard module hook 'hook-_pyi_rth_utils.py' from 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+124684 INFO: Creating base_library.zip...
+124695 INFO: Looking for dynamic libraries
+C:\Users\juanj\Saved Games\DCS\dcs-retribution-juanjux\.venv\Lib\site-packages\PyInstaller\building\build_main.py:227: UserWarning: The numpy.array_api submodule is still experimental. See NEP 47.
+  __import__(package)
+129547 INFO: Extra DLL search directories (AddDllDirectory): ['C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\shiboken6', 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\numpy.libs', 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\pyproj.libs', 'C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\shapely.libs']
+129547 INFO: Extra DLL search directories (PATH): ['C:\\Users\\juanj\\Saved Games\\DCS\\dcs-retribution-juanjux\\.venv\\Lib\\site-packages\\PySide6']
+133052 INFO: Warnings written to C:\Users\juanj\Saved Games\DCS\dcs-retribution-juanjux\build_full_fork\pyinstaller\warn-pyinstaller.txt
+133201 INFO: Graph cross-reference written to C:\Users\juanj\Saved Games\DCS\dcs-retribution-juanjux\build_full_fork\pyinstaller\xref-pyinstaller.html
+133388 INFO: checking PYZ
+133451 INFO: Building because C:\Users\juanj\Saved Games\DCS\dcs-retribution-juanjux\game\agent\__init__.py changed
+133451 INFO: Building PYZ (ZlibArchive) C:\Users\juanj\Saved Games\DCS\dcs-retribution-juanjux\build_full_fork\pyinstaller\PYZ-00.pyz
+134981 INFO: Building PYZ (ZlibArchive) C:\Users\juanj\Saved Games\DCS\dcs-retribution-juanjux\build_full_fork\pyinstaller\PYZ-00.pyz completed successfully.
+135031 INFO: checking PKG
+135038 INFO: Building because C:\Users\juanj\Saved Games\DCS\dcs-retribution-juanjux\build_full_fork\pyinstaller\PYZ-00.pyz changed
+135038 INFO: Building PKG (CArchive) retribution_main.pkg
+135073 INFO: Building PKG (CArchive) retribution_main.pkg completed successfully.
+135074 INFO: Bootloader C:\Users\juanj\Saved Games\DCS\dcs-retribution-juanjux\.venv\Lib\site-packages\PyInstaller\bootloader\Windows-64bit-intel\runw.exe
+135074 INFO: checking EXE
+135083 INFO: Rebuilding EXE-00.toc because pkg is more recent
+135083 INFO: Building EXE from EXE-00.toc
+135083 INFO: Copying bootloader EXE to C:\Users\juanj\Saved Games\DCS\dcs-retribution-juanjux\build_full_fork\pyinstaller\retribution_main.exe
+135137 INFO: Copying icon to EXE
+135177 INFO: Copying 0 resources to EXE
+135177 INFO: Embedding manifest in EXE
+135213 INFO: Appending PKG archive to EXE
+135271 INFO: Fixing EXE headers
+136030 INFO: Building EXE from EXE-00.toc completed successfully.
+136065 INFO: checking COLLECT
+136188 INFO: Building COLLECT COLLECT-00.toc
+143099 INFO: Building COLLECT COLLECT-00.toc completed successfully.
+143207 INFO: Build complete! The results are available in: C:\Users\juanj\Saved Games\DCS\dcs-retribution-juanjux\dist_full_fork_tmp

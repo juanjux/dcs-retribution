@@ -232,4 +232,46 @@ describe("AirDefenseRangeLayer", () => {
       }),
     );
   });
+
+  // A jamming site carries point defence, so it has a threat ring -- a couple of
+  // miles where the bubble is tens. The bubble is the circle anyone is looking for.
+  it("draws a jamming bubble dashed, alongside its point defence", () => {
+    renderWithProviders(<AirDefenseRangeLayer blue={true} />, {
+      preloadedState: {
+        tgos: {
+          tgos: {
+            jam: {
+              id: "jam",
+              name: "Jam",
+              control_point_name: "Bar",
+              category: "AA",
+              blue: true,
+              position: { lat: 10, lng: 20 },
+              units: [],
+              threat_ranges: [4000],
+              detection_ranges: [18000],
+              jamming_range: 55560,
+              dead: false,
+              purchasable: true,
+              sidc: "",
+              task: [],
+              mobile: false,
+            },
+          },
+        },
+      } as any,
+    });
+    expect(mockCircle).toHaveBeenCalledWith(
+      expect.objectContaining({
+        radius: 55560,
+        pathOptions: expect.objectContaining({ dashArray: expect.any(String) }),
+      }),
+    );
+    expect(mockCircle).toHaveBeenCalledWith(
+      expect.objectContaining({
+        radius: 4000,
+        pathOptions: expect.objectContaining({ dashArray: undefined }),
+      }),
+    );
+  });
 });
