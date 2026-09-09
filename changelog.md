@@ -1,6 +1,7 @@
 ﻿# Retribution v1.6.3 (414th)
 
 ## Features/Improvements
+* **[Campaign]** New *Ignore parking space at airbases* option, for a campaign where one side's ramps are doing the balancing.
 * **[UI]** Added a search box to the settings dialog. It covers the plugins' options too.
 * **[FIX]** Boxes inside a settings section had no frame, and short sections showed a scrollbar they did not need.
 * **[UI]** New *Mission Start* and *AI* sections in Mission Generator, split out of *Gameplay*.
