@@ -225,6 +225,16 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   move the dialog makes with its pages, and a section with nothing left to show drops out
   of the list. "Campaign Management+" is folded into Campaign Management.
 
+- **Radar, missile battery and jamming site are one slot.** Buy any of the three where
+  any one of them stands, and the map symbol follows what is parked there rather than what
+  the campaign built: a dish for a site that only watches, an air-defence symbol for one
+  that shoots, the electronic-warfare symbol for a jammer. A site that only watches draws
+  its detection ring dashed, in its faction's colour, so an EWR's reach is visible without
+  turning on the SAM detection layer. ([#183](https://github.com/juanjux/dcs-retribution/pull/183))
+- **Ignore parking space at airbases.** For a campaign where one side's ramps are doing
+  the balancing: airbases hold as many aircraft as you can pay for, carriers and FOBs keep
+  their real capacity. ([#183](https://github.com/juanjux/dcs-retribution/pull/183))
+
 ### Kneeboards
 - **Friendly-packages list** plus a **package-targets map** page.
   ([#11](https://github.com/juanjux/dcs-retribution/pull/11))
@@ -486,6 +496,15 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   local, so striking the network actually degrades it, and every base on a front has a
   motorpool holding its undeployed armour as a bombable target.
   ([#98](https://github.com/juanjux/dcs-retribution/pull/98))
+- **GPS jamming in every modern campaign.** One site apiece, on the enemy early-warning
+  radar whose 15 nm bubble covers the most of its own air defences, so a satellite-guided
+  weapon aimed at anything in that belt lands wide until the trucks are dead. Thirty-eight
+  campaigns, each verified by building it. ([#183](https://github.com/juanjux/dcs-retribution/pull/183))
+- **The IADS configs actually resolve now.** Thirty-nine buildings the configs named were
+  in no mission -- every one had a trigger zone marking where it went and no object placed
+  -- so bombing the infrastructure did nothing, and command centres that were never keys
+  never reached Skynet at all. ([#183](https://github.com/juanjux/dcs-retribution/pull/183))
+
 ### LLM-controlled OPFOR (REST API + MCP)
 - **An external LLM can play the enemy commander.** A REST API and an MCP server
   expose a token-frugal turn context (forces, targets, threats, economy, naval,
@@ -528,6 +547,14 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   (branch [`juanjux/ch_china_1.1.6`](https://github.com/juanjux/dcs-retribution/tree/juanjux/ch_china_1.1.6))
 
 ### Fixes
+
+- **A campaign's `ground_forces` pin was ignored on early-warning radar markers.** The
+  override was read, matched the marker's band and passed the faction gate, and was then
+  dropped without a line in the log, because that one band went straight to the random
+  roll. Every GPS jamming site any campaign had ever declared was silently an ordinary
+  radar. ([#183](https://github.com/juanjux/dcs-retribution/pull/183))
+- **A pinned site generated without its point defence.** The fill searched artillery,
+  frontline and logistics units while air defence lives in its own list. ([#183](https://github.com/juanjux/dcs-retribution/pull/183))
 
 - **A pilot on leave held no place, so squadrons grew past their own limit.** The count
   of free slots looked at the active and the wounded and forgot leave, so every absence
