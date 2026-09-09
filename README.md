@@ -564,6 +564,12 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
 
 ### Fixes
 
+- **Factions with no early-warning radar fielded a SAM's acquisition radar as one.** An
+  EWR marker falls back to a search radar when the faction owns no EWR, so Ukraine,
+  Georgia, Morocco, France, Argentina, Peru and Iran were putting up a Patriot STR or a
+  Hawk SR where a national radar belonged.
+  ([#187](https://github.com/juanjux/dcs-retribution/pull/187))
+
 - **A GPS jamming site drew the wrong circle.** The map showed the couple of miles its
   point defence reaches instead of the jamming bubble, and drew it solid. The bubble is
   its own dashed ring now. ([#185](https://github.com/juanjux/dcs-retribution/pull/185))
