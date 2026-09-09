@@ -255,6 +255,11 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   and the bullseye read 0 and are left out of the total: they are in the list but not on
   the ground track, and the leg after one of them is measured from the last waypoint
   actually flown. ([#189](https://github.com/juanjux/dcs-retribution/pull/189))
+- **Native dialogs again.** The file, colour and font pickers were switched to Qt's own
+  because a native one opened over the live map deadlocked the app. That was the same
+  synchronous path the ANGLE setting removes, so the workaround was costing a Windows
+  file picker for nothing. Qt itself is on 6.11.2.
+  ([#188](https://github.com/juanjux/dcs-retribution/pull/188))
 
 - **A fuel estimate for the plan**, beside the route total: taxi, the legs at their own
   climb/cruise/combat rates, the landing reserve and a margin, against what the flight is
@@ -575,6 +580,12 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   (branch [`juanjux/ch_china_1.1.6`](https://github.com/juanjux/dcs-retribution/tree/juanjux/ch_china_1.1.6))
 
 ### Fixes
+
+- **Factions with no early-warning radar fielded a SAM's acquisition radar as one.** An
+  EWR marker falls back to a search radar when the faction owns no EWR, so Ukraine,
+  Georgia, Morocco, France, Argentina, Peru and Iran were putting up a Patriot STR or a
+  Hawk SR where a national radar belonged.
+  ([#187](https://github.com/juanjux/dcs-retribution/pull/187))
 
 - **A GPS jamming site drew the wrong circle.** The map showed the couple of miles its
   point defence reaches instead of the jamming bubble, and drew it solid. The bubble is

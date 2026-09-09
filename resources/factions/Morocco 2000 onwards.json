@@ -63,7 +63,8 @@
   "missiles": [],
   "air_defense_units": [
     "M163 Vulcan Air Defense System",
-    "AAA ZU-23 Emplacement"
+    "AAA ZU-23 Emplacement",
+    "EWR AN/FPS-117 Radar"
   ],
   "requirements": {},
   "has_jtac": false,

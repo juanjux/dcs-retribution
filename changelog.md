@@ -3,6 +3,9 @@
 ## Features/Improvements
 * **[UI]** The waypoints tab estimates the fuel the plan needs, against what the flight is carrying.
 * **[UI]** The waypoint table shows each leg's distance and the route total.
+* **[UI]** Qt updated to 6.11.2.
+* **[UI]** Back to the native Windows file, colour and font dialogs.
+* **[FIX]** Nine factions had no early-warning radar, so their EWR markers fielded a SAM's acquisition radar instead.
 * **[Settings]** GPS jamming, cruise missile strikes and naval magazines are switched on by their plugin alone, and their options live with it.
 * **[Settings]** The Skynet IADS radius moved to the Skynet plugin's options.
 * **[FIX]** A GPS jamming site drew its point defence on the map, a couple of miles, instead of its jamming bubble.
