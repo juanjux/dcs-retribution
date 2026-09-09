@@ -65,22 +65,18 @@ iads_config:
     - R-POWER-N1
     - R-TOWER-N1
 #NATO
-  - NATO K-1:
-    - NATO CP
-  - NATO K-2:
-    - NATO CP
-  - NATO K-3:
-    - NATO CP
-  - NATO S-1:
-    - NATO CP
-  - NATO S-2:
-    - NATO CP
-  - NATO S-3:
-    - NATO CP
-  - NATO S-4:
-    - NATO CP
-  - NATO S-5:
-    - NATO CP  
+  - NATO K-1
+  - NATO K-2
+  - NATO K-3
+  - NATO S-1
+  - NATO S-2
+  - NATO S-3
+  - NATO S-4
+  - NATO S-5
+# Command centres only reach Skynet as KEYS -- as a dependency of a site
+# they are never handed to the plugin, and an empty command centre list
+# reads as working command, so the bunker could not be bombed at all.
+  - NATO CP
 squadrons:
 # Senaki-Kholki
   23:

@@ -367,7 +367,7 @@ iads_config:
       - BLUE POWER
       - BLUE COMMS 2
       - BLUE COMMS 3
-  - BLUE L-MED 5:
+  - BLUE L-MED-5:
       - BLUE POWER
       - BLUE COMMS 2
       - BLUE COMMS 3

@@ -103,94 +103,58 @@ iads_config:
 # SPAIN IADS
 # EWRs
     - Spain EWR Torrejon A:
-        - IADS Command Center Spain
         - Power IADS Spain Peninsula
     - Spain EWR Torrejon B:
-        - IADS Command Center Spain
         - Power IADS Spain Peninsula
     - Spain EWR Moron:
-        - IADS Command Center Spain
         - Power IADS Spain Peninsula
     - Spain EWR Tarifa:
-        - IADS Command Center Spain
         - Power IADS Spain Peninsula
     - Spain EWR Gando:
-        - IADS Command Center Canarias
         - Power IADS Spain Canarias
     - Spain EWR Teide:
-        - IADS Command Center Canarias
         - Power IADS Spain Canarias
     - Spain EWR Africa:
-        - IADS Command Center Africa
         - Power IADS Spain Africa
     
 # SAMs Long Range
-    - Spain SAM LR_P-1:
-        - IADS Command Center Spain
-    - Spain SAM LR_P-2:
-        - IADS Command Center Spain
-    - Spain SAM LR_A-1:
-        - IADS Command Center Africa
-        - IADS Command Center Spain
-    - Spain SAM LR_C-1:
-        - IADS Command Center Canarias
-    - Spain SAM LR_C-2:
-        - IADS Command Center Canarias
-        - IADS Command Center Spain
-    - Spain SAM LR_C-2:
-        - IADS Command Center Canarias
-        - IADS Command Center Spain
+    - Spain SAM LR_P-1
+    - Spain SAM LR_P-2
+    - Spain SAM LR_A-1
+    - Spain SAM LR_C-1
+    - Spain SAM LR_C-2
+    - Spain SAM LR_C-2
 # SAMs Medium Range Peninsula
-    - Spain SAM MR_P-1:
-        - IADS Command Center Spain
-    - Spain SAM MR_P-2:
-        - IADS Command Center Spain
-    - Spain SAM MR_P-3:
-        - IADS Command Center Spain
-    - Spain SAM MR_P-4:
-        - IADS Command Center Spain
-    - Spain SAM MR_P-5:
-        - IADS Command Center Spain
-    - Spain SAM MR_P-6:
-        - IADS Command Center Spain
-    - Spain SAM MR_P-7:
-        - IADS Command Center Spain
+    - Spain SAM MR_P-1
+    - Spain SAM MR_P-2
+    - Spain SAM MR_P-3
+    - Spain SAM MR_P-4
+    - Spain SAM MR_P-5
+    - Spain SAM MR_P-6
+    - Spain SAM MR_P-7
 # SAMs Medium Range Canarias    
-    - Spain SAM MR_C-1:
-        - IADS Command Center Canarias
-    - Spain SAM MR_C-2:
-        - IADS Command Center Canarias
-    - Spain SAM MR_C-3:
-        - IADS Command Center Canarias
-    - Spain SAM MR_C-4:
-        - IADS Command Center Canarias
-    - Spain SAM MR_C-5:
-        - IADS Command Center Canarias
-    - Spain SAM MR_C-6:
-        - IADS Command Center Canarias
-    - Spain SAM MR_C-7:
-        - IADS Command Center Canarias
-    - Spain SAM MR_C-8:
-        - IADS Command Center Canarias
+    - Spain SAM MR_C-1
+    - Spain SAM MR_C-2
+    - Spain SAM MR_C-3
+    - Spain SAM MR_C-4
+    - Spain SAM MR_C-5
+    - Spain SAM MR_C-6
+    - Spain SAM MR_C-7
+    - Spain SAM MR_C-8
 # SAMs Medium Range Africa
-    - Spain SAM MR_A-1:
-        - IADS Command Center Africa
-    - Spain SAM MR_A-2:
-        - IADS Command Center Africa
+    - Spain SAM MR_A-1
+    - Spain SAM MR_A-2
 
 
 #Morocco IADS Network South
 # EWR Network
     - Morocco EWR ReneMouawad: #ReneMouawad
-        - IADS Command Center Damascus-1
         - Power IADS  Damascus
         - Power IADS Haifa
     - Morocco EWR Ramat: #Ramat David
-        - IADS Command Center Damascus-1
         - Power IADS  Damascus
         - Power IADS Haifa
     - Morocco EWR Beyrut: #Beyrut
-        - IADS Command Center Damascus-1
         - Power IADS  Damascus
     - Morocco EWR Aleppo: #Aleppo
         - IADS Command Center Tiyas
@@ -199,88 +163,56 @@ iads_config:
 
 # SAMs Damascus
     - Morocco Damascus SAM LR-1:
-        - IADS Command Center Damascus-1
         - IADS Command Center Tiyas
     - Morocco Damascus SAM LR-2:
-        - IADS Command Center Damascus-1
         - IADS Command Center Tiyas
 
-    - Morocco Damascus SAM MR-1:
-        - IADS Command Center Damascus-1
-    - Morocco Damascus SAM MR-2:
-        - IADS Command Center Damascus-1
+    - Morocco Damascus SAM MR-1
+    - Morocco Damascus SAM MR-2
 
-    - Morocco Damascus SAM SR-1:
-        - IADS Command Center Damascus-1
-    - Morocco Damascus SAM SR-2:
-        - IADS Command Center Damascus-1
-    - Morocco Damascus SAM SR-3:
-        - IADS Command Center Damascus-1
-    - Morocco Damascus SAM SR-4:
-        - IADS Command Center Damascus-1
+    - Morocco Damascus SAM SR-1
+    - Morocco Damascus SAM SR-2
+    - Morocco Damascus SAM SR-3
+    - Morocco Damascus SAM SR-4
         
 # SAMs Ramat David:
-    - Morocco Ramat SAM LR-1:
-        - IADS Command Center Damascus-1
-    - Morocco Ramat SAM LR-2:
-        - IADS Command Center Damascus-1
+    - Morocco Ramat SAM LR-1
+    - Morocco Ramat SAM LR-2
 
-    - Morocco Ramat SAM MR-1:
-        - IADS Command Center Damascus-1
-    - Morocco Ramat SAM MR-2:
-        - IADS Command Center Damascus-1
+    - Morocco Ramat SAM MR-1
+    - Morocco Ramat SAM MR-2
         
-    - Morocco Ramat SAM SR-1:
-        - IADS Command Center Damascus-1
-    - Morocco Ramat SAM SR-2:
-        - IADS Command Center Damascus-1
+    - Morocco Ramat SAM SR-1
+    - Morocco Ramat SAM SR-2
 
 # SAMs Haifa:
-    - Morocco Haifa SAM MR-1:
-        - IADS Command Center Damascus-1
-    - Morocco Haifa SAM MR-2:
-        - IADS Command Center Damascus-1
+    - Morocco Haifa SAM MR-1
+    - Morocco Haifa SAM MR-2
         
-    - Morocco Haifa SAM SR-1:
-        - IADS Command Center Damascus-1
-    - Morocco Haifa SAM SR-2:
-        - IADS Command Center Damascus-1
-    - Morocco Haifa SAM SR-3:
-        - IADS Command Center Damascus-1
+    - Morocco Haifa SAM SR-1
+    - Morocco Haifa SAM SR-2
+    - Morocco Haifa SAM SR-3
 
 # SAMs Beyrut:
-    - Morocco Beyrut SAM LR-1:
-        - IADS Command Center Damascus-1
+    - Morocco Beyrut SAM  LR-1
     
-    - Morocco Beyrut SAM MR-1:
-        - IADS Command Center Damascus-1
-    - Morocco Beyrut SAM MR-2:
-        - IADS Command Center Damascus-1
+    - Morocco Beyrut SAM MR-1
+    - Morocco Beyrut SAM MR-2
         
-    - Morocco Beyrut SAM SR-1:
-        - IADS Command Center Damascus-1
-    - Morocco Beyrut SAM SR-2:
-        - IADS Command Center Damascus-1
-    - Morocco Beyrut SAM SR-3:
-        - IADS Command Center Damascus-1
+    - Morocco Beyrut SAM SR-1
+    - Morocco Beyrut SAM SR-2
+    - Morocco Beyrut SAM SR-3
 
 # SAMs Rene Mouawad:
-    - Morocco Rene SAM LR-1:
-        - IADS Command Center Damascus-1
-    - Morocco Rene SAM LR-2:
-        - IADS Command Center Damascus-1
+    - Morocco Rene SAM LR-1
+    - Morocco Rene SAM LR-2
         
-    - Morocco Rene SAM MR-1:
-        - IADS Command Center Damascus-1
-    - Morocco Rene SAM MR-2:
-        - IADS Command Center Damascus-1
+    - Morocco Rene SAM MR-1
+    - Morocco Rene SAM MR-2
 
-    - Morocco Rene SAM SR-1:
-        - IADS Command Center Damascus-1
-    - Morocco Rene SAM SR-2:
-        - IADS Command Center Damascus-1
-    - Morocco Rene SAM SR-3:
-        - IADS Command Center Damascus-1
+    - Morocco Rene SAM SR-1
+    - Morocco Rene SAM SR-2
+    - Morocco Rene SAM SR-3
         
 #Morocco Air Defence Network North
 # EWR Network
@@ -362,11 +294,11 @@ iads_config:
     - Morocco Hama SAM MR-3:
         - IADS Command Center Tiyas
 
-    - Morocco Hama SAM SR-1:
+    - Morocco Hamas SAM SR-1:
         - IADS Command Center Tiyas
-    - Morocco Hama SAM SR-2:
+    - Morocco Hamas SAM SR-2:
         - IADS Command Center Tiyas
-    - Morocco Hama SAM SR-3:
+    - Morocco Hamas SAM SR-3:
         - IADS Command Center Tiyas
         
 # SAMs Aleppo:
@@ -388,6 +320,18 @@ iads_config:
         - IADS Command Center Tiyas
     - Morocco Aleppo SAM SR-3:
         - IADS Command Center Tiyas
+# Command centres only reach Skynet as KEYS -- as a dependency of a site
+# they are never handed to the plugin, and an empty command centre list
+# reads as working command, so the bunker could not be bombed at all.
+    - IADS Command Center Africa:
+      - Power IADS Spain Africa
+    - IADS Command Center Canarias:
+      - Power IADS Spain Canarias
+    - IADS Command Center Damascus-1:
+      - Comms Damascus
+      - Power IADS  Damascus
+    - IADS Command Center Spain:
+      - Power IADS Spain Peninsula
 
 
         

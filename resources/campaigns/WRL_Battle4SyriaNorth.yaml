@@ -16,26 +16,16 @@ recommended_enemy_income_multiplier: 1.0
 advanced_iads: true 
 iads_config:
 # NATO IADS
-    - NATO EWR-1:
-        - NATO IADS Command
-    - NATO EWR:
-        - NATO IADS Command
-    - NATO SAM:
-        - NATO IADS Command
-    - NATO SAM-1:
-        - NATO IADS Command
-    - NATO SAM-2:
-        - NATO IADS Command
-    - NATO SAM-3:
-        - NATO IADS Command
-    - NATO SAM-4:
-        - NATO IADS Command
-    - NATO SAM-5:
-        - NATO IADS Command
-    - NATO SAM-6:
-        - NATO IADS Command
-    - NATO SAM-7:
-        - NATO IADS Command
+    - NATO EWR-1
+    - NATO EWR
+    - NATO SAM
+    - NATO SAM-1
+    - NATO SAM-2
+    - NATO SAM-3
+    - NATO SAM-4
+    - NATO SAM-5
+    - NATO SAM-6
+    - NATO SAM-7
 #BLUE DEFENSE AREA - HINT: Go after the power stations
     - B-COMMAND-1:
         - B-POWER-1
@@ -159,6 +149,10 @@ iads_config:
         - Y-POWER-2
         - Y-TOWER-2
         - Y-TOWER-3         
+# Command centres only reach Skynet as KEYS -- as a dependency of a site
+# they are never handed to the plugin, and an empty command centre list
+# reads as working command, so the bunker could not be bombed at all.
+    - NATO IADS Command
 squadrons:
     #Incirlik
     16:
