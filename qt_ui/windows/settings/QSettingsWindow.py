@@ -1101,6 +1101,17 @@ class AutoSettingsPage(QWidget):
             group.update_from_settings()
         self.refresh_page()
 
+    def show_section_named(self, section: str) -> bool:
+        for index, group in enumerate(self.groups):
+            if group.title() != section:
+                continue
+            if self.sections is not None:
+                self.sections.setCurrentRow(index)
+            else:
+                self.stack.setCurrentIndex(index)
+            return True
+        return False
+
     def reveal(self, name: str) -> bool:
         """Show the section holding this setting, scroll to it and flash its label.
 
@@ -1130,9 +1141,10 @@ class AutoSettingsPage(QWidget):
     def _flash(self, label: QWidget) -> None:
         self.scroll.ensureWidgetVisible(label, 0, 80)
         was = label.styleSheet()
-        label.setStyleSheet(
-            "background: palette(highlight); color: palette(highlighted-text);"
-        )
+        # Amber rather than the palette's highlight, which in this theme is the red
+        # it uses for warnings: a setting you asked to be shown should not look like
+        # something has gone wrong with it.
+        label.setStyleSheet("background: #E0A86B; color: #14202B;")
         QTimer.singleShot(1600, lambda: label.setStyleSheet(was))
 
 
@@ -1338,6 +1350,13 @@ class QSettingsWidget(QtWidgets.QWizardPage, SettingsContainer):
             return
 
         page, section = hit.page, hit.section
+        if hit.is_section:
+            self.show_page(self._page_names.index(page))
+            shown = self.pages.get(page)
+            if shown is not None:
+                shown.show_section_named(section)
+            return
+
         # A section behind a gear is on no page: go to the switch that opens it and
         # open it.
         owner = Settings.switch_that_opens(section)
