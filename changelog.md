@@ -1,6 +1,7 @@
 ﻿# Retribution v1.6.3 (414th)
 
 ## Features/Improvements
+* **[UI]** The waypoint table shows each leg's distance and the route total.
 * **[UI]** Qt updated to 6.11.2.
 * **[UI]** Back to the native Windows file, colour and font dialogs.
 * **[FIX]** Nine factions had no early-warning radar, so their EWR markers fielded a SAM's acquisition radar instead.
