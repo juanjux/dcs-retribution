@@ -33,7 +33,7 @@ if TYPE_CHECKING:
 
 def populate_cruise_missiles_lua(root: LuaData, game: Game) -> None:
     """Build the ``dcsRetribution.cruiseMissiles`` subtree (ships + auto raids)."""
-    if not game.settings.cruise_missile_strikes:
+    if not game.settings.plugin_option_or("cruisemissiles", False):
         return
 
     from game.cruise_raids import lacm_ships, plan_cruise_raids

@@ -861,7 +861,7 @@ class Game:
         # campaign records nothing at all. Un-cull every planned raid target, and every
         # launching ship group so a standalone shooter is there for the F10
         # call-for-fire (carrier groups are already covered above).
-        if self.settings.cruise_missile_strikes:
+        if self.settings.plugin_option_or("cruisemissiles", False):
             from game.cruise_raids import lacm_ships, plan_cruise_raids
 
             for raid in plan_cruise_raids(self):
@@ -987,7 +987,7 @@ class Game:
         Independent of perf_culling on purpose -- that one defaults to off, which is
         why Skynet is handed the whole map today.
         """
-        radius = self.settings.perf_skynet_iads_radius
+        radius = self.settings.plugin_option_or("skynetiads.radiusKm", 0)
         if radius <= 0:
             return False
         if not self.__culling_zones:

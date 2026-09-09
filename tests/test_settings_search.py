@@ -17,13 +17,13 @@ def keys(query: str) -> list[str]:
 
 def test_a_word_from_the_label_finds_it() -> None:
     assert "use_auto_fog" in keys("fog")
-    assert "perf_skynet_iads_radius" in keys("skynet radius")
+    assert "perf_smoke_spacing" in keys("smoke spacing")
 
 
 def test_every_word_has_to_match() -> None:
     """Words narrow the search; they do not widen it."""
-    assert keys("skynet"), "the premise"
-    assert not keys("skynet marzipan")
+    assert keys("smoke"), "the premise"
+    assert not keys("smoke marzipan")
 
 
 def test_a_section_is_offered_once_and_not_through_every_setting_in_it() -> None:
@@ -93,7 +93,7 @@ def test_the_plugins_own_options_are_searchable() -> None:
 
 
 def test_a_hit_says_where_it_lives() -> None:
-    (hit,) = [h for h in search("skynet radius") if h.key == "perf_skynet_iads_radius"]
+    (hit,) = [h for h in search("smoke spacing") if h.key == "perf_smoke_spacing"]
     assert hit.where == "Mission Generator › Performance"
 
 
@@ -128,7 +128,7 @@ def test_a_shorter_label_wins_when_both_match() -> None:
 
 
 def test_the_hit_is_what_the_dialog_needs_to_navigate() -> None:
-    (hit,) = [h for h in search("skynet radius") if h.key == "perf_skynet_iads_radius"]
+    (hit,) = [h for h in search("smoke spacing") if h.key == "perf_smoke_spacing"]
     assert isinstance(hit, SettingHit)
     assert hit.page in list(Settings.pages())
     assert hit.section in list(Settings.sections(hit.page))

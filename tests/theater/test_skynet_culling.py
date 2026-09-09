@@ -49,7 +49,14 @@ class _Zone:
 
 
 def _game(radius: int, *distances: float) -> Any:
-    game = SimpleNamespace(settings=SimpleNamespace(perf_skynet_iads_radius=radius))
+    # The radius is a skynetiads plugin option now.
+    game = SimpleNamespace(
+        settings=SimpleNamespace(
+            plugin_option_or=lambda identifier, default=None: (
+                radius if identifier == "skynetiads.radiusKm" else default
+            )
+        )
+    )
     # Name-mangled: the attribute Game.skynet_culled reads is _Game__culling_zones.
     setattr(game, "_Game__culling_zones", [_Zone(d) for d in distances])
     return game
@@ -190,7 +197,11 @@ def _network(sam_distance: float, power_distance: float) -> tuple[Any, Any]:
     power_tgo.position = "power"
 
     game: Any = SimpleNamespace(
-        settings=SimpleNamespace(perf_skynet_iads_radius=100),
+        settings=SimpleNamespace(
+            plugin_option_or=lambda identifier, default=None: (
+                100 if identifier == "skynetiads.radiusKm" else default
+            )
+        ),
         iads_considerate_culling=lambda tgo: False,
     )
     setattr(game, "_Game__culling_zones", [_Distances])

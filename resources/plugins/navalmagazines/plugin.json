@@ -22,6 +22,12 @@
             "nameInUI": "Anti-ship weapon name patterns (comma separated, matched inside the DCS weapon type name)",
             "mnemonic": "ashmWeaponPatterns",
             "defaultValue": "HARPOON,RGM_84,AGM_84,EXOCET,MM_38,MM_40,YJ,C_802,C_602,P_500,P_700,P_270,P_1000,KH_35,3M24,3M54,SS_N,NSM,RBS15,OTOMAT"
+        },
+        {
+            "nameInUI": "Stagger weapons release",
+            "descriptionInUI": "Warships start the mission on return-fire and are released to weapons-free one group at a time across a window, instead of every hull opening up at once. A modern anti-ship missile out-ranges the whole theatre, so without this both fleets are in range from the moment the mission loads and the entire naval battle happens in the first five minutes. They still defend themselves while they wait.",
+            "mnemonic": "releaseStagger",
+            "defaultValue": false
         }
     ],
     "scriptsWorkOrders": [],

@@ -77,8 +77,17 @@ class _Theater:
 
 class _Settings:
     def __init__(self, **kwargs: Any) -> None:
-        self.naval_magazines = kwargs.get("naval_magazines", True)
-        self.naval_weapon_release_stagger = kwargs.get("stagger", False)
+        # Both switches are navalmagazines plugin options now.
+        self._options = {
+            "navalmagazines": kwargs.get("naval_magazines", True),
+            "navalmagazines.releaseStagger": kwargs.get("stagger", False),
+        }
+
+    def plugin_option_or(self, identifier: str, default: Any = None) -> Any:
+        return self._options.get(identifier, default)
+
+    def set_naval_magazines(self, value: bool) -> None:
+        self._options["navalmagazines"] = value
 
 
 class _Game:
@@ -194,10 +203,10 @@ def test_tgo_magazines_is_gated_and_naval_only() -> None:
     game = _Game([tgo])
     assert tgo_magazines(game, tgo) == [("0001 | CSG", 8)]  # type: ignore[arg-type]
 
-    game.settings.naval_magazines = False
+    game.settings.set_naval_magazines(False)
     assert tgo_magazines(game, tgo) == []  # type: ignore[arg-type]
 
-    game.settings.naval_magazines = True
+    game.settings.set_naval_magazines(True)
     assert tgo_magazines(game, _Tgo("aa", [_burke_group()])) == []  # type: ignore[arg-type]
 
 

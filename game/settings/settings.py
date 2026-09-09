@@ -2,7 +2,7 @@ from collections.abc import Iterator
 from dataclasses import Field, dataclass, field, fields
 from datetime import timedelta
 from enum import Enum, unique
-from typing import Any, Dict, Optional
+from typing import Any, ClassVar, Dict, Optional
 
 from dcs.forcedoptions import ForcedOptions
 
@@ -1472,100 +1472,6 @@ class Settings:
             " does not change while you fly."
         ),
     )
-    gps_jamming_default_reach_nm: float = bounded_float_option(
-        "GPS jamming: default reach (nm)",
-        page=MISSION_GENERATOR_PAGE,
-        section=GAMEPLAY_SECTION,
-        default=30.0,
-        min=5.0,
-        max=150.0,
-        divisor=1,
-        detail=(
-            "Used by a jammer whose unit definition names no radius. This is the "
-            "size of the GPS-denied TARGET area, not a denied release area: a weapon "
-            "aimed at anything inside the bubble flies through it whatever range it "
-            "was released from, so standing off does not help a covered target."
-        ),
-    )
-    gps_jamming_miss_radius_m: float = bounded_float_option(
-        "GPS jamming: miss distance at full strength (m)",
-        page=MISSION_GENERATOR_PAGE,
-        section=GAMEPLAY_SECTION,
-        default=200.0,
-        min=25.0,
-        max=1000.0,
-        divisor=1,
-        detail=(
-            "How far off the aimpoint a degraded weapon lands when released over the "
-            "emitter. It scales down to zero at the bubble's edge, so a store "
-            "clipping the fringe is nudged and one released overhead is thrown clear."
-        ),
-    )
-    naval_weapon_release_stagger: bool = boolean_option(
-        "Stagger naval weapons release",
-        page=MISSION_GENERATOR_PAGE,
-        section=GAMEPLAY_SECTION,
-        default=False,
-        detail=(
-            "Warships start the mission on return-fire and are released to "
-            "weapons-free one group at a time across a window, instead of every hull "
-            "opening up at once. A modern anti-ship missile out-ranges the whole "
-            "theatre, so without this both fleets are in range from the moment the "
-            "mission loads and the entire naval battle happens in the first five "
-            "minutes. They still defend themselves while they wait -- this delays who "
-            "shoots first, it does not disarm anyone. Symmetric. Needs the naval "
-            "magazines LUA plugin enabled or it does nothing."
-        ),
-    )
-    naval_magazines: bool = boolean_option(
-        "Cross-turn naval magazines (anti-ship missiles do not rearm)",
-        page=MISSION_GENERATOR_PAGE,
-        section=GAMEPLAY_SECTION,
-        default=False,
-        detail=(
-            "Every warship group carries a finite campaign stock of anti-ship "
-            "missiles. A mission is a fresh spawn, so without this a fleet reloads for "
-            "free every turn and empties its tubes again and again; with it, what a "
-            "group fires this mission is gone for the rest of the war. A group that "
-            "runs dry drops back to return-fire -- winchester, not disarmed. "
-            "Land-attack cruise missiles are counted by their own setting, so nothing "
-            "is charged twice. Symmetric. Needs the naval magazines LUA plugin "
-            "enabled or it does nothing."
-        ),
-    )
-    cruise_missile_strikes: bool = boolean_option(
-        "Ship-launched cruise missile strikes",
-        page=MISSION_GENERATOR_PAGE,
-        section=GAMEPLAY_SECTION,
-        default=False,
-        detail=(
-            "Warships that carry land-attack cruise missiles (the Burke's Tomahawks, "
-            "the CurrentHill Kalibr hulls) can fire them at shore targets: an F10 "
-            "'Cruise Missile Strike' menu calls a salvo onto your last map marker from "
-            "the nearest ship that still has missiles. Each ship group carries a finite "
-            "campaign magazine and there is no rearm, so every salvo spends stock you "
-            "never get back. The missiles are real weapons from a real, tracked ship: "
-            "kills count at debrief, enemy point defense can intercept them, and "
-            "sinking the shooter ends the raids. Both coalitions play by these rules. "
-            "Runs through the 'Cruise missile strikes' LUA plugin -- keep that plugin "
-            "enabled or this setting does nothing."
-        ),
-    )
-    cruise_missile_auto_raids: bool = boolean_option(
-        "Auto-plan cruise missile raids",
-        page=MISSION_GENERATOR_PAGE,
-        section=GAMEPLAY_SECTION,
-        default=False,
-        detail=(
-            "Needs 'Ship-launched cruise missile strikes'. Each turn, a side with a "
-            "cruise-missile ship in range commits one raid: a salvo fired early in the "
-            "mission at its highest-value reachable enemy ground object -- command "
-            "centers and comms first, then war industry, then anything strikeable. "
-            "Watch for the LAUNCH WARNING: an enemy raid is your point-defense SAMs' "
-            "problem, or yours."
-        ),
-    )
-
     # Performance
     perf_smoke_gen: bool = boolean_option(
         "Smoke visual effect on the front line",
@@ -1713,24 +1619,6 @@ class Settings:
         page=MISSION_GENERATOR_PAGE,
         section=PERFORMANCE_SECTION,
         default=True,
-    )
-    perf_skynet_iads_radius: int = bounded_int_option(
-        "Skynet IADS radius from the action (km, 0 = whole map)",
-        page=MISSION_GENERATOR_PAGE,
-        section=PERFORMANCE_SECTION,
-        default=0,
-        min=0,
-        max=10000,
-        detail=(
-            "Skynet gets slower the more radars it coordinates, and it is handed every "
-            "site on the map, for both coalitions. Set a radius and it is handed only "
-            "what lies within that distance of the front line, a package target or a "
-            "carrier. The rest are still generated and still fight -- they go to red "
-            "alert and defend themselves -- they are simply not in the network: they "
-            "never go dark, never share contacts and never react to a HARM. Nothing "
-            "to do with the culling above, which leaves distant units out of the "
-            "mission altogether."
-        ),
     )
     perf_do_not_cull_carrier: bool = boolean_option(
         "Do not cull carrier's surroundings",
@@ -2248,6 +2136,18 @@ class Settings:
     def plugin_option(self, identifier: str) -> Any:
         return self.plugins[self.plugin_settings_key(identifier)]
 
+    def plugin_option_or(self, identifier: str, default: Any = None) -> Any:
+        """The option's value, or ``default`` if this settings object never got it.
+
+        Settings that used to be their own fields are read through here, so the
+        defensive ``getattr(settings, name, False)`` they were written with keeps
+        working for a save loaded before the plugin manager filled its defaults.
+        """
+        try:
+            return self.plugins[self.plugin_settings_key(identifier)]
+        except KeyError:
+            return default
+
     def set_plugin_option(self, identifier: str, value: Any) -> None:
         self.plugins[self.plugin_settings_key(identifier)] = value
 
@@ -2269,6 +2169,7 @@ class Settings:
         # restore Enum & timedelta types
         s = Settings()
         Settings._migrate_legacy_bandit_clouds(state)
+        Settings._migrate_settings_into_plugins(state)
         for key, value in list(state.items()):
             default = s.__dict__.get(key)
             if isinstance(default, Enum):
@@ -2309,6 +2210,39 @@ class Settings:
             if isinstance(restored, enum_cls):
                 return restored
         return None
+
+    #: Settings that became options of the plugin they were always about. The value
+    #: is the plugin option that replaced each one; a switch whose plugin has its own
+    #: switch of the same name is ANDed, because the feature used to need both.
+    _MOVED_INTO_PLUGINS: ClassVar[dict[str, str]] = {
+        "gps_jamming": "gpsjamming",
+        "gps_jamming_default_reach_nm": "gpsjamming.defaultReachNm",
+        "gps_jamming_miss_radius_m": "gpsjamming.missRadiusM",
+        "naval_magazines": "navalmagazines",
+        "naval_weapon_release_stagger": "navalmagazines.releaseStagger",
+        "cruise_missile_strikes": "cruisemissiles",
+        "cruise_missile_auto_raids": "cruisemissiles.autoRaids",
+        "perf_skynet_iads_radius": "skynetiads.radiusKm",
+    }
+
+    @staticmethod
+    def _migrate_settings_into_plugins(state: dict[str, Any]) -> None:
+        """Carry an old save's values onto the plugin options that replaced them.
+
+        Without this a campaign that had a feature switched OFF would load with it on,
+        because every one of these plugins ships enabled and the plugin switch is now
+        the only gate. The plugin manager fills defaults for options that are missing
+        and leaves present ones alone, so writing here is enough.
+        """
+        plugins = state.setdefault("plugins", {})
+        for setting, option in Settings._MOVED_INTO_PLUGINS.items():
+            if setting not in state:
+                continue
+            value = state[setting]
+            if "." not in option and isinstance(value, bool):
+                # The feature ran only when the setting AND the plugin were on.
+                value = value and bool(plugins.get(option, True))
+            plugins[option] = value
 
     @staticmethod
     def _migrate_legacy_bandit_clouds(state: dict[str, Any]) -> None:
