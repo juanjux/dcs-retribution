@@ -540,6 +540,10 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
 
 ### Fixes
 
+- **The search box stretched the settings page list across the dialog**, a section name
+  returned one row per setting inside it, and four letters were short enough to match
+  almost anything. ([#182](https://github.com/juanjux/dcs-retribution/pull/182))
+
 - **Player pilots were playing the morale game.** The debriefing told you how you felt
   about your own turn, and the same figure moved the skill you flew at, your XP and
   your survival roll. Morale is for the AI pilots. ([#173](https://github.com/juanjux/dcs-retribution/pull/173))
