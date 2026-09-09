@@ -71,6 +71,14 @@ class ForceGroup:
     #: the datalink). Explicit opt-in only -- defaults to False, matching the
     #: runtime QGroundObjectMenu checkbox / migrator default.
     hide_on_mfd: bool = False
+    #: When a preset group's YAML sets ``never_random: true`` it is offered to the
+    #: player but never rolled by the generator. ArmedForces puts every preset group
+    #: a faction adopts into the pool random_group_for_task draws from, so without
+    #: this a site that only makes sense where a campaign or a player put it -- a GPS
+    #: jamming site, say -- starts appearing at ordinary markers of its band.
+    #: `generic: false` on the layout does not cover this: that flag only stops a
+    #: ForceGroup being built from the layout, and most presets are non-generic.
+    never_random: bool = False
 
     _by_name: ClassVar[dict[str, ForceGroup]] = {}
     _loaded: bool = False
@@ -148,6 +156,7 @@ class ForceGroup:
             tasks=list(preset_group.tasks),
             layouts=list(preset_group.layouts),
             hide_on_mfd=preset_group.hide_on_mfd,
+            never_random=preset_group.never_random,
         )
 
     def has_access_to_dcs_type(self, type: Type[DcsUnitType]) -> bool:
@@ -498,6 +507,7 @@ class ForceGroup:
                 tasks=group_tasks,
                 layouts=layouts,
                 hide_on_mfd=bool(data.get("hide_on_mfd", False)),
+                never_random=bool(data.get("never_random", False)),
             )
 
             cls._by_name[force_group.name] = force_group

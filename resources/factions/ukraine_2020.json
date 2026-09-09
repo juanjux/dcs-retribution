@@ -61,7 +61,8 @@
     "SA-20/S-300PMU-1",
     "Hawk",
     "Patriot",
-    "NASAMS AIM-120C"
+    "NASAMS AIM-120C",
+    "GPS Jamming Site (Blue)"
   ],
   "naval_units": [],
   "air_defense_units": [

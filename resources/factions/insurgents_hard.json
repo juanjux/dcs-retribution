@@ -51,7 +51,9 @@
     "ZU-23 on Ural-375 Insurgent",
     "ZSU-23-4 Shilka"
   ],
-  "preset_groups": [],
+  "preset_groups": [
+    "GPS Jamming Site (Red)"
+  ],
   "naval_units": [],
   "missiles": [
     "SSM SS-1C Scud-B"

@@ -15,6 +15,12 @@ recommended_player_income_multiplier: 5.0
 recommended_enemy_income_multiplier: 1.0
 settings:
   max_frontline_width: 20
+# GPS jamming. The three red EWR markers sit within 15 nm of each other (A to C is
+# 14.9 nm), one jammer's radius, so the middle one covers the cluster and a second
+# would only be redundancy. No radar on it, so it is a STRIKE target, not SEAD.
+ground_forces:
+  EWR-B: GPS Jamming Site (Red)
+
 advanced_iads: true # Campaign has connection_nodes / power_sources / command_centers
 iads_config:
 #COMMAND
@@ -52,18 +58,16 @@ iads_config:
   - SAM-C3:
     - CM-C
     - PW-C
-  - NATO SAM-1:
-    - NATO COMMAND
-  - NATO SAM-2:
-    - NATO COMMAND
-  - NATO NELLIS 1:
-    - NATO COMMAND
-  - NATO NELLIS 2:
-    - NATO COMMAND
-  - NATO NELLIS 3:
-    - NATO COMMAND
-  - NATO NELLIS 4:
-    - NATO COMMAND
+  - NATO SAM-1
+  - NATO SAM-2
+  - NATO NELLIS 1
+  - NATO NELLIS 2
+  - NATO NELLIS 3
+  - NATO NELLIS 4
+# Command centres only reach Skynet as KEYS -- as a dependency of a site
+# they are never handed to the plugin, and an empty command centre list
+# reads as working command, so the bunker could not be bombed at all.
+  - NATO COMMAND
 squadrons:
 # Nellis AFB
   4:

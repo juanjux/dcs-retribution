@@ -88,7 +88,8 @@
   ],
   "preset_groups": [
     "Patriot",
-    "NASAMS AIM-120C"
+    "NASAMS AIM-120C",
+    "GPS Jamming Site (Blue)"
   ],
   "naval_units": [
     "FFG Oliver Hazard Perry",

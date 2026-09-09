@@ -580,6 +580,20 @@ class CoastalSiteGroundObject(TheaterGroundObject):
             yield mission_type
 
 
+#: What makes a site read as a missile battery rather than a bare radar. TELAR and
+#: SHORAD carry their own launcher; MANPAD and AAA are what a point-defence-only site
+#: fields, and both still shoot.
+LAUNCHER_CLASSES = frozenset(
+    {
+        UnitClass.LAUNCHER,
+        UnitClass.TELAR,
+        UnitClass.SHORAD,
+        UnitClass.MANPAD,
+        UnitClass.AAA,
+    }
+)
+
+
 class IadsGroundObject(TheaterGroundObject, ABC):
     def __init__(
         self,
@@ -597,6 +611,31 @@ class IadsGroundObject(TheaterGroundObject, ABC):
             sea_object=False,
             task=task,
         )
+
+    @property
+    def symbol_set_and_entity(self) -> tuple[SymbolSet, Entity]:
+        """Read the symbol off the site, not off the class it was created as.
+
+        A radar site, a missile battery and a jamming site are interchangeable on the
+        map now -- you can buy any of the three where any one of them stands -- so the
+        class the campaign happened to create no longer says what is parked there. A
+        jammer wins over everything (it is the thing worth telling apart), a launcher
+        beats a bare radar, and a site with neither is a radar.
+        """
+        jamming = False
+        shoots = False
+        for group in self.groups:
+            for unit in group.units:
+                unit_type = unit.unit_type
+                if unit_type is not None and getattr(unit_type, "gps_jamming", None):
+                    jamming = True
+                elif getattr(unit_type, "unit_class", None) in LAUNCHER_CLASSES:
+                    shoots = True
+        if jamming:
+            return SymbolSet.LAND_UNIT, LandUnitEntity.ELECTRONIC_WARFARE_JAMMING
+        if shoots:
+            return SymbolSet.LAND_UNIT, LandUnitEntity.AIR_DEFENSE
+        return SymbolSet.LAND_EQUIPMENT, LandEquipmentEntity.RADAR
 
     def mission_types(self, for_player: Player) -> Iterator[FlightType]:
         from game.ato import FlightType
@@ -637,10 +676,6 @@ class SamGroundObject(IadsGroundObject):
     # but still projecting a threat ring, hiding real damage from the map; the base
     # green/yellow/red contract applies now, and the ring already tells whether the
     # site still threatens.
-
-    @property
-    def symbol_set_and_entity(self) -> tuple[SymbolSet, Entity]:
-        return SymbolSet.LAND_UNIT, LandUnitEntity.AIR_DEFENSE
 
     def mission_types(self, for_player: Player) -> Iterator[FlightType]:
         from game.ato import FlightType
@@ -800,10 +835,6 @@ class EwrGroundObject(IadsGroundObject):
             category="ewr",
             task=GroupTask.EARLY_WARNING_RADAR,
         )
-
-    @property
-    def symbol_set_and_entity(self) -> tuple[SymbolSet, Entity]:
-        return SymbolSet.LAND_EQUIPMENT, LandEquipmentEntity.RADAR
 
     @property
     def capturable(self) -> bool:

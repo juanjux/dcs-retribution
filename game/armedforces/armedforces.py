@@ -70,5 +70,9 @@ class ArmedForces:
         return sorted(groups, key=lambda g: g.name)
 
     def random_group_for_task(self, group_task: GroupTask) -> Optional[ForceGroup]:
-        unit_groups = list(self.groups_for_task(group_task))
+        # never_random groups stay out of the roll but stay in groups_for_task, so a
+        # player can still buy one where the band allows it.
+        unit_groups = [
+            g for g in self.groups_for_task(group_task) if not g.never_random
+        ]
         return random.choice(unit_groups) if unit_groups else None

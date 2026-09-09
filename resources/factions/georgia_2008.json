@@ -47,7 +47,8 @@
   "preset_groups": [
     "SA-3/S-125",
     "SA-6",
-    "SA-11"
+    "SA-11",
+    "GPS Jamming Site (Red)"
   ],
   "naval_units": [
     "FAC La Combattante IIa"

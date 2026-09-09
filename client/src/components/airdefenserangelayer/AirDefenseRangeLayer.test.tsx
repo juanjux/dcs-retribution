@@ -151,4 +151,85 @@ describe("AirDefenseRangeLayer", () => {
       }),
     );
   });
+
+  const radarOnlyState = (blue: boolean) => ({
+    tgos: {
+      tgos: {
+        ewr: {
+          id: "ewr",
+          name: "Ewr",
+          control_point_name: "Bar",
+          category: "AA",
+          blue: blue,
+          position: { lat: 10, lng: 20 },
+          units: [],
+          threat_ranges: [],
+          detection_ranges: [300],
+          dead: false,
+          purchasable: true,
+          sidc: "",
+          task: [],
+          mobile: false,
+        },
+      },
+    },
+  });
+
+  // An EWR or a jamming site sees but does not shoot, so it has no threat ring at
+  // all. It draws its detection ring on the threat layer instead, dashed, or it is
+  // invisible unless you happen to have SAM detection ranges turned on.
+  it("draws a radar-only site on the threat layer, dashed", () => {
+    renderWithProviders(<AirDefenseRangeLayer blue={true} />, {
+      preloadedState: radarOnlyState(true) as any,
+    });
+    expect(mockCircle).toHaveBeenCalledWith(
+      expect.objectContaining({
+        radius: 300,
+        pathOptions: expect.objectContaining({
+          color: colorFor(true, false),
+          dashArray: expect.any(String),
+        }),
+      }),
+    );
+  });
+
+  it("does not draw a radar-only site twice", () => {
+    renderWithProviders(<AirDefenseRangeLayer blue={true} detection />, {
+      preloadedState: radarOnlyState(true) as any,
+    });
+    expect(mockCircle).not.toHaveBeenCalled();
+  });
+
+  it("leaves a shooting site's threat ring solid", () => {
+    renderWithProviders(<AirDefenseRangeLayer blue={true} />, {
+      preloadedState: {
+        tgos: {
+          tgos: {
+            sam: {
+              id: "sam",
+              name: "Sam",
+              control_point_name: "Bar",
+              category: "AA",
+              blue: true,
+              position: { lat: 10, lng: 20 },
+              units: [],
+              threat_ranges: [10],
+              detection_ranges: [20],
+              dead: false,
+              purchasable: true,
+              sidc: "",
+              task: [],
+              mobile: false,
+            },
+          },
+        },
+      } as any,
+    });
+    expect(mockCircle).toHaveBeenCalledWith(
+      expect.objectContaining({
+        radius: 10,
+        pathOptions: expect.objectContaining({ dashArray: undefined }),
+      }),
+    );
+  });
 });

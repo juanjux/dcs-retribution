@@ -57,7 +57,8 @@
   "preset_groups": [
     "Hawk",
     "SA-3/S-125",
-    "Rapier"
+    "Rapier",
+    "GPS Jamming Site (Red)"
   ],
   "naval_units": [
     "FFG Oliver Hazard Perry"

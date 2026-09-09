@@ -56,7 +56,8 @@
   "preset_groups": [
     "Hawk",
     "Patriot",
-    "SA-10B/S-300PS"
+    "SA-10B/S-300PS",
+    "GPS Jamming Site (Red)"
   ],
   "air_defense_units": [
     "AAA ZU-23 Emplacement",
