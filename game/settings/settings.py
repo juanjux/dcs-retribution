@@ -1729,13 +1729,14 @@ class Settings:
         min=0,
         max=10000,
         detail=(
-            "Skynet costs what the number of radars it manages costs, and it is handed "
-            "every site on the map for both coalitions. A radius hands it only what "
-            "lies within that distance of the front line, a package target or a "
-            "carrier. Sites outside it still fight -- they are forced to red alert and "
-            "defend themselves -- they are simply not in the network: they never go "
-            "dark, never share contacts and never react to a HARM. Nothing to do with "
-            "the culling below, which removes distant units from the mission."
+            "Skynet gets slower the more radars it coordinates, and it is handed every "
+            "site on the map, for both coalitions. Set a radius and it is handed only "
+            "what lies within that distance of the front line, a package target or a "
+            "carrier. The rest are still generated and still fight -- they go to red "
+            "alert and defend themselves -- they are simply not in the network: they "
+            "never go dark, never share contacts and never react to a HARM. Nothing "
+            "to do with the culling above, which leaves distant units out of the "
+            "mission altogether."
         ),
     )
     perf_do_not_cull_carrier: bool = boolean_option(

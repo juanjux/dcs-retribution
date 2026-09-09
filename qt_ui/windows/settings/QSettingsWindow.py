@@ -25,6 +25,7 @@ from PySide6.QtWidgets import (
     QListWidgetItem,
     QPushButton,
     QScrollArea,
+    QSizePolicy,
     QSpinBox,
     QStackedLayout,
     QStackedWidget,
@@ -275,11 +276,16 @@ class AutoSettingsLayout(QGridLayout):
             )
             layout.on_settings_changed = self.settings_changed
             box = QGroupBox(name)
-            # Without the top margin the caption is drawn over the first row, which
-            # in the morale box had "Lost his aircraft" wearing the title.
+            # Its own frame, drawn explicitly: the section above it is frameless and
+            # anything it says about borders would otherwise be inherited. The top
+            # margin keeps the caption off the first row, which in the morale box had
+            # "Lost his aircraft" wearing the title.
+            box.setObjectName("settingsBox")
             box.setStyleSheet(
-                "QGroupBox { margin-top: 12px; padding-top: 8px; }"
-                "QGroupBox::title { subcontrol-origin: margin; left: 8px; }"
+                "QGroupBox#settingsBox { border: 1px solid palette(mid);"
+                " border-radius: 4px; margin-top: 14px; padding: 12px 8px 8px 8px; }"
+                "QGroupBox#settingsBox::title { subcontrol-origin: margin;"
+                " subcontrol-position: top left; left: 10px; padding: 0 4px; }"
             )
             box.setLayout(layout)
             self.addWidget(box, self.rowCount(), 0, 1, SLACK_COLUMN + 1)
@@ -898,10 +904,17 @@ class AutoSettingsGroup(QGroupBox):
 
         A framed box titled the same as the entry you clicked to get here says the
         section's name twice and fences off a page that has nothing to be fenced from.
+
+        Selected by object name, not by class: a stylesheet set on a widget applies
+        to its children too, so a plain QGroupBox rule here took the frame off the
+        boxes inside the section as well and left them looking like stray labels.
         """
+        self.setObjectName("framelessSection")
         self.setStyleSheet(
-            "QGroupBox { border: none; margin-top: 0; padding-top: 0; }"
-            "QGroupBox::title { width: 0; height: 0; margin: 0; padding: 0; }"
+            "QGroupBox#framelessSection { border: none; margin-top: 0;"
+            " padding-top: 0; }"
+            "QGroupBox#framelessSection::title { width: 0; height: 0; margin: 0;"
+            " padding: 0; }"
         )
         self.setTitle("")
 
@@ -1006,6 +1019,12 @@ class AutoSettingsPage(QWidget):
             row.addWidget(self.sections)
         for group in self.groups:
             self.stack.addWidget(group)
+            # A stack asks for room enough for its tallest page, so the one long
+            # section had every short one showing a scrollbar it did not need.
+            # Only the section on display gets a say in the height.
+            group.setSizePolicy(
+                QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Ignored
+            )
 
         # The scroll belongs to the settings, not to the page: with the index inside
         # it, reading down a long section carried the list of sections away with it.
@@ -1017,12 +1036,28 @@ class AutoSettingsPage(QWidget):
 
         # Only now do the group boxes have a parent, and only now is hiding one of
         # them a layout change rather than a stray window.
+        self._only_this_one_decides_the_height(self.stack.currentIndex())
         self.refresh_page()
 
     def _show_section(self, index: int) -> None:
         if 0 <= index < self.stack.count():
             self.stack.setCurrentIndex(index)
+            self._only_this_one_decides_the_height(index)
             self.scroll_to_top()
+
+    def _only_this_one_decides_the_height(self, index: int) -> None:
+        for i, group in enumerate(self.groups):
+            group.setSizePolicy(
+                QSizePolicy.Policy.Preferred,
+                (
+                    QSizePolicy.Policy.Preferred
+                    if i == index
+                    else QSizePolicy.Policy.Ignored
+                ),
+            )
+        current = self.stack.currentWidget()
+        if current is not None:
+            current.adjustSize()
 
     def scroll_to_top(self) -> None:
         """A new section, or a new page, starts at its first setting.
