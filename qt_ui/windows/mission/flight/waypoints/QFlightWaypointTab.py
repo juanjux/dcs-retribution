@@ -297,11 +297,12 @@ class QFlightWaypointTab(QFrame):
             self.on_change()
 
     def _is_bulk_editable(self, waypoint: FlightWaypoint) -> bool:
-        # Skip pattern waypoints and any AGL/ground-referenced point (takeoff and
-        # landing are RADIO, alt 0) so the bulk set only moves the en-route legs.
-        if waypoint.waypoint_type in self.BULK_ALTITUDE_SKIP_TYPES:
-            return False
-        return waypoint.alt_type != "RADIO"
+        # By type only. Skipping every AGL point as well froze whole flight plans:
+        # a helicopter cruises AGL, so an Apache had nothing left to set, and a
+        # low-level A-10 most of a route. The points that must not move -- takeoff,
+        # landing, pattern, zones, targets -- are in the list above whatever they are
+        # referenced to. A waypoint keeps its own reference; only the number changes.
+        return waypoint.waypoint_type not in self.BULK_ALTITUDE_SKIP_TYPES
 
     def _default_bulk_altitude(self) -> int:
         # Seed the spinner with the highest en-route altitude already planned so the
