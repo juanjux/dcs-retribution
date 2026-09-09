@@ -12,7 +12,7 @@ page stays a list you can read down.
 
 from typing import Dict, List, Optional
 
-from PySide6.QtCore import QLocale, Qt
+from PySide6.QtCore import QLocale, Qt, QTimer
 from PySide6.QtWidgets import (
     QCheckBox,
     QDialog,
@@ -49,6 +49,8 @@ class PluginOptionsBox(QGroupBox):
         self.setLayout(layout)
 
         self.widgets: Dict[str, QWidget] = {}
+        #: Kept so a search can point at the option it sent you here for.
+        self.labels: Dict[str, QLabel] = {}
 
         row = 0
         if with_description and plugin.description:
@@ -67,6 +69,7 @@ class PluginOptionsBox(QGroupBox):
             label = QLabel(option.name)
             label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
             layout.addWidget(label, row, 0)
+            self.labels[option.identifier] = label
 
             val = option.get_value
             if isinstance(val, bool):
@@ -119,7 +122,9 @@ class PluginOptionsDialog(QDialog):
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.Shape.NoFrame)
         # The description is already on the row this was opened from.
-        scroll.setWidget(PluginOptionsBox(plugin, with_description=False))
+        self.box = PluginOptionsBox(plugin, with_description=False)
+        scroll.setWidget(self.box)
+        self.scroll = scroll
         column.addWidget(scroll, 1)
 
         buttons = QHBoxLayout()
@@ -128,6 +133,20 @@ class PluginOptionsDialog(QDialog):
         close.clicked.connect(self.accept)
         buttons.addWidget(close)
         column.addLayout(buttons)
+
+    def flash(self, option: str) -> None:
+        """Point at one option, for a search that came here to find it.
+
+        Sixty-five rows behind a gear is no better than a page of forty: being shown
+        the dialog is not being shown the setting.
+        """
+        label = self.box.labels.get(option)
+        if label is None:
+            return
+        self.scroll.ensureWidgetVisible(label, 0, 80)
+        was = label.styleSheet()
+        label.setStyleSheet("background: #E0A86B; color: #14202B;")
+        QTimer.singleShot(1600, lambda: label.setStyleSheet(was))
 
 
 class PluginRow(QWidget):
@@ -182,8 +201,11 @@ class PluginRow(QWidget):
 
         self.dialog: Optional[PluginOptionsDialog] = None
 
-    def open_options(self) -> None:
+    def open_options(self, flash: Optional[str] = None) -> None:
         self.dialog = PluginOptionsDialog(self.plugin, self)
+        if flash is not None:
+            # Before exec, which does not return until the dialog is closed.
+            QTimer.singleShot(0, lambda: self.dialog and self.dialog.flash(flash))
         self.dialog.exec()
 
 
@@ -206,11 +228,11 @@ class PluginsPage(QWidget):
             layout.addWidget(row)
             self.rows.append(row)
 
-    def open_options_for(self, identifier: str) -> None:
+    def open_options_for(self, identifier: str, option: Optional[str] = None) -> None:
         """Open one plugin's options, for a search that landed on one of them."""
         for row in self.rows:
             if row.plugin.identifier == identifier and row.plugin.options:
-                row.open_options()
+                row.open_options(option)
                 return
 
     def update_from_settings(self) -> None:
