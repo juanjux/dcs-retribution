@@ -75,6 +75,10 @@ class LuaPluginDefinition:
     description: str
     present_in_ui: bool
     enabled_by_default: bool
+    #: When set, this plugin has no switch of its own: it is on whenever any of
+    #: these is. For the plumbing another plugin needs, which is a detail of that
+    #: plugin rather than a choice anyone should have to make.
+    enabled_with_any_of: List[str]
     options: List[LuaPluginOption]
     work_orders: List[LuaPluginWorkOrder]
     config_work_orders: List[LuaPluginWorkOrder]
@@ -124,11 +128,19 @@ class LuaPluginDefinition:
             description=data.get("descriptionInUI", ""),
             present_in_ui=not data.get("skipUI", False),
             enabled_by_default=data.get("defaultValue", False),
+            enabled_with_any_of=data.get("enabledWithAnyOf", []),
             options=options,
             work_orders=work_orders,
             config_work_orders=config_work_orders,
             other_resource_files=data.get("otherResourceFiles", []),
         )
+
+
+def _manager() -> Any:
+    # Imported here: the manager imports this module to build its plugins.
+    from game.plugins.manager import LuaPluginManager
+
+    return LuaPluginManager
 
 
 class LuaPlugin(PluginSettings):
@@ -154,6 +166,12 @@ class LuaPlugin(PluginSettings):
 
     @property
     def enabled(self) -> bool:
+        if self.definition.enabled_with_any_of:
+            return any(
+                plugin.enabled
+                for plugin in _manager().plugins()
+                if plugin.identifier in self.definition.enabled_with_any_of
+            )
         return type(self.get_value) == bool and self.get_value
 
     @classmethod

@@ -1,6 +1,9 @@
 ﻿# Retribution v1.6.3 (414th)
 
 ## Features/Improvements
+* **[UI]** *Mission Generator* gained two sections: **Mission Start** (start types, spawn-immediately, the Nevatim parking fix, the sixpack) and **AI** (radio callouts, combat landing, roadbases, unlimited fuel), both carved out of *Gameplay*. The DCS automatic fog setting and the Skynet IADS radius now say what they do, and the frontline width sits with the other frontline settings.
+* **[FIX]** Settings dialog: a page opened where the last one was left scrolled to, a setting could not grey out one on another page (Live Pilots and AI pilot levelling), a box's caption was drawn over its first row, a section with a single switch put it hard against its label, and a plugin with more options than fit --  Splash Damage has 65 -- had no way to scroll them.
+* **[Plugins]** Moose's MarkerOps is no longer a switch of its own: it is plumbing the other Moose scripts need, so it turns on with any of them and off with the last.
 * **[FIX]** Retribution would not start after the fast-forward removal: two references to the sim-speed controls were left behind in the top panel.
 * **[Plugins]** Splash Damage updated from 3.4.2 to **3.4.7**, which fixes the bad Walleye entry that was crashing missions, and the settings page now offers 65 of its options instead of 33 -- the four families new in 3.4.7 (cook-off final explosion, continuous napalm, mega smoke, the pre-explosion height gate) and twenty that were always in the script and never reachable.
 * **[FIX]** Three Splash Damage settings had never done anything, all inherited from upstream: the parked-aircraft damage boost and the anti-radiation ship-radar kill call a `getAGL()` and an `antiRadiationMissile` that are defined nowhere, so they raised on every object close enough to take wave damage, and the cluster bomblet reduction was written to a key spelled differently from the one the script reads.

@@ -1,6 +1,6 @@
 {
     "nameInUI": "Skynet IADS (juanjux's fork)",
-    "descriptionInUI": "Networks each coalition's SAMs and EWRs into an Integrated Air Defense System, coordinating detection and engagement and letting mobile SAMs shoot-and-scoot instead of fighting as isolated sites. This is a modified build, not stock Skynet: it adds the shoot-and-scoot options below, the per-type go-live ranges, and support for the CurrentHill and Swedish systems that upstream does not know about.",
+    "descriptionInUI": "Networks each coalition's SAMs and EWRs into an Integrated Air Defense System, coordinating detection and engagement and letting mobile SAMs shoot-and-scoot instead of fighting as isolated sites. This is a modified build: it carries performance work on the network update loop, and it knows the CurrentHill and Swedish systems that stock Skynet does not. How much of the map it bothers to network is set outside the plugin, under Mission Generator - Performance (\"Skynet IADS radius\"): 0 networks the whole theatre, anything else leaves the sites beyond that distance from the fighting to defend themselves.",
     "defaultValue": true,
     "specificOptions": [
         {

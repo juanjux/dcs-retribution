@@ -80,10 +80,13 @@ LIVE_PILOTS_PAGE = "Live Pilots"
 LIVE_PILOTS_RANKS_SECTION = "Ranks"
 LIVE_PILOTS_SURVIVAL_SECTION = "Survival Chance"
 LIVE_PILOTS_MORALE_SECTION = "Morale"
+LIVE_PILOTS_MORALE_STATES_SECTION = "Morale States"
 LIVE_PILOTS_MORALE_EVENTS_SECTION = "Morale Event Values"
 
 
 GAMEPLAY_SECTION = "Gameplay"
+MISSION_START_SECTION = "Mission Start"
+AI_BEHAVIOUR_SECTION = "AI"
 KNEEBOARD_SECTION = "Kneeboard"
 
 # TODO: Make sections a type and add headers.
@@ -1204,6 +1207,102 @@ class Settings:
             "the pilot leg unreadable."
         ),
     )
+    # Mission Start
+    never_delay_player_flights: bool = boolean_option(
+        "Player flights ignore TOT and spawn immediately",
+        MISSION_GENERATOR_PAGE,
+        MISSION_START_SECTION,
+        default=True,
+        detail=(
+            "Does not adjust package waypoint times. Should not be used if players "
+            "have runway or in-air starts."
+        ),
+        tooltip=(
+            "Always spawns player aircraft immediately, even if their start time is "
+            "more than 10 minutes after the start of the mission. <strong>This does "
+            "not alter the timing of your mission. Your TOT will not change. This "
+            "option only allows the player to wait on the ground.</strong>"
+        ),
+    )
+    default_start_type: StartType = choices_option(
+        "Default start type for AI aircraft",
+        page=MISSION_GENERATOR_PAGE,
+        section=MISSION_START_SECTION,
+        choices={v.value: v for v in StartType},
+        default=StartType.COLD,
+        detail=(
+            "Warning: Options other than Cold will significantly reduce the number of "
+            "targets available for OCA/Aircraft missions, and OCA/Aircraft flights "
+            "will not be included in automatically planned OCA packages."
+        ),
+    )
+    default_start_type_client: StartType = choices_option(
+        "Default start type for Player flights",
+        page=MISSION_GENERATOR_PAGE,
+        section=MISSION_START_SECTION,
+        choices={v.value: v for v in StartType},
+        default=StartType.COLD,
+        detail="Default start type for flights containing Player/Client slots.",
+    )
+    nevatim_parking_fix: bool = boolean_option(
+        "Force air-starts for aircraft at Nevatim and Ramon Airbase inoperable parking slots",
+        page=MISSION_GENERATOR_PAGE,
+        section=MISSION_START_SECTION,
+        default=False,  # TODO: set to False or remove this when DCS is fixed
+        detail=(
+            "Air-starts forced for all aircraft at Nevatim and Ramon Airbase except parking slots "
+            "which are known to work as of DCS World 2.9.4.53990."
+        ),
+    )
+    player_flights_sixpack: bool = boolean_option(
+        "Player flights can spawn on the sixpack",
+        MISSION_GENERATOR_PAGE,
+        MISSION_START_SECTION,
+        default=True,
+    )
+    # AI
+    limit_ai_radios: bool = boolean_option(
+        "Limit AI radio callouts",
+        page=MISSION_GENERATOR_PAGE,
+        section=AI_BEHAVIOUR_SECTION,
+        default=True,
+        detail="Avoids the target-detection callouts over the radio by AI. (except for AWACS flights)",
+    )
+    silence_ai_radios: bool = boolean_option(
+        "Suppress AI radio callouts",
+        page=MISSION_GENERATOR_PAGE,
+        section=AI_BEHAVIOUR_SECTION,
+        default=False,
+        detail="Keeps the AI silent at all times for flights with human pilots. (except for AWACS flights)",
+    )
+    use_ai_combat_landing: bool = boolean_option(
+        "Use AI combat landing waypoint task",
+        page=MISSION_GENERATOR_PAGE,
+        section=AI_BEHAVIOUR_SECTION,
+        default=False,
+        detail="Turns the combat landing flag on in the landing waypoint task.",
+    )
+    ground_start_ai_planes: bool = boolean_option(
+        "AI fixed-wing aircraft can use roadbases / bases with only ground spawns",
+        MISSION_GENERATOR_PAGE,
+        AI_BEHAVIOUR_SECTION,
+        default=False,
+        detail=(
+            "If enabled, AI can use roadbases or airbases which only have ground spawns. "
+            "AI will always air-start from these bases (due to DCS limitation)."
+        ),
+    )
+    ai_unlimited_fuel: bool = boolean_option(
+        "AI flights have unlimited fuel",
+        MISSION_GENERATOR_PAGE,
+        AI_BEHAVIOUR_SECTION,
+        default=True,
+        detail=(
+            "AI aircraft have unlimited fuel applied at start, removed at join/racetrack start,"
+            " and reapplied at split/racetrack end for applicable flights. "
+        ),
+    )
+    # Kneeboard
     generate_target_recon_kneeboard: bool = boolean_option(
         "Generate target recon kneeboard pages",
         MISSION_GENERATOR_PAGE,
@@ -1237,22 +1336,6 @@ class Settings:
             "threats on the target recon kneeboard. 0 uses the default radius only."
         ),
     )
-    never_delay_player_flights: bool = boolean_option(
-        "Player flights ignore TOT and spawn immediately",
-        MISSION_GENERATOR_PAGE,
-        GAMEPLAY_SECTION,
-        default=True,
-        detail=(
-            "Does not adjust package waypoint times. Should not be used if players "
-            "have runway or in-air starts."
-        ),
-        tooltip=(
-            "Always spawns player aircraft immediately, even if their start time is "
-            "more than 10 minutes after the start of the mission. <strong>This does "
-            "not alter the timing of your mission. Your TOT will not change. This "
-            "option only allows the player to wait on the ground.</strong>"
-        ),
-    )
     untasked_opfor_client_slots: bool = boolean_option(
         "Convert untasked OPFOR aircraft into client slots",
         page=MISSION_GENERATOR_PAGE,
@@ -1262,26 +1345,6 @@ class Settings:
             "Warning: Enabling this will significantly reduce the number of "
             "targets available for OCA/Aircraft missions."
         ),
-    )
-    default_start_type: StartType = choices_option(
-        "Default start type for AI aircraft",
-        page=MISSION_GENERATOR_PAGE,
-        section=GAMEPLAY_SECTION,
-        choices={v.value: v for v in StartType},
-        default=StartType.COLD,
-        detail=(
-            "Warning: Options other than Cold will significantly reduce the number of "
-            "targets available for OCA/Aircraft missions, and OCA/Aircraft flights "
-            "will not be included in automatically planned OCA packages."
-        ),
-    )
-    default_start_type_client: StartType = choices_option(
-        "Default start type for Player flights",
-        page=MISSION_GENERATOR_PAGE,
-        section=GAMEPLAY_SECTION,
-        choices={v.value: v for v in StartType},
-        default=StartType.COLD,
-        detail="Default start type for flights containing Player/Client slots.",
     )
     default_player_laser_code: DefaultPlayerLaserCode = choices_option(
         "Default laser code for Player flights",
@@ -1296,16 +1359,6 @@ class Settings:
             "flights only; existing flights are unchanged."
         ),
     )
-    nevatim_parking_fix: bool = boolean_option(
-        "Force air-starts for aircraft at Nevatim and Ramon Airbase inoperable parking slots",
-        page=MISSION_GENERATOR_PAGE,
-        section=GAMEPLAY_SECTION,
-        default=False,  # TODO: set to False or remove this when DCS is fixed
-        detail=(
-            "Air-starts forced for all aircraft at Nevatim and Ramon Airbase except parking slots "
-            "which are known to work as of DCS World 2.9.4.53990."
-        ),
-    )
     switch_baro_fix: bool = boolean_option(
         "Switch altitude type of waypoints to AMSL above seas for helicopters",
         page=MISSION_GENERATOR_PAGE,
@@ -1315,27 +1368,6 @@ class Settings:
             "AGL seems to reference the bottom of the sea which causes issues for helicopters"
             " trying to fly at altitudes lower than the sea-bottom."
         ),
-    )
-    limit_ai_radios: bool = boolean_option(
-        "Limit AI radio callouts",
-        page=MISSION_GENERATOR_PAGE,
-        section=GAMEPLAY_SECTION,
-        default=True,
-        detail="Avoids the target-detection callouts over the radio by AI. (except for AWACS flights)",
-    )
-    silence_ai_radios: bool = boolean_option(
-        "Suppress AI radio callouts",
-        page=MISSION_GENERATOR_PAGE,
-        section=GAMEPLAY_SECTION,
-        default=False,
-        detail="Keeps the AI silent at all times for flights with human pilots. (except for AWACS flights)",
-    )
-    use_ai_combat_landing: bool = boolean_option(
-        "Use AI combat landing waypoint task",
-        page=MISSION_GENERATOR_PAGE,
-        section=GAMEPLAY_SECTION,
-        default=False,
-        detail="Turns the combat landing flag on in the landing waypoint task.",
     )
     # Mission specific
     desired_player_mission_duration: timedelta = minutes_option(
@@ -1394,26 +1426,6 @@ class Settings:
             'Use this to allow spectators when disabling "Allow external views".'
         ),
     )
-    ground_start_ai_planes: bool = boolean_option(
-        "AI fixed-wing aircraft can use roadbases / bases with only ground spawns",
-        MISSION_GENERATOR_PAGE,
-        GAMEPLAY_SECTION,
-        default=False,
-        detail=(
-            "If enabled, AI can use roadbases or airbases which only have ground spawns. "
-            "AI will always air-start from these bases (due to DCS limitation)."
-        ),
-    )
-    ai_unlimited_fuel: bool = boolean_option(
-        "AI flights have unlimited fuel",
-        MISSION_GENERATOR_PAGE,
-        GAMEPLAY_SECTION,
-        default=True,
-        detail=(
-            "AI aircraft have unlimited fuel applied at start, removed at join/racetrack start,"
-            " and reapplied at split/racetrack end for applicable flights. "
-        ),
-    )
     dynamic_slots: bool = boolean_option(
         "Dynamic slots",
         MISSION_GENERATOR_PAGE,
@@ -1437,17 +1449,18 @@ class Settings:
         default=True,
         detail=("Enables dynamic cargo for airfields, ships, FARPs & warehouses."),
     )
-    player_flights_sixpack: bool = boolean_option(
-        "Player flights can spawn on the sixpack",
-        MISSION_GENERATOR_PAGE,
-        GAMEPLAY_SECTION,
-        default=True,
-    )
     use_auto_fog: bool = boolean_option(
         "Use DCS' automatic fog setting",
         MISSION_GENERATOR_PAGE,
         GAMEPLAY_SECTION,
         default=True,
+        detail=(
+            "Hands the fog to DCS, which builds it from the weather it is given --"
+            " temperature, dew point and pressure -- so it thickens in the cold and"
+            " the damp and lifts as the day warms. Switched off, the mission carries"
+            " the flat visibility and fog thickness Retribution wrote into it, which"
+            " does not change while you fly."
+        ),
     )
     gps_jamming: bool = boolean_option(
         "GPS jamming (satellite-guided weapons go long)",
@@ -1654,6 +1667,14 @@ class Settings:
         max=300,
         causes_expensive_game_update=True,
     )
+    max_frontline_width: int = bounded_int_option(
+        "Maximum frontline width (km)",
+        page=MISSION_GENERATOR_PAGE,
+        section=PERFORMANCE_SECTION,
+        default=80,
+        min=1,
+        max=100,
+    )
     perf_infantry: bool = boolean_option(
         "Generate infantry squads alongside vehicles",
         page=MISSION_GENERATOR_PAGE,
@@ -1707,16 +1728,14 @@ class Settings:
         default=0,
         min=0,
         max=10000,
-        tooltip=(
-            "Skynet's cost grows with the number of radars it manages, and it is "
-            "handed every SAM site, EWR, comms tower and power station on the map, "
-            "for both coalitions. Set a radius to hand it only what lies within that "
-            "distance of the front line, a planned package target or a carrier. "
-            "Sites outside it are still generated and still fight -- they are forced "
-            "to red alert so they defend themselves autonomously -- they are simply "
-            "not part of the coordinated network: they never go dark, never share "
-            "contacts and never react to a HARM. Independent of the culling setting "
-            "below, which removes distant units from the mission altogether."
+        detail=(
+            "Skynet costs what the number of radars it manages costs, and it is handed "
+            "every site on the map for both coalitions. A radius hands it only what "
+            "lies within that distance of the front line, a package target or a "
+            "carrier. Sites outside it still fight -- they are forced to red alert and "
+            "defend themselves -- they are simply not in the network: they never go "
+            "dark, never share contacts and never react to a HARM. Nothing to do with "
+            "the culling below, which removes distant units from the mission."
         ),
     )
     perf_do_not_cull_carrier: bool = boolean_option(
@@ -1725,14 +1744,6 @@ class Settings:
         section=PERFORMANCE_SECTION,
         default=True,
         causes_expensive_game_update=True,
-    )
-    max_frontline_width: int = bounded_int_option(
-        "Maximum frontline width (km)",
-        page=MISSION_GENERATOR_PAGE,
-        section=PERFORMANCE_SECTION,
-        default=80,
-        min=1,
-        max=100,
     )
     ground_start_scenery_remove_triggers: bool = boolean_option(
         "Generate SCENERY REMOVE OBJECTS ZONE triggers at roadbase first waypoints",
@@ -1802,7 +1813,10 @@ class Settings:
         page=LIVE_PILOTS_PAGE,
         section=GENERAL_SECTION,
         default=False,
-        detail=("Pilots hold a rank, have morale, friendship and other features."),
+        detail=(
+            "Pilots hold a rank, have morale, friendship and other features, and"
+            " pilot names are shown in-game."
+        ),
     )
     live_pilots_debrief_enemy: bool = boolean_option(
         "Report enemy aircrew in the debriefing",
@@ -1983,6 +1997,51 @@ class Settings:
             " influence wound curing times."
         ),
     )
+    morale_state_triumphant: int = bounded_int_option(
+        "Triumphant",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_MORALE_SECTION,
+        subsection=LIVE_PILOTS_MORALE_STATES_SECTION,
+        default=85,
+        min=0,
+        max=100,
+    )
+    morale_state_confident: int = bounded_int_option(
+        "Confident",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_MORALE_SECTION,
+        subsection=LIVE_PILOTS_MORALE_STATES_SECTION,
+        default=60,
+        min=0,
+        max=100,
+    )
+    morale_state_normal: int = bounded_int_option(
+        "Normal",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_MORALE_SECTION,
+        subsection=LIVE_PILOTS_MORALE_STATES_SECTION,
+        default=40,
+        min=0,
+        max=100,
+    )
+    morale_state_shaken: int = bounded_int_option(
+        "Shaken",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_MORALE_SECTION,
+        subsection=LIVE_PILOTS_MORALE_STATES_SECTION,
+        default=15,
+        min=0,
+        max=100,
+    )
+    morale_state_shattered: int = bounded_int_option(
+        "Shattered",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_MORALE_SECTION,
+        subsection=LIVE_PILOTS_MORALE_STATES_SECTION,
+        default=1,
+        min=0,
+        max=100,
+    )
     morale_lost_aircraft: int = bounded_int_option(
         "Lost his aircraft",
         page=LIVE_PILOTS_PAGE,
@@ -2155,51 +2214,6 @@ class Settings:
             " as he picks up, so a contented man asks now and then and a hollow one"
             " asks often. You answer at the end of the turn."
         ),
-    )
-    morale_state_triumphant: int = bounded_int_option(
-        "Triumphant",
-        page=LIVE_PILOTS_PAGE,
-        section=LIVE_PILOTS_MORALE_SECTION,
-        subsection=LIVE_PILOTS_MORALE_EVENTS_SECTION,
-        default=85,
-        min=0,
-        max=100,
-    )
-    morale_state_confident: int = bounded_int_option(
-        "Confident",
-        page=LIVE_PILOTS_PAGE,
-        section=LIVE_PILOTS_MORALE_SECTION,
-        subsection=LIVE_PILOTS_MORALE_EVENTS_SECTION,
-        default=60,
-        min=0,
-        max=100,
-    )
-    morale_state_normal: int = bounded_int_option(
-        "Normal",
-        page=LIVE_PILOTS_PAGE,
-        section=LIVE_PILOTS_MORALE_SECTION,
-        subsection=LIVE_PILOTS_MORALE_EVENTS_SECTION,
-        default=40,
-        min=0,
-        max=100,
-    )
-    morale_state_shaken: int = bounded_int_option(
-        "Shaken",
-        page=LIVE_PILOTS_PAGE,
-        section=LIVE_PILOTS_MORALE_SECTION,
-        subsection=LIVE_PILOTS_MORALE_EVENTS_SECTION,
-        default=15,
-        min=0,
-        max=100,
-    )
-    morale_state_shattered: int = bounded_int_option(
-        "Shattered",
-        page=LIVE_PILOTS_PAGE,
-        section=LIVE_PILOTS_MORALE_SECTION,
-        subsection=LIVE_PILOTS_MORALE_EVENTS_SECTION,
-        default=1,
-        min=0,
-        max=100,
     )
     live_pilots_wounded_chance: int = bounded_int_option(
         "Wounded instead of killed (%)",

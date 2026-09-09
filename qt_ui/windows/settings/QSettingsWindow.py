@@ -6,7 +6,7 @@ from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
 
 from PySide6 import QtWidgets
 from PySide6.QtCore import QItemSelectionModel, QPoint, QSize, Qt
-from PySide6.QtGui import QStandardItem, QStandardItemModel, QCloseEvent
+from PySide6.QtGui import QCloseEvent, QShowEvent, QStandardItem, QStandardItemModel
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QApplication,
@@ -50,6 +50,7 @@ from game.settings import (
 from game.settings.ISettingsContainer import SettingsContainer
 from game.settings.settings import (
     LIVE_PILOTS_MORALE_EVENTS_SECTION,
+    LIVE_PILOTS_MORALE_STATES_SECTION,
     LIVE_PILOTS_MORALE_SECTION,
     LIVE_PILOTS_RANKS_SECTION,
     LIVE_PILOTS_SURVIVAL_SECTION,
@@ -233,7 +234,7 @@ class AutoSettingsLayout(QGridLayout):
             else:
                 raise TypeError(f"Unhandled option type: {description}")
             row += 1
-        if self.subsection == LIVE_PILOTS_MORALE_EVENTS_SECTION:
+        if self.subsection == LIVE_PILOTS_MORALE_STATES_SECTION:
             self._build_morale_state_ladder()
         self._build_boxes()
         self.apply_visibility()
@@ -274,12 +275,23 @@ class AutoSettingsLayout(QGridLayout):
             )
             layout.on_settings_changed = self.settings_changed
             box = QGroupBox(name)
+            # Without the top margin the caption is drawn over the first row, which
+            # in the morale box had "Lost his aircraft" wearing the title.
+            box.setStyleSheet(
+                "QGroupBox { margin-top: 12px; padding-top: 8px; }"
+                "QGroupBox::title { subcontrol-origin: margin; left: 8px; }"
+            )
             box.setLayout(layout)
             self.addWidget(box, self.rowCount(), 0, 1, SLACK_COLUMN + 1)
             self.boxes.append(layout)
             self.settings_map.update(layout.settings_map)
             self.label_map.update(layout.label_map)
             self.cell_map.update(layout.cell_map)
+
+    #: What the controls column is at least. Its width otherwise comes from the
+    #: widest control in the section, so a section with a single checkbox in it put
+    #: that checkbox hard against its label while every other page had a rail.
+    CONTROL_COLUMN_WIDTH = 340
 
     def _settle(self, stretch_column: int = SLACK_COLUMN) -> None:
         """Send the slack to the bottom and the right, not between the rows.
@@ -291,6 +303,8 @@ class AutoSettingsLayout(QGridLayout):
         """
         self.setRowStretch(self.rowCount(), 1)
         self.setColumnStretch(stretch_column, 1)
+        if self.subsection is None and stretch_column == SLACK_COLUMN:
+            self.setColumnMinimumWidth(1, self.CONTROL_COLUMN_WIDTH)
 
     def _build_rank_grid(self) -> None:
         """The rank ladder: five rungs, short and full form side by side.
@@ -405,7 +419,6 @@ class AutoSettingsLayout(QGridLayout):
 
         row = self.rowCount()
         caption = QLabel(
-            "<strong>Morale states</strong><br />"
             "What each band is called and where it starts. A Triumphant pilot flies "
             "one rung above his rank; a Shattered or Broken one, a rung below it."
         )
@@ -961,6 +974,7 @@ class AutoSettingsPage(QWidget):
         page: str,
         sc: SettingsContainer,
         write_full_settings: Callable[[], None],
+        on_change: Optional[Callable[[], None]] = None,
     ) -> None:
         super().__init__()
         self.groups = [
@@ -968,7 +982,10 @@ class AutoSettingsPage(QWidget):
             for section in Settings.sections(page)
         ]
         for group in self.groups:
-            group.layout.on_settings_changed = self.refresh_page
+            # A setting can decide what another page shows -- Live Pilots greys out
+            # AI pilot levelling over on Campaign Management -- so a change has to
+            # reach every page that has been built, not just this one.
+            group.layout.on_settings_changed = on_change or self.refresh_page
 
         row = QHBoxLayout()
         row.setContentsMargins(0, 0, 0, 0)
@@ -1005,6 +1022,20 @@ class AutoSettingsPage(QWidget):
     def _show_section(self, index: int) -> None:
         if 0 <= index < self.stack.count():
             self.stack.setCurrentIndex(index)
+            self.scroll_to_top()
+
+    def scroll_to_top(self) -> None:
+        """A new section, or a new page, starts at its first setting.
+
+        Otherwise a page opened after reading down a long one starts halfway
+        through itself, which reads as settings missing from the top.
+        """
+        self.scroll.verticalScrollBar().setValue(0)
+
+    def showEvent(self, event: QShowEvent) -> None:  # noqa: N802 - Qt naming
+        # Qt tells us when the page comes to the front, whichever way it got there.
+        super().showEvent(event)
+        self.scroll_to_top()
 
     def refresh_page(self) -> None:
         """Re-evaluate every group, since one section can hide another's settings.
@@ -1247,7 +1278,7 @@ class QSettingsWidget(QtWidgets.QWizardPage, SettingsContainer):
         if scroll is None or scroll.widget() is not None:
             return
         name = self._page_names[index]
-        page = AutoSettingsPage(name, self, self.applySettings)
+        page = AutoSettingsPage(name, self, self.applySettings, self.refresh_all_pages)
         self.pages[name] = page
         scroll.setWidget(page)
 
@@ -1255,6 +1286,16 @@ class QSettingsWidget(QtWidgets.QWizardPage, SettingsContainer):
         index = self.categoryList.selectionModel().currentIndex().row()
         self._ensure_page(index)
         self.right_layout.setCurrentIndex(index)
+        shown = self.right_layout.currentWidget()
+        if isinstance(shown, AutoSettingsPage):
+            shown.scroll_to_top()
+        elif isinstance(shown, QScrollArea):
+            shown.verticalScrollBar().setValue(0)
+
+    def refresh_all_pages(self) -> None:
+        """Re-evaluate every page that has been built, not just the one in front."""
+        for page in self.pages.values():
+            page.refresh_page()
 
     def update_from_settings(self) -> None:
         self.updating_ui = True
