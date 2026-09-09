@@ -17,6 +17,8 @@ from game import Game
 from game.ato.flight import Flight
 from game.ato.flightmember import FlightMember
 from game.ato.loadouts import Loadout
+from game.data.fueltanks import loadout_fuel
+from game.utils import kgs
 from qt_ui.widgets.QLabeledWidget import QLabeledWidget
 from qt_ui.widgets.combos.QSquadronLiverySelector import SquadronLiverySelector
 from .QLoadoutEditor import QLoadoutEditor
@@ -58,7 +60,9 @@ class DcsFuelSelector(QHBoxLayout):
         self.flight = flight
         self.unit_changing = False
 
-        self.label = QLabel("Internal Fuel Quantity: ")
+        # Still SETS the internal quantity, the only fuel figure DCS takes, but says
+        # what the aircraft carries with its tanks.
+        self.label = QLabel("Fuel Quantity: ")
         self.addWidget(self.label)
 
         self.max_fuel = int(flight.unit_type.dcs_unit_type.fuel_max)
@@ -80,8 +84,31 @@ class DcsFuelSelector(QHBoxLayout):
         self.unit.setCurrentIndex(1)
         self.addWidget(self.unit)
 
+        self.tanks = QLabel()
+        self.addWidget(self.tanks)
+        self.show_tanks(flight.roster.members[0].loadout)
+
+    def show_tanks(self, loadout: Loadout) -> None:
+        """What the external tanks add, and what the aircraft therefore carries."""
+        external = loadout_fuel(loadout)
+        if not external.kgs:
+            self.tanks.setText("")
+            return
+        internal = kgs(self.fuel.value())
+        if self.unit.currentIndex() == 0:
+            self.tanks.setText(
+                f"+ {external.kgs:,.0f} kg in tanks"
+                f" = {internal.kgs + external.kgs:,.0f} kg"
+            )
+        else:
+            self.tanks.setText(
+                f"+ {external.pounds:,.0f} lb in tanks"
+                f" = {internal.pounds + external.pounds:,.0f} lb"
+            )
+
     def on_fuel_change(self, value: int) -> None:
         self.flight.fuel = value
+        self.show_tanks(self.flight.roster.members[0].loadout)
         if self.unit.currentIndex() == 0:
             self.fuel_spinner.setValue(value)
         elif self.unit.currentIndex() == 1 and not self.unit_changing:
@@ -283,6 +310,7 @@ class QFlightPayloadTab(QFrame):
         if self.flight.use_same_loadout_for_all_members:
             self.flight.roster.use_same_loadout_for_all_members()
         self.payload_editor.reset_pylons()
+        self.fuel_selector.show_tanks(loadout)
 
     def on_clear_default(self) -> None:
         self.payload_editor.clear_task_default()

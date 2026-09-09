@@ -251,6 +251,10 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   moved behind its gear along with the Skynet IADS radius. Old campaigns keep what they
   had set. ([#186](https://github.com/juanjux/dcs-retribution/pull/186))
 
+- **The payload editor counts the drop tanks.** *Internal Fuel Quantity* is *Fuel
+  Quantity* and says what the tanks add and what the aircraft therefore carries -- an
+  F-15C on three 610-gallon tanks was reading 13,500 lb when it leaves with 24,800.
+  ([#191](https://github.com/juanjux/dcs-retribution/pull/191))
 - **Leg distances in the waypoint table**, with the route total under it. Target points
   and the bullseye read 0 and are left out of the total: they are in the list but not on
   the ground track, and the leg after one of them is measured from the last waypoint
