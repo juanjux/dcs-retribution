@@ -171,7 +171,7 @@ def test_the_setting_offers_exactly_the_namings_that_exist() -> None:
     """settings.py cannot import the constants without a cycle, so pin them here."""
     (description,) = [
         d
-        for n, d in Settings.fields("Live Pilots", "Rank Names")
+        for n, d in Settings.fields("Live Pilots", "Ranks")
         if n == "live_pilots_rank_names"
     ]
     assert isinstance(description, ChoicesOption)
@@ -185,14 +185,29 @@ def test_the_setting_offers_exactly_the_namings_that_exist() -> None:
 
 def test_the_rank_boxes_are_always_shown() -> None:
     """They preview whichever naming is chosen, greyed out unless it is the custom one."""
-    fields = list(Settings.fields("Live Pilots", "Rank Names"))
-    # The naming choice heads the box, then a short and a full name per rung.
-    assert len(fields) == 1 + 2 * len(SKILL_LADDER)
+    fields = list(Settings.fields("Live Pilots", "Ranks"))
+    # The naming choice heads the ladder, then a short and a full name per rung, and
+    # a price for every rung but the one everybody starts on.
+    assert len(fields) == 1 + 2 * len(SKILL_LADDER) + (len(SKILL_LADDER) - 1)
     assert all(description.visible_when is None for _, description in fields)
 
 
+def test_every_rung_but_the_first_has_a_price_that_can_be_set() -> None:
+    """Cadet is where everyone starts, so it costs nothing by definition."""
+    from game.dcs.skills import SKILL_XP_SETTINGS, xp_thresholds
+
+    assert SKILL_XP_SETTINGS[0] is None
+    names = {n for n, _ in Settings.fields("Live Pilots", "Ranks")}
+    assert all(key in names for key in SKILL_XP_SETTINGS[1:])
+
+    settings = Settings()
+    assert xp_thresholds(settings) == xp_thresholds()
+    settings.live_pilots_rank_good_xp = 2500
+    assert xp_thresholds(settings) == (0, 1000, 2500, 4000, 8000)
+
+
 def test_only_the_abbreviation_boxes_are_capped() -> None:
-    for name, description in Settings.fields("Live Pilots", "Rank Names"):
+    for name, description in Settings.fields("Live Pilots", "Ranks"):
         if not isinstance(description, TextOption):
             continue
         assert description.max_length == (5 if name.endswith("_short") else None)
