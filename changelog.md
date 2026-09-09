@@ -1,6 +1,8 @@
 ﻿# Retribution v1.6.3 (414th)
 
 ## Features/Improvements
+* **[UI]** Qt updated to 6.11.2.
+* **[UI]** Back to the native Windows file, colour and font dialogs.
 * **[FIX]** Nine factions had no early-warning radar, so their EWR markers fielded a SAM's acquisition radar instead.
 * **[Settings]** GPS jamming, cruise missile strikes and naval magazines are switched on by their plugin alone, and their options live with it.
 * **[Settings]** The Skynet IADS radius moved to the Skynet plugin's options.

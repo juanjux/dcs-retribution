@@ -251,6 +251,12 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   moved behind its gear along with the Skynet IADS radius. Old campaigns keep what they
   had set. ([#186](https://github.com/juanjux/dcs-retribution/pull/186))
 
+- **Native dialogs again.** The file, colour and font pickers were switched to Qt's own
+  because a native one opened over the live map deadlocked the app. That was the same
+  synchronous path the ANGLE setting removes, so the workaround was costing a Windows
+  file picker for nothing. Qt itself is on 6.11.2.
+  ([#188](https://github.com/juanjux/dcs-retribution/pull/188))
+
 ### Kneeboards
 - **Friendly-packages list** plus a **package-targets map** page.
   ([#11](https://github.com/juanjux/dcs-retribution/pull/11))
