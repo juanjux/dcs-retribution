@@ -256,6 +256,13 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   the ground track, and the leg after one of them is measured from the last waypoint
   actually flown. ([#189](https://github.com/juanjux/dcs-retribution/pull/189))
 
+- **A fuel estimate for the plan**, beside the route total: taxi, the legs at their own
+  climb/cruise/combat rates, the landing reserve and a margin, against what the flight is
+  carrying. Only 24 aircraft have measured consumption figures, so the rest are estimated
+  from how much fuel they hold over a nominal range for their kind -- calibrated against
+  those 24 and deliberately leaning high.
+  ([#190](https://github.com/juanjux/dcs-retribution/pull/190))
+
 ### Kneeboards
 - **Friendly-packages list** plus a **package-targets map** page.
   ([#11](https://github.com/juanjux/dcs-retribution/pull/11))

@@ -1,6 +1,7 @@
 ﻿# Retribution v1.6.3 (414th)
 
 ## Features/Improvements
+* **[UI]** The waypoints tab estimates the fuel the plan needs, against what the flight is carrying.
 * **[UI]** The waypoint table shows each leg's distance and the route total.
 * **[Settings]** GPS jamming, cruise missile strikes and naval magazines are switched on by their plugin alone, and their options live with it.
 * **[Settings]** The Skynet IADS radius moved to the Skynet plugin's options.

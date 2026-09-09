@@ -23,6 +23,7 @@ from game.ato.flightplans.waypointbuilder import WaypointBuilder
 from game.ato.flighttype import FlightType
 from game.ato.flightwaypoint import FlightWaypoint
 from game.ato.flightwaypointtype import FlightWaypointType
+from game.ato.fuelestimate import estimate_fuel
 from game.utils import feet
 from game.ato.loadouts import Loadout
 from game.ato.package import Package
@@ -325,7 +326,19 @@ class QFlightWaypointTab(QFrame):
             self.on_change()
 
     def show_route_length(self, nautical_miles: float) -> None:
-        self.route_length.setText(f"<strong>Route:</strong> {nautical_miles:.0f} nm")
+        parts = [f"<strong>Route:</strong> {nautical_miles:.0f} nm"]
+        fuel = estimate_fuel(self.flight)
+        if fuel is not None:
+            text = (
+                f"<strong>Fuel:</strong> ~{fuel.required.pounds:,.0f} lb"
+                f" of {fuel.carried.pounds:,.0f} lb"
+            )
+            if not fuel.enough:
+                # Loud on purpose: the estimate errs high, so it saying no is still
+                # worth a look before you launch.
+                text = f"<span style='color:#E0A86B'>{text} &mdash; tight</span>"
+            parts.append(text)
+        self.route_length.setText(" &nbsp;&nbsp; ".join(parts))
 
     def on_change(self):
         self.flight_waypoint_list.update_list()
