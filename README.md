@@ -585,6 +585,11 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
 
 ### Fixes
 
+- **"Apply to all" skipped every AGL waypoint**, which froze a helicopter's whole flight
+  plan -- an Apache cruises AGL, so there was nothing left for it to set -- and most of a
+  low-level one. It goes by waypoint type now; the points tied to the ground were already
+  in that list. ([#193](https://github.com/juanjux/dcs-retribution/pull/193))
+
 - **Factions with no early-warning radar fielded a SAM's acquisition radar as one.** An
   EWR marker falls back to a search radar when the faction owns no EWR, so Ukraine,
   Georgia, Morocco, France, Argentina, Peru and Iran were putting up a Patriot STR or a
