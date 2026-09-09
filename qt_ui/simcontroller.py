@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Iterator
-from contextlib import contextmanager
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Callable, Optional, TYPE_CHECKING
@@ -13,7 +11,6 @@ from game.polldebriefingfilethread import PollDebriefingFileThread
 from game.sim.gameloop import GameLoop
 from game.sim.gameupdatecallbacks import GameUpdateCallbacks
 from game.sim.gameupdateevents import GameUpdateEvents
-from game.sim.simspeedsetting import SimSpeedSetting
 
 if TYPE_CHECKING:
     from game import Game
@@ -22,7 +19,6 @@ if TYPE_CHECKING:
 
 class SimController(QObject):
     sim_update = Signal(GameUpdateEvents)
-    sim_speed_reset = Signal(SimSpeedSetting)
     simulation_complete = Signal()
 
     def __init__(self, game: Optional[Game]) -> None:
@@ -56,11 +52,8 @@ class SimController(QObject):
 
     def set_game(self, game: Optional[Game]) -> None:
         self.recreate_game_loop(game)
-        self.sim_speed_reset.emit(SimSpeedSetting.PAUSED)
 
     def recreate_game_loop(self, game: Optional[Game]) -> None:
-        if self.game_loop is not None:
-            self.game_loop.pause()
         self.game_loop = None
         if game is not None:
             self.game_loop = GameLoop(
@@ -69,25 +62,8 @@ class SimController(QObject):
             )
         self.started = False
 
-    def set_simulation_speed(self, simulation_speed: SimSpeedSetting) -> None:
-        if self.game_loop.completed and simulation_speed is not SimSpeedSetting.PAUSED:
-            logging.debug("Cannot unpause sim: already complete")
-            return
-        if not self.started and simulation_speed is not SimSpeedSetting.PAUSED:
-            self.game_loop.start()
-            self.started = True
-        self.game_loop.set_simulation_speed(simulation_speed)
-
-    @contextmanager
-    def paused_sim(self) -> Iterator[None]:
-        with self.game_loop.paused_sim():
-            yield
-
-    def run_to_first_contact(self) -> None:
-        self.game_loop.run_to_first_contact()
-
     def generate_miz(self, output: Path) -> None:
-        self.game_loop.pause_and_generate_miz(output)
+        self.game_loop.generate_miz(output)
 
     def wait_for_debriefing(
         self, callback: Callable[[Debriefing], None]
@@ -99,7 +75,7 @@ class SimController(QObject):
     def debrief_current_state(
         self, state_path: Path, force_end: bool = False
     ) -> Debriefing:
-        return self.game_loop.pause_and_debrief(state_path, force_end)
+        return self.game_loop.debrief(state_path, force_end)
 
     def process_results(self, debriefing: Debriefing) -> None:
         return self.game_loop.complete_with_results(debriefing)

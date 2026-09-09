@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from game.settings import Settings
 from game.settings.settings import (
+    BUILDING_REPAIR_TUNING_SECTION,
     CAMPAIGN_MANAGEMENT_PAGE,
     GROUND_OBJECT_REPAIR_TUNING_SECTION,
     HQ_AUTOMATION_SECTION,
@@ -82,3 +83,59 @@ def test_nothing_is_hidden_from_a_reader_that_wants_everything() -> None:
         for name, _ in Settings.fields(page, section)
     }
     assert by_page < every, "the page walk is the smaller of the two, on purpose"
+
+
+def test_both_repair_tuning_sections_are_behind_their_own_switch() -> None:
+    listed = list(Settings.sections(CAMPAIGN_MANAGEMENT_PAGE))
+    owned = Settings.sections_opened_from_a_switch()
+    for section in (
+        GROUND_OBJECT_REPAIR_TUNING_SECTION,
+        BUILDING_REPAIR_TUNING_SECTION,
+    ):
+        assert section not in listed
+        assert section in owned
+
+
+def test_a_setting_another_one_takes_over_says_who_decides() -> None:
+    """enabled_when is what greys a setting out; nothing else knows to."""
+    settings = Settings()
+    by_name = dict(Settings.all_fields())
+
+    levelling = by_name["ai_pilot_levelling"].enabled_when
+    assert levelling is not None
+    settings.live_pilots_enabled = False
+    assert levelling(settings), "his own switch while Live Pilots is off"
+    settings.live_pilots_enabled = True
+    assert not levelling(settings), "and Live Pilots levels them instead"
+
+    budget = by_name["building_repair_budget_percent"].enabled_when
+    assert budget is not None
+    settings.automate_building_repairs = False
+    assert not budget(settings)
+    settings.automate_building_repairs = True
+    assert budget(settings)
+
+    assert (
+        by_name["building_repair_turns"].enabled_when is None
+    ), "your own repairs take the same turns, so it stands whoever ordered them"
+
+
+def test_the_settings_that_cost_frames_live_with_the_other_ones() -> None:
+    performance = {
+        name for name, _ in Settings.fields("Mission Generator", "Performance")
+    }
+    for name in (
+        "max_frontline_width",
+        "ground_start_scenery_remove_triggers",
+        "ground_start_trucks",
+        "ground_start_trucks_roadbase",
+        "ground_start_ground_power_trucks",
+        "ground_start_ground_power_trucks_roadbase",
+        "ground_start_airbase_statics_farps_remove",
+    ):
+        assert name in performance
+
+
+def test_naming_the_pilots_is_not_a_switch_of_its_own() -> None:
+    """It is most of what Live Pilots is for, so it rides on it."""
+    assert "live_pilots_show_names" not in dict(Settings.all_fields())

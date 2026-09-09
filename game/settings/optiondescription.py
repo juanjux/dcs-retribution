@@ -20,6 +20,11 @@ class OptionDescription:
     #: each option subclass adds after these.
     visible_when: Optional[Callable[[Any], bool]] = field(default=None, kw_only=True)
 
+    #: When set, the setting is shown but greyed out unless this returns True. For
+    #: one that another setting takes over: hiding it would leave the player looking
+    #: for it, greying it says who is deciding instead.
+    enabled_when: Optional[Callable[[Any], bool]] = field(default=None, kw_only=True)
+
     #: A box within the section, for the settings that are a detail of it rather than
     #: a section in their own right. They sit after the section's own rows.
     subsection: Optional[str] = field(default=None, kw_only=True)

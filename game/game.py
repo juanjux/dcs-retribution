@@ -656,7 +656,7 @@ class Game:
             return
         for coalition in (self.blue, self.red):
             for squadron in coalition.air_wing.iter_squadrons():
-                earned = experience_for_skill(squadron.difficulty_skill)
+                earned = experience_for_skill(squadron.difficulty_skill, self.settings)
                 for pilot in list(squadron.pilot_pool) + list(squadron.current_roster):
                     pilot.record.xp = max(pilot.record.xp, earned)
         self.live_pilots_initialized = True

@@ -104,9 +104,6 @@ class FlightState(ABC):
     def will_join_air_combat(self) -> bool:
         return False
 
-    def should_halt_sim(self) -> bool:
-        return False
-
     @property
     @abstractmethod
     def is_waiting_for_start(self) -> bool: ...

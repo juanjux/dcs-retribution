@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 
 from .optiondescription import OptionDescription, SETTING_DESCRIPTION_KEY
 
@@ -21,6 +21,7 @@ def bounded_int_option(
     tooltip: Optional[str] = None,
     causes_expensive_game_update: bool = False,
     subsection: Optional[str] = None,
+    enabled_when: Optional[Callable[[Any], bool]] = None,
     **kwargs: Any,
 ) -> int:
     return field(
@@ -35,6 +36,7 @@ def bounded_int_option(
                 min=min,
                 max=max,
                 subsection=subsection,
+                enabled_when=enabled_when,
             )
         },
         default=default,

@@ -33,10 +33,38 @@ class DummyObject:
         self.__dict__.update(state)
 
 
+class RemovedEnum:
+    """Stands in for an enum a save still names after the feature was dropped.
+
+    A settings enum is pickled by reference, so deleting the class stops every
+    campaign that ever stored one from loading at all. The value it resolves to is
+    thrown away by Settings.__setstate__ -- there is no field left to hold it -- but
+    it has to resolve to something first.
+    """
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        # An enum member unpickles as EnumClass(value); take the value and drop it.
+        pass
+
+    def __setstate__(self, state: Any) -> None:
+        pass
+
+
+#: Classes that were pickled into saves and no longer exist. See RemovedEnum.
+REMOVED_CLASSES = {
+    # Fast forward, removed along with the whole feature.
+    "FastForwardStopCondition",
+    "CombatResolutionMethod",
+}
+
+
 class MigrationUnpickler(pickle.Unpickler):
     """Custom unpickler to migrate campaign save-files for when components have been moved"""
 
     def find_class(self, module: Any, name: str) -> Any:
+        if module == "game.settings.settings" and name in REMOVED_CLASSES:
+            return RemovedEnum
+
         handlers = [
             self._handle_airport_migrations,
             self._handle_weather_classes,

@@ -32,7 +32,6 @@ from game.weather.atmosxliveweather import (
     live_weather_enabled,
     refresh_live_weather,
 )
-from game.settings.settings import FastForwardStopCondition
 from game.sim import GameUpdateEvents
 from qt_ui.models import GameModel
 from qt_ui.simcontroller import SimController
@@ -42,7 +41,6 @@ from qt_ui.widgets.QConditionsDialog import QConditionsDialog
 from qt_ui.widgets.QConditionsWidget import QConditionsWidget
 from qt_ui.widgets.clientslots import MaxPlayerCount
 from qt_ui.widgets.QMissionProgressPanel import MissionProgressPanel
-from qt_ui.widgets.simspeedcontrols import SimSpeedControls
 from game.income import Income
 from game.theater import Player
 from qt_ui.windows.AirWingDialog import AirWingDialog
@@ -148,8 +146,6 @@ class QTopPanel(QFrame):
         self._ai_status_timer.timeout.connect(self._refresh_ai_status)
         self._ai_status_timer.start(1000)
 
-        self.simSpeedControls = SimSpeedControls(sim_controller)
-
         self.controls = [
             self.air_wing,
             self.transfers,
@@ -206,8 +202,6 @@ class QTopPanel(QFrame):
         actions = QHBoxLayout()
         actions.setContentsMargins(0, 0, 0, 0)
         actions.setSpacing(8)
-        if ui_flags.show_sim_speed_controls:
-            actions.addLayout(self.simSpeedControls)
         players = MaxPlayerCount(self.game_model.ato_model)
         commandbar.blend_into_bar(players)
         actions.addLayout(players)
@@ -533,108 +527,6 @@ class QTopPanel(QFrame):
         mbox.exec_()
         return True
 
-    # Lowest start_type compatible with each player-targeted fast-forward
-    # stop condition. If a player flight's start_type is "later" (skips
-    # earlier states), the stop condition never fires for that flight.
-    # Ordering of states the flight passes through:
-    #   COLD -> StartUp -> Taxi -> Takeoff -> Navigating
-    #   WARM ->           Taxi -> Takeoff -> Navigating
-    #   RUNWAY ->                 Takeoff -> Navigating
-    #   IN_FLIGHT ->                         Navigating
-    _STOP_CONDITION_REQUIRED_START: dict[
-        FastForwardStopCondition, frozenset[StartType]
-    ] = {
-        FastForwardStopCondition.PLAYER_STARTUP: frozenset({StartType.COLD}),
-        FastForwardStopCondition.PLAYER_TAXI: frozenset(
-            {StartType.COLD, StartType.WARM}
-        ),
-        FastForwardStopCondition.PLAYER_TAKEOFF: frozenset(
-            {StartType.COLD, StartType.WARM, StartType.RUNWAY}
-        ),
-    }
-
-    def _mismatched_player_flights(self) -> List[Flight]:
-        """Return player flights whose start_type would skip the configured
-        fast-forward stop condition (so the sim would never halt for them)."""
-        cond = self.game.settings.fast_forward_stop_condition
-        compatible = self._STOP_CONDITION_REQUIRED_START.get(cond)
-        if compatible is None:
-            return []
-        mismatched: List[Flight] = []
-        for package in self.game.blue.ato.packages:
-            for flight in package.flights:
-                if flight.client_count <= 0:
-                    continue
-                if flight.start_type not in compatible:
-                    mismatched.append(flight)
-        return mismatched
-
-    @staticmethod
-    def _matching_start_type_for_condition(
-        cond: FastForwardStopCondition,
-    ) -> StartType:
-        """Earliest-state start_type compatible with cond. Picking the
-        earliest preserves the user's intent ('halt at startup' means
-        actually go through startup), at the cost of a longer pre-mission
-        spool. Users who want a shorter spool can instead pick the
-        'halt at this flight's start' branch."""
-        if cond is FastForwardStopCondition.PLAYER_STARTUP:
-            return StartType.COLD
-        if cond is FastForwardStopCondition.PLAYER_TAXI:
-            return StartType.WARM
-        if cond is FastForwardStopCondition.PLAYER_TAKEOFF:
-            return StartType.RUNWAY
-        # Caller ensures cond targets a player-flight state.
-        raise ValueError(f"No matching start type for {cond}")
-
-    def resolve_start_type_mismatches(self) -> bool:
-        """For every player flight whose start_type makes the configured
-        fast-forward stop condition unreachable, ask the user to choose:
-        adjust the flight or override the stop condition (both
-        mission-only). Returns False if the user cancelled."""
-        mismatches = self._mismatched_player_flights()
-        if not mismatches:
-            return True
-
-        cond = self.game.settings.fast_forward_stop_condition
-        matching = self._matching_start_type_for_condition(cond)
-
-        for flight in mismatches:
-            mbox = QMessageBox(self)
-            mbox.setIcon(QMessageBox.Icon.Question)
-            mbox.setWindowTitle("Fast-forward / start-type mismatch")
-            mbox.setText(
-                f"<b>{flight}</b> starts <b>{flight.start_type.value}</b>, but "
-                f"<i>Fast forward until</i> is set to "
-                f"<b>{cond.value}</b>, which is a state this flight will "
-                f"skip.<br /><br />"
-                f"Where would you like fast-forward to stop for this "
-                f"flight?"
-            )
-            mbox.setInformativeText(
-                "Both choices apply to <i>this mission only</i> and do not "
-                "modify your saved settings."
-            )
-            change_flight_btn = mbox.addButton(
-                f"Change this flight to {matching.value}",
-                QMessageBox.ButtonRole.AcceptRole,
-            )
-            halt_at_spawn_btn = mbox.addButton(
-                f"Halt at this flight's start ({flight.start_type.value})",
-                QMessageBox.ButtonRole.AcceptRole,
-            )
-            cancel_btn = mbox.addButton(QMessageBox.StandardButton.Cancel)
-            mbox.setEscapeButton(cancel_btn)
-            mbox.exec_()
-            clicked = mbox.clickedButton()
-            if clicked is change_flight_btn:
-                flight.start_type = matching
-            elif clicked is halt_at_spawn_btn:
-                flight.halt_sim_on_spawn = True
-            else:
-                return False
-        return True
-
     def launch_mission(self):
         """Finishes planning and waits for mission completion."""
         from game.agent.session import AI_SESSION
@@ -670,14 +562,6 @@ class QTopPanel(QFrame):
             if not self.confirm_negative_start_time(negative_starts, now):
                 return
 
-        if self.game.settings.fast_forward_stop_condition not in [
-            FastForwardStopCondition.DISABLED,
-            FastForwardStopCondition.MANUAL,
-        ]:
-            if not self.resolve_start_type_mismatches():
-                return
-            with logged_duration("Simulating to first contact"):
-                self.sim_controller.run_to_first_contact()
         self.sim_controller.generate_miz(
             persistency.mission_path_for("retribution_nextturn.miz")
         )

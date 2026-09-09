@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 from .frozencombat import FrozenCombat
 from .. import GameUpdateEvents
 from ...ato.flightstate import InCombat
-from game.settings.settings import CombatResolutionMethod
+from game.sim.combat.resolution import CombatResolutionMethod
 
 if TYPE_CHECKING:
     from game.ato import Flight

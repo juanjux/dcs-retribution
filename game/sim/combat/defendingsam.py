@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from typing import TYPE_CHECKING
 
 from game.ato.flightstate import InCombat
-from game.settings.settings import CombatResolutionMethod
+from game.sim.combat.resolution import CombatResolutionMethod
 from .frozencombat import FrozenCombat
 from .. import GameUpdateEvents
 

@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from typing import TYPE_CHECKING
 
 from game.ato.flightstate import InCombat, InFlight
-from game.settings.settings import CombatResolutionMethod
+from game.sim.combat.resolution import CombatResolutionMethod
 from .. import GameUpdateEvents
 
 if TYPE_CHECKING:

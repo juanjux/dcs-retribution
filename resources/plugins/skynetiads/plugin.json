@@ -1,6 +1,6 @@
 {
-    "nameInUI": "Skynet IADS",
-    "descriptionInUI": "Networks each coalition's SAMs and EWRs into an Integrated Air Defense System, coordinating detection and engagement and letting mobile SAMs shoot-and-scoot instead of fighting as isolated sites.",
+    "nameInUI": "Skynet IADS (juanjux's fork)",
+    "descriptionInUI": "Networks each coalition's SAMs and EWRs into an Integrated Air Defense System, coordinating detection and engagement and letting mobile SAMs shoot-and-scoot instead of fighting as isolated sites. This is a modified build, not stock Skynet: it adds the shoot-and-scoot options below, the per-type go-live ranges, and support for the CurrentHill and Swedish systems that upstream does not know about.",
     "defaultValue": true,
     "specificOptions": [
         {

@@ -83,10 +83,6 @@ class AircraftGenerator:
         self.ground_spawns = ground_spawns
         self.country_assigner = country_assigner
 
-        self.ewrj_package_dict: Dict[int, List[FlyingGroup[Any]]] = {}
-        self.ewrj = settings.plugins.get("ewrj")
-        self.need_ecm = settings.plugin_option("ewrj.ecm_required")
-
     @cached_property
     def use_client(self) -> bool:
         """True if Client should be used instead of Player."""
@@ -330,9 +326,6 @@ class AircraftGenerator:
         if dcs_type.networked_datalink:
             self.setup_internal_datalink_network(group)
 
-        if self.ewrj:
-            self._track_ewrj_flight(flight, group)
-
         return group
 
     @staticmethod
@@ -356,55 +349,6 @@ class AircraftGenerator:
                 for member_link in net.team_members:
                     assert isinstance(member_link, ViperLink16NetworkMemberLink)
                     member_link.tdoa = True
-
-    def _track_ewrj_flight(self, flight: Flight, group: FlyingGroup[Any]) -> None:
-        if not self.ewrj_package_dict.get(id(flight.package)):
-            self.ewrj_package_dict[id(flight.package)] = []
-        added = False
-        if (
-            not flight.flight_type.is_air_to_air
-            and any(
-                [
-                    wpt
-                    for wpt in group.points
-                    if wpt.name in ["JOIN", "SPLIT", "RACETRACK START", "RACETRACK END"]
-                    and any(
-                        [
-                            t
-                            for t in wpt.tasks
-                            if isinstance(t, RunScript)
-                            and (
-                                "Djamming" in t.params["action"]["params"]["command"]
-                                or "EWjamm" in t.params["action"]["params"]["command"]
-                            )
-                        ]
-                    )
-                ]
-            )
-            and (
-                not self.need_ecm
-                or flight.any_member_has_weapon_of_type(WeaponType.JAMMER)
-                or flight.any_member_has_weapon_of_type(WeaponType.OFFENSIVE_JAMMER)
-                or flight.squadron.aircraft.has_built_in_ecm
-                or flight.squadron.aircraft.has_built_in_jamming
-            )
-        ):
-            self.ewrj_package_dict[id(flight.package)].append(group)
-            added = True
-        if (
-            added
-            or not flight.flight_type.is_air_to_air
-            and self.ewrj_package_dict[id(flight.package)]
-        ):
-            for f in flight.package.flights:
-                if f is flight or f.group_id == 0 or f.flight_type.is_air_to_air:
-                    continue
-                g = self.mission.find_group_by_id(f.group_id)
-                if (
-                    isinstance(g, FlyingGroup)
-                    and g not in self.ewrj_package_dict[id(flight.package)]
-                ):
-                    self.ewrj_package_dict[id(flight.package)].append(g)
 
     def _reserve_frequencies_and_tacan(self, ato: AirTaskingOrder) -> None:
         for package in ato.packages:
