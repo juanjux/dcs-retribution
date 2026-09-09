@@ -1,6 +1,6 @@
-from typing import Optional
+from typing import Optional, Sequence
 
-from PySide6.QtCore import QItemSelectionModel, QPoint, QModelIndex
+from PySide6.QtCore import QItemSelectionModel, QPoint, QModelIndex, Qt, Signal
 from PySide6.QtGui import QStandardItem, QStandardItemModel
 from PySide6.QtWidgets import (
     QHeaderView,
@@ -15,10 +15,23 @@ from game.ato.flight import Flight
 from game.ato.flightwaypoint import FlightWaypoint
 from game.ato.flightwaypointtype import FlightWaypointType
 from game.ato.package import Package
-from game.utils import Distance
+from game.utils import Distance, meters
 from qt_ui.windows.mission.flight.waypoints.QFlightWaypointItem import QWaypointItem
 
-HEADER_LABELS = ["Name", "Alt (ft)", "Alt Type", "TOT/DEPART"]
+HEADER_LABELS = ["Name", "Alt (ft)", "Alt Type", "TOT/DEPART", "Leg (nm)"]
+
+#: Not on the ground track, so they neither start a leg nor end one: a map reference,
+#: an alternate field, and the target points, which are engaged from the ingress
+#: rather than overflown.
+NOT_FLOWN = frozenset(
+    {
+        FlightWaypointType.BULLSEYE,
+        FlightWaypointType.DIVERT,
+        FlightWaypointType.TARGET_POINT,
+        FlightWaypointType.TARGET_GROUP_LOC,
+        FlightWaypointType.TARGET_SHIP,
+    }
+)
 
 
 class AltitudeEditorDelegate(QStyledItemDelegate):
@@ -33,7 +46,38 @@ class AltitudeEditorDelegate(QStyledItemDelegate):
         return editor
 
 
+def leg_distances(
+    waypoints: Sequence[FlightWaypoint],
+) -> tuple[list[Optional[float]], float]:
+    """Nautical miles from the previous flown waypoint, and the route total.
+
+    ``None`` for a waypoint that is not part of the ground track, and for the first
+    one, which has nothing before it. Straight legs: a racetrack's laps are time
+    spent at a place, not distance along the route.
+    """
+    legs: list[Optional[float]] = []
+    previous: Optional[FlightWaypoint] = None
+    total = 0.0
+    for waypoint in waypoints:
+        if waypoint.waypoint_type in NOT_FLOWN:
+            legs.append(None)
+            continue
+        if previous is None:
+            legs.append(None)
+        else:
+            leg = meters(
+                previous.position.distance_to_point(waypoint.position)
+            ).nautical_miles
+            legs.append(leg)
+            total += leg
+        previous = waypoint
+    return legs, total
+
+
 class QFlightWaypointList(QTableView):
+    #: Total ground track in nautical miles, emitted whenever the list is rebuilt.
+    route_length_changed = Signal(float)
+
     def __init__(self, package: Package, flight: Flight):
         super().__init__()
         self._last_waypoint: Optional[FlightWaypoint] = None
@@ -68,8 +112,10 @@ class QFlightWaypointList(QTableView):
             self.model.setHorizontalHeaderLabels(HEADER_LABELS)
 
             waypoints = self.flight.flight_plan.waypoints
+            legs, total = leg_distances(waypoints)
             for row, waypoint in enumerate(waypoints):
-                self._add_waypoint_row(row, self.flight, waypoint)
+                self._add_waypoint_row(row, self.flight, waypoint, legs[row])
+            self.route_length_changed.emit(total)
             self.selectionModel().setCurrentIndex(
                 self.model.index(current_index, 0),
                 QItemSelectionModel.SelectionFlag.Select,
@@ -92,6 +138,7 @@ class QFlightWaypointList(QTableView):
         row: int,
         flight: Flight,
         waypoint: FlightWaypoint,
+        leg: Optional[float],
     ) -> None:
         self.model.insertRow(self.model.rowCount())
 
@@ -111,6 +158,13 @@ class QFlightWaypointList(QTableView):
         tot_item = QStandardItem(tot)
         tot_item.setEditable(False)
         self.model.setItem(row, 3, tot_item)
+
+        leg_item = QStandardItem("0" if leg is None else f"{leg:.0f}")
+        leg_item.setEditable(False)
+        leg_item.setTextAlignment(
+            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+        )
+        self.model.setItem(row, 4, leg_item)
 
     def on_changed(self) -> None:
         for i in range(self.model.rowCount()):

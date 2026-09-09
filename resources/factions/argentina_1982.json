@@ -47,7 +47,8 @@
   ],
   "missiles": [],
   "air_defense_units": [
-    "Bofors 40 mm Gun"
+    "Bofors 40 mm Gun",
+    "EWR AN/FPS-117 Radar"
   ],
   "requirements": {},
   "carrier_names": [
