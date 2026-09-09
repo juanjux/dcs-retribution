@@ -16,12 +16,14 @@ from PySide6.QtCore import QLocale, Qt
 from PySide6.QtWidgets import (
     QCheckBox,
     QDialog,
+    QFrame,
     QDoubleSpinBox,
     QGridLayout,
     QGroupBox,
     QHBoxLayout,
     QLabel,
     QPushButton,
+    QScrollArea,
     QSpinBox,
     QVBoxLayout,
     QWidget,
@@ -106,13 +108,19 @@ class PluginOptionsDialog(QDialog):
     def __init__(self, plugin: LuaPlugin, parent: Optional[QWidget] = None) -> None:
         super().__init__(parent)
         self.setWindowTitle(f"{plugin.name} options")
-        self.setMinimumWidth(460)
+        self.setMinimumWidth(560)
+        self.resize(560, 700)
 
         column = QVBoxLayout()
         self.setLayout(column)
+        # Splash Damage has sixty-five of them, so the box scrolls rather than
+        # growing a dialog taller than the screen.
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
         # The description is already on the row this was opened from.
-        column.addWidget(PluginOptionsBox(plugin, with_description=False))
-        column.addStretch()
+        scroll.setWidget(PluginOptionsBox(plugin, with_description=False))
+        column.addWidget(scroll, 1)
 
         buttons = QHBoxLayout()
         buttons.addStretch()

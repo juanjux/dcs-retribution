@@ -16,6 +16,7 @@ from game.settings.settings import (
     HQ_AUTOMATION_SECTION,
     LIVE_PILOTS_MORALE_EVENTS_SECTION,
     LIVE_PILOTS_MORALE_SECTION,
+    LIVE_PILOTS_MORALE_STATES_SECTION,
     LIVE_PILOTS_PAGE,
 )
 
@@ -51,7 +52,7 @@ def test_a_box_within_a_section_is_not_one_of_its_rows() -> None:
     ]
     assert own == ["morale_enabled"]
 
-    box = [
+    events = [
         name
         for name, _ in Settings.fields(
             LIVE_PILOTS_PAGE,
@@ -59,15 +60,24 @@ def test_a_box_within_a_section_is_not_one_of_its_rows() -> None:
             LIVE_PILOTS_MORALE_EVENTS_SECTION,
         )
     ]
-    assert "morale_lost_aircraft" in box
-    assert "morale_state_shaken" in box
-    assert not set(own) & set(box)
+    states = [
+        name
+        for name, _ in Settings.fields(
+            LIVE_PILOTS_PAGE,
+            LIVE_PILOTS_MORALE_SECTION,
+            LIVE_PILOTS_MORALE_STATES_SECTION,
+        )
+    ]
+    assert "morale_lost_aircraft" in events
+    assert "morale_state_shaken" in states, "the bands are a box of their own"
+    assert not set(own) & set(events) & set(states)
 
 
 def test_the_boxes_are_listed_in_the_order_they_are_declared() -> None:
     assert list(Settings.subsections(LIVE_PILOTS_PAGE, LIVE_PILOTS_MORALE_SECTION)) == [
-        LIVE_PILOTS_MORALE_EVENTS_SECTION
-    ]
+        LIVE_PILOTS_MORALE_STATES_SECTION,
+        LIVE_PILOTS_MORALE_EVENTS_SECTION,
+    ], "the bands name what the events move a pilot between, so they come first"
 
 
 def test_nothing_is_hidden_from_a_reader_that_wants_everything() -> None:
