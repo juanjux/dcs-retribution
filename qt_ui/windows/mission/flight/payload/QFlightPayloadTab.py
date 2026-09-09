@@ -88,6 +88,9 @@ class DcsFuelSelector(QHBoxLayout):
         self.addWidget(self.tanks)
         self.show_tanks(flight.roster.members[0].loadout)
 
+    def _loadout(self) -> Loadout:
+        return self.flight.roster.members[0].loadout
+
     def show_tanks(self, loadout: Loadout) -> None:
         """What the external tanks add, and what the aircraft therefore carries."""
         external = loadout_fuel(loadout)
@@ -108,7 +111,7 @@ class DcsFuelSelector(QHBoxLayout):
 
     def on_fuel_change(self, value: int) -> None:
         self.flight.fuel = value
-        self.show_tanks(self.flight.roster.members[0].loadout)
+        self.show_tanks(self._loadout())
         if self.unit.currentIndex() == 0:
             self.fuel_spinner.setValue(value)
         elif self.unit.currentIndex() == 1 and not self.unit_changing:
@@ -149,6 +152,7 @@ class QFlightPayloadTab(QFrame):
             flight, self.flight.roster.members[0], game
         )
         self.payload_editor.toggled.connect(self.on_custom_toggled)
+        self.payload_editor.pylons_changed.connect(self.on_pylons_changed)
         self.payload_editor.saved.connect(self.on_saved_payload)
 
         layout = QVBoxLayout()
@@ -311,6 +315,9 @@ class QFlightPayloadTab(QFrame):
             self.flight.roster.use_same_loadout_for_all_members()
         self.payload_editor.reset_pylons()
         self.fuel_selector.show_tanks(loadout)
+
+    def on_pylons_changed(self) -> None:
+        self.fuel_selector.show_tanks(self.member_selector.selected_member.loadout)
 
     def on_clear_default(self) -> None:
         self.payload_editor.clear_task_default()

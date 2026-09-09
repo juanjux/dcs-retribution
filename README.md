@@ -585,6 +585,10 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
 
 ### Fixes
 
+- **Three in the fuel figures.** Adding or removing a drop tank did not move the total;
+  the estimate took no account of the altitude flown; and it charged the join and split
+  legs at the combat rate, which put a strike's eighty-mile egress at over twice its
+  real cost. ([#192](https://github.com/juanjux/dcs-retribution/pull/192))
 - **Take Off crashed on any flight with a racetrack.** The EW jamming plugin was
   dropped, but five places still read its options, and the check for whether it was
   there sat after the read. Any campaign started since then died on its first BARCAP,
