@@ -231,9 +231,6 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   that shoots, the electronic-warfare symbol for a jammer. A site that only watches draws
   its detection ring dashed, in its faction's colour, so an EWR's reach is visible without
   turning on the SAM detection layer. ([#183](https://github.com/juanjux/dcs-retribution/pull/183))
-- **Ignore parking space at airbases.** For a campaign where one side's ramps are doing
-  the balancing: airbases hold as many aircraft as you can pay for, carriers and FOBs keep
-  their real capacity. ([#183](https://github.com/juanjux/dcs-retribution/pull/183))
 
 ### Kneeboards
 - **Friendly-packages list** plus a **package-targets map** page.

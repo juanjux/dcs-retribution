@@ -3,7 +3,6 @@
 ## Features/Improvements
 * **[UI]** Radar sites, missile batteries and jamming sites are interchangeable: buy any of the three where one stands, and the icon follows what is parked there.
 * **[Map]** A site that only watches draws its detection range dashed, in its faction's colour.
-* **[Campaign]** New *Ignore parking space at airbases* option, for a campaign where one side's ramps are doing the balancing.
 * **[FIX]** A site pinned by a campaign generated without its point defence.
 * **[Factions]** WRL Task Force Blue gets an AN/FPS-117, so its EWR markers stop fielding Patriot search radars.
 * **[FIX]** A campaign's `ground_forces` pin was ignored on EWR markers, so GPS jamming sites never generated.
