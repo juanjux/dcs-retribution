@@ -765,11 +765,7 @@ class Settings:
         default=False,
         detail=(
             "Airbases hold as many aircraft as you can pay for, whatever their ramp "
-            "size. For a campaign where one side's bases are much smaller than the "
-            "other's and the shortage of concrete is doing the balancing. Carriers "
-            "and FOBs keep their real capacity. DCS still has only the parking spots "
-            "it has, so a flight that finds no room starts in the air and untasked "
-            "aircraft stop being placed once the ramp is full."
+            "size. Carriers and FOBs are unaffected."
         ),
     )
     # Feature flag for squadron limits.

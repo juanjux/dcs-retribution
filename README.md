@@ -225,9 +225,9 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   move the dialog makes with its pages, and a section with nothing left to show drops out
   of the list. "Campaign Management+" is folded into Campaign Management.
 
-- **Ignore parking space at airbases.** For a campaign where one side's ramps are doing
-  the balancing: airbases hold as many aircraft as you can pay for, carriers and FOBs keep
-  their real capacity. ([#184](https://github.com/juanjux/dcs-retribution/pull/184))
+- **Ignore parking space at airbases.** Airbases hold as many aircraft as you can pay
+  for, whatever their ramp size. Carriers and FOBs are unaffected.
+  ([#184](https://github.com/juanjux/dcs-retribution/pull/184))
 
 ### Kneeboards
 - **Friendly-packages list** plus a **package-targets map** page.
