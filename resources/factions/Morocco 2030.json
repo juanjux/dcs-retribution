@@ -61,7 +61,8 @@
   ],
   "air_defense_units": [
     "AAA ZU-23 Emplacement",
-    "M163 Vulcan Air Defense System"
+    "M163 Vulcan Air Defense System",
+    "EWR AN/FPS-117 Radar"
   ],
   "naval_units": [
     "FAC La Combattante IIa",
