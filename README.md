@@ -589,6 +589,15 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   the estimate took no account of the altitude flown; and it charged the join and split
   legs at the combat rate, which put a strike's eighty-mile egress at over twice its
   real cost. ([#192](https://github.com/juanjux/dcs-retribution/pull/192))
+- **Take Off crashed on any flight with a racetrack.** The EW jamming plugin was
+  dropped, but five places still read its options, and the check for whether it was
+  there sat after the read. Any campaign started since then died on its first BARCAP,
+  AEW&C or tanker. ([#194](https://github.com/juanjux/dcs-retribution/pull/194))
+
+- **"Apply to all" skipped every AGL waypoint**, which froze a helicopter's whole flight
+  plan -- an Apache cruises AGL, so there was nothing left for it to set -- and most of a
+  low-level one. It goes by waypoint type now; the points tied to the ground were already
+  in that list. ([#193](https://github.com/juanjux/dcs-retribution/pull/193))
 
 - **Factions with no early-warning radar fielded a SAM's acquisition radar as one.** An
   EWR marker falls back to a search radar when the faction owns no EWR, so Ukraine,
