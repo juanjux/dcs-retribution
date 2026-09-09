@@ -1,6 +1,7 @@
 ﻿# Retribution v1.6.3 (414th)
 
 ## Features/Improvements
+* **[FIX]** Settings dialog: the boxes inside a section had lost their frame and read as stray labels, and a section long enough to scroll gave every short section beside it a scrollbar it did not need.
 * **[UI]** *Mission Generator* gained two sections: **Mission Start** (start types, spawn-immediately, the Nevatim parking fix, the sixpack) and **AI** (radio callouts, combat landing, roadbases, unlimited fuel), both carved out of *Gameplay*. The DCS automatic fog setting and the Skynet IADS radius now say what they do, and the frontline width sits with the other frontline settings.
 * **[FIX]** Settings dialog: a page opened where the last one was left scrolled to, a setting could not grey out one on another page (Live Pilots and AI pilot levelling), a box's caption was drawn over its first row, a section with a single switch put it hard against its label, and a plugin with more options than fit --  Splash Damage has 65 -- had no way to scroll them.
 * **[Plugins]** Moose's MarkerOps is no longer a switch of its own: it is plumbing the other Moose scripts need, so it turns on with any of them and off with the last.
