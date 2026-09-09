@@ -57,6 +57,8 @@ def _atomic_write_text(path: Path, text: str) -> None:
 
 class QLoadoutEditor(QGroupBox):
     saved = Signal(str)
+    #: Any pylon on any member changed.
+    pylons_changed = Signal()
 
     def __init__(self, flight: Flight, flight_member: FlightMember, game: Game) -> None:
         super().__init__("Use custom loadout")
@@ -75,7 +77,9 @@ class QLoadoutEditor(QGroupBox):
                 QSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
             )
             layout.addWidget(label, i, 0)
-            layout.addWidget(QPylonEditor(game, flight, flight_member, pylon), i, 1)
+            editor = QPylonEditor(game, flight, flight_member, pylon)
+            editor.pylon_changed.connect(self.pylons_changed)
+            layout.addWidget(editor, i, 1)
 
         vbox.addLayout(layout)
 

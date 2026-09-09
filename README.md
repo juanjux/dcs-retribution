@@ -585,6 +585,11 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
 
 ### Fixes
 
+- **Three in the fuel figures.** Adding or removing a drop tank did not move the total;
+  the estimate took no account of the altitude flown; and it charged the join and split
+  legs at the combat rate, which put a strike's eighty-mile egress at over twice its
+  real cost. ([#192](https://github.com/juanjux/dcs-retribution/pull/192))
+
 - **Factions with no early-warning radar fielded a SAM's acquisition radar as one.** An
   EWR marker falls back to a search radar when the faction owns no EWR, so Ukraine,
   Georgia, Morocco, France, Argentina, Peru and Iran were putting up a Patriot STR or a

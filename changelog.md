@@ -1,6 +1,8 @@
 ﻿# Retribution v1.6.3 (414th)
 
 ## Features/Improvements
+* **[FIX]** The fuel figure did not move when a drop tank was added or removed.
+* **[FIX]** The fuel estimate ignored the altitude flown, and charged the join and split legs at the combat rate.
 * **[UI]** *Internal Fuel Quantity* is *Fuel Quantity*, and says what the external tanks add.
 * **[UI]** The waypoints tab estimates the fuel the plan needs, against what the flight is carrying.
 * **[UI]** The waypoint table shows each leg's distance and the route total.
