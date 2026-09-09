@@ -1,25 +1,25 @@
 ﻿# Retribution v1.6.3 (414th)
 
 ## Features/Improvements
-* **[UI]** The settings dialog has a search box. Type a word and it lists every setting that matches -- across all six pages, inside the boxes, behind the gears, and including the plugins' own options -- with the page and section it lives on. Pick one and it opens the page, the section or the plugin's options and flashes the setting. Matching is forgiving: it looks at the label, the explanation, the page and section names and the stored key, and a near miss still finds it.
-* **[FIX]** Settings dialog: the boxes inside a section had lost their frame and read as stray labels, and a section long enough to scroll gave every short section beside it a scrollbar it did not need.
-* **[UI]** *Mission Generator* gained two sections: **Mission Start** (start types, spawn-immediately, the Nevatim parking fix, the sixpack) and **AI** (radio callouts, combat landing, roadbases, unlimited fuel), both carved out of *Gameplay*. The DCS automatic fog setting and the Skynet IADS radius now say what they do, and the frontline width sits with the other frontline settings.
-* **[FIX]** Settings dialog: a page opened where the last one was left scrolled to, a setting could not grey out one on another page (Live Pilots and AI pilot levelling), a box's caption was drawn over its first row, a section with a single switch put it hard against its label, and a plugin with more options than fit --  Splash Damage has 65 -- had no way to scroll them.
-* **[Plugins]** Moose's MarkerOps is no longer a switch of its own: it is plumbing the other Moose scripts need, so it turns on with any of them and off with the last.
-* **[FIX]** Retribution would not start after the fast-forward removal: two references to the sim-speed controls were left behind in the top panel.
-* **[Plugins]** Splash Damage updated from 3.4.2 to **3.4.7**, which fixes the bad Walleye entry that was crashing missions, and the settings page now offers 65 of its options instead of 33 -- the four families new in 3.4.7 (cook-off final explosion, continuous napalm, mega smoke, the pre-explosion height gate) and twenty that were always in the script and never reachable.
-* **[FIX]** Three Splash Damage settings had never done anything, all inherited from upstream: the parked-aircraft damage boost and the anti-radiation ship-radar kill call a `getAGL()` and an `antiRadiationMissile` that are defined nowhere, so they raised on every object close enough to take wave damage, and the cluster bomblet reduction was written to a key spelled differently from the one the script reads.
-* **[Sim]** Fast forward is gone, and with it *Fast forward until* and *Resolve combat when fast forwarding by*. Take Off now hands DCS the mission at the time it was planned for instead of running a clock forward first. Existing saves load unchanged.
-* **[Plugins]** Four dropped. **EWRS** is the 2016 script BigEye EWR was built from, so BigEye stays and EWRS goes. **Mbot's Call Artillery** only ever answered a player flying an Armed Recon flight, while Carsten's Arty Spotter answers any player within spotting range and has four tunables to its one, so Carsten's stays. **The C-130 cargo script** goes with the Hercules mod we do not support. And the **EW Jammer Script** goes: jamming cannot be modelled honestly without engine support, which is why the feature that used it was parked in June.
-* **[Plugins]** Skynet IADS is listed as *Skynet IADS (juanjux's fork)*, since it is not the stock build, and Splash Damage, Moose's MarkerOps and Troops In Contact finally say what they do.
-* **[UI]** The settings window opens wide enough that no page has to be scrolled sideways, the section index no longer scrolls away with the settings beside it, and the box repeating the name of the section you just clicked is gone.
-* **[FIX]** Turning Live Pilots off and back on left several of its settings greyed out for good, including the morale switch.
-* **[Live Pilots]** *Rank Names* is now *Ranks*, and what each rung costs in XP is set there beside its name. *Show pilot names in mission* is gone: naming the men is what Live Pilots is for, so it rides on it.
-* **[UI]** *Automate building repairs* carries its tuning behind a gear and greys out the repair budget when it is off; *Allow AI pilot leveling* greys out while Live Pilots is doing the levelling; EPLRS finally says what it is; and the seven ground-spawn and frontline-width settings moved to *Performance*, where they belong.
-* **[FIX]** Player pilots were playing the morale game: the debriefing told you how you felt about your own turn, and a figure you never asked for could shift the skill you flew at, weigh your XP or ground you. Morale is now for the AI pilots only.
-* **[UI]** Settings pages no longer spread four rows over the height of the window, and a switch sits beside its label instead of out at the right-hand edge.
-* **[UI]** *Automate ground object repairs* carries its own tuning behind a gear, so the *Ground Object Repairs* page is gone; *Building Repairs* moved up under *HQ Automation*; and *Morale Event Values* is now a box at the end of *Morale* rather than a page of its own.
-* **[Live Pilots]** The morale bands are settings: you choose where Triumphant, Confident, Normal, Shaken and Shattered start. *Flies a rank better above* and *Flies a rank worse below* are gone with them -- a Triumphant pilot flies a rung above the rank he holds, a Shattered or Broken one a rung below.
+* **[UI]** Added a search box to the settings dialog. It covers the plugins' options too.
+* **[FIX]** Boxes inside a settings section had no frame, and short sections showed a scrollbar they did not need.
+* **[UI]** New *Mission Start* and *AI* sections in Mission Generator, split out of *Gameplay*.
+* **[FIX]** Settings pages opened at the previous page's scroll position, and a setting could not grey out one on another page.
+* **[Plugins]** Moose's MarkerOps follows the other Moose plugins instead of having a switch of its own.
+* **[FIX]** Retribution would not start after the fast-forward removal.
+* **[Plugins]** Splash Damage updated to 3.4.7, which fixes the Walleye crash, and 65 of its options are offered instead of 33.
+* **[FIX]** Three Splash Damage options had never done anything: the parked-aircraft boost, the ship-radar kill and the cluster bomblet reduction.
+* **[Sim]** Removed fast forward and its two settings. Take Off hands DCS the mission at the time it was planned for.
+* **[Plugins]** Dropped EWRS, Mbot's Call Artillery, the C-130 cargo script and the EW Jammer script.
+* **[Plugins]** Skynet is listed as *Skynet IADS (juanjux's fork)*, and Splash Damage, MarkerOps and Troops In Contact have descriptions.
+* **[UI]** The settings window opens wide enough that no page needs a horizontal scrollbar, and its section index no longer scrolls away with the settings.
+* **[FIX]** Turning Live Pilots off and back on left several of its settings greyed out for good.
+* **[Live Pilots]** *Rank Names* is now *Ranks*, and each rung's price in XP is set there beside its name.
+* **[UI]** *Automate building repairs* carries its tuning behind a gear and owns the repair budget.
+* **[FIX]** Player pilots no longer play the morale game.
+* **[UI]** Settings pages no longer spread their rows over the height of the window.
+* **[UI]** *Automate ground object repairs* carries its tuning behind a gear; the *Ground Object Repairs* page is gone and *Building Repairs* moved under *HQ Automation*.
+* **[Live Pilots]** The morale bands are settings now, and a pilot's rank shift follows them instead of two numbers of its own.
 * **[UI]** The Air Wing squadron list was redesigned: the aircraft type is now the one large, bold thing on a fixed rail so you can scan for an airframe, the primary task shows as a colour-coded chip, and the list gained a live filter, a sort order, grouping by aircraft type or base, and a running count.
 * **[UI]** The unit transfer dialog gets "All >>" and "None <<" buttons, so a whole garrison no longer has to be queued one unit type at a time.
 * **[FIX]** A CAP guarding its own base could be given a patrol route so short that DCS deleted the flight the moment it spawned, without it flying a metre. Patrol routes are now lengthened away from the enemy until they are long enough to be flown.
