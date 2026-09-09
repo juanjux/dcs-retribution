@@ -1,6 +1,7 @@
 ﻿# Retribution v1.6.3 (414th)
 
 ## Features/Improvements
+* **[FIX]** Retribution would not start after the fast-forward removal: two references to the sim-speed controls were left behind in the top panel.
 * **[Plugins]** Splash Damage updated from 3.4.2 to **3.4.7**, which fixes the bad Walleye entry that was crashing missions, and the settings page now offers 65 of its options instead of 33 -- the four families new in 3.4.7 (cook-off final explosion, continuous napalm, mega smoke, the pre-explosion height gate) and twenty that were always in the script and never reachable.
 * **[FIX]** Three Splash Damage settings had never done anything, all inherited from upstream: the parked-aircraft damage boost and the anti-radiation ship-radar kill call a `getAGL()` and an `antiRadiationMissile` that are defined nowhere, so they raised on every object close enough to take wave damage, and the cluster bomblet reduction was written to a key spelled differently from the one the script reads.
 * **[Sim]** Fast forward is gone, and with it *Fast forward until* and *Resolve combat when fast forwarding by*. Take Off now hands DCS the mission at the time it was planned for instead of running a clock forward first. Existing saves load unchanged.
