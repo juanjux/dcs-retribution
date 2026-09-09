@@ -225,50 +225,6 @@ class FlightGroupConfigurator:
         else:
             laser_codes.append(None)
 
-        self.handle_ew_jamming(member, unit)
-
-    def handle_ew_jamming(self, member: FlightMember, unit: FlyingUnit) -> None:
-        if not member.is_player:
-            return
-        settings = self.flight.coalition.game.settings
-        if not settings.plugin_option("ewrj"):
-            return
-        # Check if ecm_required option is enabled
-        jammer_required = settings.plugin_option("ewrj.ecm_required")
-        offensive_jammer = member.loadout.has_weapon_of_type(
-            WeaponType.OFFENSIVE_JAMMER
-        )
-        offensive_inbuilt = self.flight.squadron.aircraft.has_built_in_jamming
-        has_jammer = (
-            member.loadout.has_weapon_of_type(WeaponType.JAMMER) or offensive_jammer
-        )
-        built_in_jammer = (
-            self.flight.squadron.aircraft.has_built_in_ecm or offensive_inbuilt
-        )
-        if jammer_required and not (has_jammer or built_in_jammer):
-            return
-        # Create the original ewrj_menu_trigger for player flight members
-        ewrj_menu_trigger = TriggerStart(comment=f"EWRJ-{unit.name}")
-        ewrj_menu_trigger.add_action(DoScript(String(f'EWJamming("{unit.name}")')))
-        self.mission.triggerrules.triggers.append(ewrj_menu_trigger)
-        self.group.points[0].tasks[0] = OptReactOnThreat(
-            OptReactOnThreat.Values.PassiveDefense
-        )
-        # Create LUA Flags for Offensive Jamming in EW Script for Player Flights
-        if not (offensive_jammer or offensive_inbuilt):
-            return
-        ewrj_offensive_trigger = TriggerStart(
-            comment=f"Offensive Jammer Flag {unit.name}"
-        )
-        ewrj_offensive_trigger.add_action(
-            DoScript(
-                String(
-                    f'trigger.action.setUserFlag("offensive_jamming_{unit.name}", 1)'
-                )
-            )
-        )
-        self.mission.triggerrules.triggers.append(ewrj_offensive_trigger)
-
     def setup_radios(self) -> RadioFrequency:
         freq = self.flight.frequency
         if freq is None and (freq := self.flight.package.frequency) is None:
@@ -368,10 +324,6 @@ class FlightGroupConfigurator:
         settings = self.game.settings
         if not settings.live_pilots_enabled:
             return
-        # The rank prefix is part of Live Pilots rather than a switch of its own.
-        show_ranks = True
-        show_names = settings.live_pilots_show_names
-
         squadron = self.flight.squadron
         used: set[str] = set()
         for index, (unit, member) in enumerate(
@@ -380,15 +332,13 @@ class FlightGroupConfigurator:
             pilot = member.pilot
             if pilot is None:
                 continue
+            # Rank and name both come with Live Pilots; neither is a switch of its
+            # own. Naming the men is most of what the feature is for.
             parts: list[str] = []
-            if show_ranks:
-                rank = squadron.pilot_rank(pilot)
-                if rank is not None:
-                    parts.append(rank.abbreviation)
-            if show_names:
-                parts.append(pilot.name)
-            if not parts:
-                continue
+            rank = squadron.pilot_rank(pilot)
+            if rank is not None:
+                parts.append(rank.abbreviation)
+            parts.append(pilot.name)
             head, separator, _ = str(unit.name).rpartition(PILOT_NAME_SEPARATOR)
             if not separator:
                 continue

@@ -153,7 +153,7 @@ class Squadron:
         """
         if not self.settings.ai_pilot_levelling:
             return self.base_skill
-        return skill_for_experience(pilot.record.xp, self.base_skill)
+        return skill_for_experience(pilot.record.xp, self.base_skill, self.settings)
 
     def rank_order(self, pilot: Pilot) -> tuple[int, int]:
         """Sort key placing the senior pilot first, the most experienced first within

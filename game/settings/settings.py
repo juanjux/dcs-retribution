@@ -77,7 +77,7 @@ DOCTRINE_DISTANCES_SECTION = "Doctrine distances"
 MISSION_GENERATOR_PAGE = "Mission Generator"
 
 LIVE_PILOTS_PAGE = "Live Pilots"
-LIVE_PILOTS_RANKS_SECTION = "Rank Names"
+LIVE_PILOTS_RANKS_SECTION = "Ranks"
 LIVE_PILOTS_SURVIVAL_SECTION = "Survival Chance"
 LIVE_PILOTS_MORALE_SECTION = "Morale"
 LIVE_PILOTS_MORALE_EVENTS_SECTION = "Morale Event Values"
@@ -703,10 +703,12 @@ class Settings:
         PILOTS_AND_SQUADRONS_SECTION,
         default=True,
         detail=(
-            "Set whether or not AI pilots will level up after completing a number of"
-            " sorties. Since pilot level affects the AI skill, you may wish to disable"
-            " this, lest you face an Ace!"
+            "Set whether or not AI pilots will level up after completing 4 sorties."
+            " Since pilot level affects the AI skill, you may wish to disable this,"
+            " lest you face an Ace! This is disabled if Live Pilots is active, since"
+            " it uses a different xp-based leveling system."
         ),
+        enabled_when=lambda s: not s.live_pilots_enabled,
     )
     #: Feature flag for squadron limits.
     enable_squadron_pilot_limits: bool = boolean_option(
@@ -820,20 +822,9 @@ class Settings:
         default=False,
         detail=(
             "If enabled, AI can spend budget to repair destroyed income buildings "
-            "such as depots and factories."
+            "such as depots and factories. The gear tunes what it repairs first."
         ),
-    )
-    building_repair_turns: int = bounded_int_option(
-        "Building repair turns",
-        CAMPAIGN_MANAGEMENT_PAGE,
-        HQ_AUTOMATION_SECTION,
-        min=0,
-        max=10,
-        default=4,
-        detail=(
-            "Turns required for repaired buildings to return to service. "
-            "Set to 0 for instant repairs."
-        ),
+        opens_section=BUILDING_REPAIR_TUNING_SECTION,
     )
     building_repair_budget_percent: int = bounded_int_option(
         "Building repair budget (%)",
@@ -844,6 +835,20 @@ class Settings:
         default=15,
         detail=(
             "Percent of the procurement budget that may be spent repairing buildings."
+        ),
+        enabled_when=lambda s: s.automate_building_repairs,
+    )
+    building_repair_turns: int = bounded_int_option(
+        "Building repair turns",
+        CAMPAIGN_MANAGEMENT_PAGE,
+        HQ_AUTOMATION_SECTION,
+        min=0,
+        max=10,
+        default=4,
+        detail=(
+            "Turns required for repaired buildings to return to service. "
+            "Set to 0 for instant repairs. Applies to your own repairs as well, so it "
+            "stands whether or not the AI is doing them."
         ),
     )
     automate_aircraft_reinforcements: bool = boolean_option(
@@ -1181,6 +1186,13 @@ class Settings:
         MISSION_GENERATOR_PAGE,
         GAMEPLAY_SECTION,
         default=True,
+        detail=(
+            "The Enhanced Position Location Reporting System: DCS's datalink. Switched"
+            " on, a group shares what it sees with the rest of its coalition, so an"
+            " aircraft gets the datalink picture on its displays (the Hornet's SA"
+            " page, the Viper's MFD, the A-10C's TAD) and ground units cue each other."
+            " Switched off, every group fights on its own sensors alone."
+        ),
     )
     generate_dark_kneeboard: bool = boolean_option(
         "Generate dark kneeboard",
@@ -1334,14 +1346,6 @@ class Settings:
         min=30,
         max=150,
     )
-    max_frontline_width: int = bounded_int_option(
-        "Maximum frontline width (km)",
-        page=MISSION_GENERATOR_PAGE,
-        section=GAMEPLAY_SECTION,
-        default=80,
-        min=1,
-        max=100,
-    )
     game_masters_count: int = bounded_int_option(
         "Number of game masters",
         page=MISSION_GENERATOR_PAGE,
@@ -1398,59 +1402,6 @@ class Settings:
         detail=(
             "If enabled, AI can use roadbases or airbases which only have ground spawns. "
             "AI will always air-start from these bases (due to DCS limitation)."
-        ),
-    )
-    ground_start_scenery_remove_triggers: bool = boolean_option(
-        "Generate SCENERY REMOVE OBJECTS ZONE triggers at roadbase first waypoints",
-        MISSION_GENERATOR_PAGE,
-        GAMEPLAY_SECTION,
-        default=True,
-        detail=(
-            "Can be used to remove lightposts and other obstacles from roadbase runways. "
-            "Might not work in DCS multiplayer."
-        ),
-    )
-    ground_start_trucks: bool = boolean_option(
-        "Spawn trucks at ground spawns in airbases instead of FARP statics",
-        MISSION_GENERATOR_PAGE,
-        GAMEPLAY_SECTION,
-        default=False,
-        detail=("Might have a negative performance impact."),
-    )
-    ground_start_trucks_roadbase: bool = boolean_option(
-        "Spawn trucks at ground spawns in roadbases instead of FARP statics",
-        MISSION_GENERATOR_PAGE,
-        GAMEPLAY_SECTION,
-        default=False,
-        detail=("Might have a negative performance impact."),
-    )
-    ground_start_ground_power_trucks: bool = boolean_option(
-        "Spawn ground power trucks at ground starts in airbases",
-        MISSION_GENERATOR_PAGE,
-        GAMEPLAY_SECTION,
-        default=True,
-        detail=(
-            "Needed to cold-start some aircraft types. Might have a performance impact."
-        ),
-    )
-    ground_start_ground_power_trucks_roadbase: bool = boolean_option(
-        "Spawn ground power trucks at ground starts in roadbases",
-        MISSION_GENERATOR_PAGE,
-        GAMEPLAY_SECTION,
-        default=True,
-        detail=(
-            "Needed to cold-start some aircraft types. Might have a performance impact."
-        ),
-    )
-    ground_start_airbase_statics_farps_remove: bool = boolean_option(
-        "Remove ground spawn statics, including invisible FARPs, at airbases",
-        MISSION_GENERATOR_PAGE,
-        GAMEPLAY_SECTION,
-        default=True,
-        detail=(
-            "Ammo and fuel statics and invisible FARPs should be unnecessary when creating "
-            "additional spawns for players at airbases. This setting will disable them and "
-            "potentially grant a marginal performance benefit."
         ),
     )
     ai_unlimited_fuel: bool = boolean_option(
@@ -1775,6 +1726,67 @@ class Settings:
         default=True,
         causes_expensive_game_update=True,
     )
+    max_frontline_width: int = bounded_int_option(
+        "Maximum frontline width (km)",
+        page=MISSION_GENERATOR_PAGE,
+        section=PERFORMANCE_SECTION,
+        default=80,
+        min=1,
+        max=100,
+    )
+    ground_start_scenery_remove_triggers: bool = boolean_option(
+        "Generate SCENERY REMOVE OBJECTS ZONE triggers at roadbase first waypoints",
+        MISSION_GENERATOR_PAGE,
+        PERFORMANCE_SECTION,
+        default=True,
+        detail=(
+            "Can be used to remove lightposts and other obstacles from roadbase runways. "
+            "Might not work in DCS multiplayer."
+        ),
+    )
+    ground_start_trucks: bool = boolean_option(
+        "Spawn trucks at ground spawns in airbases instead of FARP statics",
+        MISSION_GENERATOR_PAGE,
+        PERFORMANCE_SECTION,
+        default=False,
+        detail=("Might have a negative performance impact."),
+    )
+    ground_start_trucks_roadbase: bool = boolean_option(
+        "Spawn trucks at ground spawns in roadbases instead of FARP statics",
+        MISSION_GENERATOR_PAGE,
+        PERFORMANCE_SECTION,
+        default=False,
+        detail=("Might have a negative performance impact."),
+    )
+    ground_start_ground_power_trucks: bool = boolean_option(
+        "Spawn ground power trucks at ground starts in airbases",
+        MISSION_GENERATOR_PAGE,
+        PERFORMANCE_SECTION,
+        default=True,
+        detail=(
+            "Needed to cold-start some aircraft types. Might have a performance impact."
+        ),
+    )
+    ground_start_ground_power_trucks_roadbase: bool = boolean_option(
+        "Spawn ground power trucks at ground starts in roadbases",
+        MISSION_GENERATOR_PAGE,
+        PERFORMANCE_SECTION,
+        default=True,
+        detail=(
+            "Needed to cold-start some aircraft types. Might have a performance impact."
+        ),
+    )
+    ground_start_airbase_statics_farps_remove: bool = boolean_option(
+        "Remove ground spawn statics, including invisible FARPs, at airbases",
+        MISSION_GENERATOR_PAGE,
+        PERFORMANCE_SECTION,
+        default=True,
+        detail=(
+            "Ammo and fuel statics and invisible FARPs should be unnecessary when creating "
+            "additional spawns for players at airbases. This setting will disable them and "
+            "potentially grant a marginal performance benefit."
+        ),
+    )
     perf_ai_despawn_airstarted: bool = boolean_option(
         "De-spawn AI in the air upon RTB",
         page=MISSION_GENERATOR_PAGE,
@@ -1791,13 +1803,6 @@ class Settings:
         section=GENERAL_SECTION,
         default=False,
         detail=("Pilots hold a rank, have morale, friendship and other features."),
-    )
-    live_pilots_show_names: bool = boolean_option(
-        "Show pilot names in mission",
-        page=LIVE_PILOTS_PAGE,
-        section=GENERAL_SECTION,
-        default=True,
-        detail='Replaces the "Pilot #2" part of a flight label with the pilot name.',
     )
     live_pilots_debrief_enemy: bool = boolean_option(
         "Report enemy aircrew in the debriefing",
@@ -1849,6 +1854,14 @@ class Settings:
         section=LIVE_PILOTS_RANKS_SECTION,
         default="First Lieutenant",
     )
+    live_pilots_rank_average_xp: int = bounded_int_option(
+        "Average",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_RANKS_SECTION,
+        default=1000,
+        min=0,
+        max=1000000,
+    )
     live_pilots_rank_good_short: str = text_option(
         "Good",
         page=LIVE_PILOTS_PAGE,
@@ -1861,6 +1874,14 @@ class Settings:
         page=LIVE_PILOTS_PAGE,
         section=LIVE_PILOTS_RANKS_SECTION,
         default="Captain",
+    )
+    live_pilots_rank_good_xp: int = bounded_int_option(
+        "Good",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_RANKS_SECTION,
+        default=2000,
+        min=0,
+        max=1000000,
     )
     live_pilots_rank_high_short: str = text_option(
         "High",
@@ -1875,6 +1896,14 @@ class Settings:
         section=LIVE_PILOTS_RANKS_SECTION,
         default="Major",
     )
+    live_pilots_rank_high_xp: int = bounded_int_option(
+        "High",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_RANKS_SECTION,
+        default=4000,
+        min=0,
+        max=1000000,
+    )
     live_pilots_rank_excellent_short: str = text_option(
         "Excellent",
         page=LIVE_PILOTS_PAGE,
@@ -1887,6 +1916,14 @@ class Settings:
         page=LIVE_PILOTS_PAGE,
         section=LIVE_PILOTS_RANKS_SECTION,
         default="Lieutenant Colonel",
+    )
+    live_pilots_rank_excellent_xp: int = bounded_int_option(
+        "Excellent",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_RANKS_SECTION,
+        default=8000,
+        min=0,
+        max=1000000,
     )
     live_pilots_rank_survival: bool = boolean_option(
         "Rank influences who survives a loss",

@@ -1,5 +1,6 @@
 {
     "nameInUI": "Moose's MarkerOps",
+    "descriptionInUI": "Lets other Moose scripts be driven from F10 map markers: you type a keyword and parameters into a marker and whatever registered that keyword acts on it. Nothing on its own -- it is the plumbing the Moose plugins beside it use.",
     "defaultValue": false,
     "specificOptions": [],
     "scriptsWorkOrders": [

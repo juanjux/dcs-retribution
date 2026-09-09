@@ -21,6 +21,7 @@ def boolean_option(
     visible_when: Optional[Callable[[Any], bool]] = None,
     subsection: Optional[str] = None,
     opens_section: Optional[str] = None,
+    enabled_when: Optional[Callable[[Any], bool]] = None,
     **kwargs: Any,
 ) -> bool:
     return field(
@@ -35,6 +36,7 @@ def boolean_option(
                 invert,
                 visible_when=visible_when,
                 subsection=subsection,
+                enabled_when=enabled_when,
                 opens_section=opens_section,
             )
         },

@@ -2,7 +2,7 @@ import json
 import logging
 import textwrap
 import zipfile
-from typing import Callable, Dict, Iterable, List, Optional, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
 
 from PySide6 import QtWidgets
 from PySide6.QtCore import QItemSelectionModel, QPoint, QSize, Qt
@@ -69,8 +69,9 @@ from qt_ui.windows.settings.plugins import PluginsPage
 #: dialog pushes every switch out to its right-hand edge.
 SLACK_COLUMN = 2
 
-#: The rank ladder is three columns wide before its own slack.
-RANK_SLACK_COLUMN = 3
+#: Rank, short name, full name and price, and then the ladder's own slack.
+RANK_PRICE_COLUMN = 3
+RANK_SLACK_COLUMN = 4
 
 #: The morale bands are set by a ladder rather than a row each, so the layout picks
 #: them out of the box they are declared in.
@@ -201,6 +202,7 @@ class AutoSettingsLayout(QGridLayout):
         self.refresh_hooks: List[Callable[[], None]] = []
         self._rank_rows: List[Tuple[QLineEdit, QLineEdit]] = []
         self._rank_names: List[Tuple[str, str]] = []
+        self._rank_prices: List[Tuple[str, QSpinBox]] = []
         self._rank_labels: List[QLabel] = []
         self._rank_combo_label: Optional[QLabel] = None
 
@@ -240,10 +242,12 @@ class AutoSettingsLayout(QGridLayout):
         if self.page == LIVE_PILOTS_PAGE:
             self._wire_live_pilots_master()
         if self.section == LIVE_PILOTS_MORALE_SECTION:
-            # Everything here, boxes included, is a detail of morale being on.
-            self._wire_dependents_on(
-                "morale_enabled",
+            # Everything here, boxes included, is a detail of morale being on -- and
+            # of Live Pilots, or this would hand back what the master just took.
+            self._wire_enabled(
                 [name for name in self.settings_map if name != "morale_enabled"],
+                lambda settings: settings.live_pilots_enabled
+                and getattr(settings, "morale_enabled", True),
             )
         if self.section == LIVE_PILOTS_SURVIVAL_SECTION:
             self._wire_survival_odds()
@@ -310,7 +314,11 @@ class AutoSettingsLayout(QGridLayout):
             if not name.endswith("_short"):
                 continue
             if not self._rank_rows:
-                for column, heading in ((1, "Short"), (2, "Full")):
+                for column, heading in (
+                    (1, "Short"),
+                    (2, "Full"),
+                    (RANK_PRICE_COLUMN, "XP to reach"),
+                ):
                     header = QLabel(f"<b>{heading}</b>")
                     self.addWidget(header, row, column)
                     self._rank_labels.append(header)
@@ -330,11 +338,61 @@ class AutoSettingsLayout(QGridLayout):
             self.addWidget(full, row, 2)
             self._rank_rows.append((short, full))
             self._rank_names.append((name, full_name))
+            self._add_rank_price(row, name[: -len("_short")] + "_xp")
             row += 1
 
-        self.setColumnStretch(3, 1)
+        self.setColumnStretch(RANK_SLACK_COLUMN, 1)
         self.refresh_hooks.append(self._sync_rank_boxes)
+        self.refresh_hooks.append(self._sync_rank_prices)
         self._sync_rank_boxes()
+        self._sync_rank_prices()
+
+    def _add_rank_price(self, row: int, name: str) -> None:
+        """What this rung costs. Editable whoever is naming the ranks.
+
+        The names are a preview of somebody else's ladder unless they are the custom
+        ones; the prices are always the campaign's own, so they never grey out with
+        the boxes beside them.
+        """
+        if name not in self.sc.settings.__dict__:
+            # Cadet: where every pilot starts, so it has no price to set.
+            self.addWidget(QLabel("<i>start</i>"), row, RANK_PRICE_COLUMN)
+            return
+        spinner = QSpinBox()
+        spinner.setRange(0, 1000000)
+        spinner.setSingleStep(100)
+        spinner.setFixedWidth(110)
+        spinner.setValue(int(self.sc.settings.__dict__[name]))
+        spinner.valueChanged.connect(
+            lambda value, key=name: self._set_rank_price(key, value)
+        )
+        self.addWidget(spinner, row, RANK_PRICE_COLUMN)
+        self.settings_map[name] = spinner
+        self._rank_prices.append((name, spinner))
+
+    def _set_rank_price(self, name: str, value: int) -> None:
+        self.sc.settings.__dict__[name] = value
+        self._sync_rank_prices()
+        self.settings_changed()
+
+    def _sync_rank_prices(self) -> None:
+        """Keep the prices a ladder: no rung may cost less than the one below it."""
+        if not self._rank_prices:
+            return
+        prices = [int(self.sc.settings.__dict__[name]) for name, _ in self._rank_prices]
+        live = bool(self.sc.settings.live_pilots_enabled)
+        for index, (name, spinner) in enumerate(self._rank_prices):
+            below = prices[index - 1] + 1 if index else 1
+            above = prices[index + 1] - 1 if index + 1 < len(prices) else 1000000
+            low, high = min(below, above), max(below, above)
+            value = max(low, min(high, prices[index]))
+            if value != prices[index]:
+                self.sc.settings.__dict__[name] = value
+            spinner.blockSignals(True)
+            spinner.setRange(low, high)
+            spinner.setValue(value)
+            spinner.blockSignals(False)
+            spinner.setEnabled(live)
 
     def _build_morale_state_ladder(self) -> None:
         """What the player is told instead of a number, and where each band starts.
@@ -479,77 +537,53 @@ class AutoSettingsLayout(QGridLayout):
                     edit.setText(text)
                     edit.blockSignals(False)
 
-    def _wire_dependents(
-        self, master_name: str, dependent_names: Iterable[str]
-    ) -> None:
-        """Grey out the settings that mean nothing while their master is off."""
-        master = self.settings_map.get(master_name)
-        if not isinstance(master, QCheckBox):
-            return
-        dependents = [
-            (self.control_for(name), self.label_map.get(name))
-            for name in dependent_names
-        ]
-
-        def refresh() -> None:
-            enabled = master.isChecked()
-            for widget, label in dependents:
-                for target in (widget, label):
-                    if target is not None:
-                        target.setEnabled(enabled)
-
-        master.toggled.connect(lambda _=None: refresh())
-        refresh()
-
     def _wire_live_pilots_master(self) -> None:
         """Everything on the page is a detail of Live Pilots, so it all follows it.
 
         Named by page rather than by a list of settings: whatever is added later --
         friendship, say -- is covered without anyone remembering to come back here.
-        It only ever disables, so the finer rules below (survival odds, morale event
-        values) still decide what is live while Live Pilots itself is on, whatever
-        order the hooks run in.
+        Both ways, because a switch that only ever takes things away leaves them dead
+        when it is turned back on -- and the finer rules registered after this one
+        narrow what it allows rather than widening it.
         """
 
         def refresh() -> None:
-            if self.sc.settings.live_pilots_enabled:
-                return
+            live = bool(self.sc.settings.live_pilots_enabled)
             for name in list(self.settings_map):
                 if name == "live_pilots_enabled":
                     continue
                 widget = self.control_for(name)
                 if widget is not None:
-                    widget.setEnabled(False)
+                    widget.setEnabled(live)
                 label = self.label_map.get(name)
                 if label is not None:
-                    label.setEnabled(False)
+                    label.setEnabled(live)
             for label in self._rank_labels:
-                label.setEnabled(False)
+                label.setEnabled(live)
 
         self.refresh_hooks.append(refresh)
         refresh()
 
-    def _wire_dependents_on(
-        self, master_name: str, dependent_names: Iterable[str]
-    ) -> None:
-        """Grey out settings whose master lives in another section.
+    def _wire_enabled(self, names: Iterable[str], live: Callable[[Any], bool]) -> None:
+        """Grey out settings whose master lives somewhere else on the page.
 
-        Read from the settings rather than from a checkbox for that reason: the page
-        re-runs every group when anything changes, so the value is always current.
+        Read from the settings rather than from a checkbox: the page re-runs every
+        group when anything changes, so the value is always current.
         """
+        names = list(names)
 
         def refresh() -> None:
-            enabled = bool(getattr(self.sc.settings, master_name, False))
-            for name in dependent_names:
-                widget = self.control_for(name)
-                if widget is not None:
-                    widget.setEnabled(enabled)
-                label = self.label_map.get(name)
-                if label is not None:
-                    label.setEnabled(enabled)
+            enabled = bool(live(self.sc.settings))
+            for name in names:
+                self.set_enabled(name, enabled)
 
         self.refresh_hooks.append(refresh)
         refresh()
+
+    def set_enabled(self, name: str, enabled: bool) -> None:
+        for target in (self.control_for(name), self.label_map.get(name)):
+            if target is not None:
+                target.setEnabled(enabled)
 
     def _wire_survival_odds(self) -> None:
         """The odds follow their own switch, and the switch follows Live Pilots.
@@ -782,6 +816,8 @@ class AutoSettingsLayout(QGridLayout):
         """
         any_visible = False
         for name, description in self.own_fields():
+            if description.enabled_when is not None:
+                self.set_enabled(name, bool(description.enabled_when(self.sc.settings)))
             if description.visible_when is None:
                 any_visible = True
                 continue
@@ -840,8 +876,26 @@ class AutoSettingsGroup(QGroupBox):
         write_full_settings: Callable[[], None],
     ) -> None:
         super().__init__(section)
+        self.section = section
         self.layout = AutoSettingsLayout(page, section, sc, write_full_settings)
         self.setLayout(self.layout)
+
+    def hide_frame(self) -> None:
+        """Drop the box, keeping the name for whoever is indexing us.
+
+        A framed box titled the same as the entry you clicked to get here says the
+        section's name twice and fences off a page that has nothing to be fenced from.
+        """
+        self.setStyleSheet(
+            "QGroupBox { border: none; margin-top: 0; padding-top: 0; }"
+            "QGroupBox::title { width: 0; height: 0; margin: 0; padding: 0; }"
+        )
+        self.setTitle("")
+
+    def title(self) -> str:  # type: ignore[override]
+        # QGroupBox.title is the frame's caption, which hide_frame clears; the name
+        # of the section is not the caption's to lose.
+        return self.section
 
     def apply_visibility(self, hide_self: bool = True) -> bool:
         """Whether this section has anything left to show.
@@ -928,12 +982,21 @@ class AutoSettingsPage(QWidget):
             self.sections.setFixedWidth(SECTION_LIST_WIDTH)
             for group in self.groups:
                 self.sections.addItem(QListWidgetItem(group.title()))
+                # The index already names the section, so the box would say it twice.
+                group.hide_frame()
             self.sections.setCurrentRow(0)
             self.sections.currentRowChanged.connect(self._show_section)
             row.addWidget(self.sections)
         for group in self.groups:
             self.stack.addWidget(group)
-        row.addWidget(self.stack, 1)
+
+        # The scroll belongs to the settings, not to the page: with the index inside
+        # it, reading down a long section carried the list of sections away with it.
+        self.scroll = QScrollArea()
+        self.scroll.setWidgetResizable(True)
+        self.scroll.setFrameShape(QtWidgets.QFrame.Shape.NoFrame)
+        self.scroll.setWidget(self.stack)
+        row.addWidget(self.scroll, 1)
 
         # Only now do the group boxes have a parent, and only now is hiding one of
         # them a layout change rather than a stray window.
@@ -980,6 +1043,26 @@ class QSettingsWindow(QDialog):
         self.setWindowTitle("Settings")
         self.setWindowIcon(CONST.ICONS["Settings"])
         self.setMinimumSize(840, 480)
+        self.resize(*self.opening_size())
+
+    @staticmethod
+    def opening_size() -> Tuple[int, int]:
+        """Wide enough that nothing has to be scrolled to sideways.
+
+        A setting whose switch is off the right-hand edge reads as one that is not
+        there. The widest section wants about 1,550 px with both indexes beside it,
+        so that is what it opens at -- unless the monitor is smaller, in which case
+        it takes what there is.
+        """
+        wanted = (1560, 960)
+        screen = QApplication.primaryScreen()
+        if screen is None:
+            return wanted
+        room = screen.availableGeometry()
+        return (
+            min(wanted[0], int(room.width() * 0.92)),
+            min(wanted[1], int(room.height() * 0.92)),
+        )
 
     def closeEvent(self, event: QCloseEvent) -> None:
         self._handle_mod_settings()

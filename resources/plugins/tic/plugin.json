@@ -1,5 +1,6 @@
 {
     "nameInUI": "Troops In Contact (frontline battle sim)",
+    "descriptionInUI": "Runs the front line as a fight rather than a queue: ground units in contact engage, call for help and report the contact, so a CAS flight arriving over the FLOT finds a battle in progress instead of two lines waiting for it.",
     "defaultValue": false,
     "specificOptions": [
         {

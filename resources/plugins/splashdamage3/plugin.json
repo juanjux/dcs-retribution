@@ -1,5 +1,6 @@
 {
     "nameInUI": "Splash Damage 3.4.2",
+    "descriptionInUI": "Gives bombs, rockets and shells a blast that is felt beyond the unit they hit: DCS only damages what a weapon lands on, so a 2000 lb bomb between two tanks kills neither. The script adds a secondary explosion scaled to the warhead, so near misses count, groups take splash damage, and cluster or cargo secondaries cook off. It applies to both sides and to the AI, and it costs frames in proportion to how much ordnance is in the air.",
     "defaultValue": false,
     "specificOptions": [
         {
