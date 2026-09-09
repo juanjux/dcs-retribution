@@ -1,6 +1,7 @@
 ﻿# Retribution v1.6.3 (414th)
 
 ## Features/Improvements
+* **[Campaign]** New *Ignore parking space at airbases* option.
 * **[UI]** Radar sites, missile batteries and jamming sites are interchangeable: buy any of the three where one stands, and the icon follows what is parked there.
 * **[Map]** A site that only watches draws its detection range dashed, in its faction's colour.
 * **[FIX]** A site pinned by a campaign generated without its point defence.

@@ -1089,7 +1089,20 @@ class ControlPoint(MissionTarget, SidcDescribable, ABC):
     @abstractmethod
     def can_operate(self, aircraft: AircraftType) -> bool: ...
 
+    #: Whether "Ignore parking space at airbases" applies here. Only airbases: a
+    #: carrier's deck is the thing being modelled, not a shortage of concrete.
+    ignores_parking_limits = False
+
     def unclaimed_parking(self, parking_type: ParkingType) -> int:
+        if (
+            self.ignores_parking_limits
+            and self.coalition.game.settings.ignore_parking_limits
+        ):
+            # Everything that gates on parking -- buying, auto-procurement,
+            # relocating a squadron, starting full -- reads this one method, so the
+            # setting only has to answer here. Not literally unbounded: the number
+            # still has to survive being compared and subtracted from.
+            return 10_000
         return (
             self.total_aircraft_parking(parking_type)
             - self.allocated_aircraft(parking_type).total
@@ -1420,6 +1433,8 @@ class ControlPoint(MissionTarget, SidcDescribable, ABC):
 
 
 class Airfield(ControlPoint, CTLD, TacanContainer):
+    ignores_parking_limits = True
+
     def __init__(
         self,
         airport: Airport,

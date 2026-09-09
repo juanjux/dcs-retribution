@@ -225,6 +225,9 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   move the dialog makes with its pages, and a section with nothing left to show drops out
   of the list. "Campaign Management+" is folded into Campaign Management.
 
+- **Ignore parking space at airbases.** Airbases hold as many aircraft as you can pay
+  for, whatever their ramp size. Carriers and FOBs are unaffected.
+  ([#184](https://github.com/juanjux/dcs-retribution/pull/184))
 - **Radar, missile battery and jamming site are one slot.** Buy any of the three where
   any one of them stands, and the map symbol follows what is parked there rather than what
   the campaign built: a dish for a site that only watches, an air-defence symbol for one

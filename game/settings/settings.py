@@ -758,6 +758,16 @@ class Settings:
             "this many pilots each turn up to the limit."
         ),
     )
+    ignore_parking_limits: bool = boolean_option(
+        "Ignore parking space at airbases",
+        CAMPAIGN_MANAGEMENT_PAGE,
+        PILOTS_AND_SQUADRONS_SECTION,
+        default=False,
+        detail=(
+            "Airbases hold as many aircraft as you can pay for, whatever their ramp "
+            "size. Carriers and FOBs are unaffected."
+        ),
+    )
     # Feature flag for squadron limits.
     enable_squadron_aircraft_limits: bool = boolean_option(
         "Enable per-squadron aircraft limits",
