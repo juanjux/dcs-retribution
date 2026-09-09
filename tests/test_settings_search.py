@@ -63,8 +63,15 @@ def test_a_subsequence_scattered_over_a_long_label_is_not_a_match() -> None:
 
 
 def test_a_short_word_never_matches_by_subsequence() -> None:
-    """Three letters land inside almost any sentence in the right order."""
+    """Four letters land inside almost any label in the right order.
+
+    "rank" is a tight subsequence of "recovery tanker" -- the r of recovery and the
+    ank of tanker -- and it was answering with four tanker settings.
+    """
     assert not is_subsequence("air", "a big irregular")
+    assert not is_subsequence("rank", fold("Enable Airboss Recovery Tanker"))
+    assert "rank" not in [hit.label.lower() for hit in search("rank")]
+    assert not [hit for hit in search("rank") if "tanker" in hit.label.lower()]
 
 
 def test_nothing_typed_finds_nothing() -> None:

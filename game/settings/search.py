@@ -44,9 +44,15 @@ def fold(text: str) -> str:
 SUBSEQUENCE_SLACK = 3
 
 
+#: Below this a word is too short for the net to mean anything. "rank" is a tight
+#: subsequence of "recovery tanker" -- the r of recovery and the ank of tanker -- and
+#: it found four tanker settings that have nothing to do with ranks.
+SUBSEQUENCE_MINIMUM = 6
+
+
 def is_subsequence(needle: str, haystack: str) -> bool:
     """Every letter of needle, in order and close together. The typo net."""
-    if len(needle) < 4:
+    if len(needle) < SUBSEQUENCE_MINIMUM:
         return False
     limit = len(needle) + SUBSEQUENCE_SLACK
     for start in range(len(haystack)):

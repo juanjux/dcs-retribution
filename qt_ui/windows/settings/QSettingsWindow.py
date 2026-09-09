@@ -1346,7 +1346,7 @@ class QSettingsWidget(QtWidgets.QWizardPage, SettingsContainer):
         """Open whatever has to be opened for this setting to be on the screen."""
         if hit.plugin is not None:
             self.show_page(self.categoryModel.rowCount() - 1)
-            self.pluginsPage.open_options_for(hit.plugin)
+            self.pluginsPage.open_options_for(hit.plugin, hit.key)
             return
 
         page, section = hit.page, hit.section
