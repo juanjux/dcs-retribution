@@ -5,7 +5,7 @@ import zipfile
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
 
 from PySide6 import QtWidgets
-from PySide6.QtCore import QItemSelectionModel, QPoint, QSize, Qt
+from PySide6.QtCore import QItemSelectionModel, QPoint, QSize, Qt, QTimer
 from PySide6.QtGui import QCloseEvent, QShowEvent, QStandardItem, QStandardItemModel
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -1098,6 +1098,40 @@ class AutoSettingsPage(QWidget):
             group.update_from_settings()
         self.refresh_page()
 
+    def reveal(self, name: str) -> bool:
+        """Show the section holding this setting, scroll to it and flash its label.
+
+        The flash is the point: a search that drops you on a page of forty rows has
+        told you where the answer is and left you looking for it.
+        """
+        for index, group in enumerate(self.groups):
+            label = group.layout.label_map.get(name)
+            if label is None:
+                continue
+            if self.sections is not None:
+                self.sections.setCurrentRow(index)
+            else:
+                self.stack.setCurrentIndex(index)
+            QTimer.singleShot(0, lambda w=label: self._flash(w))
+            return True
+        return False
+
+    def open_gear(self, section: str) -> None:
+        """Open the dialog a gear on this page opens, for the search to land in."""
+        for group in self.groups:
+            for name, description in group.layout.own_fields():
+                if description.opens_section == section:
+                    group.layout.open_section_dialog(section)
+                    return
+
+    def _flash(self, label: QWidget) -> None:
+        self.scroll.ensureWidgetVisible(label, 0, 80)
+        was = label.styleSheet()
+        label.setStyleSheet(
+            "background: palette(highlight); color: palette(highlighted-text);"
+        )
+        QTimer.singleShot(1600, lambda: label.setStyleSheet(was))
+
 
 class QSettingsWindow(QDialog):
     def __init__(self, game: Game):
@@ -1223,17 +1257,104 @@ class QSettingsWidget(QtWidgets.QWizardPage, SettingsContainer):
             self.onSelectionChanged
         )
 
-        self.layout.addWidget(self.categoryList, 0, 0, 1, 1)
+        self.initSearch()
+        self.layout.addWidget(self.search, 0, 0, 1, 1)
+        self.layout.addWidget(self.left_stack, 1, 0, 1, 1)
         self.layout.addLayout(self.right_layout, 0, 1, 5, 1)
 
         load = QPushButton("Load Settings")
         load.clicked.connect(self.load_settings)
-        self.layout.addWidget(load, 1, 0, 1, 1)
+        self.layout.addWidget(load, 2, 0, 1, 1)
         save = QPushButton("Save Settings")
         save.clicked.connect(self.save_settings)
-        self.layout.addWidget(save, 2, 0, 1, 1)
+        self.layout.addWidget(save, 3, 0, 1, 1)
 
         self.setLayout(self.layout)
+
+    def initSearch(self) -> None:
+        """A box that takes the word the player remembers and finds the setting.
+
+        Two hundred settings across six pages, and the plugins' own options behind
+        their gears: whichever page the answer is on, it is not the one you are
+        looking at. The results take the place of the page list while there is
+        something typed, so the column never grows and nothing else moves.
+        """
+        self.search = QLineEdit()
+        self.search.setPlaceholderText("Search settings...")
+        self.search.setClearButtonEnabled(True)
+        self.search.setMaximumWidth(175)
+        self.search.textChanged.connect(self.on_search)
+
+        self.results = QListWidget()
+        self.results.setMaximumWidth(175)
+        self.results.setWordWrap(True)
+        self.results.itemActivated.connect(self.on_result_chosen)
+        self.results.itemClicked.connect(self.on_result_chosen)
+
+        self.left_stack = QStackedWidget()
+        self.left_stack.addWidget(self.categoryList)
+        self.left_stack.addWidget(self.results)
+
+    def on_search(self, query: str) -> None:
+        from game.settings.search import search
+
+        if not query.strip():
+            self.left_stack.setCurrentWidget(self.categoryList)
+            return
+        self.results.clear()
+        for hit in search(query, self.settings):
+            # The label, then where it lives, so a row that reads the same as
+            # another -- there are two settings called "Cadet" -- is still telling
+            # you which one it is.
+            item = QListWidgetItem("{}\n{}".format(hit.label, hit.where))
+            item.setData(Qt.ItemDataRole.UserRole, hit)
+            item.setToolTip("{}\n{}".format(hit.label, hit.where))
+            self.results.addItem(item)
+        if self.results.count() == 0:
+            empty = QListWidgetItem("Nothing matches")
+            empty.setFlags(Qt.ItemFlag.NoItemFlags)
+            self.results.addItem(empty)
+        self.left_stack.setCurrentWidget(self.results)
+
+    def on_result_chosen(self, item: QListWidgetItem) -> None:
+        hit = item.data(Qt.ItemDataRole.UserRole)
+        if hit is None:
+            return
+        self.go_to(hit)
+
+    def go_to(self, hit: Any) -> None:
+        """Open whatever has to be opened for this setting to be on the screen."""
+        if hit.plugin is not None:
+            self.show_page(self.categoryModel.rowCount() - 1)
+            self.pluginsPage.open_options_for(hit.plugin)
+            return
+
+        page, section = hit.page, hit.section
+        # A section behind a gear is on no page: go to the switch that opens it and
+        # open it.
+        owner = Settings.switch_that_opens(section)
+        if owner is not None:
+            name, page, section = owner
+        if page not in self._page_names:
+            return
+        index = self._page_names.index(page)
+        self.show_page(index)
+        shown = self.pages.get(page)
+        if shown is None:
+            return
+        if owner is not None:
+            shown.reveal(owner[0])
+            shown.open_gear(section)
+        else:
+            shown.reveal(hit.key)
+
+    def show_page(self, index: int) -> None:
+        self.categoryList.selectionModel().setCurrentIndex(
+            self.categoryModel.index(index, 0),
+            QItemSelectionModel.SelectionFlag.ClearAndSelect,
+        )
+        self._ensure_page(index)
+        self.right_layout.setCurrentIndex(index)
 
     def initCheatLayout(self):
         self.cheatPage = QWidget()

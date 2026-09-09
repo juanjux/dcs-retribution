@@ -206,6 +206,13 @@ class PluginsPage(QWidget):
             layout.addWidget(row)
             self.rows.append(row)
 
+    def open_options_for(self, identifier: str) -> None:
+        """Open one plugin's options, for a search that landed on one of them."""
+        for row in self.rows:
+            if row.plugin.identifier == identifier and row.plugin.options:
+                row.open_options()
+                return
+
     def update_from_settings(self) -> None:
         enabled = self.sc.settings.plugins
         for row in self.rows:
