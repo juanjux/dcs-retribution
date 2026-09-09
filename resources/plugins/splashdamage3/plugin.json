@@ -1,6 +1,5 @@
 {
-    "nameInUI": "Splash Damage 3.4.2",
-    "descriptionInUI": "Gives bombs, rockets and shells a blast that is felt beyond the unit they hit: DCS only damages what a weapon lands on, so a 2000 lb bomb between two tanks kills neither. The script adds a secondary explosion scaled to the warhead, so near misses count, groups take splash damage, and cluster or cargo secondaries cook off. It applies to both sides and to the AI, and it costs frames in proportion to how much ordnance is in the air.",
+    "nameInUI": "Splash Damage 3.4.7",
     "defaultValue": false,
     "specificOptions": [
         {
@@ -192,7 +191,7 @@
             "nameInUI": "Chance of Critical Component Damage (%)",
             "mnemonic": "CriticalComponent_Chance",
             "minimumValue": 0.01,
-            "maximumValue": 100.00,
+            "maximumValue": 100.0,
             "defaultValue": 0.01
         },
         {
@@ -201,19 +200,205 @@
             "minimumValue": 1,
             "maximumValue": 100,
             "defaultValue": 50
+        },
+        {
+            "nameInUI": "Only track weapons fired by players",
+            "mnemonic": "only_players_weapons",
+            "defaultValue": false
+        },
+        {
+            "nameInUI": "Blast search radius when dynamic radius is off (m)",
+            "mnemonic": "blast_search_radius",
+            "defaultValue": 90,
+            "minimumValue": 10,
+            "maximumValue": 500
+        },
+        {
+            "nameInUI": "Apply shaped-charge reduction",
+            "mnemonic": "apply_shaped_charge_effects",
+            "defaultValue": true
+        },
+        {
+            "nameInUI": "Cascade damage multiplier",
+            "mnemonic": "cascade_scaling",
+            "defaultValue": 2,
+            "minimumValue": 1,
+            "maximumValue": 10
+        },
+        {
+            "nameInUI": "Cascade only below this health (%)",
+            "mnemonic": "cascade_explode_threshold",
+            "defaultValue": 60,
+            "minimumValue": 1,
+            "maximumValue": 100
+        },
+        {
+            "nameInUI": "Everything cascades, whatever its health",
+            "mnemonic": "always_cascade_explode",
+            "defaultValue": false
+        },
+        {
+            "nameInUI": "Announce disabled movement and weapons",
+            "mnemonic": "damage_model_game_messages",
+            "defaultValue": false
+        },
+        {
+            "nameInUI": "Enable cargo cook-offs",
+            "mnemonic": "enable_cargo_effects",
+            "defaultValue": true
+        },
+        {
+            "nameInUI": "Throw debris from cook-offs",
+            "mnemonic": "debris_effects",
+            "defaultValue": true
+        },
+        {
+            "nameInUI": "Flares from cook-offs",
+            "mnemonic": "cookoff_flares_enabled",
+            "defaultValue": true
+        },
+        {
+            "nameInUI": "Smoke and cook-offs for every vehicle",
+            "mnemonic": "smokeandcookoffeffectallvehicles",
+            "defaultValue": true
+        },
+        {
+            "nameInUI": "  ...with smoke",
+            "mnemonic": "allunits_enable_smoke",
+            "defaultValue": true
+        },
+        {
+            "nameInUI": "  ...with cook-offs",
+            "mnemonic": "allunits_enable_cookoff",
+            "defaultValue": true
+        },
+        {
+            "nameInUI": "  Chance of a cook-off (0-1)",
+            "mnemonic": "allunits_cookoff_chance",
+            "defaultValue": 0.4,
+            "minimumValue": 0.0,
+            "maximumValue": 1.0
+        },
+        {
+            "nameInUI": "  Chance of smoke (0-1)",
+            "mnemonic": "allunits_smoke_chance",
+            "defaultValue": 0.7,
+            "minimumValue": 0.0,
+            "maximumValue": 1.0
+        },
+        {
+            "nameInUI": "Track ground and ship ordnance",
+            "mnemonic": "track_groundunitordnance",
+            "defaultValue": true
+        },
+        {
+            "nameInUI": "Napalm effects for the Mk-77",
+            "mnemonic": "napalm_mk77_enabled",
+            "defaultValue": true
+        },
+        {
+            "nameInUI": "Napalm damages units",
+            "mnemonic": "napalm_unitdamage_enable",
+            "defaultValue": true
+        },
+        {
+            "nameInUI": "Double-wide napalm spread",
+            "mnemonic": "napalm_doublewide_enabled",
+            "defaultValue": false
+        },
+        {
+            "nameInUI": "Trophy active protection on equipped vehicles",
+            "mnemonic": "trophy_enabled",
+            "defaultValue": false
+        },
+        {
+            "nameInUI": "Scan for cook-offs only below a height",
+            "mnemonic": "track_pre_explosion_agl_gate",
+            "defaultValue": true
+        },
+        {
+            "nameInUI": "  That height (m AGL)",
+            "mnemonic": "track_pre_explosion_agl_limit",
+            "defaultValue": 1000,
+            "minimumValue": 10,
+            "maximumValue": 10000
+        },
+        {
+            "nameInUI": "One last explosion when a cook-off ends",
+            "mnemonic": "cookoff_final_explosion_enabled",
+            "defaultValue": false
+        },
+        {
+            "nameInUI": "  Chance of it, per vehicle (0-1)",
+            "mnemonic": "cookoff_final_explosion_allunits_chance",
+            "defaultValue": 0.0,
+            "minimumValue": 0.0,
+            "maximumValue": 1.0
+        },
+        {
+            "nameInUI": "  Its power",
+            "mnemonic": "cookoff_final_explosion_power",
+            "defaultValue": 40,
+            "minimumValue": 1,
+            "maximumValue": 1000
+        },
+        {
+            "nameInUI": "Napalm keeps burning what stays in it",
+            "mnemonic": "napalm_continuousdamage_enable",
+            "defaultValue": false
+        },
+        {
+            "nameInUI": "  Seconds between burns on the same unit",
+            "mnemonic": "napalm_continuousdamage_cooldown_seconds",
+            "defaultValue": 5,
+            "minimumValue": 1,
+            "maximumValue": 60
+        },
+        {
+            "nameInUI": "  Most times one unit can be burnt",
+            "mnemonic": "napalm_continuousdamage_max_damage_instances_per_unit",
+            "defaultValue": 5,
+            "minimumValue": 1,
+            "maximumValue": 50
+        },
+        {
+            "nameInUI": "Mega smoke columns",
+            "mnemonic": "megasmoke_enabled",
+            "defaultValue": false
+        },
+        {
+            "nameInUI": "  Their radius (m)",
+            "mnemonic": "megasmoke_radius",
+            "defaultValue": 20,
+            "minimumValue": 5,
+            "maximumValue": 200
+        },
+        {
+            "nameInUI": "  Layers of smoke",
+            "mnemonic": "megasmoke_layer_count",
+            "defaultValue": 4,
+            "minimumValue": 1,
+            "maximumValue": 20
+        },
+        {
+            "nameInUI": "  How long they last (s)",
+            "mnemonic": "megasmoke_smoke_time",
+            "defaultValue": 3600,
+            "minimumValue": 60,
+            "maximumValue": 14400
         }
     ],
     "scriptsWorkOrders": [
         {
-            "file": "Splash_Damage_3.4.2_Standard_Retribution.lua",
+            "file": "Splash_Damage_3.4.7_Standard_Retribution.lua",
             "mnemonic": "splashdamage3"
         }
     ],
-    
     "configurationWorkOrders": [
         {
             "file": "sd3-config.lua",
             "mnemonic": "sd3config"
         }
-    ]
+    ],
+    "descriptionInUI": "Gives bombs, rockets and shells a blast that is felt beyond the unit they hit: DCS only damages what a weapon lands on, so a 2000 lb bomb between two tanks kills neither. The script adds a secondary explosion scaled to the warhead, so near misses count, groups take splash damage, and cluster or cargo secondaries cook off. It applies to both sides and to the AI, and it costs frames in proportion to how much ordnance is in the air."
 }
