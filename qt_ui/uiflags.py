@@ -12,6 +12,3 @@ class UiFlags:
     # True if the front-end should connect to the development react webserver instead of
     # the built front-end app.
     dev_ui_webserver: bool
-
-    # True if the play/pause/speed controls should be visible in the top panel.
-    show_sim_speed_controls: bool

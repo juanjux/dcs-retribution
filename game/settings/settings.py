@@ -49,24 +49,6 @@ class NightMissions(Enum):
 
 
 @unique
-class FastForwardStopCondition(Enum):
-    DISABLED = "Fast forward disabled"
-    FIRST_CONTACT = "First contact"
-    PLAYER_TAKEOFF = "Player takeoff time"
-    PLAYER_TAXI = "Player taxi time"
-    PLAYER_STARTUP = "Player startup time"
-    PLAYER_AT_IP = "Player at IP"
-    MANUAL = "Manual fast forward control"
-
-
-@unique
-class CombatResolutionMethod(Enum):
-    PAUSE = "Pause simulation"
-    RESOLVE = "Resolve combat"
-    SKIP = "Skip combat"
-
-
-@unique
 class DefaultPlayerLaserCode(Enum):
     DEFAULT_1688 = "Default (1688)"
     ALLOCATE_OWN = "Allocate own (unique per flight)"
@@ -1170,47 +1152,6 @@ class Settings:
     )
     # Mission Generator
     # Gameplay
-    fast_forward_stop_condition: FastForwardStopCondition = choices_option(
-        "Fast forward until",
-        page=MISSION_GENERATOR_PAGE,
-        section=GAMEPLAY_SECTION,
-        default=FastForwardStopCondition.PLAYER_STARTUP,
-        choices={
-            "No fast forward": FastForwardStopCondition.DISABLED,
-            "Player startup time": FastForwardStopCondition.PLAYER_STARTUP,
-            "Player taxi time": FastForwardStopCondition.PLAYER_TAXI,
-            "Player takeoff time": FastForwardStopCondition.PLAYER_TAKEOFF,
-            "Player at IP": FastForwardStopCondition.PLAYER_AT_IP,
-            "First contact": FastForwardStopCondition.FIRST_CONTACT,
-            "Manual": FastForwardStopCondition.MANUAL,
-        },
-        detail=(
-            "Determines when fast forwarding stops: "
-            "No fast forward: disables fast forward. "
-            "Player startup time: fast forward until player startup time. "
-            "Player taxi time: fast forward until player taxi time. "
-            "Player takeoff time: fast forward until player takeoff time. "
-            "First contact: fast forward until first contact between blue and red units. "
-            "Manual: manually control fast forward. Show manual controls with --show-sim-speed-controls."
-        ),
-    )
-    combat_resolution_method: CombatResolutionMethod = choices_option(
-        "Resolve combat when fast forwarding by",
-        page=MISSION_GENERATOR_PAGE,
-        section=GAMEPLAY_SECTION,
-        default=CombatResolutionMethod.PAUSE,
-        choices={
-            "Pause": CombatResolutionMethod.PAUSE,
-            "Resolving combat (WIP)": CombatResolutionMethod.RESOLVE,
-            "Skipping combat": CombatResolutionMethod.SKIP,
-        },
-        detail=(
-            "Determines what happens when combat occurs when fast forwarding. "
-            "Pause: pause fast forward and generate mission. Fast forwarding may stop before the condition specified in the above setting. "
-            "Resolving combat (WIP): auto resolve combat. This method is very rudimentary and will result in large losses. "
-            "Skipping combat: skip combat as if it did not occur."
-        ),
-    )
     supercarrier: bool = boolean_option(
         "Use supercarrier module",
         MISSION_GENERATOR_PAGE,
@@ -2319,7 +2260,6 @@ class Settings:
     def deserialize_state_dict(state: dict[str, Any]) -> dict[str, Any]:
         # restore Enum & timedelta types
         s = Settings()
-        Settings._migrate_legacy_fast_forward(state)
         Settings._migrate_legacy_bandit_clouds(state)
         for key, value in list(state.items()):
             default = s.__dict__.get(key)
@@ -2371,69 +2311,6 @@ class Settings:
             state["cloud_preset_pack"] = (
                 CloudPresetPack.BANDIT if legacy else CloudPresetPack.NONE
             )
-
-    @staticmethod
-    def _migrate_legacy_fast_forward(state: dict[str, Any]) -> None:
-        """Map pre-#684 fast-forward settings onto the current enums.
-
-        Before #684 fast-forward was three separate fields::
-
-            fast_forward_to_first_contact: bool          # was it enabled
-            player_mission_interrupts_sim_at: Optional[StartType]
-                # None=Never, COLD=startup, WARM=taxi, RUNWAY=takeoff
-            auto_resolve_combat: bool
-
-        #684 replaced them with ``fast_forward_stop_condition`` /
-        ``combat_resolution_method``. Translate old saves so the user keeps an
-        equivalent setting instead of crashing on load, and normalize the legacy
-        "Never"/None sentinel (which has no enum member) to "no fast forward".
-        """
-        legacy_ff = state.pop("fast_forward_to_first_contact", None)
-        legacy_interrupt = state.pop("player_mission_interrupts_sim_at", None)
-        legacy_auto = state.pop("auto_resolve_combat", None)
-
-        if "fast_forward_stop_condition" not in state and legacy_ff is not None:
-            if not legacy_ff:
-                state["fast_forward_stop_condition"] = FastForwardStopCondition.DISABLED
-            else:
-                interrupt = Settings._resolve_start_type(legacy_interrupt)
-                if interrupt is None:
-                    state["fast_forward_stop_condition"] = (
-                        FastForwardStopCondition.FIRST_CONTACT
-                    )
-                else:
-                    state["fast_forward_stop_condition"] = {
-                        StartType.COLD: FastForwardStopCondition.PLAYER_STARTUP,
-                        StartType.WARM: FastForwardStopCondition.PLAYER_TAXI,
-                        StartType.RUNWAY: FastForwardStopCondition.PLAYER_TAKEOFF,
-                    }.get(interrupt, FastForwardStopCondition.FIRST_CONTACT)
-
-        if "combat_resolution_method" not in state and legacy_auto is not None:
-            state["combat_resolution_method"] = (
-                CombatResolutionMethod.RESOLVE
-                if legacy_auto
-                else CombatResolutionMethod.PAUSE
-            )
-
-        # A "none"/"Never"/None value stored directly under the new key has no
-        # matching enum member; treat that family as "no fast forward".
-        ff = state.get("fast_forward_stop_condition")
-        if ff is None and "fast_forward_stop_condition" in state:
-            state["fast_forward_stop_condition"] = FastForwardStopCondition.DISABLED
-        elif isinstance(ff, str) and ff.strip().lower() in {"none", "never", ""}:
-            state["fast_forward_stop_condition"] = FastForwardStopCondition.DISABLED
-
-    @staticmethod
-    def _resolve_start_type(value: Any) -> Optional[StartType]:
-        """Coerce a serialized legacy value to a StartType member, or None."""
-        if isinstance(value, StartType):
-            return value
-        if isinstance(value, str):
-            name = value.rsplit(".", 1)[-1]
-            for member in StartType:
-                if name == member.name or value == member.value:
-                    return member
-        return None
 
     @classmethod
     def _field_description(cls, settings_field: Field[Any]) -> OptionDescription:

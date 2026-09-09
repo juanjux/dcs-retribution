@@ -1,6 +1,7 @@
 ﻿# Retribution v1.6.3 (414th)
 
 ## Features/Improvements
+* **[Sim]** Fast forward is gone, and with it *Fast forward until* and *Resolve combat when fast forwarding by*. Take Off now hands DCS the mission at the time it was planned for instead of running a clock forward first. Existing saves load unchanged.
 * **[Plugins]** Four dropped. **EWRS** is the 2016 script BigEye EWR was built from, so BigEye stays and EWRS goes. **Mbot's Call Artillery** only ever answered a player flying an Armed Recon flight, while Carsten's Arty Spotter answers any player within spotting range and has four tunables to its one, so Carsten's stays. **The C-130 cargo script** goes with the Hercules mod we do not support. And the **EW Jammer Script** goes: jamming cannot be modelled honestly without engine support, which is why the feature that used it was parked in June.
 * **[Plugins]** Skynet IADS is listed as *Skynet IADS (juanjux's fork)*, since it is not the stock build, and Splash Damage, Moose's MarkerOps and Troops In Contact finally say what they do.
 * **[UI]** The settings window opens wide enough that no page has to be scrolled sideways, the section index no longer scrolls away with the settings beside it, and the box repeating the name of the section you just clicked is gone.

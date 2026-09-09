@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 from shapely.ops import unary_union
 
 from game.ato.flightstate import InCombat, InFlight
-from game.settings.settings import CombatResolutionMethod
+from game.sim.combat.resolution import CombatResolutionMethod
 from game.utils import dcs_to_shapely_point
 from .joinablecombat import JoinableCombat
 from .. import GameUpdateEvents
