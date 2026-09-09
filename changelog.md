@@ -1,6 +1,9 @@
 ﻿# Retribution v1.6.3 (414th)
 
 ## Features/Improvements
+* **[FIX]** A GPS jamming site drew its point defence on the map, a couple of miles, instead of its jamming bubble.
+* **[FIX]** GPS jamming is switched on by its plugin alone; the duplicate setting in Mission Generator is gone.
+* **[UI]** The jammer is called *GPS Jammer* and its map icon reads GPS.
 * **[Campaign]** New *Ignore parking space at airbases* option.
 * **[UI]** Radar sites, missile batteries and jamming sites are interchangeable: buy any of the three where one stands, and the icon follows what is parked there.
 * **[Map]** A site that only watches draws its detection range dashed, in its faction's colour.

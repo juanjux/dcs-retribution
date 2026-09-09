@@ -22,6 +22,7 @@ interface RangeCirclesProps {
   position: LatLng;
   threat_ranges: number[];
   detection_ranges: number[];
+  jamming_range?: number | null;
   blue: boolean;
   detection?: boolean;
   // When set, clicking the ring opens the emitter's info dialog (same as
@@ -49,28 +50,33 @@ function summarizeUnits(units: string[]): string[] {
   return Array.from(counts, ([name, n]) => (n > 1 ? `${n}x ${name}` : name));
 }
 
-// A site that sees but does not shoot: an EWR, or a jamming site. Its only reach is
-// its detection range, so it never appears on the threat layer and its ring was only
-// visible with SAM detection ranges turned on. It draws on the threat layer instead,
-// in the faction colour like a SAM, dashed so it does not read as a threat.
-function isRadarOnly(props: RangeCirclesProps) {
-  return props.threat_ranges.length === 0 && props.detection_ranges.length > 0;
+// What a site reaches without shooting: the GPS denial bubble of a jamming site, or
+// the detection range of a site that carries no launcher at all. Neither appears on
+// the threat layer on its own, so both were invisible unless you had SAM detection
+// ranges turned on -- and a jamming site with point defence drew that point defence
+// instead, a couple of miles where the bubble is tens.
+function passiveReach(props: RangeCirclesProps): number[] {
+  if (props.jamming_range) {
+    return [props.jamming_range];
+  }
+  if (props.threat_ranges.length === 0 && props.detection_ranges.length > 0) {
+    return props.detection_ranges;
+  }
+  return [];
 }
 
 const RangeCircles = (props: RangeCirclesProps) => {
-  const radarOnly = isRadarOnly(props);
-  // Drawn once: on the threat layer when the site only detects, on the detection
-  // layer otherwise. Both would be the same circle twice.
+  const passive = passiveReach(props);
+  // The passive ring goes on the threat layer, dashed and in the faction colour, so
+  // it does not read as somewhere you get shot. A site that only detects has nothing
+  // else to draw, so the detection layer skips it rather than drawing it twice.
   const radii = props.detection
-    ? radarOnly
+    ? props.threat_ranges.length === 0 && !props.jamming_range
       ? []
       : props.detection_ranges
-    : radarOnly
-      ? props.detection_ranges
-      : props.threat_ranges;
+    : [...props.threat_ranges, ...passive];
   const color = colorFor(props.blue, props.detection === true);
   const baseWeight = props.detection ? 1 : 2;
-  const dashArray = radarOnly && !props.detection ? "10 12" : undefined;
   const dispatch = useAppDispatch();
 
   // Highlight when the feature is enabled and this emitter is the hovered one.
@@ -123,7 +129,10 @@ const RangeCircles = (props: RangeCirclesProps) => {
               color: highlighted ? HIGHLIGHT_COLOR : color,
               weight: highlighted ? baseWeight + 2 : baseWeight,
               fill: false,
-              dashArray: dashArray,
+              dashArray:
+                !props.detection && passive.includes(radius)
+                  ? "10 12"
+                  : undefined,
             }}
             interactive={false}
           />
@@ -198,6 +207,7 @@ export const AirDefenseRangeLayer = (props: AirDefenseRangeLayerProps) => {
             position={tgo.position}
             threat_ranges={tgo.threat_ranges}
             detection_ranges={tgo.detection_ranges}
+            jamming_range={tgo.jamming_range}
             selectable
             {...props}
           />

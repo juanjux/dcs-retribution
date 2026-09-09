@@ -1,5 +1,5 @@
 import { Tgo as TgoModel } from "../../api/liberationApi";
-import { iconForTgo, isRepairing } from "./shared";
+import { iconForTgo, isJammer, isRepairing } from "./shared";
 
 // APP-6(D) SIDC with the status/condition digit (index 6) parameterised.
 function sidc(status: string): string {
@@ -57,5 +57,27 @@ describe("iconForTgo health-bar colour", () => {
     const svg = decodeURIComponent(url.slice(url.indexOf(",") + 1));
     expect(svg).toContain("rgb(255,255,0)"); // still yellow
     expect(svg).not.toContain("rgb(255,140,0)");
+  });
+});
+
+// The standard symbol for these letters "EW", which is true but not the useful half:
+// what they jam is GPS, and nothing else on the map does.
+describe("isJammer", () => {
+  const jammer = {
+    ...fakeTgo(false, "0", false),
+    sidc: "10061020001505040000",
+  } as TgoModel;
+
+  it("recognises the jamming entity", () => {
+    expect(isJammer(jammer)).toBe(true);
+    expect(isJammer(fakeTgo(false, "0", false))).toBe(false);
+  });
+
+  it("labels the icon GPS", () => {
+    const svg = decodeURIComponent(
+      iconForTgo(jammer).options.iconUrl!.split(",").slice(1).join(","),
+    );
+    expect(svg).toContain(">GPS</text>");
+    expect(svg).not.toContain(">EW</text>");
   });
 });

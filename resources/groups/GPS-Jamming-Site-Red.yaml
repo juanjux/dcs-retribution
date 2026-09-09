@@ -23,6 +23,6 @@ never_random: true
 tasks:
   - EarlyWarningRadar
 units:
-  - EW Radio Jammer (Red)
+  - GPS Jammer (Red)
 layouts:
   - GPS Jamming Site

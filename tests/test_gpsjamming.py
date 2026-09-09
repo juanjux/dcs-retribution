@@ -51,7 +51,7 @@ def test_the_declared_jammers_carry_a_bubble() -> None:
     """The two DCS GPS spoofer vehicles are what the fork ships as jammers."""
     from game.dcs.groundunittype import GroundUnitType
 
-    for name in ("EW Radio Jammer (Red)", "EW Radio Jammer (Blue)"):
+    for name in ("GPS Jammer (Red)", "GPS Jammer (Blue)"):
         unit = GroundUnitType.named(name)
         assert unit.gps_jamming is not None, f"{name} should be a jammer"
         assert unit.gps_jamming.radius_nm == 15.0

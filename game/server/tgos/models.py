@@ -24,6 +24,11 @@ class TgoJs(BaseModel):
     units: list[str]  # TODO: Event stream
     threat_ranges: list[float]  # TODO: Event stream
     detection_ranges: list[float]  # TODO: Event stream
+    # How far this site denies GPS, in metres, when it is a live jamming site and the
+    # plugin is on. Its own reach, not its threat: a jamming site's threat ring is
+    # whatever point defence it carries, a couple of miles, which is not the circle
+    # anyone is looking for.
+    jamming_range: Optional[float]
     dead: bool  # TODO: Event stream
     # Whether the group can be rebuilt or repaired, so the map's "destroyed
     # (non-repairable)" layer must NOT hide it even when dead: re-purchasable
@@ -43,6 +48,22 @@ class TgoJs(BaseModel):
         title = "Tgo"
 
     @staticmethod
+    def _jamming_range_of(tgo: TheaterGroundObject) -> Optional[float]:
+        """Metres of GPS denial, or None. Ground truth, the same record the runtime
+        gets, so the ring the map draws is the bubble the weapons actually eat."""
+        from game.gpsjamming import jamming_reach_for
+
+        game = getattr(
+            getattr(getattr(tgo, "control_point", None), "coalition", None),
+            "game",
+            None,
+        )
+        if game is None:
+            return None
+        reach = jamming_reach_for(game, tgo)
+        return reach.meters if reach is not None else None
+
+    @staticmethod
     def for_tgo(tgo: TheaterGroundObject) -> TgoJs:
         # Only include non-zero ranges: a zero-radius circle renders as a stray
         # dot (normally hidden under the unit icon, but visible once the icon is
@@ -57,6 +78,7 @@ class TgoJs(BaseModel):
             for meters in (group.max_detection_range().meters for group in tgo.groups)
             if meters > 0
         ]
+        jamming_range = TgoJs._jamming_range_of(tgo)
         if tgo.control_point.captured.is_blue:
             blue = True
         else:
@@ -92,6 +114,7 @@ class TgoJs(BaseModel):
             units=units,
             threat_ranges=threat_ranges,
             detection_ranges=detection_ranges,
+            jamming_range=jamming_range,
             dead=dead,
             purchasable=tgo.repairable,
             repairing=tgo.has_pending_repairs,

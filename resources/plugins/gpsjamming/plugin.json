@@ -1,6 +1,6 @@
 {
     "nameInUI": "GPS jamming (satellite-guided weapons go long)",
-    "descriptionInUI": "DCS models no GPS receiver, so the denial is scripted on the weapon: a satellite-guided store (JDAM, JSOW, JASSM, SLAM-ER, KAB-500S -- never laser, TV or IR) released inside a live jammer's bubble is destroyed just short of impact and detonated a scored distance off the aimpoint, further the deeper it was. Real ordnance, nothing spawned, and killing the jammer restores accuracy at once. A site degrades the opposing side only, and the firing flight is told the first time a weapon of theirs is spoofed. Inert unless the GPS jamming setting is on and a live site exists.",
+    "descriptionInUI": "DCS models no GPS receiver, so the denial is scripted on the weapon: a satellite-guided store (JDAM, JSOW, JASSM, SLAM-ER, KAB-500S -- never laser, TV or IR) released inside a live jammer's bubble is destroyed just short of impact and detonated a scored distance off the aimpoint, further the deeper it was. Real ordnance, nothing spawned, and killing the jammer restores accuracy at once. A site degrades the opposing side only, and the firing flight is told the first time a weapon of theirs is spoofed. Inert unless a live jamming site exists.",
     "defaultValue": true,
     "specificOptions": [
         {

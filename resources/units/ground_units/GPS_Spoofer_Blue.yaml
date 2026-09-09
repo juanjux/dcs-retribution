@@ -20,4 +20,4 @@ role: Ground Radio / Navigation Jammer
 gps_jamming:
   radius_nm: 15
 variants:
-  "EW Radio Jammer (Blue)": null
+  "GPS Jammer (Blue)": null
