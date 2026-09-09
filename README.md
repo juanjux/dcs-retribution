@@ -251,6 +251,11 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   moved behind its gear along with the Skynet IADS radius. Old campaigns keep what they
   had set. ([#186](https://github.com/juanjux/dcs-retribution/pull/186))
 
+- **Leg distances in the waypoint table**, with the route total under it. Target points
+  and the bullseye read 0 and are left out of the total: they are in the list but not on
+  the ground track, and the leg after one of them is measured from the last waypoint
+  actually flown. ([#189](https://github.com/juanjux/dcs-retribution/pull/189))
+
 ### Kneeboards
 - **Friendly-packages list** plus a **package-targets map** page.
   ([#11](https://github.com/juanjux/dcs-retribution/pull/11))

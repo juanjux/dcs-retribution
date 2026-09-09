@@ -86,6 +86,16 @@ class QFlightWaypointTab(QFrame):
         self.flight_waypoint_list = QFlightWaypointList(self.package, self.flight)
         layout.addWidget(self.flight_waypoint_list, 0, 0)
 
+        # Under the table rather than as a last row: on_changed walks the rows against
+        # flight_plan.waypoints, so a row that is not a waypoint would index past the
+        # end of it on the first edit.
+        self.route_length = QLabel()
+        self.flight_waypoint_list.route_length_changed.connect(self.show_route_length)
+        # The list built itself in its constructor, before there was anything connected
+        # to hear the total, so ask it again.
+        self.flight_waypoint_list.update_list()
+        layout.addWidget(self.route_length, 1, 0)
+
         rlayout = QVBoxLayout()
         layout.addLayout(rlayout, 0, 1)
 
@@ -313,6 +323,9 @@ class QFlightWaypointTab(QFrame):
                 changed = True
         if changed:
             self.on_change()
+
+    def show_route_length(self, nautical_miles: float) -> None:
+        self.route_length.setText(f"<strong>Route:</strong> {nautical_miles:.0f} nm")
 
     def on_change(self):
         self.flight_waypoint_list.update_list()
