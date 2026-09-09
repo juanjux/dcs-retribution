@@ -251,6 +251,11 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   moved behind its gear along with the Skynet IADS radius. Old campaigns keep what they
   had set. ([#186](https://github.com/juanjux/dcs-retribution/pull/186))
 
+- **The payload editor counts the drop tanks.** *Internal Fuel Quantity* is *Fuel
+  Quantity* and says what the tanks add and what the aircraft therefore carries -- an
+  F-15C on three 610-gallon tanks was reading 13,500 lb when it leaves with 24,800.
+  ([#191](https://github.com/juanjux/dcs-retribution/pull/191))
+
 ### Kneeboards
 - **Friendly-packages list** plus a **package-targets map** page.
   ([#11](https://github.com/juanjux/dcs-retribution/pull/11))
