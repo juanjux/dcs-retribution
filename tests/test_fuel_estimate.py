@@ -1,10 +1,7 @@
-"""The fuel estimate: measured where somebody measured, guessed where nobody did.
+"""The fuel estimate, and the guess almost every flight gets.
 
-Twenty-four of the roughly three hundred aircraft carry measured consumption figures,
-so the guess is what almost every flight actually gets. It is meant to err high --
-being told you are tight and finding you had plenty costs nothing; the other way costs
-an aircraft -- but not so high that it calls every flight short, which would be no more
-useful than being wrong.
+Twenty-four of ~300 aircraft have measured figures. The guess must err high, but not
+so high that it calls every flight short.
 """
 
 from __future__ import annotations
@@ -40,12 +37,7 @@ def test_somebody_has_measured_some_aircraft() -> None:
 
 
 def test_the_guess_leans_high_against_every_measured_airframe() -> None:
-    """Checked against the only ground truth there is: the measured aircraft.
-
-    Not a tight band -- the measured set itself spans 447 to 856 nm on internal fuel,
-    so no single rule fits it closely. What matters is that the guess never lands far
-    BELOW a measured figure, which is the direction that gets someone killed.
-    """
+    """A wide band on purpose: the measured set itself spans 447 to 856 nm."""
     for aircraft in _measured():
         if _airframe_class(aircraft) == "heavy":
             # The buddy tankers carry their TRANSFERABLE fuel as "internal", so a
@@ -61,7 +53,7 @@ def test_the_guess_leans_high_against_every_measured_airframe() -> None:
 
 
 def test_the_measured_figures_win_where_they_exist() -> None:
-    """Including for the tankers the guess cannot describe."""
+    """Including the tankers the guess cannot describe."""
     for aircraft in _measured():
         assert aircraft.fuel_consumption is not None
 
@@ -78,7 +70,7 @@ def test_combat_costs_more_than_cruise_and_climb_more_still() -> None:
 
 
 def test_every_airframe_gets_an_answer() -> None:
-    """Without a fallback the estimate would have nothing to say about 9 flights in 10."""
+    """Nine flights in ten are an airframe nobody measured."""
     for aircraft in AircraftType.iter_all():
         guess = assumed_consumption(aircraft)
         assert guess.cruise > 0

@@ -1,16 +1,7 @@
-"""What a flight plan is going to cost in fuel, erring high.
+"""What a flight plan costs in fuel, erring high.
 
-The pieces were already here: every aircraft that has been measured carries a
-``FuelConsumption`` -- taxi, and pounds per nautical mile for climb, cruise and
-combat -- and the flight plan already knows which rate applies to each leg and how
-far the aircraft actually flies it (a racetrack charges its laps, not one crossing).
-The mission generator walks exactly this to write each waypoint's ``min_fuel``. All
-that was missing was showing the player the number before they fly it.
-
-Deliberately pessimistic. The rates are averages over a profile nobody flies exactly,
-the AI wanders, and a player who believes an optimistic figure finds out about it over
-the sea, so the total carries a margin on top of the reserve the aircraft is supposed
-to land with.
+Taxi, each leg at its climb, cruise or combat rate, the landing reserve, and a margin
+on top. An aircraft with no measured consumption falls back to a guess.
 """
 
 from __future__ import annotations
@@ -26,8 +17,8 @@ from game.utils import KG_TO_LBS, Mass, kgs, kph, pairwise, pounds
 if TYPE_CHECKING:
     from game.ato.flight import Flight
 
-#: Added on top of taxi + route + reserve. The estimate is meant to be wrong in the
-#: direction that costs a diversion rather than a splash.
+#: On top of taxi + route + reserve, so the estimate errs towards a diversion rather
+#: than towards a splash.
 MARGIN = 1.10
 
 
@@ -52,9 +43,8 @@ def estimate_fuel(flight: Flight) -> Optional[FuelEstimate]:
     )
     plan = flight.flight_plan
 
-    # Up to and including the landing point, the same slice the generator's min_fuel
-    # walk uses. What follows a landing is the bullseye and the divert field, and the
-    # bullseye can be hundreds of miles away.
+    # Stop at the landing point: what follows it is the bullseye, hundreds of miles
+    # away, and the divert field.
     waypoints = list(plan.waypoints)
     landing = None
     for index, waypoint in enumerate(waypoints):
@@ -81,10 +71,8 @@ def estimate_fuel(flight: Flight) -> Optional[FuelEstimate]:
     return FuelEstimate(required=pounds(required), carried=kgs(flight.fuel))
 
 
-#: Nominal still-air range on internal fuel, by what the airframe is. Calibrated on
-#: the 24 aircraft somebody has actually measured, which come out between 447 nm (a
-#: Growler) and 856 nm (a Tornado F3) -- so a fast jet is given the pessimistic end of
-#: that spread, and the classes nobody measured are set by the same reasoning.
+#: Nominal still-air range on internal fuel, per class. The measured aircraft span
+#: 447 to 856 nm, so a jet takes the pessimistic end.
 NOMINAL_RANGE_NM = {
     "helicopter": 250.0,
     "heavy": 4000.0,  # tankers, AWACS, transports: they exist to stay up
@@ -92,23 +80,21 @@ NOMINAL_RANGE_NM = {
     "jet": 450.0,
 }
 
-#: Ratios from the measured set: climb runs 2.0-2.4x cruise and combat 1.2-2.2x.
-#: The high end of each would compound with the pessimistic cruise above into an
-#: estimate that calls every flight short, which is no more useful than a wrong one.
+#: The measured set runs climb 2.0-2.4x cruise and combat 1.2-2.2x. Both at their
+#: high end compound with the cruise above into an estimate that calls everything
+#: short.
 CLIMB_OVER_CRUISE = 2.4
 COMBAT_OVER_CRUISE = 1.8
 
-#: Taxi, and the reserve to land with as a share of internal fuel -- the measured set
-#: reserves 1000 lb on a Viper and 2000 on a Hornet, both near a sixth of internal.
+#: The measured set reserves 1000 lb on a Viper and 2000 on a Hornet, both near a
+#: sixth of internal.
 ASSUMED_TAXI_LB = 200
 RESERVE_SHARE = 0.17
 MINIMUM_RESERVE_LB = 400.0
 
 
-#: An aircraft that can only do these is not a combat aircraft carrying fuel to fight
-#: with, it is one whose whole job is staying up. Keyed on the tasking rather than on
-#: size, because the Super Hornet tanker is a fighter by every physical measure and
-#: carries its transferable fuel as "internal".
+#: An aircraft that can only do these exists to stay up. Keyed on tasking, not size:
+#: the Super Hornet tanker is a fighter carrying its transferable fuel as "internal".
 SUPPORT_ONLY_TASKS = frozenset(
     {
         FlightType.AEWC,
@@ -131,13 +117,7 @@ def _airframe_class(aircraft: AircraftType) -> str:
 
 
 def assumed_consumption(aircraft: AircraftType) -> FuelConsumption:
-    """A consumption profile for an airframe nobody has measured.
-
-    Only 24 of the ~300 aircraft carry measured figures, so without this the estimate
-    would have nothing to say about almost every flight. Derived from the one number
-    every airframe does have -- how much fuel it holds -- over a nominal range for its
-    class, which is the crude version of "so many pounds per mile".
-    """
+    """A profile for an airframe nobody has measured, from its fuel capacity."""
     internal = aircraft.dcs_unit_type.fuel_max * KG_TO_LBS
     cruise = internal / NOMINAL_RANGE_NM[_airframe_class(aircraft)]
     return FuelConsumption(
