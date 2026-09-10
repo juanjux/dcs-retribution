@@ -51,10 +51,38 @@ class QFlightPlanner(QTabWidget):
             self.header_changed
         )
 
-        self.addTab(self.general_settings_tab, "General Flight settings")
+        self.addTab(self.general_settings_tab, "General")
         self.addTab(self.payload_tab, "Payload")
-        self.addTab(self.waypoint_tab, "Waypoints")
+        self.waypoints_index = self.addTab(self.waypoint_tab, "Waypoints")
         self.setCurrentIndex(0)
+
+        # Restyled here rather than in style.css: this is the only tab bar in the
+        # application that follows the redesign's vocabulary, and putting it in the
+        # global sheet would drag every other one along with it.
+        self.setStyleSheet(
+            "QTabBar::tab { background: transparent; color: #8E9DAA; padding: 6px 16px;"
+            " font-size: 12.5px; border: none; }"
+            "QTabBar::tab:selected { background: #2D3E50; color: #F2F7FA;"
+            " font-weight: 600; border-top-left-radius: 3px;"
+            " border-top-right-radius: 3px; }"
+            "QTabWidget::pane { border: none; }"
+        )
+        self.waypoint_tab.flight_waypoint_list.route_length_changed.connect(
+            self.show_waypoint_count
+        )
+        self.show_waypoint_count()
+
+    def show_waypoint_count(self, _route_nm: float = 0.0) -> None:
+        """How many waypoints there are, on the tab that holds them.
+
+        A route that grew a leg you did not ask for is worth noticing from another
+        tab, and the count is the cheapest way to notice it.
+        """
+        try:
+            count = len(self.waypoint_tab.flight.flight_plan.waypoints)
+        except Exception:
+            return
+        self.setTabText(self.waypoints_index, f"Waypoints  {count}")
 
     def on_tab_changed(self, index: int) -> None:
         if self.widget(index) is self.waypoint_tab:

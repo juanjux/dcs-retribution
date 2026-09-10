@@ -5,9 +5,13 @@ from typing import Optional
 
 from PySide6.QtWidgets import (
     QDialog,
+    QHBoxLayout,
     QInputDialog,
+    QLabel,
     QMessageBox,
+    QPushButton,
     QVBoxLayout,
+    QWidget,
 )
 
 from game.ato.flight import Flight
@@ -65,7 +69,61 @@ class QEditFlightDialog(QDialog):
         self.header.jump_to_tab.connect(self.flight_planner.setCurrentIndex)
         layout.addWidget(self.flight_planner)
 
+        layout.addWidget(self._footer())
+
         self.setLayout(layout)
+
+    def _footer(self) -> QWidget:
+        """A way out, and a way up.
+
+        Everything here is applied as you change it -- there is nothing to confirm --
+        so the footer says so rather than offering an OK that would imply otherwise.
+        The package is one level up and was reachable only by closing this and finding
+        it again on the map.
+        """
+        hint = QLabel("Changes apply immediately to the package")
+        hint.setStyleSheet(
+            "font-size: 11px; color: #7C8B99; background: transparent; border: none;"
+        )
+
+        to_package = QPushButton("Go to package")
+        to_package.setFixedHeight(28)
+        to_package.setStyleSheet(
+            "QPushButton { background: #26343F; color: #B7C6D2;"
+            " border: 1px solid #3A4B5C; border-radius: 3px; padding: 0 14px;"
+            " font-size: 12px; }"
+            "QPushButton:hover { background: #33475C; }"
+        )
+        to_package.clicked.connect(self.on_go_to_package)
+
+        done = QPushButton("Done")
+        done.setFixedHeight(28)
+        done.setStyleSheet(
+            "QPushButton { background: #8FC3F0; color: #0F1922; border: none;"
+            " border-radius: 3px; padding: 0 20px; font-size: 12px;"
+            " font-weight: 600; }"
+            "QPushButton:hover { background: #A6D0F4; }"
+        )
+        done.clicked.connect(self.accept)
+
+        row = QHBoxLayout()
+        row.setContentsMargins(14, 0, 6, 0)
+        row.setSpacing(10)
+        row.addWidget(hint)
+        row.addStretch()
+        row.addWidget(to_package)
+        row.addWidget(done)
+        holder = QWidget()
+        holder.setFixedHeight(44)
+        holder.setStyleSheet("background: transparent; border: none;")
+        holder.setLayout(row)
+        return holder
+
+    def on_go_to_package(self) -> None:
+        from qt_ui.dialogs import Dialog
+
+        self.accept()
+        Dialog.open_edit_package_dialog(self.package_model)
         self.finished.connect(self.on_close)
 
     def on_squadron_change(self, flight: Flight):
