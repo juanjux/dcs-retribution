@@ -5,12 +5,15 @@ from PySide6.QtGui import QPixmap
 
 from .liberation_theme import get_theme_icons
 
+#: Where the code, the issues and the builds of THIS fork are, and where the things
+#: it does not have its own copy of still live. The manual and the forum thread stay
+#: upstream on purpose: that documentation is real and ours would be an empty wiki.
 URLS: Dict[str, str] = {
     "Manual": "https://github.com/dcs-retribution/dcs-retribution/wiki",
-    "Repository": "https://github.com/dcs-retribution/dcs-retribution",
+    "Repository": "https://github.com/juanjux/dcs-retribution",
     "ForumThread": "https://forum.dcs.world/topic/368593-dcs-retribution-dynamic-campaign-generator/",
-    "Issues": "https://github.com/dcs-retribution/dcs-retribution/issues",
-    "Releases": "https://github.com/dcs-retribution/dcs-retribution/releases",
+    "Issues": "https://github.com/juanjux/dcs-retribution/issues",
+    "Releases": "https://github.com/juanjux/dcs-retribution/releases",
 }
 
 LABELS_OPTIONS = ["Full", "Abbreviated", "Dot Only", "Neutral Dot", "Off"]
