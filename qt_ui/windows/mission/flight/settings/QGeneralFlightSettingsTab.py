@@ -23,6 +23,9 @@ from qt_ui.windows.mission.flight.waypoints.QFlightWaypointList import (
 class QGeneralFlightSettingsTab(QFrame):
     flight_size_changed = Signal()
     squadron_changed = Signal(Flight)
+    #: Something on this tab changed what the header shows -- a seat filled, the
+    #: start type moved.
+    header_changed = Signal()
 
     def __init__(
         self,
@@ -45,13 +48,16 @@ class QGeneralFlightSettingsTab(QFrame):
                 self.flight_slot_editor.roster_editor.pilots_changed
             )
 
-        start_type = QFlightStartType(
+        self.start_type = start_type = QFlightStartType(
             package_model,
             flight,
         )
+        start_type.start_type_changed.connect(self.header_changed)
 
         roster = self.flight_slot_editor.roster_editor
         roster.pilots_changed.connect(start_type.on_pilot_selected)
+        roster.pilots_changed.connect(self.header_changed)
+        self.flight_slot_editor.flight_resized.connect(self.header_changed)
 
         widgets = [
             QFlightTypeTaskInfo(flight),

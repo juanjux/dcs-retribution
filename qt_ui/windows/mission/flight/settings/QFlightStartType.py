@@ -1,3 +1,4 @@
+from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
     QComboBox,
     QGroupBox,
@@ -13,6 +14,11 @@ from qt_ui.models import PackageModel
 
 
 class QFlightStartType(QGroupBox):
+    #: Anything other than Cold makes the flight untargetable by OCA, which the
+    #: header shows as a pill. Emitted however the start type moved -- picked by
+    #: hand, or reset because a player took a seat.
+    start_type_changed = Signal()
+
     def __init__(self, package_model: PackageModel, flight: Flight):
         super().__init__()
         self.package_model = package_model
@@ -63,8 +69,10 @@ class QFlightStartType(QGroupBox):
         self.start_type.setCurrentText(self.flight.start_type.value)
 
         self.package_model.update_tot()
+        self.start_type_changed.emit()
 
     def _on_start_type_selected(self):
         selected = self.start_type.currentData()
         self.flight.start_type = selected
         self.package_model.update_tot()
+        self.start_type_changed.emit()

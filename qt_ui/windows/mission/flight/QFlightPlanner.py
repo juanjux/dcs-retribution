@@ -12,6 +12,10 @@ from qt_ui.windows.mission.flight.waypoints.QFlightWaypointTab import QFlightWay
 
 class QFlightPlanner(QTabWidget):
     squadron_changed = Signal(Flight)
+    #: Something changed that the mission header above these tabs reports on: a seat,
+    #: the fuel, the start type, the size of the flight. Gathered here so the header
+    #: has one thing to listen to rather than reaching into three tabs.
+    header_changed = Signal()
 
     def __init__(self, package_model: PackageModel, flight: Flight, gm: GameModel):
         super().__init__()
@@ -40,6 +44,12 @@ class QFlightPlanner(QTabWidget):
         # And a backstop for any path that changes carried fuel without saying so:
         # arriving at the tab is a fine moment to recompute.
         self.currentChanged.connect(self.on_tab_changed)
+
+        self.payload_tab.carried_fuel_changed.connect(self.header_changed)
+        self.general_settings_tab.header_changed.connect(self.header_changed)
+        self.waypoint_tab.flight_waypoint_list.route_length_changed.connect(
+            self.header_changed
+        )
 
         self.addTab(self.general_settings_tab, "General Flight settings")
         self.addTab(self.payload_tab, "Payload")

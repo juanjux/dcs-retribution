@@ -27,6 +27,7 @@ from game.server import EventStream
 from game.sim import GameUpdateEvents
 from qt_ui.models import GameModel, PackageModel
 from qt_ui.uiconstants import EVENT_ICONS
+from qt_ui.windows.mission.flight.header import FlightHeader
 from qt_ui.windows.mission.flight.QFlightPlanner import QFlightPlanner
 
 
@@ -53,8 +54,15 @@ class QEditFlightDialog(QDialog):
 
         layout = QVBoxLayout()
 
+        # Above the tabs and on every one of them: what flies, whose it is, where it
+        # is going, and what still needs deciding.
+        self.header = FlightHeader(flight)
+        layout.addWidget(self.header)
+
         self.flight_planner = QFlightPlanner(package_model, flight, game_model)
         self.flight_planner.squadron_changed.connect(self.on_squadron_change)
+        self.flight_planner.header_changed.connect(self.header.refresh)
+        self.header.jump_to_tab.connect(self.flight_planner.setCurrentIndex)
         layout.addWidget(self.flight_planner)
 
         self.setLayout(layout)
