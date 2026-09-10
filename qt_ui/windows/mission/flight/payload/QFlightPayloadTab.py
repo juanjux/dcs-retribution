@@ -93,6 +93,15 @@ class FlightMemberSelector(QWidget):
         """Kept from the spin box: the caller says the flight resized."""
         self.rebuild()
 
+    def value(self) -> int:
+        """The seat number, counting from one.
+
+        Kept from the spin box this replaced, with the same off-by-one: five call
+        sites read it, and changing what it means as well as what it looks like is two
+        changes where one will do.
+        """
+        return self._index + 1
+
     @property
     def selected_member(self) -> FlightMember:
         return self.flight.roster.members[self._index]
