@@ -2,6 +2,7 @@
 
 ## Features/Improvements
 * **[Plugins]** Mission Log: fighters watching a contact without committing have their own switch, apart from those moving to intercept.
+* **[Plugins]** Mission Log: enemy pilots, aircraft, flights and missiles are named as enemy, so a campaign where both sides fly the same airframes still says who shot whom.
 * **[FIX]** The fuel figure did not move when a drop tank was added or removed.
 * **[FIX]** The fuel estimate ignored the altitude flown, and charged the join and split legs at the combat rate.
 * **[FIX]** Take Off crashed on any flight with a racetrack, reading an option of the removed EW jamming plugin.

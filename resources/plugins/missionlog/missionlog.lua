@@ -190,12 +190,15 @@ local function describe_bare(unit)
     return aircraft, false
 end
 
-local function describe(unit)
+-- Both sides fly the same airframes in some campaigns, where "the Su-27" says
+-- nothing about whose it is. Anything belonging to the other coalition is named as
+-- theirs -- and only then: a blue-on-blue is not an enemy.
+local function describe(unit, enemy)
     local text, named = describe_bare(unit)
     if named then
-        return text
+        return enemy and ("enemy " .. text) or text
     end
-    return "the " .. text
+    return (enemy and "the enemy " or "the ") .. text
 end
 
 -- The same information describe() renders, but kept apart: the chronicle needs
@@ -250,20 +253,21 @@ end
 -- flight: describing it unit by unit turns one event into a wall of nine
 -- identical lines, all at the same range, differing only in which enemy
 -- wingman was named.
-local function describe_flight(group)
+local function describe_flight(group, enemy)
+    local herd = enemy and "an enemy flight" or "a flight"
     local leader, size
     if not pcall(function() leader = group:getUnit(1) end) or leader == nil then
-        return "a flight"
+        return herd
     end
     if not pcall(function() size = group:getSize() end) or size == nil then
         size = 1
     end
     if size <= 1 then
-        return describe(leader)
+        return describe(leader, enemy)
     end
     local name
     if not pcall(function() name = leader:getName() end) or name == nil then
-        return "a flight"
+        return herd
     end
     name = tostring(name)
     local aircraft = fields_of(name)[4]
@@ -272,9 +276,9 @@ local function describe_flight(group)
     end
     local pilot = pilot_of(leader, name)
     if pilot then
-        return string.format("a flight of %d %s led by %s", size, aircraft or "aircraft", pilot)
+        return string.format("%s of %d %s led by %s", herd, size, aircraft or "aircraft", pilot)
     end
-    return string.format("a flight of %d %s", size, aircraft or "aircraft")
+    return string.format("%s of %d %s", herd, size, aircraft or "aircraft")
 end
 
 local function side_of(unit)
@@ -545,10 +549,16 @@ function handler:onEvent(event)
                             actor_type = target_type, actor_pilot = target_pilot,
                             target_type = shooter_type, target_pilot = shooter_pilot,
                             weapon = weapon_name(event)})
+                    local hostile = shooter ~= nil and shooter ~= victim
+                    local incoming = weapon_name(event)
+                    if hostile then
+                        incoming = "an enemy " .. (incoming or "missile")
+                    else
+                        incoming = incoming or "a missile"
+                    end
                     announce(victim, "defending", string.format(
                         "%s is defending against %s from %s", describe(target),
-                        weapon_name(event) or "a missile",
-                        describe(event.initiator)))
+                        incoming, describe(event.initiator, hostile)))
                 end
                 if shooter ~= nil then
                     record({kind = "engaging", side = shooter,
@@ -557,7 +567,8 @@ function handler:onEvent(event)
                             weapon = weapon_name(event)})
                     announce(shooter, "engaging", string.format(
                         "%s is engaging %s%s", describe(event.initiator),
-                        describe(target), weapon_suffix(event)))
+                        describe(target, victim ~= nil and victim ~= shooter),
+                        weapon_suffix(event)))
                 end
             end
         end
@@ -580,13 +591,16 @@ function handler:onEvent(event)
                     actor_type = killer_type, actor_pilot = killer_pilot,
                     target_type = victim_type, target_pilot = victim_pilot,
                     weapon = weapon_name(event)})
+            local hostile = shooter ~= nil and victim ~= nil and shooter ~= victim
             if shooter then
-                announce(shooter, "airkills",
-                    with_weapon(string.format("%s shot down %s", killer_text, victim_text), event))
+                announce(shooter, "airkills", with_weapon(string.format(
+                    "%s shot down %s", killer_text,
+                    describe(event.target, hostile)), event))
             end
             if victim then
-                announce(victim, "losses",
-                    with_weapon(string.format("%s was shot down by %s", victim_text, killer_text), event))
+                announce(victim, "losses", with_weapon(string.format(
+                    "%s was shot down by %s", victim_text,
+                    describe(event.initiator, hostile)), event))
             end
         elseif shooter then
             local text, target_id, scenery = ground_target(event.target)
@@ -790,7 +804,7 @@ local function report_contacts(hunter_group, targets, source)
                     string.format(
                         "%s %s %s at %.0f nm, %s",
                         describe_flight(hunter_group), verb,
-                        describe_flight(group), range / 1852, source))
+                        describe_flight(group, true), range / 1852, source))
             end
         end
     end
