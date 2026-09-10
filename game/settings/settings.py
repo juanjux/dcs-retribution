@@ -1164,18 +1164,6 @@ class Settings:
         detail="Weight applied to covered ground object income.",
     )
     # Mission Generator
-    # General
-    use_jtac: bool = boolean_option(
-        "Use JTAC if the faction has one defined",
-        MISSION_GENERATOR_PAGE,
-        GENERAL_SECTION,
-        default=True,
-        detail=(
-            "Spawns the faction's JTAC aircraft on each front line. Off, no JTAC is "
-            "generated even for a faction that defines one. Separate from the number "
-            "of JTAC controller slots below, which are Combined Arms seats."
-        ),
-    )
     # Gameplay
     supercarrier: bool = boolean_option(
         "Use supercarrier module",
@@ -1422,6 +1410,17 @@ class Settings:
         detail=(
             "The number of tactical commander slots to generate for each side. "
             "Tactical commanders can control & direct friendly units."
+        ),
+    )
+    use_jtac: bool = boolean_option(
+        "Use JTAC if the faction has one defined",
+        MISSION_GENERATOR_PAGE,
+        GAMEPLAY_SECTION,
+        default=True,
+        detail=(
+            "Spawns the faction's JTAC aircraft on each front line. Off, no JTAC is "
+            "generated even for a faction that defines one. Separate from the number "
+            "of JTAC controller slots below, which are Combined Arms seats."
         ),
     )
     jtac_count: int = bounded_int_option(
