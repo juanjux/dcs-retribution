@@ -35,6 +35,10 @@ from qt_ui.rankstars import rank_stars_text
 class PilotSelector(QComboBox):
     available_pilots_changed = Signal()
 
+    #: Room for the drop-down arrow, the view's frame and a scrollbar, so the widest
+    #: name is not the last thing to fit.
+    POPUP_CHROME_PX = 48
+
     def __init__(
         self, squadron: Optional[Squadron], roster: Optional[IFlightRoster], idx: int
     ) -> None:
@@ -42,7 +46,25 @@ class PilotSelector(QComboBox):
         self.squadron = squadron
         self.roster = roster
         self.pilot_index = idx
+        # The default policy measures the box once, at its first show. These are
+        # rebuilt whenever another selector changes, so a longer name arriving after
+        # that was elided for good -- in the box AND in the list, whatever the dialog
+        # was widened to, because the popup inherits the box's width.
+        self.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToContents)
         self.rebuild()
+
+    def _fit_popup_to_contents(self) -> None:
+        """The list is never narrower than its widest row, even when the box is.
+
+        A rank and a name that do not fit the closed combo are exactly what you open
+        it to read, so the popup is allowed to be wider than the widget it hangs off.
+        """
+        metrics = self.fontMetrics()
+        widest = max(
+            (metrics.horizontalAdvance(self.itemText(i)) for i in range(self.count())),
+            default=0,
+        )
+        self.view().setMinimumWidth(widest + self.POPUP_CHROME_PX)
 
     def text_for(self, pilot: Pilot) -> str:
         """The pilot as he is addressed: his seniority, his rank, his name.
@@ -70,6 +92,7 @@ class PilotSelector(QComboBox):
         if self.roster is None or self.pilot_index >= self.roster.max_size:
             self.addItem("No aircraft", None)
             self.setDisabled(True)
+            self._fit_popup_to_contents()
             return
 
         if self.squadron is None:
@@ -96,6 +119,7 @@ class PilotSelector(QComboBox):
             self.setCurrentText("Unassigned")
         else:
             self.setCurrentText(self.text_for(current_pilot))
+        self._fit_popup_to_contents()
         self.currentIndexChanged.connect(self.replace_pilot)
 
     def rebuild(self) -> None:
