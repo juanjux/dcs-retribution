@@ -12,7 +12,7 @@ do
     local interval=c.interval or 1
     assert(S.finite(interval) and interval>=0.1 and interval<=60,"invalid interval")
     local function log(kind,detail)
-      if c.debug or kind=="ERROR" then
+      if c.debug or kind=="ERROR" or kind=="WARNING" then
         env.info("REALISTIC_CAS_SENSOR|"..kind.."|t="..timer.getTime().."|"..tostring(detail))
       end
     end
@@ -37,6 +37,7 @@ do
     end
     local engine=RealisticCAS.newDetection({clock=timer.getTime,cellSize=c.cellSize,
       targetBudget=c.targetBudget,workBudget=c.workBudget,revisit=c.revisit,log=log,
+      observerBudget=c.observerBudget,losBudget=c.losBudget,observerQuantum=c.observerQuantum,
       traceDecisions=c.traceDecisions==true,
       acquisitionSeconds=c.acquisitionSeconds,
       acquisitionMaxGap=c.acquisitionMaxGap,
@@ -89,7 +90,10 @@ do
         local d=engine:getDiagnostics()
         log("STATS","candidates="..d.candidates.."|los="..d.los.."|reveals="..d.reveals..
           "|work="..d.work.."|errors="..d.errors.."|sweeps="..d.sweeps..
-          "|blockedLOS="..d.blockedLOS.."|rejectedEnvelope="..d.rejectedEnvelope)
+          "|blockedLOS="..d.blockedLOS.."|rejectedEnvelope="..d.rejectedEnvelope..
+          "|maxSweepGap="..d.maxSweepGap.."|overdue="..d.overdueVisits..
+          "|losBudgetHits="..d.losBudgetHits.."|workBudgetHits="..d.workBudgetHits..
+          "|culledObservers="..d.culledObservers.."|cullChecks="..d.cullChecks)
         log("SEARCH_STATS","pending="..d.pendingAcquisitions.."|started="..d.acquisitionStarts..
           "|completed="..d.acquisitionCompletions.."|resets="..d.acquisitionResets)
       end

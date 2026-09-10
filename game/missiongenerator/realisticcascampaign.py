@@ -19,6 +19,28 @@ def suppress_legacy_jtac(plugins: Any) -> bool:
     return enabled(plugins)
 
 
+class RealisticCASConfigurationError(ValueError):
+    """Actionable plugin conflict, not an unexpected generation failure."""
+
+
+def validate_compatibility(plugins: Any) -> None:
+    """Shared preflight for Take Off and non-UI mission generation."""
+    plugins = list(plugins)
+    if not enabled(plugins):
+        return
+    incompatible = sorted(
+        p.identifier
+        for p in plugins
+        if p.enabled and p.identifier in {"tic", "ctld", "MooseAutolase"}
+    )
+    if incompatible:
+        raise RealisticCASConfigurationError(
+            "Realistic CAS experimental: disable these plugins before generating: "
+            + ", ".join(incompatible)
+            + ". Their JTAC/dynamic-unit visibility adapters are not implemented yet."
+        )
+
+
 def prepare_campaign(
     generator: Any, plugins: Any, *, sun_times: SunTimes | None = None
 ) -> dict[str, Any] | None:
@@ -28,17 +50,7 @@ def prepare_campaign(
     )
     if plugin is None:
         return None  # Do not even inspect the mission when disabled.
-    incompatible = sorted(
-        p.identifier
-        for p in plugins
-        if p.enabled and p.identifier in {"tic", "ctld", "MooseAutolase"}
-    )
-    if incompatible:
-        raise ValueError(
-            "Realistic CAS experimental: disable these plugins before generating: "
-            + ", ".join(incompatible)
-            + ". Their JTAC/dynamic-unit visibility adapters are not implemented yet."
-        )
+    validate_compatibility(plugins)
     if generator.mission_data.jtacs:
         raise ValueError(
             "Realistic CAS experimental requires no legacy JTACs in the generated mission"
@@ -57,7 +69,7 @@ def prepare_campaign(
             "syria": "desert",
             "persiangulf": "desert",
             "nevada": "desert",
-            "sinai": "desert",
+            "sinaimap": "desert",
             "afghanistan": "desert",
             "caucasus": "grassland",
             "normandy": "grassland",
@@ -65,7 +77,6 @@ def prepare_campaign(
             "germanycw": "grassland",
             "kola": "tundra",
             "falklands": "grassland",
-            "southatlantic": "grassland",
             "marianaislands": "forest",
         }.get(name)
         if cover is None:
@@ -108,7 +119,10 @@ def prepare_campaign(
         "interval": 0.25,
         "revisit": 5,
         "targetBudget": 64,
-        "workBudget": 256,
+        "workBudget": 1024,
+        "observerBudget": 64,
+        "observerQuantum": 128,
+        "losBudget": 64,
     }
     render_startup(config)  # Validate typed metadata/options before adding triggers.
     return config

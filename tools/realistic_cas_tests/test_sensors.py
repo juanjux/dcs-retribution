@@ -227,7 +227,7 @@ class SearchTests(unittest.TestCase):
         for i=1,34 do engine:addObserver('obs'..i,S.profile('truck','ground')) end
         advance(engine,140)
         assert(#found>0 and engine:getDiagnostics().acquisitionCompletions>0)
-        assert(found[1].time>=100) -- capped sample credit, not 34s credited per look
+        assert(found[1].time>=21 and found[1].time<60)
         """)
 
     def test_spatial_search_los_and_dead_observer(self):
@@ -331,6 +331,34 @@ class BridgeTests(unittest.TestCase):
         assert(c.reason=='rbm:observer' and c.lastPosition.y==0)
         observer.life=0;run(60);assert(red.hidden)
         assert(fog:stop());run(3);assert(not detectors:getDiagnostics().enabled)
+        """)
+
+    def test_two_hidden_ground_sides_reveal_each_other_without_shots(self):
+        self.check("""
+        assert(fog:stop());blue.category=2
+        observer.typeName='M-1 Abrams';observer.point.y=0;target.point.x=1500
+        fog=start({'red','blue'});assert(red.hidden and blue.hidden)
+        config.observers={
+          {name='observer',typeName='M-1 Abrams',category='ground'},
+          {name='target',typeName='T-72B',category='ground'}}
+        config.targets={{name='target',groupName='red'},{name='observer',groupName='blue'}}
+        config.acquisitionSeconds=20
+        RealisticCAS.startDetection(fog,config)
+        while now<35 do run(1)end
+        assert(not red.hidden and not blue.hidden)
+        assert(fog.service:isRevealed(1,2) and fog.service:isRevealed(2,1))
+        """)
+
+    def test_scheduler_warning_is_logged_with_debug_disabled(self):
+        self.check("""
+        config.debug=false;config.acquisitionSeconds=20
+        local detector=RealisticCAS.startDetection(fog,config)
+        detector:tick();now=100;detector:tick()
+        local warning=false
+        for _,line in ipairs(logs)do
+          if line:find('REALISTIC_CAS_SENSOR|WARNING|',1,true)then warning=true end
+        end
+        assert(warning)
         """)
 
     def test_radar_off_player_and_replacement_do_not_cheat(self):

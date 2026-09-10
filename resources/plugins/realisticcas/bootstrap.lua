@@ -60,6 +60,7 @@ do
         environment=environment,acquisitionSeconds=c.acquisitionSeconds,
         acquisitionMaxGap=c.acquisitionMaxGap,interval=c.interval,revisit=c.revisit,
         targetBudget=c.targetBudget,workBudget=c.workBudget,cellSize=c.cellSize,
+        observerBudget=c.observerBudget,losBudget=c.losBudget,observerQuantum=c.observerQuantum,
         debug=c.debug,traceDecisions=c.traceDecisions})
       world.addEventHandler(handler)
       api.active=true

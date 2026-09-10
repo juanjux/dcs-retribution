@@ -17,6 +17,8 @@ from game.missiongenerator.realisticcascampaign import (
     inject_campaign,
     prepare_campaign,
     suppress_legacy_jtac,
+    validate_compatibility,
+    RealisticCASConfigurationError,
 )
 from game.plugins.luaplugin import LuaPlugin
 from lupa.lua51 import LuaRuntime
@@ -76,6 +78,39 @@ class CampaignIntegrationTests(unittest.TestCase):
         self.data.jtacs.append(NS())
         with self.assertRaisesRegex(ValueError, "legacy JTAC"):
             prepare_campaign(self.g, [self.p])
+
+    def test_actual_pydcs_sinai_and_falklands_names(self):
+        from dcs.terrain import Sinai, Falklands
+
+        for terrain, cover in ((Sinai(), "desert"), (Falklands(), "grassland")):
+            with self.subTest(terrain=terrain.name):
+                self.g.mission = Mission(terrain)
+                self.g.mission.start_time = self.m.start_time
+                config = prepare_campaign(self.g, [self.p])
+                self.assertEqual(config["environment"]["defaultCover"], cover)
+                self.assertEqual(config["observerBudget"], 64)
+                self.assertEqual(config["losBudget"], 64)
+
+    def test_compatibility_preflight_is_actionable_and_disabled_is_inert(self):
+        ctld = NS(identifier="ctld", enabled=True)
+        with self.assertRaisesRegex(RealisticCASConfigurationError, "ctld"):
+            validate_compatibility([self.p, ctld])
+        self.p.set_value(False)
+        validate_compatibility([self.p, ctld])
+        # Take Off must check before fallback planning or beginning the simulation.
+        tree = ast.parse((ROOT / "qt_ui/widgets/QTopPanel.py").read_text())
+        launch = next(
+            n
+            for n in ast.walk(tree)
+            if isinstance(n, ast.FunctionDef) and n.name == "launch_mission"
+        )
+        text = ast.unparse(launch)
+        self.assertLess(
+            text.index("validate_compatibility("),
+            text.index("run_opfor_fallback_if_needed("),
+        )
+        self.assertIn("except RealisticCASConfigurationError", text)
+        self.assertIn("Incompatible mission plugins", text)
 
     def test_option_source_is_same_plugin_as_injection_not_game_settings(self):
         for option in self.p.options:

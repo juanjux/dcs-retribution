@@ -282,3 +282,38 @@ remains subject to fog. Buildings are not collected at all. BAI assignments gran
 no automatic initial reveal; their native routes/tasks stay unchanged. The
 collector requires UnitMap when enabled, so missing ownership metadata cannot
 silently hide a known SAM site. Exempt sites may still provide ground observations.
+
+## Campaign scheduling and limits
+
+Ground combat is intentionally subject to the same fog. Both sides can start
+hidden: scripted ground observers use geometry, environment and terrain LOS,
+not native AI detection of invisible targets, to reveal each other. Only the
+opposing coalition may reveal a managed group; there is no third-side visibility
+contract. Fixed SAM objectives remain exempt.
+
+At 0.25-second intervals the campaign scheduler shares a budget of 1,024 work
+steps, 64 observer slots and **64 terrain LOS calls** across all observers. Each
+observer gets at most 128 work steps before yielding; unfinished scans resume
+round-robin. Budgets are not multiplied by observer count. The LOS ceiling is
+256 calls per simulated second, not a measured CPU-time guarantee. Native DCS
+cost and campaign frame-time impact still require in-engine measurement.
+
+A 25-km coalition occupancy grid conservatively rejects observers with no indexed
+enemy in their maximum-range bounding box before fine-cell/sensor/LOS work. The
+coarse checks count against the same work budget. Target movement/coalition and
+removal update occupancy during the bounded index refresh; culled observers retry
+after the normal revisit delay. This can delay discovery until the index refresh
+and revisit, but is not permanent culling or an assertion that a target is visible.
+
+The acquisition gap limit remains 60 seconds: stalls do not earn continuous
+observation credit. Overdue scans/gap resets emit rate-limited warnings even with
+debug off. Debug counters include maximum sweep gap, overdue visits, budget hits
+and culling. Overloaded missions can still suffer delayed detection; warnings
+are not automatic load shedding or a guarantee for arbitrarily dense missions.
+
+CI runs `pytest --cov --cov-report=xml tests tools/realistic_cas_tests`, including
+Lua 5.1 regressions for 729 independently acquiring observers, dense-observer
+fairness, per-tick limits, culling re-entry and two hidden opposing ground groups.
+These use engine doubles, not a native weapon/CPU simulation. Take Off shows an
+actionable warning for incompatible plugins before planning or simulation starts;
+non-UI generation retains the same preflight guard.
