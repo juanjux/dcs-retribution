@@ -6,6 +6,7 @@
 * **[FIX]** Take Off crashed on any flight with a racetrack, reading an option of the removed EW jamming plugin.
 * **[FIX]** *Apply to all* moved nothing on a helicopter's flight plan and little on a low-level one.
 * **[UI]** *Internal Fuel Quantity* is *Fuel Quantity*, and says what the external tanks add.
+* **[FIX]** Mission Log read every missile in the air as a helicopter: a Patriot firing at an AGM-84 came out as the AGM-84 defending itself, and downing one counted as an air-to-air kill.
 * **[UI]** The waypoints tab estimates the fuel the plan needs, against what the flight is carrying.
 * **[UI]** The waypoint table shows each leg's distance and the route total.
 * **[UI]** Qt updated to 6.11.2.
