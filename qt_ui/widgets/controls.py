@@ -1,0 +1,169 @@
+"""The small controls the redesigned dialogs are built from.
+
+A segmented control instead of a combo box for a handful of mutually exclusive
+choices, and a key/value row instead of a label-and-field grid. Both exist because a
+form of combo boxes reads as a form: you have to open each one to find out what it
+says. Four flat buttons say it without being touched, and a key/value row puts the
+answer where the eye already is.
+"""
+
+from __future__ import annotations
+
+from typing import Any, Callable, Optional, Sequence
+
+from PySide6.QtCore import Qt, Signal
+from PySide6.QtGui import QFont
+from PySide6.QtWidgets import (
+    QButtonGroup,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QSizePolicy,
+    QWidget,
+)
+
+ROW_HEIGHT = 36
+CONTROL_HEIGHT = 28
+
+KEY = "#B7C6D2"
+VALUE = "#D3DFE8"
+SELECTED_BG = "#8FC3F0"
+SELECTED_TEXT = "#0F1922"
+IDLE_TEXT = "#B7C6D2"
+IDLE_BG = "#26343F"
+BORDER = "#3A4B5C"
+
+
+def mono(size: int = 13) -> QFont:
+    font = QFont("Consolas")
+    font.setStyleHint(QFont.StyleHint.Monospace)
+    font.setPixelSize(size)
+    return font
+
+
+class Segmented(QWidget):
+    """One button per choice, the chosen one filled.
+
+    For a short, fixed set where seeing the options *is* the point -- a start type,
+    behind-or-ahead. A combo box hides three of the four answers behind a click and
+    tells you nothing about how many there were.
+    """
+
+    selection_changed = Signal(object)
+
+    def __init__(
+        self,
+        options: Sequence[tuple[str, Any]],
+        current: Any = None,
+        parent: Optional[QWidget] = None,
+    ) -> None:
+        super().__init__(parent)
+        self._values: list[Any] = []
+
+        row = QHBoxLayout()
+        row.setContentsMargins(0, 0, 0, 0)
+        row.setSpacing(2)
+        self.group = QButtonGroup(self)
+        self.group.setExclusive(True)
+
+        for index, (label, value) in enumerate(options):
+            button = QPushButton(label)
+            button.setCheckable(True)
+            button.setCursor(Qt.CursorShape.PointingHandCursor)
+            button.setFixedHeight(CONTROL_HEIGHT)
+            button.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+            button.setStyleSheet(
+                f"QPushButton {{ background: {IDLE_BG}; color: {IDLE_TEXT};"
+                f" border: 1px solid {BORDER}; border-radius: 3px;"
+                f" padding: 0 10px; font-size: 12px; }}"
+                f"QPushButton:checked {{ background: {SELECTED_BG};"
+                f" color: {SELECTED_TEXT}; font-weight: 600; }}"
+                f"QPushButton:disabled {{ color: #4F6070; }}"
+            )
+            self.group.addButton(button, index)
+            self._values.append(value)
+            row.addWidget(button)
+            if value == current:
+                button.setChecked(True)
+
+        self.setLayout(row)
+        self.group.idClicked.connect(self._on_clicked)
+
+    def _on_clicked(self, index: int) -> None:
+        self.selection_changed.emit(self._values[index])
+
+    @property
+    def value(self) -> Any:
+        index = self.group.checkedId()
+        return self._values[index] if index >= 0 else None
+
+    def set_value(self, value: Any) -> None:
+        """Move the selection without announcing it, for a change made elsewhere."""
+        for index, candidate in enumerate(self._values):
+            if candidate == value:
+                button = self.group.button(index)
+                if button is not None and not button.isChecked():
+                    button.setChecked(True)
+                return
+
+    def set_enabled(self, enabled: bool) -> None:
+        for button in self.group.buttons():
+            button.setEnabled(enabled)
+
+
+def key_value(
+    key: str,
+    value: QWidget,
+    height: int = ROW_HEIGHT,
+    key_width: int = 136,
+) -> QWidget:
+    """One row of a key/value card: the name on the left, the answer on the right."""
+    row = QHBoxLayout()
+    row.setContentsMargins(14, 0, 14, 0)
+    row.setSpacing(10)
+
+    label = QLabel(key)
+    label.setFixedWidth(key_width)
+    label.setStyleSheet(
+        f"font-size: 12px; color: {KEY}; background: transparent; border: none;"
+    )
+    row.addWidget(label)
+    row.addWidget(value, 1)
+
+    holder = QWidget()
+    holder.setFixedHeight(height)
+    holder.setStyleSheet("background: transparent; border: none;")
+    holder.setLayout(row)
+    return holder
+
+
+def value_label(
+    text: str, monospace: bool = False, align_right: bool = False
+) -> QLabel:
+    """The right-hand half of a key/value row when it is only text."""
+    label = QLabel(text)
+    if monospace:
+        label.setFont(mono())
+    label.setStyleSheet(
+        f"font-size: 13px; color: {VALUE}; background: transparent; border: none;"
+    )
+    if align_right:
+        label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+    return label
+
+
+def styled_input(widget: QWidget, width: Optional[int] = None) -> QWidget:
+    """Give a combo or spinner the card vocabulary's field styling."""
+    widget.setFixedHeight(CONTROL_HEIGHT)
+    if width is not None:
+        widget.setFixedWidth(width)
+    widget.setStyleSheet(
+        f"background: {IDLE_BG}; color: {VALUE}; border: 1px solid {BORDER};"
+        " border-radius: 3px; padding: 0 6px; font-size: 12px;"
+    )
+    return widget
+
+
+def on_click(button: QPushButton, handler: Callable[[], None]) -> QPushButton:
+    button.clicked.connect(lambda _checked=False: handler())
+    return button

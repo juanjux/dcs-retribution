@@ -339,7 +339,14 @@ class QSquadronSelector(QDialog):
         vbox.addLayout(hbox)
 
 
-class QFlightSlotEditor(QGroupBox):
+class QFlightSlotEditor(QWidget):
+    """The squadron and its seats.
+
+    A plain widget rather than a group box: the card it sits in draws the frame and
+    the caption above it, so a title inside a second border would be the same word
+    twice.
+    """
+
     flight_resized = Signal(int)
     squadron_changed = Signal(Flight)
 
@@ -349,7 +356,7 @@ class QFlightSlotEditor(QGroupBox):
         flight: Flight,
         game: Game,
     ):
-        super().__init__("Slots")
+        super().__init__()
         self.package_model = package_model
         self.flight = flight
         self.game = game
