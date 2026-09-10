@@ -283,37 +283,18 @@ class Settings:
         detail="Implicitly determines the number of Tanker flights planned by taking the mission duration"
         " and dividing it by the desired on-station time.",
     )
-    autoplan_tankers_for_strike: bool = boolean_option(
-        "Auto-planner plans refueling flights for Strike packages",
+    plan_refuelling_when_needed: bool = boolean_option(
+        "Plan a tanker and a refuelling waypoint when a package needs the fuel",
         page=CAMPAIGN_DOCTRINE_PAGE,
         section=GENERAL_SECTION,
         default=True,
         invert=False,
         detail=(
-            "If checked, the auto-planner will include tankers in Strike packages, "
-            "provided the faction has access to them."
-        ),
-    )
-    autoplan_tankers_for_oca: bool = boolean_option(
-        "Auto-planner plans refueling flights for OCA packages",
-        page=CAMPAIGN_DOCTRINE_PAGE,
-        section=GENERAL_SECTION,
-        default=True,
-        invert=False,
-        detail=(
-            "If checked, the auto-planner will include tankers in OCA packages, "
-            "provided the faction has access to them."
-        ),
-    )
-    autoplan_tankers_for_dead: bool = boolean_option(
-        "Auto-planner plans refueling flights for DEAD packages",
-        page=CAMPAIGN_DOCTRINE_PAGE,
-        section=GENERAL_SECTION,
-        default=True,
-        invert=False,
-        detail=(
-            "If checked, the auto-planner will include tankers in DEAD packages, "
-            "provided the faction has access to them."
+            "Replaces the three per-task tanker options, which asked for a tanker "
+            "the fulfiller then always pruned. A tanker is planned, and a refuelling "
+            "waypoint added, only for a package whose fuel estimate says it cannot "
+            "make the plan on what it takes off with -- and only if the faction has "
+            "a tanker to send."
         ),
     )
     aircraft_per_recovery_tanker: int = bounded_int_option(

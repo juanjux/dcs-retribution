@@ -47,6 +47,7 @@ class Migrator:
         self._reconcile_available_pilots()
         self._clear_leave_requests_from_the_wounded()
         self._restate_the_morale_numbers()
+        self._collapse_the_tanker_options()
         self._update_weather()
         self._update_tgos()
         try_set_attr(self.game.settings, "motorpool_enabled", True)
@@ -190,6 +191,30 @@ class Migrator:
             moved.append(f"{event.key} {held} -> {event.default}")
         if moved:
             logging.info("Morale event sizes brought up to date: %s", "; ".join(moved))
+
+    #: The three per-task tanker options this replaced.
+    TANKER_OPTIONS = (
+        "autoplan_tankers_for_strike",
+        "autoplan_tankers_for_oca",
+        "autoplan_tankers_for_dead",
+    )
+
+    def _collapse_the_tanker_options(self) -> None:
+        """One option where there were three, honouring a campaign that said no.
+
+        The three never did anything -- the fulfiller pruned the tanker they asked
+        for -- but a player who turned them all off said what he wanted, so the one
+        that replaces them starts off for him. Any of them still on reads as
+        "tankers, yes", which is the new option's default anyway.
+        """
+        settings = self.game.settings
+        held = [getattr(settings, name, None) for name in self.TANKER_OPTIONS]
+        for name in self.TANKER_OPTIONS:
+            if hasattr(settings, name):
+                delattr(settings, name)
+        if held and all(value is False for value in held):
+            settings.plan_refuelling_when_needed = False
+            logging.info("Tanker auto-planning was off in all three tasks; kept off")
 
     def _clear_leave_requests_from_the_wounded(self) -> None:
         """A pilot cannot be asking for leave from a hospital bed.

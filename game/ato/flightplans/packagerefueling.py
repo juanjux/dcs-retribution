@@ -23,8 +23,12 @@ class PackageRefuelingFlightPlan(RefuelingFlightPlan):
     def patrol_duration(self) -> timedelta:
         # TODO: Only consider aircraft that can refuel with this tanker type.
         refuel_time_minutes = 5
-        for self.flight in self.package.flights:
-            flight_size = self.flight.roster.max_size
+        # `for self.flight in ...` rebound the plan's OWN flight to the last one in
+        # the package, so afterwards the tanker was timed and flown off some other
+        # aircraft's figures -- patrol_speed, patrol_altitude, takeoff_time. It was
+        # dormant while the auto-planner never produced this plan; it does now.
+        for member in self.package.flights:
+            flight_size = member.roster.max_size
             refuel_time_minutes = refuel_time_minutes + 4 * flight_size + 1
 
         return timedelta(minutes=refuel_time_minutes)

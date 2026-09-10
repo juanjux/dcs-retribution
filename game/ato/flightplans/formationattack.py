@@ -12,6 +12,7 @@ from dcs import Point
 from game.flightplan import HoldZoneGeometry
 from game.theater import MissionTarget, TheaterGroundObject
 from game.utils import nautical_miles, Speed, feet
+from .refuelneed import needs_refuelling
 from .flightplan import FlightPlan
 from .formation import FormationFlightPlan, FormationLayout
 from .ibuilder import IBuilder
@@ -259,11 +260,23 @@ class FormationAttackBuilder(IBuilder[FlightPlanT, LayoutT], ABC):
         ]
 
     def _build_refuel(self, builder: WaypointBuilder) -> Optional[FlightWaypoint]:
-        refuel: Optional[FlightWaypoint] = None
-        can_plan = self.flight.coalition.air_wing.can_auto_plan(FlightType.REFUELING)
-        if not self.flight.is_helo and can_plan and self.package.waypoints:
-            refuel = builder.refuel(self.package.waypoints.refuel)
-        return refuel
+        # It used to be enough that the flight was not a helicopter and the faction
+        # owned a tanker: every strike, escort and sweep got a refuelling waypoint,
+        # whether it could fly the plan twice over or not.
+        if not self.package.waypoints:
+            return None
+        settings = self.flight.coalition.game.settings
+        # The bands the rest of this layout is about to be built at, so the estimate
+        # is charged at the altitudes the flight will really be flown at.
+        if not needs_refuelling(
+            self.flight,
+            self.package,
+            settings,
+            builder.get_cruise_altitude,
+            builder.get_combat_altitude,
+        ):
+            return None
+        return builder.refuel(self.package.waypoints.refuel)
 
     @property
     def primary_flight_is_air_assault(self) -> bool:
