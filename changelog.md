@@ -13,6 +13,7 @@
 * **[FIX]** Nine factions had no early-warning radar, so their EWR markers fielded a SAM's acquisition radar instead.
 * **[Settings]** GPS jamming, cruise missile strikes and naval magazines are switched on by their plugin alone, and their options live with it.
 * **[Settings]** The Skynet IADS radius moved to the Skynet plugin's options.
+* **[FIX]** GeneraLLM: the debrief docs had `*_sites_lost` inverted, saying a side's entry was what it killed rather than what it lost.
 * **[FIX]** A GPS jamming site drew its point defence on the map, a couple of miles, instead of its jamming bubble.
 * **[FIX]** GPS jamming is switched on by its plugin alone; the duplicate setting in Mission Generator is gone.
 * **[UI]** The jammer is called *GPS Jammer* and its map icon reads GPS.

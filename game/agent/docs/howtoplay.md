@@ -1335,8 +1335,10 @@ aggregates, and nothing in it changes a plan that these do not already tell you.
 
 **Site/naval losses — the concrete result of the turn's strikes.** `*_sites_lost` is
 `{unit-type-id: count}` of the ground/naval **units destroyed that turn** — ships by hull
-class (e.g. `{"Type_052C": 1}`), SAM launchers/radars, etc. `red_sites_lost` is what YOUR
-strikes (red) actually killed this turn; `blue_sites_lost` is what you lost to blue. This
+class (e.g. `{"Type_052C": 1}`), SAM launchers/radars, etc. It obeys the same rule as the
+air maps above -- **the side in the name is the side that LOST them** -- so
+`blue_sites_lost` is what YOUR strikes (red) actually killed this turn and
+`red_sites_lost` is what you lost to blue. This
 is your after-action report: it tells you whether that anti-ship alpha **sank a hull or
 merely scratched paint**, and which DEAD strikes landed. (Per-missile shot/intercept/
 impact counts are not tracked — read the *result* here, plus the target's live
