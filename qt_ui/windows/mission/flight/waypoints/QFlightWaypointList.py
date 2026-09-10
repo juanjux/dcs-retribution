@@ -1,7 +1,13 @@
 from typing import Optional, Sequence
 
 from PySide6.QtCore import QItemSelectionModel, QPoint, QModelIndex, Qt, Signal
-from PySide6.QtGui import QStandardItem, QStandardItemModel
+from PySide6.QtGui import (
+    QColor,
+    QFont,
+    QMouseEvent,
+    QStandardItem,
+    QStandardItemModel,
+)
 from PySide6.QtWidgets import (
     QHeaderView,
     QTableView,
@@ -20,9 +26,26 @@ from qt_ui.windows.mission.flight.waypoints.QFlightWaypointItem import QWaypoint
 
 HEADER_LABELS = ["Name", "Alt (ft)", "Alt Type", "TOT/DEPART", "Leg (nm)"]
 
+#: Set on a group header row: the index of the first waypoint it stands for.
+GroupStartRole = Qt.ItemDataRole.UserRole + 7
+
+#: Targets are the one thing on the route you are there for.
+TARGET_AMBER = "#E0A86B"
+
 #: Not on the ground track, so they neither start a leg nor end one: a map reference,
 #: an alternate field, and the target points, which are engaged from the ingress
 #: rather than overflown.
+#: Consecutive waypoints of these types are one thing you attack, not a dozen
+#: places you fly to, so the table folds them into a single row you can open. A DEAD
+#: run on a Patriot site was thirteen rows reading "STRIKE Patriot ln #6".
+TARGET_TYPES = frozenset(
+    {
+        FlightWaypointType.TARGET_POINT,
+        FlightWaypointType.TARGET_GROUP_LOC,
+        FlightWaypointType.TARGET_SHIP,
+    }
+)
+
 NOT_FLOWN = frozenset(
     {
         FlightWaypointType.BULLSEYE,
@@ -84,6 +107,14 @@ class QFlightWaypointList(QTableView):
         self.package = package
         self.flight = flight
 
+        #: Display row -> index into flight_plan.waypoints, or None for the header of
+        #: a collapsed target group. Everything that acts on a selected row goes
+        #: through waypoint_at_row rather than assuming the two line up, because with
+        #: a group folded they do not.
+        self._row_waypoints: list[Optional[int]] = []
+        #: The first waypoint index of each group the player has opened.
+        self._expanded: set[int] = set()
+
         self.model = QStandardItemModel(self)
         self.model.itemChanged.connect(self.on_changed)
         self.setModel(self.model)
@@ -113,21 +144,47 @@ class QFlightWaypointList(QTableView):
 
             waypoints = self.flight.flight_plan.waypoints
             legs, total = leg_distances(waypoints)
-            for row, waypoint in enumerate(waypoints):
-                self._add_waypoint_row(row, self.flight, waypoint, legs[row])
+            self._row_waypoints = []
+            index = 0
+            while index < len(waypoints):
+                group = self._group_at(waypoints, index)
+                if group > 1 and index not in self._expanded:
+                    self._add_group_row(
+                        len(self._row_waypoints), waypoints, index, group
+                    )
+                    self._row_waypoints.append(None)
+                    index += group
+                    continue
+                if group > 1:
+                    self._add_group_row(
+                        len(self._row_waypoints), waypoints, index, group
+                    )
+                    self._row_waypoints.append(None)
+                for offset in range(max(1, group)):
+                    at = index + offset
+                    self._add_waypoint_row(
+                        len(self._row_waypoints), self.flight, waypoints[at], legs[at]
+                    )
+                    self._row_waypoints.append(at)
+                index += max(1, group)
             self.route_length_changed.emit(total)
             self.selectionModel().setCurrentIndex(
                 self.model.index(current_index, 0),
                 QItemSelectionModel.SelectionFlag.Select,
             )
-            self.model.setVerticalHeaderLabels([str(n) for n in range(len(waypoints))])
+            self.model.setVerticalHeaderLabels(
+                ["" if at is None else str(at) for at in self._row_waypoints]
+            )
             self.verticalHeader().setMaximumWidth(25)
 
             self.resizeColumnsToContents()
-            total_column_width = self.verticalHeader().width() + self.lineWidth()
-            for i in range(0, self.model.columnCount()):
-                total_column_width += self.columnWidth(i) + self.lineWidth()
-            self.setFixedWidth(total_column_width)
+            # The name column takes whatever the tab gives the table. It used to be
+            # pinned to the width of its contents, which meant the last column was cut
+            # off whenever a waypoint had a long name.
+            self.horizontalHeader().setStretchLastSection(False)
+            self.horizontalHeader().setSectionResizeMode(
+                0, QHeaderView.ResizeMode.Stretch
+            )
         finally:
             # stop ignoring signals
             self.model.blockSignals(False)
@@ -166,12 +223,85 @@ class QFlightWaypointList(QTableView):
         )
         self.model.setItem(row, 4, leg_item)
 
+    @staticmethod
+    def _group_at(waypoints: Sequence[FlightWaypoint], index: int) -> int:
+        """How many consecutive target waypoints start at ``index`` (0 if none)."""
+        if waypoints[index].waypoint_type not in TARGET_TYPES:
+            return 0
+        end = index
+        while end < len(waypoints) and waypoints[end].waypoint_type in TARGET_TYPES:
+            end += 1
+        return end - index
+
+    def _add_group_row(
+        self,
+        row: int,
+        waypoints: Sequence[FlightWaypoint],
+        index: int,
+        count: int,
+    ) -> None:
+        """One row standing for a whole target set, with its own TOT."""
+        self.model.insertRow(self.model.rowCount())
+        opened = index in self._expanded
+        first = waypoints[index]
+        arrow = "v" if opened else ">"
+        name = QStandardItem(f"{arrow}  {first.name}  ·  {count} targets")
+        name.setEditable(False)
+        name.setData(index, GroupStartRole)
+        font = name.font()
+        font.setWeight(QFont.Weight.DemiBold)
+        name.setFont(font)
+        name.setForeground(QColor(TARGET_AMBER))
+        self.model.setItem(row, 0, name)
+        for column in (1, 2):
+            blank = QStandardItem("")
+            blank.setEditable(False)
+            self.model.setItem(row, column, blank)
+        tot = QStandardItem(self.tot_text(self.flight, first))
+        tot.setEditable(False)
+        tot.setForeground(QColor(TARGET_AMBER))
+        self.model.setItem(row, 3, tot)
+        leg = QStandardItem("")
+        leg.setEditable(False)
+        self.model.setItem(row, 4, leg)
+
+    def waypoint_at_row(self, row: int) -> Optional[FlightWaypoint]:
+        """The waypoint a display row stands for, or None for a group header."""
+        if row < 0 or row >= len(self._row_waypoints):
+            return None
+        at = self._row_waypoints[row]
+        if at is None:
+            return None
+        waypoints = self.flight.flight_plan.waypoints
+        return waypoints[at] if at < len(waypoints) else None
+
+    def mousePressEvent(self, event: QMouseEvent) -> None:  # noqa: N802 (Qt naming)
+        """A click on a group row opens or closes it."""
+        index = self.indexAt(event.pos())
+        if index.isValid():
+            item = self.model.item(index.row(), 0)
+            start = None if item is None else item.data(GroupStartRole)
+            if start is not None:
+                if start in self._expanded:
+                    self._expanded.discard(start)
+                else:
+                    self._expanded.add(start)
+                self.update_list()
+                return
+        super().mousePressEvent(event)
+
     def on_changed(self) -> None:
         for i in range(self.model.rowCount()):
-            # waypoints materializes a fresh list each access; resolve once per row so the
-            # altitude and name edits land on the same waypoint object.
-            waypoint = self.flight.flight_plan.waypoints[i]
-            altitude_feet = float(self.model.item(i, 1).text())
+            # Through waypoint_at_row rather than indexing the list by row: a folded
+            # target group is one row standing for several, so the two no longer line
+            # up and editing row 5 would have written to the wrong waypoint.
+            waypoint = self.waypoint_at_row(i)
+            if waypoint is None:
+                continue
+            altitude_item = self.model.item(i, 1)
+            if altitude_item is None:
+                continue
+            altitude_feet = float(altitude_item.text())
             waypoint.alt = Distance.from_feet(altitude_feet)
             waypoint.apply_name_edit(self.model.item(i, 0).text())
 
