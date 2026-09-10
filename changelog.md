@@ -5,6 +5,8 @@
 * **[FIX]** The fuel figure did not move when a drop tank was added or removed.
 * **[FIX]** The fuel estimate ignored the altitude flown, and charged the join and split legs at the combat rate.
 * **[FIX]** Take Off crashed on any flight with a racetrack, reading an option of the removed EW jamming plugin.
+* **[Campaign AI]** Morale can go below zero, down to -30, so being *Broken* lasts more than the one turn a quiet turn's drift used to undo.
+* **[Settings]** How far morale settles back towards Normal each turn is a Morale Event Value now, and several event sizes were re-weighed.
 * **[FIX]** *Apply to all* moved nothing on a helicopter's flight plan and little on a low-level one.
 * **[UI]** A pilot's morale shows as a face after his name where the word does not fit, above all in the pilot selector for a flight.
 * **[UI]** *Internal Fuel Quantity* is *Fuel Quantity*, and says what the external tanks add.

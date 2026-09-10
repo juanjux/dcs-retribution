@@ -99,7 +99,8 @@ you lose if they capture yours. Think in terms of a campaign, not a single turn.
   an inexperienced pilot will not attack from as high up (see the altitude warning under
   waypoints). Without that setting every pilot flies the same, and crewing is only about
   keeping your named people alive.
-- **Morale**: how a pilot is holding up, 0 to 100, 50 to start. It falls when he loses
+- **Morale**: how a pilot is holding up, -30 to 100, 50 to start. Below zero he is
+  Broken, and a quiet turn's drift takes several turns to lift him out of it. It falls when he loses
   his aircraft, comes home from a strike having destroyed nothing, loses a squadron mate
   or a base, or goes more than five turns without leave; it rises with kills, completed
   missions, promotions and rest. It matters three ways:

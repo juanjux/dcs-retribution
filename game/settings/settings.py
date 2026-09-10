@@ -1924,12 +1924,26 @@ class Settings:
         min=0,
         max=100,
     )
+    morale_drift_per_turn: int = bounded_int_option(
+        "Settling back towards Normal each turn",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_MORALE_SECTION,
+        subsection=LIVE_PILOTS_MORALE_EVENTS_SECTION,
+        default=5,
+        min=0,
+        max=25,
+        detail=(
+            "How far a pilot moves back towards Normal in a quiet turn, from either "
+            "side and never past it. Zero makes a turn's damage permanent until "
+            "something else moves him."
+        ),
+    )
     morale_lost_aircraft: int = bounded_int_option(
         "Lost his aircraft",
         page=LIVE_PILOTS_PAGE,
         section=LIVE_PILOTS_MORALE_SECTION,
         subsection=LIVE_PILOTS_MORALE_EVENTS_SECTION,
-        default=-15,
+        default=-10,
         min=-50,
         max=0,
         detail="He came home without it.",
@@ -1939,7 +1953,7 @@ class Settings:
         page=LIVE_PILOTS_PAGE,
         section=LIVE_PILOTS_MORALE_SECTION,
         subsection=LIVE_PILOTS_MORALE_EVENTS_SECTION,
-        default=-7,
+        default=-5,
         min=-50,
         max=0,
         detail=(
@@ -1952,7 +1966,7 @@ class Settings:
         page=LIVE_PILOTS_PAGE,
         section=LIVE_PILOTS_MORALE_SECTION,
         subsection=LIVE_PILOTS_MORALE_EVENTS_SECTION,
-        default=-20,
+        default=-15,
         min=-50,
         max=0,
         detail=(
@@ -1965,7 +1979,7 @@ class Settings:
         page=LIVE_PILOTS_PAGE,
         section=LIVE_PILOTS_MORALE_SECTION,
         subsection=LIVE_PILOTS_MORALE_EVENTS_SECTION,
-        default=-10,
+        default=-5,
         min=-50,
         max=0,
         detail=(
@@ -2007,7 +2021,7 @@ class Settings:
         page=LIVE_PILOTS_PAGE,
         section=LIVE_PILOTS_MORALE_SECTION,
         subsection=LIVE_PILOTS_MORALE_EVENTS_SECTION,
-        default=-4,
+        default=-3,
         min=-50,
         max=0,
         detail="From the sixth turn without leave.",
@@ -2027,7 +2041,7 @@ class Settings:
         page=LIVE_PILOTS_PAGE,
         section=LIVE_PILOTS_MORALE_SECTION,
         subsection=LIVE_PILOTS_MORALE_EVENTS_SECTION,
-        default=-7,
+        default=-4,
         min=-50,
         max=0,
         detail=(
@@ -2040,7 +2054,7 @@ class Settings:
         page=LIVE_PILOTS_PAGE,
         section=LIVE_PILOTS_MORALE_SECTION,
         subsection=LIVE_PILOTS_MORALE_EVENTS_SECTION,
-        default=10,
+        default=15,
         min=0,
         max=50,
         detail=("Per enemy aircraft."),

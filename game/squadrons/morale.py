@@ -24,7 +24,10 @@ from game.dcs.skills import SKILL_LADDER
 if TYPE_CHECKING:
     from game.settings import Settings
 
-MORALE_MIN = 0
+#: Rock bottom is below zero so that being Broken lasts. At a floor of zero one quiet
+#: turn of drift lifted a man straight back out of the band, whatever had put him
+#: there, and Broken could not describe more than a single turn.
+MORALE_MIN = -30
 MORALE_MAX = 100
 
 #: Where a pilot starts, and where he drifts back to. A campaign that has done nothing
@@ -144,15 +147,15 @@ def wound_is_felt_for(turns: int) -> int:
 #: A campaign can have sat out more than one re-weighing, which is why it is a list.
 PREVIOUS_DEFAULTS: dict[str, tuple[int, ...]] = {
     "morale_lost_aircraft": (-15,),
-    "morale_achieved_nothing": (-5, -10),
-    "morale_squadron_death": (-8,),
-    "morale_flight_death": (-6,),
+    "morale_achieved_nothing": (-10, -7),
+    "morale_squadron_death": (-8, -20),
+    "morale_flight_death": (-6, -10),
     "morale_squadron_wound": (-2, -3),
     "morale_flight_wound": (-2,),
     "morale_base_lost": (-6, -2),
-    "morale_no_leave": (-2,),
+    "morale_no_leave": (-2, -4),
     "morale_leave_refused": (-6, -5),
-    "morale_leave_cancelled": (-10, -8),
+    "morale_leave_cancelled": (-10, -8, -7),
     "morale_air_kill": (10,),
     "morale_unplanned_kill": (3,),
     "morale_mission_complete": (4,),
@@ -165,23 +168,31 @@ def clamp(morale: int) -> int:
     return max(MORALE_MIN, min(MORALE_MAX, morale))
 
 
-#: How far a pilot settles back towards the middle each turn. Big enough that one very
-#: good or one very bad turn does not decide the rest of his campaign: a man knocked
-#: from 50 to 20 is back to Normal in three quiet turns, not thirty.
+#: How far a pilot settles back towards the middle in a quiet turn, when the campaign
+#: has not said otherwise. Big enough that one very good or one very bad turn does not
+#: decide the rest of his campaign: a man knocked from 50 to 20 is back to Normal in
+#: three quiet turns, not thirty.
 DRIFT_PER_TURN = 5
 
 
-def drift(morale: int) -> int:
+def drift_per_turn(settings: Any = None) -> int:
+    if settings is None:
+        return DRIFT_PER_TURN
+    return int(getattr(settings, "morale_drift_per_turn", DRIFT_PER_TURN))
+
+
+def drift(morale: int, settings: Any = None) -> int:
     """A step back towards the middle, from either side, never past it.
 
     Applied once a turn before anything else. Rock bottom is not exempt -- he climbs
     out of it like anyone else -- but the events of a hard turn can put him straight
     back, and every turn he is there is another roll of :func:`desertion_chance`.
     """
+    step = drift_per_turn(settings)
     if morale > MORALE_START:
-        return -min(DRIFT_PER_TURN, morale - MORALE_START)
+        return -min(step, morale - MORALE_START)
     if morale < MORALE_START:
-        return min(DRIFT_PER_TURN, MORALE_START - morale)
+        return min(step, MORALE_START - morale)
     return 0
 
 
