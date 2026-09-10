@@ -60,6 +60,11 @@ from game.theater import ConflictTheater, ControlPoint, ParkingType
 from game.squadrons.pilot import PilotStatus
 from qt_ui.delegates import painter_context
 from game.squadrons.morale import RANK_LEVELS
+from qt_ui.widgets.pilotrow import (
+    MORALE_COLOURS,
+    MORALE_LABEL_OVERRIDE,
+    MORALE_LABEL_OVERRIDE_SELECTED,
+)
 from qt_ui.rankstars import (
     STAR_EMPTY,
     STAR_EMPTY_DIMMED,
@@ -110,20 +115,8 @@ ON_LEAVE = "#8FC3F0"
 ON_LEAVE_SELECTED = "#BEDCF6"
 ON_LEAVE_DETAIL = "#6E93B0"
 
-#: The morale ramp, cold to hot, matching the states in :mod:`game.squadrons.morale`.
-#: Normal is deliberately grey: a squadron that is holding up should read as quiet, and
-#: colour should mean something is unusual.
-MORALE_COLOURS = {
-    "Triumphant": "#8FC3F0",
-    "Confident": "#86C39A",
-    "Normal": "#8E9DAA",
-    "Shaken": "#E0A86B",
-    "Shattered": "#D97B4F",
-    "Broken": "#D9645E",
-}
-#: The label recedes further than the dot for a pilot nobody needs to think about.
-MORALE_LABEL_OVERRIDE = {"Normal": "#B7C6D2"}
-MORALE_LABEL_OVERRIDE_SELECTED = {"Normal": "#E4EDF4"}
+#: The morale ramp lives with the row painter now, so the roster here and the pilot
+#: selector in the flight dialog cannot drift apart -- they draw the same row.
 
 FATE_CHIPS = {
     PilotStatus.Dead: ("KIA", "#3B2523", "#D9645E"),
