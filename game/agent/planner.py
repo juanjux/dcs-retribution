@@ -609,22 +609,33 @@ def create_packages(
                     )
                     continue
                 coalition.ato.add_package(package)
-                _apply_loadouts(package, keep)
-                _apply_tot_offsets(package, keep)
-                _apply_remain(package, keep)
-                _apply_tot(package, spec, now)
-                if spec.rationale:
-                    package.custom_name = spec.rationale
-                index = len(coalition.ato.packages) - 1
-                results.append(
-                    schemas.CreateResult(
+                try:
+                    _apply_loadouts(package, keep)
+                    _apply_tot_offsets(package, keep)
+                    _apply_remain(package, keep)
+                    _apply_tot(package, spec, now)
+                    if spec.rationale:
+                        package.custom_name = spec.rationale
+                    index = len(coalition.ato.packages) - 1
+                    result = schemas.CreateResult(
                         ok=True,
                         target=target_name,
                         package=views.build_package(index, package),
                         dropped=dropped or None,
                         idle_flyable_remaining=views.idle_flyable_total(game, side),
                     )
-                )
+                except Exception:
+                    # plan_mission has already claimed the aircraft and the pilots, and
+                    # the package is in the ATO by now, so reporting the error without
+                    # this left the caller a package it had been told did not exist:
+                    # no TOT, no rationale, the crews unavailable to try again.
+                    # remove_package hands both back, the same way evaluate_package
+                    # rolls back its dry run. Building the answer is inside the same
+                    # guard so that "an error came back" always means "nothing was
+                    # added", whichever step failed.
+                    coalition.ato.remove_package(package)
+                    raise
+                results.append(result)
             except Exception as exc:  # report, don't abort the whole batch
                 results.append(
                     schemas.CreateResult(ok=False, target=target_name, error=str(exc))
@@ -688,7 +699,7 @@ def evaluate_package(
                 package=view,
                 tot_minutes_into_mission=tot_min,
                 mission_window_min=window,
-                within_window=(tot_min is not None and tot_min <= window),
+                within_window=_within_window(tot_min, window),
             )
         finally:
             coalition.ato.remove_package(package)
@@ -857,6 +868,15 @@ def set_flight_loadout(
         return schemas.OpResult(ok=False, error=str(exc))
 
 
+def _within_window(tot_minutes: int | None, window: int) -> bool:
+    """A TOT lands in the mission window only if it is inside BOTH ends of it.
+
+    Testing the late end alone read a package timed before the mission starts -- which
+    comes out as a large negative number of minutes -- as comfortably early.
+    """
+    return tot_minutes is not None and 0 <= tot_minutes <= window
+
+
 def validate_plan(game: Game, side: str) -> schemas.ValidateResult:
     """Health-check the whole committed plan (no changes): every package's TOT vs the
     mission window and whether any flight is uncrewed (not enough pilots)."""
@@ -869,7 +889,7 @@ def validate_plan(game: Game, side: str) -> schemas.ValidateResult:
         view = views.build_package(i, pkg)
         tot = pkg.time_over_target
         tot_min = round((tot - now).total_seconds() / 60) if tot else None
-        within = tot_min is not None and tot_min <= window
+        within = _within_window(tot_min, window)
         uncrewed = sum((f.uncrewed or 0) for f in view.flights)
         if not view.flights:
             issues.append(f"#{i} {view.target}: no flights (empty package)")
@@ -879,7 +899,10 @@ def validate_plan(game: Game, side: str) -> schemas.ValidateResult:
             )
         if tot_min is not None and not within:
             issues.append(
-                f"#{i} {view.target}: TOT {tot_min} min is past the {window}-min window"
+                f"#{i} {view.target}: TOT is {abs(tot_min)} min BEFORE the mission starts"
+                if tot_min < 0
+                else f"#{i} {view.target}: TOT {tot_min} min is past the"
+                f" {window}-min window"
             )
         shortfall = tot_shortfall(pkg, now, tot)
         earliest = shortfall[0] if shortfall else None
