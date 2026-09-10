@@ -1,6 +1,7 @@
 ﻿# Retribution v1.6.3 (414th)
 
 ## Features/Improvements
+* **[FIX]** The METAR refresh button drew a text glyph that fell back to the wrong font; it uses the reload icon now, on a slightly larger button.
 * **[Plugins]** Mission Log: fighters watching a contact without committing have their own switch, apart from those moving to intercept.
 * **[Plugins]** Mission Log: enemy pilots, aircraft, flights and missiles are named as enemy, so a campaign where both sides fly the same airframes still says who shot whom.
 * **[FIX]** The fuel figure did not move when a drop tank was added or removed.
