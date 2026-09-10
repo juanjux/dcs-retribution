@@ -1,6 +1,7 @@
 ﻿# Retribution v1.6.3 (414th)
 
 ## Features/Improvements
+* **[Plugins]** New *Lua tick profiler* plugin, off by default: measures what one tick of a script costs in VM instructions, real time and allocation.
 * **[Plugins]** Mission Log: fighters watching a contact without committing have their own switch, apart from those moving to intercept.
 * **[Plugins]** Mission Log: enemy pilots, aircraft, flights and missiles are named as enemy, so a campaign where both sides fly the same airframes still says who shot whom.
 * **[FIX]** The fuel figure did not move when a drop tank was added or removed.

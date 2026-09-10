@@ -13,10 +13,22 @@
 --     milliseconds per second, never per tick.
 -- collectgarbage("count") is free and worth reading: a Lua tick that stutters a
 -- mission usually does it by allocating, not by counting.
+-- Loaded only while the "Lua tick profiler" plugin is on, so a caller has to check
+-- that it is here rather than assume it: `rawget(_G, "LuaTickProfile")`.
 LuaTickProfile = LuaTickProfile or {}
 
+--- Seconds between reports: the caller's figure, else the plugin option, else 60.
+local function window(seconds)
+  if type(seconds) == "number" and seconds > 0 then return seconds end
+  local plugins = dcsRetribution and dcsRetribution.plugins
+  local mine = plugins and plugins.tickprofile
+  local configured = mine and mine.window
+  if type(configured) == "number" and configured > 0 then return configured end
+  return 60
+end
+
 function LuaTickProfile.new(name, report, every)
-  every = every or 60
+  every = window(every)
   local clock = rawget(_G, "os") and os.clock or nil
   local counted = 0
   local hook = function() counted = counted + 1000 end

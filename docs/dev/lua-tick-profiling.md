@@ -32,18 +32,36 @@ A line per window, on `env.info`:
 realisticcas.tick|ticks=41|vm_p50=120000|vm_p99=120000|vm_max=120000|kb_per_tick=12.30|cpu_ms_per_second=3.400|cpu_share=0.0034
 ```
 
+## Where it lives
+
+Its own plugin, `resources/plugins/tickprofile/`, **off by default**: the count hook
+costs a Lua callback per thousand instructions, so it is switched on for a
+measurement run rather than left in a campaign. It loads immediately after `base`,
+before any plugin that might measure itself.
+
+Because it is off by default, a caller cannot assume `LuaTickProfile` is there.
+
 ## Wiring it in
 
-Two lines wherever the tick is already scheduled. In the Realistic CAS plugin
-(`resources/plugins/realisticcas/detectors-dcs.lua`) that is the `pcall` inside
-`timer.scheduleFunction`:
+Wherever the tick is already scheduled, guarded on the plugin being on. In the
+Realistic CAS plugin (`resources/plugins/realisticcas/detectors-dcs.lua`) that is
+the `pcall` inside `timer.scheduleFunction`:
 
 ```lua
-local profile = LuaTickProfile.new("realisticcas.tick",
-  function(line) env.info("PROFILE|" .. line) end, 60)
+local profiler = rawget(_G, "LuaTickProfile")
+local profile = profiler and profiler.new("realisticcas.tick",
+  function(line) env.info("PROFILE|" .. line) end)
 ...
-local ok, err = profile:wrap(now, function() engine:tick() end)
+local ok, err
+if profile then
+  ok, err = profile:wrap(now, function() engine:tick() end)
+else
+  ok, err = pcall(function() engine:tick() end)
+end
 ```
+
+The reporting window comes from the plugin's own *Seconds between reports* option
+when the caller does not give one.
 
 ## The cost of measuring
 

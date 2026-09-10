@@ -1,5 +1,9 @@
 """The tick profiler runs in the Lua DCS actually gives a mission.
 
+It is its own plugin, off by default: the count hook is not free, so it is switched
+on for a measurement run rather than left in a campaign. A caller therefore has to
+check that LuaTickProfile is there instead of assuming it.
+
 DCS ships plain Lua 5.1, not LuaJIT, and MissionScripting.lua removes os/io/lfs and
 leaves `debug` alone. So the instrument has to work with `os` missing, and the one
 that is always there -- the count hook -- has to be sensitive enough to tell two
@@ -14,7 +18,8 @@ import pytest
 from lupa.lua51 import LuaRuntime
 
 PROFILER = (
-    Path(__file__).resolve().parent.parent / "tools/lua_profiling/profile.lua"
+    Path(__file__).resolve().parent.parent
+    / "resources/plugins/tickprofile/tickprofile.lua"
 ).read_text(encoding="utf-8")
 
 DRIVER = """
@@ -70,3 +75,29 @@ def test_the_instruction_count_tracks_the_work_done() -> None:
 def test_allocation_is_reported_separately_from_time() -> None:
     """GC pressure is the usual way a Lua tick costs frames."""
     assert _field(_run(20000, sanitised=True), "kb_per_tick") > 0
+
+
+def test_it_falls_back_to_sixty_seconds_without_its_plugin_option() -> None:
+    """The option only exists while the plugin is on, and the Lua may load first."""
+    lua = LuaRuntime()
+    lua.execute(PROFILER)
+    lua.execute("""
+    lines = {}
+    p = LuaTickProfile.new("tick", function(s) lines[#lines+1] = s end)
+    local now = 0
+    for i = 1, 200 do now = i * 0.25; p:wrap(now, function() end) end
+    """)
+    assert len(lua.globals().lines) == 0, "reported before 60 s had passed"
+
+
+def test_the_plugin_option_sets_the_window() -> None:
+    lua = LuaRuntime()
+    lua.execute("dcsRetribution = {plugins = {tickprofile = {window = 5}}}")
+    lua.execute(PROFILER)
+    lua.execute("""
+    lines = {}
+    p = LuaTickProfile.new("tick", function(s) lines[#lines+1] = s end)
+    local now = 0
+    for i = 1, 40 do now = i * 0.25; p:wrap(now, function() end) end
+    """)
+    assert len(lua.globals().lines) >= 1
