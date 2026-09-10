@@ -217,10 +217,13 @@ def test_no_tanker_is_offered_into_a_threatened_orbit() -> None:
     assert refueledit.can_offer_a_tanker(flight) == []
 
 
-def test_no_tanker_is_offered_to_a_flight_with_no_waypoint() -> None:
+def test_the_tanker_is_offered_before_the_waypoint_exists() -> None:
+    """The dialog asks both questions at once -- waypoint only, or waypoint and
+    tanker -- so it has to know whether a tanker is available before it has added
+    anything. Requiring the waypoint first greyed the button out every time."""
     flight = _flight_with_wing([_squadron("KC135MPRS")])
     flight.flight_plan.layout.refuel = None
-    assert refueledit.can_offer_a_tanker(flight) == []
+    assert len(refueledit.can_offer_a_tanker(flight)) == 1
 
 
 def test_no_second_tanker_is_offered_to_a_package_that_has_one() -> None:

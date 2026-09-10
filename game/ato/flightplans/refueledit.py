@@ -203,10 +203,13 @@ def idle_tanker_squadrons(flight: Flight) -> list["Squadron"]:
 
 
 def can_offer_a_tanker(flight: Flight) -> list["Squadron"]:
-    """The squadrons worth offering, or an empty list if offering makes no sense."""
+    """The squadrons worth offering, or an empty list if offering makes no sense.
+
+    Deliberately does NOT require the flight to have its refuelling waypoint yet: the
+    dialog asks both questions at once -- waypoint only, or waypoint and tanker -- so
+    it has to know the answer to this one before it has added anything.
+    """
     if package_has_tanker(flight):
-        return []
-    if not has_refuel_waypoint(flight):
         return []
     if not refuel_point_is_safe(flight):
         return []

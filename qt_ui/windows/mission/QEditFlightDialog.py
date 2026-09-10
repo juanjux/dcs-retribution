@@ -136,59 +136,80 @@ class QEditFlightDialog(QDialog):
             return
 
         if verdict is RefuelVerdict.SHOULD_ADD:
-            tanker = planned_tanker_name(self.flight)
-            if tanker is not None:
-                found = f"{tanker} is flying this turn, so there is one to meet."
-            else:
-                found = (
-                    "No tanker is planned this turn, so the waypoint will do nothing "
-                    "until you plan one."
-                )
-            title = "Add a refuelling waypoint?"
-            question = (
-                "This flight no longer has the fuel for its route. A refuelling "
-                f"waypoint can be added on the way home. {found}"
-                "\n\nThe rest of the route is left exactly as you set it."
-            )
-        else:
-            title = "Remove the refuelling waypoint?"
-            question = (
+            self._ask_about_adding()
+            return
+
+        result = QMessageBox.question(
+            self,
+            "Remove the refuelling waypoint?",
+            (
                 "This flight now carries comfortably more fuel than its route asks "
                 "for, so it no longer needs the detour to the tanker. Remove the "
                 "refuelling waypoint?"
                 "\n\nThe rest of the route is left exactly as you set it."
-            )
-
-        result = QMessageBox.question(
-            self,
-            title,
-            question,
+            ),
             QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.Yes,
         )
         if result != QMessageBox.StandardButton.Yes:
             return
-
-        if verdict is RefuelVerdict.SHOULD_ADD:
-            changed = add_refuel_waypoint(self.flight)
-            if changed:
-                self._offer_to_plan_a_tanker()
-        else:
-            changed = remove_refuel_waypoint(self.flight)
-        if changed:
+        if remove_refuel_waypoint(self.flight):
             self.events = self.events.update_flight(self.flight)
 
-    def _offer_to_plan_a_tanker(self) -> None:
-        """Having given the flight somewhere to meet a tanker, offer it a tanker.
+    def _ask_about_adding(self) -> None:
+        """One question, two answers: the waypoint on its own, or with a tanker.
 
-        The waypoint alone is not fuel: the DCS task sends the group to the *nearest*
-        tanker it can find, so if the turn has none airborne it finds nothing. If the
-        wing has one sitting idle, planning it into this package puts its orbit at the
-        very point the waypoint was placed at, which is the only way to be sure the
-        two agree.
+        These used to be two dialogs in a row, and they contradicted each other -- the
+        first said no tanker was planned, and the second then offered one. What the
+        player is really choosing between is a waypoint that hopes to find a tanker and
+        a waypoint with one sent to meet it, so it is one choice with two buttons. The
+        second is greyed out, with the reason on screen, when there is nothing to send.
         """
         available = can_offer_a_tanker(self.flight)
-        if not available:
+        flying = planned_tanker_name(self.flight)
+
+        if available:
+            situation = (
+                "A tanker can be sent with it, orbiting at the refuelling point, "
+                "which is clear of enemy air defences."
+            )
+        elif flying is not None:
+            situation = (
+                f"No tanker is free to send, but {flying} is already flying this turn "
+                "and the flight will go looking for it."
+            )
+        else:
+            situation = (
+                "No tanker is free to send and none is flying this turn, so the "
+                "waypoint will do nothing until you plan one."
+            )
+
+        box = QMessageBox(self)
+        box.setWindowTitle("Add a refuelling waypoint?")
+        box.setIcon(QMessageBox.Icon.Question)
+        box.setText(
+            "This flight no longer has the fuel for its route. A refuelling waypoint "
+            f"can be added on the way home. {situation}"
+            "\n\nThe rest of the route is left exactly as you set it."
+        )
+        with_tanker = box.addButton(
+            "Add waypoint and tanker", QMessageBox.ButtonRole.AcceptRole
+        )
+        waypoint_only = box.addButton(
+            "Add waypoint only", QMessageBox.ButtonRole.AcceptRole
+        )
+        box.addButton(QMessageBox.StandardButton.Cancel)
+        with_tanker.setEnabled(bool(available))
+        box.setDefaultButton(with_tanker if available else waypoint_only)
+        box.exec()
+
+        clicked = box.clickedButton()
+        if clicked not in (with_tanker, waypoint_only):
+            return
+        if not add_refuel_waypoint(self.flight):
+            return
+        self.events = self.events.update_flight(self.flight)
+        if clicked is not with_tanker:
             return
 
         squadron = self._choose_tanker(available)
@@ -206,22 +227,8 @@ class QEditFlightDialog(QDialog):
         offers; picking is a second's work for someone who knows what they are flying.
         """
         if len(available) == 1:
-            squadron = available[0]
-            result = QMessageBox.question(
-                self,
-                "Add a tanker to this package?",
-                (
-                    f"{squadron.name} has a {squadron.aircraft} free at "
-                    f"{squadron.location}, refuelling by {refuelling_system(squadron)}."
-                    " It can be planned into this package, orbiting at the refuelling "
-                    "point, which is clear of enemy air defences.\n\n"
-                    "Without one, the flight will go looking for whatever tanker "
-                    "happens to be airborne."
-                ),
-                QMessageBox.StandardButton.No,
-                QMessageBox.StandardButton.Yes,
-            )
-            return squadron if result == QMessageBox.StandardButton.Yes else None
+            # Consent was given on the way in; there is nothing left to choose.
+            return available[0]
 
         labels = [
             f"{squadron.aircraft} ({refuelling_system(squadron)}) —"
@@ -230,11 +237,11 @@ class QEditFlightDialog(QDialog):
         ]
         choice, accepted = QInputDialog.getItem(
             self,
-            "Add a tanker to this package?",
+            "Which tanker?",
             (
-                "A tanker can be planned into this package, orbiting at the refuelling "
-                "point, which is clear of enemy air defences. Which one?\n\n"
-                "A receiver with a probe cannot take fuel from a boom."
+                "More than one is free. A receiver with a probe cannot take fuel from "
+                "a boom, and nothing in the aircraft data says which this flight has, "
+                "so the choice is yours."
             ),
             labels,
             0,
