@@ -10,6 +10,7 @@
 * **[Settings]** How far morale settles back towards Normal each turn is a Morale Event Value now, and several event sizes were re-weighed.
 * **[FIX]** *Apply to all* moved nothing on a helicopter's flight plan and little on a low-level one.
 * **[UI]** A pilot's morale shows as a face after his name where the word does not fit, above all in the pilot selector for a flight.
+* **[FIX]** The pilot selector elided the rank and the name, in the box and in the list, and widening the dialog did not help.
 * **[UI]** *Internal Fuel Quantity* is *Fuel Quantity*, and says what the external tanks add.
 * **[FIX]** Mission Log read every missile in the air as a helicopter: a Patriot firing at an AGM-84 came out as the AGM-84 defending itself, and downing one counted as an air-to-air kill.
 * **[UI]** The waypoints tab estimates the fuel the plan needs, against what the flight is carrying.
