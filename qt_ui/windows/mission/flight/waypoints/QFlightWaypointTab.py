@@ -48,6 +48,9 @@ class QFlightWaypointTab(QFrame):
     #   * Pickup / dropoff zones are ground-level helo landing zones.
     #   * Refuel / recovery-tanker points are tied to the tanker's orbit altitude.
     #   * Bullseye is a fixed map reference, not a flown waypoint.
+    #: Over the fuel carried by no more than this reads as tight rather than short.
+    TIGHT_OVERRUN = 1.15
+
     BULK_ALTITUDE_SKIP_TYPES = frozenset(
         {
             FlightWaypointType.TAKEOFF,
@@ -334,8 +337,16 @@ class QFlightWaypointTab(QFrame):
             )
             if not fuel.enough:
                 # Loud on purpose: the estimate errs high, so it saying no is still
-                # worth a look before you launch.
-                text = f"<span style='color:#E0A86B'>{text} &mdash; tight</span>"
+                # worth a look before you launch. Being over by a tenth and being
+                # over by half are not the same news, so they do not read alike.
+                short = fuel.required.pounds - fuel.carried.pounds
+                if fuel.required.pounds <= fuel.carried.pounds * self.TIGHT_OVERRUN:
+                    text = f"<span style='color:#E0A86B'>{text} &mdash; tight</span>"
+                else:
+                    text = (
+                        f"<span style='color:#E06B6B'>{text}"
+                        f" &mdash; short by {short:,.0f} lb</span>"
+                    )
             parts.append(text)
         self.route_length.setText(" &nbsp;&nbsp; ".join(parts))
 
