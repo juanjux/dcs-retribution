@@ -284,7 +284,19 @@ local function side_of(unit)
     return nil
 end
 
+-- DCS numbers Weapon.Category from zero just like Unit.Category, so a missile's
+-- desc category is 1 -- the same value as HELICOPTER, which had every missile in
+-- the air reported as an aircraft. getCategory has changed meaning between
+-- builds, so probe for the launcher instead: only a weapon has one.
+local function is_weapon(object)
+    local launcher
+    return pcall(function() launcher = object.getLauncher end) and launcher ~= nil
+end
+
 local function is_aircraft(unit)
+    if is_weapon(unit) then
+        return false
+    end
     local category
     if not pcall(function() category = unit:getDesc().category end) then
         return false
@@ -510,7 +522,7 @@ function handler:onEvent(event)
     if id == e.S_EVENT_SHOT and event.weapon then
         local target
         if pcall(function() target = event.weapon:getTarget() end) and target ~= nil
-                and is_aircraft(target) then
+                and (is_aircraft(target) or is_weapon(target)) then
             local victim = side_of(target)
             local shooter = side_of(event.initiator)
             local key = engagement_key(event.initiator, target)
@@ -525,7 +537,9 @@ function handler:onEvent(event)
                 -- of news to each: your wingman is shooting, or something is
                 -- shooting at you. Reporting only the second left a player
                 -- watching his own flights fire at nothing.
-                if victim ~= nil then
+                -- A missile neither defends itself nor survives, so a shot
+                -- at one is news only to the side taking it.
+                if victim ~= nil and not is_weapon(target) then
                     record({kind = "defending", side = victim,
                             actor_type = target_type, actor_pilot = target_pilot,
                             target_type = shooter_type, target_pilot = shooter_pilot,
@@ -550,6 +564,10 @@ function handler:onEvent(event)
     end
 
     if id == e.S_EVENT_KILL and event.initiator and event.target then
+        -- Downing a missile is neither an air kill nor a ground target.
+        if is_weapon(event.target) then
+            return
+        end
         local shooter, victim = side_of(event.initiator), side_of(event.target)
         local killer_text = describe(event.initiator)
         local victim_text = describe(event.target)
@@ -588,7 +606,8 @@ function handler:onEvent(event)
         -- behind a bare kill event comes from.
         remember_weapon(event)
         local shooter = side_of(event.initiator)
-        if shooter and not is_aircraft(event.target) then
+        if shooter and not is_aircraft(event.target)
+                and not is_weapon(event.target) then
             local text, target_id, scenery = ground_target(event.target)
             if text ~= nil then
                 local kind, pilot = unit_fields(event.initiator)
