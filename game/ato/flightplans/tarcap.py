@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Type
 
 from game.utils import Distance, Speed
 from .capbuilder import CapBuilder
+from .refuelneed import needs_refuelling
 from .patrolling import PatrollingFlightPlan, PatrollingLayout
 from .waypointbuilder import WaypointBuilder
 
@@ -110,7 +111,11 @@ class Builder(CapBuilder[TarCapFlightPlan, TarCapLayout]):
         refuel = None
         nav_from_origin = orbit1p
 
-        if self.package.waypoints is not None:
+        # TARCAP asked for neither a helicopter check nor a tanker in the air wing,
+        # so it was the one plan that added the waypoint unconditionally.
+        if self.package.waypoints is not None and needs_refuelling(
+            self.flight, self.package, self.flight.coalition.game.settings
+        ):
             refuel = builder.refuel(self.package.waypoints.refuel)
             nav_from_origin = refuel.position
 

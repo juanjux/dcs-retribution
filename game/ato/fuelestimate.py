@@ -130,12 +130,41 @@ def estimate_fuel(flight: Flight) -> Optional[FuelEstimate]:
         )
 
     required = (consumption.taxi + burn + consumption.min_safe) * MARGIN
-    # Internal plus the drop tanks. Reading the internal figure alone called a
-    # tanked-up strike short of fuel it was carrying on the pylons.
+    return FuelEstimate(required=pounds(required), carried=carried_fuel(flight))
+
+
+def carried_fuel(flight: Flight) -> Mass:
+    """What the flight takes off with: internal plus the drop tanks.
+
+    Reading the internal figure alone called a tanked-up strike short of fuel it was
+    carrying on the pylons.
+    """
     external = loadout_fuel(flight.roster.members[0].loadout)
-    return FuelEstimate(
-        required=pounds(required), carried=kgs(flight.fuel + external.kgs)
+    return kgs(flight.fuel + external.kgs)
+
+
+#: How much of a route is charged at the climb rate when the legs are not known yet.
+#: The measured airframes are level by about here.
+CLIMB_DISTANCE_NM = 25.0
+
+
+def fuel_for_route(flight: Flight, nautical_miles: float) -> FuelEstimate:
+    """What a route of this length costs, for the moment before a plan exists.
+
+    estimate_fuel walks the legs of a built plan. A plan being BUILT has none to walk
+    -- which is exactly when the planner has to decide whether the flight will need a
+    tanker -- so the distance the package geometry implies is charged at the climb
+    rate for the first stretch and the cruise rate for the rest. No altitude
+    correction: the cruise band is not chosen yet either.
+    """
+    consumption = flight.unit_type.fuel_consumption or assumed_consumption(
+        flight.unit_type
     )
+    climbing = min(CLIMB_DISTANCE_NM, max(0.0, nautical_miles))
+    cruising = max(0.0, nautical_miles - climbing)
+    burn = climbing * consumption.climb + cruising * consumption.cruise
+    required = (consumption.taxi + burn + consumption.min_safe) * MARGIN
+    return FuelEstimate(required=pounds(required), carried=carried_fuel(flight))
 
 
 #: Floor on the nominal still-air range of each class, for airframes the fit below
