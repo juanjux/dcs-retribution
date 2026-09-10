@@ -24,7 +24,7 @@ from game.ato.flightroster import FlightRoster
 from game.ato.iflightroster import IFlightRoster
 from game.dcs.aircrafttype import AircraftType
 from game.squadrons import Squadron
-from game.squadrons.morale import rank_level
+from game.squadrons.morale import emoji_for, rank_level
 from game.squadrons.pilot import Pilot
 from game.theater import ControlPoint, OffMapSpawn
 from game.utils import nautical_miles
@@ -53,11 +53,17 @@ class PilotSelector(QComboBox):
         """
         if self.squadron is None:
             return pilot.name
+        # How he is holding up is the thing you are choosing on, and this list has no
+        # room for the word: one face at the end of the name says it. Not for the
+        # player -- he knows how his own week went -- and nothing at all with morale off.
+        mood = ""
+        if self.squadron.morale_in_play and pilot.has_morale:
+            mood = f"  {emoji_for(pilot.morale, self.squadron.settings)}"
         rank = self.squadron.pilot_rank(pilot)
         if rank is None:
-            return pilot.name
+            return f"{pilot.name}{mood}"
         stars = rank_stars_text(rank_level(self.squadron.pilot_skill(pilot)))
-        return f"{stars}  {rank.abbreviation} {pilot.name}"
+        return f"{stars}  {rank.abbreviation} {pilot.name}{mood}"
 
     def _do_rebuild(self) -> None:
         self.clear()

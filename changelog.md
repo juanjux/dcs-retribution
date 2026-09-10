@@ -6,6 +6,7 @@
 * **[FIX]** The fuel estimate ignored the altitude flown, and charged the join and split legs at the combat rate.
 * **[FIX]** Take Off crashed on any flight with a racetrack, reading an option of the removed EW jamming plugin.
 * **[FIX]** *Apply to all* moved nothing on a helicopter's flight plan and little on a low-level one.
+* **[UI]** A pilot's morale shows as a face after his name where the word does not fit, above all in the pilot selector for a flight.
 * **[UI]** *Internal Fuel Quantity* is *Fuel Quantity*, and says what the external tanks add.
 * **[FIX]** Mission Log read every missile in the air as a helicopter: a Patriot firing at an AGM-84 came out as the AGM-84 defending itself, and downing one counted as an air-to-air kill.
 * **[UI]** The waypoints tab estimates the fuel the plan needs, against what the flight is carrying.
