@@ -1,10 +1,18 @@
 from typing import Optional, Sequence
 
-from PySide6.QtCore import QItemSelectionModel, QPoint, QModelIndex, Qt, Signal
+from PySide6.QtCore import (
+    QItemSelectionModel,
+    QModelIndex,
+    QPoint,
+    QRect,
+    Qt,
+    Signal,
+)
 from PySide6.QtGui import (
     QColor,
     QFont,
     QMouseEvent,
+    QPainter,
     QStandardItem,
     QStandardItemModel,
 )
@@ -28,6 +36,10 @@ HEADER_LABELS = ["Name", "Alt (ft)", "Alt Type", "TOT/DEPART", "Leg (nm)"]
 
 #: Set on a group header row: the index of the first waypoint it stands for.
 GroupStartRole = Qt.ItemDataRole.UserRole + 7
+
+#: The dot in front of a waypoint's name, and whether it is drawn hollow.
+DotColourRole = Qt.ItemDataRole.UserRole + 8
+DotOutlineRole = Qt.ItemDataRole.UserRole + 9
 
 #: Targets are the one thing on the route you are there for.
 TARGET_AMBER = "#E0A86B"
@@ -97,6 +109,57 @@ def leg_distances(
     return legs, total
 
 
+#: What kind of thing each waypoint is, as a colour. A route is read by shape -- out,
+#: hit, home -- and a column of identical text does not have one.
+TYPE_DOTS = {
+    FlightWaypointType.TAKEOFF: "#8E9DAA",
+    FlightWaypointType.LANDING_POINT: "#8E9DAA",
+    FlightWaypointType.DIVERT: "#8E9DAA",
+    FlightWaypointType.NAV: "#6E93B0",
+    FlightWaypointType.LOITER: "#6E93B0",
+    FlightWaypointType.JOIN: "#6E93B0",
+    FlightWaypointType.SPLIT: "#6E93B0",
+    FlightWaypointType.PATROL: "#6E93B0",
+    FlightWaypointType.PATROL_TRACK: "#6E93B0",
+    FlightWaypointType.REFUEL: "#86C39A",
+    FlightWaypointType.BULLSEYE: None,  # outline only: a reference, not a place you go
+}
+
+#: Everything that is an attack -- the run in and what it is run in on.
+INGRESS_AMBER = "#E0A86B"
+
+DOT = 6
+DOT_X = 8
+TEXT_X = 22
+
+
+class WaypointNameDelegate(QStyledItemDelegate):
+    """Paints the type dot in front of the waypoint's name."""
+
+    def paint(
+        self, painter: QPainter, option: QStyleOptionViewItem, index: QModelIndex
+    ) -> None:
+        colour = index.data(DotColourRole)
+        outline = index.data(DotOutlineRole)
+        shifted = QStyleOptionViewItem(option)
+        shifted.rect = option.rect.adjusted(TEXT_X - 4, 0, 0, 0)
+        super().paint(painter, shifted, index)
+        if colour is None and not outline:
+            return
+        painter.save()
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        centre = option.rect.center().y()
+        circle = QRect(option.rect.left() + DOT_X, centre - DOT // 2, DOT, DOT)
+        if outline:
+            painter.setBrush(Qt.BrushStyle.NoBrush)
+            painter.setPen(QColor("#4F6070"))
+        else:
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.setBrush(QColor(colour))
+        painter.drawEllipse(circle)
+        painter.restore()
+
+
 class QFlightWaypointList(QTableView):
     #: Total ground track in nautical miles, emitted whenever the list is rebuilt.
     route_length_changed = Signal(float)
@@ -130,6 +193,8 @@ class QFlightWaypointList(QTableView):
 
         self.altitude_editor_delegate = AltitudeEditorDelegate(self)
         self.setItemDelegateForColumn(1, self.altitude_editor_delegate)
+        self.name_delegate = WaypointNameDelegate(self)
+        self.setItemDelegateForColumn(0, self.name_delegate)
 
     def update_list(self) -> None:
         # ignore signals when updating list so on_changed does not fire
@@ -199,7 +264,15 @@ class QFlightWaypointList(QTableView):
     ) -> None:
         self.model.insertRow(self.model.rowCount())
 
-        self.model.setItem(row, 0, QWaypointItem(waypoint, row))
+        name_item = QWaypointItem(waypoint, row)
+        kind = waypoint.waypoint_type
+        if kind is FlightWaypointType.BULLSEYE:
+            name_item.setData(True, DotOutlineRole)
+        elif kind in TARGET_TYPES or "INGRESS" in kind.name:
+            name_item.setData(INGRESS_AMBER, DotColourRole)
+        else:
+            name_item.setData(TYPE_DOTS.get(kind, "#6E93B0"), DotColourRole)
+        self.model.setItem(row, 0, name_item)
 
         altitude = round(waypoint.alt.feet)
         altitude_item = QStandardItem(f"{altitude}")
@@ -252,6 +325,7 @@ class QFlightWaypointList(QTableView):
         font.setWeight(QFont.Weight.DemiBold)
         name.setFont(font)
         name.setForeground(QColor(TARGET_AMBER))
+        name.setData(TARGET_AMBER, DotColourRole)
         self.model.setItem(row, 0, name)
         for column in (1, 2):
             blank = QStandardItem("")
