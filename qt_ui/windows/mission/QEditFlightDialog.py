@@ -10,6 +10,13 @@ from PySide6.QtWidgets import (
 
 from game.ato.flight import Flight
 from game.ato.flightplans.planningerror import PlanningError
+from game.ato.flightplans.refueledit import (
+    RefuelVerdict,
+    add_refuel_waypoint,
+    planned_tanker_name,
+    refuel_verdict,
+    remove_refuel_waypoint,
+)
 from game.server import EventStream
 from game.sim import GameUpdateEvents
 from qt_ui.models import GameModel, PackageModel
@@ -60,6 +67,7 @@ class QEditFlightDialog(QDialog):
 
     def on_close(self, _result) -> None:
         self._recreate_package_if_standoff_changed()
+        self._offer_to_move_the_refuelling_waypoint()
         self.events = self.events.update_flight(self.flight)
         EventStream.put_nowait(self.events)
         self.game_model.ato_model.client_slots_changed.emit()
@@ -104,3 +112,60 @@ class QEditFlightDialog(QDialog):
                 logging.exception(
                     "Could not regenerate flight plan after stand-off change"
                 )
+
+    def _offer_to_move_the_refuelling_waypoint(self) -> None:
+        """Ask again about the tanker, now that the player has had their way.
+
+        The planner decides this while it builds the plan, and never again. Taking the
+        drop tanks off, or taking the route down low, leaves a flight short of fuel
+        with nothing noticing -- which is exactly what it looks like from the outside:
+        "I made it not have enough and it did not plan me a tanker."
+
+        Unlike the stand-off question above, saying yes here does NOT rebuild the plan.
+        Rebuilding would throw away the edits that made the flight short in the first
+        place, which is the opposite of helpful.
+        """
+        verdict = refuel_verdict(self.flight)
+        if verdict is RefuelVerdict.NOTHING_TO_DO:
+            return
+
+        if verdict is RefuelVerdict.SHOULD_ADD:
+            tanker = planned_tanker_name(self.flight)
+            if tanker is not None:
+                found = f"{tanker} is flying this turn, so there is one to meet."
+            else:
+                found = (
+                    "No tanker is planned this turn, so the waypoint will do nothing "
+                    "until you plan one."
+                )
+            title = "Add a refuelling waypoint?"
+            question = (
+                "This flight no longer has the fuel for its route. A refuelling "
+                f"waypoint can be added on the way home. {found}"
+                "\n\nThe rest of the route is left exactly as you set it."
+            )
+        else:
+            title = "Remove the refuelling waypoint?"
+            question = (
+                "This flight now carries comfortably more fuel than its route asks "
+                "for, so it no longer needs the detour to the tanker. Remove the "
+                "refuelling waypoint?"
+                "\n\nThe rest of the route is left exactly as you set it."
+            )
+
+        result = QMessageBox.question(
+            self,
+            title,
+            question,
+            QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.Yes,
+        )
+        if result != QMessageBox.StandardButton.Yes:
+            return
+
+        if verdict is RefuelVerdict.SHOULD_ADD:
+            changed = add_refuel_waypoint(self.flight)
+        else:
+            changed = remove_refuel_waypoint(self.flight)
+        if changed:
+            self.events = self.events.update_flight(self.flight)

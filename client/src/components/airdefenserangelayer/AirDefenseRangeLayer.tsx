@@ -50,17 +50,17 @@ function summarizeUnits(units: string[]): string[] {
   return Array.from(counts, ([name, n]) => (n > 1 ? `${n}x ${name}` : name));
 }
 
-// What a site reaches without shooting: the GPS denial bubble of a jamming site, or
-// the detection range of a site that carries no launcher at all. Neither appears on
-// the threat layer on its own, so both were invisible unless you had SAM detection
-// ranges turned on -- and a jamming site with point defence drew that point defence
-// instead, a couple of miles where the bubble is tens.
+// The GPS denial bubble of a jamming site: it is not a threat range, but it does not
+// appear on any other layer, and a jamming site with point defence drew that point
+// defence instead -- a couple of miles where the bubble is tens.
+//
+// It used to also cover "a site with no live launcher", which put a radar-only site's
+// detection ring on the THREAT layer, dashed, exactly like a jammer. A SAM whose
+// launchers are dead is a detection range and belongs on the detection layer with the
+// rest of them, under the switch the player already has for it.
 function passiveReach(props: RangeCirclesProps): number[] {
   if (props.jamming_range) {
     return [props.jamming_range];
-  }
-  if (props.threat_ranges.length === 0 && props.detection_ranges.length > 0) {
-    return props.detection_ranges;
   }
   return [];
 }
@@ -70,10 +70,11 @@ const RangeCircles = (props: RangeCirclesProps) => {
   // The passive ring goes on the threat layer, dashed and in the faction colour, so
   // it does not read as somewhere you get shot. A site that only detects has nothing
   // else to draw, so the detection layer skips it rather than drawing it twice.
+  // The detection layer draws every detection range, including that of a site with
+  // nothing left to shoot with: a search radar that survived its launchers still sees,
+  // still feeds the IADS, and is still worth striking.
   const radii = props.detection
-    ? props.threat_ranges.length === 0 && !props.jamming_range
-      ? []
-      : props.detection_ranges
+    ? props.detection_ranges
     : [...props.threat_ranges, ...passive];
   const color = colorFor(props.blue, props.detection === true);
   const baseWeight = props.detection ? 1 : 2;
