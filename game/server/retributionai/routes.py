@@ -173,6 +173,16 @@ def answer_leave_request(body: schemas.LeaveRequestAnswer) -> schemas.OpResult:
     )
 
 
+@router.post("/pilots/leave/set", operation_id="ai_set_pilot_leave")
+def set_pilot_leave(body: schemas.PilotLeaveRequest) -> schemas.PilotLeaveResult:
+    """Rest a pilot who never asked for leave, or call one back early -- the Air Wing's
+    leave button, which the player can press on anybody. turns=0 is open-ended; he stays
+    out until you call him back, and calling him back early costs him morale."""
+    return service.set_pilot_leave(
+        body.side, body.squadron_id, body.pilot_name, body.on_leave, body.turns
+    )
+
+
 @router.post("/flights/loadout", operation_id="ai_set_flight_loadout")
 def set_flight_loadout(body: schemas.FlightLoadoutRequest) -> schemas.OpResult:
     """Re-arm a flight that already exists, like the player's Payload tab. Takes a name

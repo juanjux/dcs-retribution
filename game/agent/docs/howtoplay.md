@@ -127,6 +127,15 @@ you lose if they capture yours. Think in terms of a campaign, not a single turn.
   more. **Doing nothing is refusing**, and a refusal costs him morale, so it is worth
   refusing on purpose rather than by omission.
 
+  **You do not have to wait to be asked.** `set_pilot_leave` `{squadron_id, pilot_name,
+  on_leave, turns}` rests anybody on the roster, which matters because the men worth
+  resting are often the ones who never put a hand up -- a pilot at rock bottom can sit
+  there flying while nobody offers. `turns: 0` is open-ended: he stays out until you
+  call him back with `on_leave: false`, and calling a man back early costs him morale
+  the way a refusal does. The squadron applies the player's rules either way: only an
+  active pilot can go, and a squadron with no room cannot take one back. It answers with
+  his `status` and `leave_turns_remaining`, so you need not re-read the roster.
+
   How to decide: if `spare_pilots` would still cover `aircraft`, granting costs you
   nothing this turn and buys back a shaken pilot — say yes. If it would not, you are
   choosing between a jet on the ground now and a pilot who keeps sliding; grant fewer
