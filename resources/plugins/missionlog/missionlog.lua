@@ -19,6 +19,7 @@ MISSION_LOG_DEFAULTS = {
     crashes = true,
     flightstatus = false,
     intercepts = true,
+    monitoring = true,
     defending = true,
     engaging = true,
     duration = 20,
@@ -753,27 +754,31 @@ local function report_contacts(hunter_group, targets, source)
                 announced_contacts[key] = true
                 local hunter_type, hunter_pilot = unit_fields(leader)
                 local bandit_type, bandit_pilot = unit_fields(target_leader)
-                record({kind = "intercept", side = side,
-                        actor_type = hunter_type, actor_pilot = hunter_pilot,
-                        target_type = bandit_type, target_pilot = bandit_pilot,
-                        range = math.floor(range), source = source})
                 -- Only say "intercept" when one is plausible. A BARCAP handed a
                 -- contact by datalink eighty miles away does not leave its
                 -- racetrack -- knowing is not acting, and claiming otherwise
                 -- had the log announcing interceptions that never happened.
-                local verb = range <= INTERCEPT_COMMIT_M
-                    and "is moving to intercept" or "monitors"
-                announce(side, "intercepts", string.format(
-                    "%s %s %s at %.0f nm, %s",
-                    describe_flight(hunter_group), verb, describe_flight(group),
-                    range / 1852, source))
+                -- The watching kind is most of the traffic, so it gets its own
+                -- switch rather than sharing one with the committing kind.
+                local committing = range <= INTERCEPT_COMMIT_M
+                local verb = committing and "is moving to intercept" or "monitors"
+                record({kind = committing and "intercept" or "monitoring",
+                        side = side,
+                        actor_type = hunter_type, actor_pilot = hunter_pilot,
+                        target_type = bandit_type, target_pilot = bandit_pilot,
+                        range = math.floor(range), source = source})
+                announce(side, committing and "intercepts" or "monitoring",
+                    string.format(
+                        "%s %s %s at %.0f nm, %s",
+                        describe_flight(hunter_group), verb,
+                        describe_flight(group), range / 1852, source))
             end
         end
     end
 end
 
 local function poll_intercepts()
-    if not option("intercepts") then
+    if not option("intercepts") and not option("monitoring") then
         return
     end
     for _, side in pairs({coalition.side.BLUE, coalition.side.RED}) do
