@@ -7,24 +7,21 @@ Retribution. Some features and fixes are also adapted from the
 
 ## How development works here
 
-Development now happens **in this fork**. New work is opened as a
-[Pull Request against this repository](https://github.com/juanjux/dcs-retribution/pulls)
-(targeting `juanjux-dev`), **not** against upstream — this keeps the upstream
-review queue light and makes it easy for other forks to cherry-pick whatever
-they want. Each PR describes the feature or fix it adds. Individual fixes may
-still be offered upstream case by case.
+Development happens **in this fork**. New work is opened as a
+[Pull Request against this repository](https://github.com/juanjux/dcs-retribution/pulls),
+targeting `master`, **not** against upstream — this keeps the upstream review
+queue light and makes it easy for other forks to cherry-pick whatever they want.
+Each PR describes the feature or fix it adds. Individual fixes may still be
+offered upstream case by case.
 
 ## Branches
 
 | Branch | Purpose |
 | --- | --- |
 | **`dev`** | A clean mirror of upstream `dcs-retribution/dev`. Pristine, untouched — the base everything is cut from. |
-| **`juanjux-dev`** | The curated line. A feature lands here **only after it has been tested and reviewed via a PR** (opened against `juanjux-dev`). Branched from `dev` and periodically re-synced with upstream `dev`. |
-| **`master`** | The live "buffed" build where new things are tried out and soak-tested. It is **ahead of `juanjux-dev`** and carries work-in-progress not yet PR'd. **Build this branch** if you want to play with everything. |
+| **`master`** | The line you build. Every feature and fix lands here through a PR, after it has been tested. |
 
-In short: experiment on `master`, promote the proven pieces to `juanjux-dev`
-through a PR, and keep `dev` a pristine upstream mirror. When upstream `dev`
-gets new commits they are occasionally pulled into `master` and `juanjux-dev`.
+When upstream `dev` gets new commits they are occasionally pulled into `master`.
 
 ## Features not in upstream Retribution
 

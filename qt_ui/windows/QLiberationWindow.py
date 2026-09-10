@@ -595,14 +595,19 @@ class QLiberationWindow(QMainWindow):
         ]
         text = (
             "<h3>DCS Retribution " + VERSION + "</h3>" + "<b>Source code : </b>"
-            "<a href='https://github.com/dcs-retribution/dcs-retribution' style='color:white'>"
-            "https://github.com/dcs-retribution/dcs-retribution </a>"
+            "<a href='https://github.com/juanjux/dcs-retribution' style='color:white'>"
+            "https://github.com/juanjux/dcs-retribution </a>"
             + "<h4>Authors</h4>"
-            + "<p>DCS Retribution is an (independent) fork of DCS Liberation, "
+            + "<p>This build is a personal fork of DCS Retribution by <b>juanjux</b>, "
+            "carrying features and fixes that are not in upstream Retribution.</p>"
+            "<p>DCS Retribution is an (independent) fork of DCS Liberation, "
             "which was originally developed by <b>shdwp</b>. "
             "DCS Liberation 2.0 is a partial rewrite based on this work by <b>Khopa</b>. "
             "DCS Retribution was forked during development of "
-            "DCS Liberation v6.0.0 in 2022 by <b>Raffson</> & <b>MetalStormGhost</>."
+            "DCS Liberation v6.0.0 in 2022 by <b>Raffson</> & <b>MetalStormGhost</>, "
+            "and lives at "
+            "<a href='https://github.com/dcs-retribution/dcs-retribution' style='color:white'>"
+            "github.com/dcs-retribution/dcs-retribution</a>."
             "<h4>Contributors</h4>"
             + ", ".join(contributors)
             + "<h4>Special Thanks  :</h4>"
