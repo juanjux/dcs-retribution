@@ -398,7 +398,7 @@ class Squadron:
                 )
             before_drift = pilot.morale
             pilot.morale = morale_rules.clamp(
-                pilot.morale + morale_rules.drift(pilot.morale)
+                pilot.morale + morale_rules.drift(pilot.morale, self.settings)
             )
             pilot.note_morale_change(before_drift, "time passing", turn)
 

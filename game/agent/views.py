@@ -448,7 +448,7 @@ class LeaveRequestView(BaseModel):
     squadron: str
     pilot_name: str  # and this
     rank: str
-    morale: int  # 0-100
+    morale: int  # -30 to 100; below zero is Broken and takes turns to climb out of
     state: str  # the word for it: Shaken, Shattered, Broken...
     asked_turns: int  # what HE asked for; you may grant fewer
     spare_pilots: int  # pilots still available in his squadron if you say yes
