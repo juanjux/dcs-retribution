@@ -328,6 +328,25 @@ def morale_state(morale: int, settings: Any = None) -> MoraleState:
     return MORALE_STATES[-1]
 
 
+#: One face per band, for the lists with no room for the word -- the pilot selector
+#: above all, where every name looks alike and the man's state is the thing you are
+#: choosing on. Keyed by state NAME, so a campaign that moves a band's floor cannot
+#: end up with the wrong face on it.
+STATE_EMOJI: dict[str, str] = {
+    "Triumphant": "😄",
+    "Confident": "🙂",
+    "Normal": "😐",
+    "Shaken": "😟",
+    "Shattered": "😢",
+    "Broken": "😭",
+}
+
+
+def emoji_for(morale: int, settings: Any = None) -> str:
+    """The band's face, or nothing for a band nobody has given one."""
+    return STATE_EMOJI.get(morale_state(morale, settings).name, "")
+
+
 def state_named(name: str, settings: Any = None) -> MoraleState:
     for state in morale_states(settings):
         if state.name == name:
