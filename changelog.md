@@ -14,6 +14,7 @@
 * **[UI]** The waypoints tab estimates the fuel the plan needs, against what the flight is carrying.
 * **[FIX]** The fuel estimate charged a large aircraft a fighter's rate per mile, so a B-1B's 195,000 lb came out at 433 lb a mile and a 306 nm route asked for more fuel than the aircraft holds. The warning also says how short it is rather than always reading *tight*.
 * **[UI]** The waypoint table shows each leg's distance and the route total.
+* **[Mission Generator]** New *Use JTAC if the faction has one defined* option, so the JTAC aircraft can be switched off mid-campaign instead of only in the new-game wizard.
 * **[UI]** Qt updated to 6.11.2.
 * **[UI]** Every task has its own chip colour in the package and Air Wing lists; CAS, Strike, DEAD and Armed Recon all painted the same brown.
 * **[UI]** Back to the native Windows file, colour and font dialogs.

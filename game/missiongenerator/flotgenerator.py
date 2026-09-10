@@ -259,7 +259,7 @@ class FlotGenerator:
         )
 
         # Add JTAC
-        if self.game.blue.faction.has_jtac:
+        if self.game.settings.use_jtac and self.game.blue.faction.has_jtac:
             freq = self.radio_registry.alloc_uhf()
             # If the option fc3LaserCode is enabled, force all JTAC
             # laser codes to 1113 to allow lasing for Su-25 Frogfoots and A-10A Warthogs.
