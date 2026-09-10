@@ -138,14 +138,25 @@ def estimate_fuel(flight: Flight) -> Optional[FuelEstimate]:
     )
 
 
-#: Nominal still-air range on internal fuel, per class. The measured aircraft span
-#: 447 to 856 nm, so a jet takes the pessimistic end.
+#: Floor on the nominal still-air range of each class, for airframes the fit below
+#: reads as shorter-legged than they are.
 NOMINAL_RANGE_NM = {
     "helicopter": 250.0,
     "heavy": 4000.0,  # tankers, AWACS, transports: they exist to stay up
     "propeller": 500.0,
     "jet": 450.0,
 }
+
+#: Range against internal fuel, least squares over the 8 measured airframes
+#: (5,700 to 29,000 lb, R2 = 0.75): an airframe that carries more fuel flies further
+#: on it. A flat figure per class instead had a B-1B assumed to reach the same 450 nm
+#: as a Viper, which charged its 195,000 lb at 433 lb per mile.
+RANGE_FIT_COEFFICIENT = 2.04
+RANGE_FIT_EXPONENT = 0.62
+
+#: The fit is an extrapolation past 29,000 lb, so it is bounded. Against the real
+#: figures it stays pessimistic up there: 3,900 nm for a B-1B that flies about 6,000.
+MAX_NOMINAL_RANGE_NM = 5000.0
 
 #: The measured set runs climb 2.0-2.4x cruise and combat 1.2-2.2x. Both at their
 #: high end compound with the cruise above into an estimate that calls everything
@@ -183,10 +194,18 @@ def _airframe_class(aircraft: AircraftType) -> str:
     return "jet"
 
 
+def nominal_range_nm(aircraft: AircraftType) -> float:
+    """How far an unmeasured airframe is assumed to reach on its internal fuel."""
+    internal = aircraft.dcs_unit_type.fuel_max * KG_TO_LBS
+    fitted = RANGE_FIT_COEFFICIENT * internal**RANGE_FIT_EXPONENT if internal else 0.0
+    floor = NOMINAL_RANGE_NM[_airframe_class(aircraft)]
+    return min(MAX_NOMINAL_RANGE_NM, max(floor, fitted))
+
+
 def assumed_consumption(aircraft: AircraftType) -> FuelConsumption:
     """A profile for an airframe nobody has measured, from its fuel capacity."""
     internal = aircraft.dcs_unit_type.fuel_max * KG_TO_LBS
-    cruise = internal / NOMINAL_RANGE_NM[_airframe_class(aircraft)]
+    cruise = internal / nominal_range_nm(aircraft)
     return FuelConsumption(
         taxi=ASSUMED_TAXI_LB,
         climb=cruise * CLIMB_OVER_CRUISE,
