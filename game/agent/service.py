@@ -216,6 +216,8 @@ def capabilities() -> dict:
             "payload/validate (check a {pylon: clsid} loadout is valid for an airframe)",
             "waypoints/edit (move/adjust a flight waypoint — never deletes)",
             "flights/crew (put a named pilot in a seat, or empty it)",
+            "pilots/leave (answer a pilot listed in turn_context.leave_requests)",
+            "pilots/leave/set (rest a pilot who never asked, or call one back early)",
             "flights/loadout (re-arm a flight that already exists — ferries launch empty)",
             "flights/tot_offset (shift ONE flight's TOT off its package's — negative puts escorts over the target ahead of the strikers)",
             "packages/{index} (delete)",
@@ -286,6 +288,22 @@ def answer_leave_request(
 
     return planner.answer_leave_request(
         _require_game(), side, squadron_id, pilot_name, grant, turns
+    )
+
+
+@opfor_only
+def set_pilot_leave(
+    side: str,
+    squadron_id: str,
+    pilot_name: str,
+    on_leave: bool = True,
+    turns: int = 0,
+):
+    """Rest a pilot who never asked, or call one back early."""
+    from game.agent import planner
+
+    return planner.set_pilot_leave(
+        _require_game(), side, squadron_id, pilot_name, on_leave, turns
     )
 
 

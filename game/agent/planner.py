@@ -1755,6 +1755,81 @@ def answer_leave_request(
     return schemas.OpResult(ok=False, error=f"no squadron with id {squadron_id!r}")
 
 
+def set_pilot_leave(
+    game: Game,
+    side: str,
+    squadron_id: str,
+    pilot_name: str,
+    on_leave: bool = True,
+    turns: int = 0,
+) -> schemas.PilotLeaveResult:
+    """Rest a pilot who never asked, or call one back early -- the Air Wing leave button.
+
+    ``answer_leave_request`` only reaches a man who put his hand up, and the ones worth
+    resting are often the ones who do not: a pilot at rock bottom can sit there flying
+    while nobody offers. The player can press this on anybody on the roster, so this
+    does too, with the squadron applying the same rules -- only an active pilot can go,
+    and a squadron with no room cannot take one back.
+
+    ``turns`` of zero is open-ended leave: he stays out until he is called back. Any
+    other number runs down on its own like a wound. Calling him back early costs him
+    morale; leave that ran out on its own does not.
+    """
+    from game.squadrons.morale import MAX_LEAVE_TURNS
+
+    for coalition in (game.blue, game.red):
+        if (coalition.player.name.lower() == "blue") != (side.lower() == "blue"):
+            continue
+        for squadron in coalition.air_wing.iter_squadrons():
+            if str(squadron.id) != squadron_id and squadron.name != squadron_id:
+                continue
+            roster = {p.name: p for p in squadron.current_roster}
+            pilot = roster.get(pilot_name)
+            if pilot is None:
+                return schemas.PilotLeaveResult(
+                    ok=False, error=f"{squadron} has nobody called {pilot_name}"
+                )
+            try:
+                if on_leave:
+                    squadron.send_on_leave(
+                        pilot, max(0, min(turns, MAX_LEAVE_TURNS)), game.turn
+                    )
+                else:
+                    squadron.cancel_leave(pilot)
+            except RuntimeError as exc:
+                return schemas.PilotLeaveResult(
+                    ok=False,
+                    error=str(exc),
+                    status=pilot.status.value,
+                    leave_turns_remaining=pilot.leave_turns,
+                )
+            if pilot.on_leave:
+                spell = (
+                    f"for {pilot.leave_turns} more turn(s)"
+                    if pilot.leave_turns
+                    else "open-ended, until you call him back"
+                )
+                detail = (
+                    f"{pilot_name} is on leave {spell}; {squadron} has "
+                    f"{squadron.spare_pilots()} pilots left for "
+                    f"{squadron.owned_aircraft} aircraft"
+                )
+            else:
+                detail = (
+                    f"{pilot_name} is back on {squadron}'s roster; being called back "
+                    "early cost him morale"
+                )
+            return schemas.PilotLeaveResult(
+                ok=True,
+                detail=detail,
+                status=pilot.status.value,
+                leave_turns_remaining=pilot.leave_turns,
+            )
+    return schemas.PilotLeaveResult(
+        ok=False, error=f"no squadron with id {squadron_id!r}"
+    )
+
+
 def _reconcile_pool(game: Game, side: str) -> None:
     """Cross-check the squadron pools before answering anything about crews.
 

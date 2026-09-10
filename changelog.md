@@ -14,6 +14,7 @@
 * **[UI]** Qt updated to 6.11.2.
 * **[UI]** Every task has its own chip colour in the package and Air Wing lists; CAS, Strike, DEAD and Armed Recon all painted the same brown.
 * **[UI]** Back to the native Windows file, colour and font dialogs.
+* **[Plugins]** GeneraLLM can rest a pilot who never asked for leave, or call one back early, the way the Air Wing button does; the leave endpoints are listed in `capabilities` now.
 * **[FIX]** Nine factions had no early-warning radar, so their EWR markers fielded a SAM's acquisition radar instead.
 * **[FIX]** GeneraLLM: a package spec the API rejected stayed in the ATO with its crews tasked, so retrying it answered *already tasked*. A TOT before the mission starts also read as inside the mission window.
 * **[Settings]** GPS jamming, cruise missile strikes and naval magazines are switched on by their plugin alone, and their options live with it.

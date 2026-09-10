@@ -155,6 +155,24 @@ def answer_leave_request(
 
 
 @_tool()
+def set_pilot_leave(
+    squadron_id: str,
+    pilot_name: str,
+    on_leave: bool = True,
+    turns: int = 0,
+    side: str = "red",
+) -> dict:
+    """Rest a pilot who never asked for leave, or call one back early -- the Air Wing's
+    leave button, which the player can press on anybody. answer_leave_request only
+    reaches a man who put his hand up, and the ones worth resting often do not. turns=0
+    is open-ended: he stays out until you call him back. Calling him back early costs him
+    morale; leave that ran out on its own does not."""
+    return service.set_pilot_leave(
+        side, squadron_id, pilot_name, on_leave, turns
+    ).model_dump()
+
+
+@_tool()
 def get_waypoints(flight_id: str, side: str = "red") -> dict:
     """A flight's waypoints (idx, type, pos [lat,lng], alt_m) — read them before editing a
     route with edit_waypoint. Waypoint 0 is takeoff (immovable); none can be deleted."""

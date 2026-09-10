@@ -86,6 +86,9 @@ tool/resource of the same name.
   (`{squadron_id, pilot_name, grant, turns}`; `turns:0` grants everything he asked for,
   and you can never grant more). Ignoring a request refuses it, and a refusal costs him
   morale.
+- `POST /pilots/leave/set` — rest a pilot who never asked, or call one back early
+  (`{squadron_id, pilot_name, on_leave, turns}`; `turns:0` is open-ended). The Air Wing's
+  leave button, which the player can press on anybody on the roster.
 - `POST /flights/loadout` — re-arm a flight that already exists (`flight_id` + a `loadout`
   name or `{pylon: clsid}` map). For flights the engine made for you, not you for it:
   a squadron relocation launches its ferries with an **Empty** loadout.
