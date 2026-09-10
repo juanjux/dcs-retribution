@@ -290,11 +290,9 @@ class Settings:
         default=True,
         invert=False,
         detail=(
-            "Replaces the three per-task tanker options, which asked for a tanker "
-            "the fulfiller then always pruned. A tanker is planned, and a refuelling "
-            "waypoint added, only for a package whose fuel estimate says it cannot "
-            "make the plan on what it takes off with -- and only if the faction has "
-            "a tanker to send."
+            "If a tanker is available, one is planned with the package when the fuel "
+            "estimate says the package needs it. The refuelling waypoint goes on the "
+            "way home, in friendly airspace."
         ),
     )
     aircraft_per_recovery_tanker: int = bounded_int_option(

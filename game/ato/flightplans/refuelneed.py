@@ -33,15 +33,30 @@ ROUTE_SLACK = 1.10
 def can_carry_a_refuel_waypoint(flight: Flight) -> bool:
     """Whether this flight's plan has anywhere to put one.
 
-    Only formation attacks and TARCAP do. A CAS or BARCAP flight short of fuel is a
-    real problem, but buying it a tanker it can never be routed to meet is not the
-    answer to it.
+    Formation attacks and every patrol do. A patrol is the case that most often wants
+    one -- a BARCAP orbits for hours -- and the waypoint goes after its last lap, so
+    it meets the tanker on the way home. CAS and the transport plans still have
+    nowhere to put one, and buying a tanker a flight can never be routed to meet is
+    not the answer to its fuel problem.
     """
     try:
         layout = flight.flight_plan.layout
     except Exception:
         return False
     return hasattr(layout, "refuel")
+
+
+def _is_defensive(package: Package, flight: Flight) -> bool:
+    """Whether this package is covering something of its own side.
+
+    That is the case package geometry is deliberately not solved for, and the only one
+    where the simple out-and-back route below is the route. A package that cannot
+    answer counts as offensive, which asks for nothing.
+    """
+    try:
+        return bool(package.target.is_friendly(flight.coalition.player))
+    except AttributeError:
+        return False
 
 
 def planned_legs(
@@ -64,15 +79,33 @@ def planned_legs(
     that holds for half an hour burns more there than on the way, and leaving it out
     meant a patrol was judged on about half the fuel it really needs.
     """
-    waypoints = package.waypoints
-    if waypoints is None:
-        return []
     arrival = flight.arrival if flight.arrival is not None else flight.departure
     cruise_ft = cruise_altitude.feet
     combat_ft = combat_altitude.feet
 
     def nm(a: Any, b: Any) -> float:
         return meters(a.distance_to_point(b)).nautical_miles
+
+    waypoints = package.waypoints
+    if waypoints is None:
+        # A defensive package -- a BARCAP over a friendly base -- has no join, ingress
+        # or split to solve for, so there is no geometry to itemise. Its route is the
+        # simple one it actually flies: out to the thing it is covering, its laps, and
+        # home. Without this it was charged nothing at all and never judged short.
+        #
+        # An offensive package that has not solved its geometry yet is a different
+        # thing entirely, and is left alone until it has.
+        if not _is_defensive(package, flight):
+            return []
+        out = nm(flight.departure.position, package.target.position) * ROUTE_SLACK
+        climbing = min(CLIMB_DISTANCE_NM, out)
+        legs = [
+            Leg(climbing, cruise_ft, climb=True),
+            Leg(out - climbing, cruise_ft),
+            Leg(on_station.nautical_miles, combat_ft),
+            Leg(nm(package.target.position, arrival.position) * ROUTE_SLACK, cruise_ft),
+        ]
+        return [leg for leg in legs if leg.nautical_miles > 0]
 
     out = nm(flight.departure.position, waypoints.join) * ROUTE_SLACK
     climbing = min(CLIMB_DISTANCE_NM, out)

@@ -1,4 +1,4 @@
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QComboBox,
     QFrame,
@@ -53,6 +53,12 @@ class FlightMemberSelector(QSpinBox):
 
 
 class DcsFuelSelector(QHBoxLayout):
+    #: Emitted whenever the fuel the aircraft leaves the ground with changes -- the
+    #: slider, the unit swap, a new preset, or a pylon that gained or lost a tank.
+    #: The waypoint tab's fuel estimate is computed from it and has no other way to
+    #: know it moved.
+    carried_fuel_changed = Signal()
+
     LBS2KGS_FACTOR = 0.45359237
 
     def __init__(self, flight: Flight) -> None:
@@ -93,6 +99,9 @@ class DcsFuelSelector(QHBoxLayout):
 
     def show_tanks(self, loadout: Loadout) -> None:
         """What the external tanks add, and what the aircraft therefore carries."""
+        # Every path that changes carried fuel comes through here, so this is the one
+        # place the signal has to be emitted from.
+        self.carried_fuel_changed.emit()
         external = loadout_fuel(loadout)
         if not external.kgs:
             self.tanks.setText("")
@@ -145,6 +154,10 @@ class DcsFuelSelector(QHBoxLayout):
 
 
 class QFlightPayloadTab(QFrame):
+    #: Re-emitted from the fuel selector: what the flight takes off with has changed,
+    #: so anything showing a fuel figure needs to recompute.
+    carried_fuel_changed = Signal()
+
     def __init__(self, flight: Flight, game: Game):
         super(QFlightPayloadTab, self).__init__()
         self.flight = flight
@@ -236,6 +249,7 @@ class QFlightPayloadTab(QFrame):
         docsText.setOpenExternalLinks(True)
 
         self.fuel_selector = DcsFuelSelector(flight)
+        self.fuel_selector.carried_fuel_changed.connect(self.carried_fuel_changed)
         layout.addLayout(self.fuel_selector)
 
         self.loadout_selector = DcsLoadoutSelector(

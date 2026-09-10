@@ -61,14 +61,15 @@ def _flight(
         coalition=SimpleNamespace(
             air_wing=SimpleNamespace(can_auto_plan=lambda _task: tankers),
             game=SimpleNamespace(settings=SimpleNamespace()),
+            player=object(),
         ),
     )
 
 
-def _package(target_nm: float) -> Any:
+def _package(target_nm: float, *, defending: bool = False) -> Any:
     far = _Point(target_nm * METRES_PER_NM)
     return SimpleNamespace(
-        target=SimpleNamespace(position=far),
+        target=SimpleNamespace(position=far, is_friendly=lambda _player: defending),
         waypoints=SimpleNamespace(join=_Point(0), ingress=far, split=far),
         flights=[],
     )
@@ -181,11 +182,29 @@ def test_a_faction_with_no_tanker_is_not_offered_one() -> None:
     )
 
 
-def test_a_package_with_no_waypoints_yet_asks_for_nothing() -> None:
+def test_an_attack_package_with_no_waypoints_yet_asks_for_nothing() -> None:
+    """Halfway to an enemy target is not a place to send a tanker, and a package that
+    has not solved its geometry cannot say where else to."""
     flight = _flight()
     package = _package(400)
     package.waypoints = None
     assert not needs_refuelling(flight, package, _settings(), CRUISE, CRUISE)
+
+
+def test_a_patrol_over_its_own_base_is_judged_without_package_geometry() -> None:
+    """A defensive package never gets package waypoints -- there is no ingress to
+    solve -- so judging it on those alone charged it nothing and it was never short."""
+    flight = _flight(internal_lb=4000.0)
+    package = _package(150, defending=True)
+    package.waypoints = None
+    assert needs_refuelling(
+        flight,
+        package,
+        _settings(),
+        CRUISE,
+        CRUISE,
+        nautical_miles(400),  # its laps, which are most of what a patrol burns
+    )
 
 
 # --- the tanker half, which now READS the waypoint decision -----------------
@@ -227,3 +246,46 @@ def test_a_flight_whose_plan_cannot_answer_is_not_a_reason_to_send_one() -> None
     flight = _flight()
     flight.flight_plan = None
     assert not refuelneed.has_refuel_waypoint(flight)
+
+
+def test_a_patrol_has_somewhere_to_put_a_refuel_waypoint() -> None:
+    """A BARCAP is the flight that orbits longest, so it is the one that most wants a
+    tanker. The slot used to belong to TARCAP alone, which meant the fuel check was
+    never even asked about a BARCAP."""
+    from game.ato.flightplans.patrolling import PatrollingLayout
+    from game.ato.flightplans.tarcap import TarCapLayout
+
+    assert hasattr(PatrollingLayout, "refuel")
+    # TARCAP keeps working through the inherited slot rather than one of its own.
+    assert issubclass(TarCapLayout, PatrollingLayout)
+    assert "refuel" not in TarCapLayout.__annotations__
+
+
+def test_a_patrol_yields_and_forgets_its_refuel_waypoint() -> None:
+    """The waypoint has to appear on the route after the last lap, and deleting it by
+    hand has to actually take it off -- a stale one breaks mission generation."""
+    from game.ato.flightplans.patrolling import PatrollingLayout
+
+    def waypoint(name: str) -> Any:
+        return SimpleNamespace(name=name)
+
+    start, end = waypoint("start"), waypoint("end")
+    refuel = waypoint("refuel")
+    layout = PatrollingLayout(
+        departure=waypoint("takeoff"),
+        arrival=waypoint("land"),
+        divert=None,
+        bullseye=waypoint("bullseye"),
+        nav_to=[],
+        nav_from=[],
+        custom_waypoints=[],
+        patrol_start=start,
+        patrol_end=end,
+        refuel=refuel,
+    )
+    names = [wpt.name for wpt in layout.iter_waypoints()]
+    assert names.index("refuel") == names.index("end") + 1
+
+    assert layout.delete_waypoint(refuel)
+    assert layout.refuel is None
+    assert "refuel" not in [wpt.name for wpt in layout.iter_waypoints()]

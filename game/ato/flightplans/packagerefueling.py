@@ -7,6 +7,7 @@ from dcs import Point
 
 from game.utils import Distance, Heading, meters
 from .ibuilder import IBuilder
+from .planningerror import PlanningError
 from .patrolling import PatrollingLayout
 from .refuelingflightplan import RefuelingFlightPlan
 from .waypointbuilder import WaypointBuilder
@@ -58,7 +59,12 @@ class PackageRefuelingFlightPlan(RefuelingFlightPlan):
         )
 
         # Cheat in a FlightWaypoint for the refuel point.
-        refuel: Point = self.package.waypoints.refuel
+        meeting_point = self.package.refuel_point
+        if meeting_point is None:
+            raise PlanningError(
+                "Cannot plan a tanker for a package with nowhere to meet it"
+            )
+        refuel: Point = meeting_point
         refuel_waypoint: FlightWaypoint = FlightWaypoint(
             "REFUEL", FlightWaypointType.REFUEL, refuel, altitude
         )

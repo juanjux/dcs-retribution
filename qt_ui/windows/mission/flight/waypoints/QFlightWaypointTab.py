@@ -87,6 +87,10 @@ class QFlightWaypointTab(QFrame):
     def init_ui(self):
         layout = QGridLayout()
 
+        #: The last route length the list reported, so the footer can be redrawn when
+        #: only the fuel side of it has moved.
+        self._route_length_nm = 0.0
+
         self.flight_waypoint_list = QFlightWaypointList(self.package, self.flight)
         layout.addWidget(self.flight_waypoint_list, 0, 0)
 
@@ -327,7 +331,17 @@ class QFlightWaypointTab(QFrame):
         if changed:
             self.on_change()
 
+    def refresh_fuel(self) -> None:
+        """Recompute the footer without the route having changed.
+
+        Carried fuel is half of the estimate and it is set on another tab, so
+        removing a drop tank used to leave this line showing the old total until
+        something moved a waypoint.
+        """
+        self.show_route_length(self._route_length_nm)
+
     def show_route_length(self, nautical_miles: float) -> None:
+        self._route_length_nm = nautical_miles
         parts = [f"<strong>Route:</strong> {nautical_miles:.0f} nm"]
         fuel = estimate_fuel(self.flight)
         if fuel is not None:

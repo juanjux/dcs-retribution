@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Type
@@ -17,29 +16,11 @@ if TYPE_CHECKING:
 
 @dataclass
 class TarCapLayout(PatrollingLayout):
-    refuel: FlightWaypoint | None
+    """Kept as its own type only so the plan class can be parameterised on it.
 
-    def iter_waypoints(self) -> Iterator[FlightWaypoint]:
-        yield self.departure
-        yield from self.nav_to
-        yield self.patrol_start
-        yield self.patrol_end
-        if self.refuel is not None:
-            yield self.refuel
-        yield from self.nav_from
-        yield self.arrival
-        if self.divert is not None:
-            yield self.divert
-        yield self.bullseye
-        yield from self.custom_waypoints
-
-    def delete_waypoint(self, waypoint: FlightWaypoint) -> bool:
-        if waypoint == self.refuel:
-            self.refuel = None
-            return True
-        elif super().delete_waypoint(waypoint):
-            return True
-        return False
+    The refuel slot, and the waypoint ordering that carries it, now belong to every
+    patrol (:class:`PatrollingLayout`), so there is nothing left to add here.
+    """
 
 
 class TarCapFlightPlan(PatrollingFlightPlan[TarCapLayout]):
@@ -122,7 +103,8 @@ class Builder(CapBuilder[TarCapFlightPlan, TarCapLayout]):
         on_station = nautical_miles(
             self.flight.unit_type.preferred_patrol_speed(patrol_alt).knots * hours
         )
-        if self.package.waypoints is not None and needs_refuelling(
+        meeting_point = self.package.refuel_point
+        if meeting_point is not None and needs_refuelling(
             self.flight,
             self.package,
             settings,
@@ -130,7 +112,7 @@ class Builder(CapBuilder[TarCapFlightPlan, TarCapLayout]):
             patrol_alt,
             on_station,
         ):
-            refuel = builder.refuel(self.package.waypoints.refuel)
+            refuel = builder.refuel(meeting_point)
             nav_from_origin = refuel.position
 
         return TarCapLayout(
