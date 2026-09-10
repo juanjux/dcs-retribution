@@ -1,9 +1,11 @@
 """Dialog window for editing flights."""
 
 import logging
+from typing import Optional
 
 from PySide6.QtWidgets import (
     QDialog,
+    QInputDialog,
     QMessageBox,
     QVBoxLayout,
 )
@@ -13,10 +15,14 @@ from game.ato.flightplans.planningerror import PlanningError
 from game.ato.flightplans.refueledit import (
     RefuelVerdict,
     add_refuel_waypoint,
+    can_offer_a_tanker,
+    plan_tanker_for,
     planned_tanker_name,
     refuel_verdict,
+    refuelling_system,
     remove_refuel_waypoint,
 )
+from game.squadrons import Squadron
 from game.server import EventStream
 from game.sim import GameUpdateEvents
 from qt_ui.models import GameModel, PackageModel
@@ -165,7 +171,93 @@ class QEditFlightDialog(QDialog):
 
         if verdict is RefuelVerdict.SHOULD_ADD:
             changed = add_refuel_waypoint(self.flight)
+            if changed:
+                self._offer_to_plan_a_tanker()
         else:
             changed = remove_refuel_waypoint(self.flight)
         if changed:
             self.events = self.events.update_flight(self.flight)
+
+    def _offer_to_plan_a_tanker(self) -> None:
+        """Having given the flight somewhere to meet a tanker, offer it a tanker.
+
+        The waypoint alone is not fuel: the DCS task sends the group to the *nearest*
+        tanker it can find, so if the turn has none airborne it finds nothing. If the
+        wing has one sitting idle, planning it into this package puts its orbit at the
+        very point the waypoint was placed at, which is the only way to be sure the
+        two agree.
+        """
+        available = can_offer_a_tanker(self.flight)
+        if not available:
+            return
+
+        squadron = self._choose_tanker(available)
+        if squadron is None:
+            return
+
+        self._plan_the_tanker(squadron)
+
+    def _choose_tanker(self, available: list[Squadron]) -> Optional[Squadron]:
+        """Which tanker to send, when the wing has more than one kind sitting idle.
+
+        Nothing in the unit data says whether a receiver has a probe or a receptacle,
+        so this is not a choice that can be made for the player -- send a Hornet to a
+        boom-only KC-135 and it comes home empty. Each option says which system it
+        offers; picking is a second's work for someone who knows what they are flying.
+        """
+        if len(available) == 1:
+            squadron = available[0]
+            result = QMessageBox.question(
+                self,
+                "Add a tanker to this package?",
+                (
+                    f"{squadron.name} has a {squadron.aircraft} free at "
+                    f"{squadron.location}, refuelling by {refuelling_system(squadron)}."
+                    " It can be planned into this package, orbiting at the refuelling "
+                    "point, which is clear of enemy air defences.\n\n"
+                    "Without one, the flight will go looking for whatever tanker "
+                    "happens to be airborne."
+                ),
+                QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.Yes,
+            )
+            return squadron if result == QMessageBox.StandardButton.Yes else None
+
+        labels = [
+            f"{squadron.aircraft} ({refuelling_system(squadron)}) —"
+            f" {squadron.name} at {squadron.location}"
+            for squadron in available
+        ]
+        choice, accepted = QInputDialog.getItem(
+            self,
+            "Add a tanker to this package?",
+            (
+                "A tanker can be planned into this package, orbiting at the refuelling "
+                "point, which is clear of enemy air defences. Which one?\n\n"
+                "A receiver with a probe cannot take fuel from a boom."
+            ),
+            labels,
+            0,
+            False,
+        )
+        if not accepted:
+            return None
+        return available[labels.index(choice)]
+
+    def _plan_the_tanker(self, squadron: Squadron) -> None:
+        tanker = plan_tanker_for(self.flight, squadron)
+        self.package_model.add_flight(tanker)
+        try:
+            tanker.recreate_flight_plan()
+            self.package_model.update_tot()
+            self.events = self.events.new_flight(tanker)
+        except PlanningError:
+            logging.exception("Could not plan the tanker")
+            self.package_model.delete_flight(tanker)
+            QMessageBox.critical(
+                self,
+                "Could not plan the tanker",
+                "The tanker could not be given a flight plan, so it has not been "
+                "added. The refuelling waypoint is still there.",
+                QMessageBox.StandardButton.Ok,
+            )
