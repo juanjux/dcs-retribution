@@ -24,7 +24,6 @@ from qt_ui.models import AtoModel, PackageModel
 from qt_ui.widgets.squadrondelegate import (
     ACCENT,
     AMBER,
-    CHIP_FAMILIES,
     CHIP_ON_SELECTED,
     HOVER_BAR,
     HOVER_FILL,
@@ -34,7 +33,7 @@ from qt_ui.widgets.squadrondelegate import (
     TEXT_PRIMARY,
     TEXT_SECONDARY,
     TEXT_TERTIARY,
-    chip_family,
+    chip_colours,
 )
 
 ROW_HEIGHT = 56
@@ -85,12 +84,12 @@ class AtoRowDelegate(QStyledItemDelegate):
     def _paint_chip(
         painter: QPainter, x: int, task, selected: bool, label: Optional[str] = None
     ) -> int:
-        """The task, in the same three colour families the Air Wing list uses.
+        """The task, in the same colour the Air Wing list gives it.
 
         Returns the x the chip ends at, so the caller can lay out after it.
         """
         text = label if label is not None else str(task)
-        fill, ink = CHIP_FAMILIES[chip_family(task)]
+        fill, ink = chip_colours(task)
         painter.setFont(_font(10, QFont.Weight.Bold))
         width = painter.fontMetrics().horizontalAdvance(text) + 2 * CHIP_PADDING
         painter.setPen(Qt.PenStyle.NoPen)
