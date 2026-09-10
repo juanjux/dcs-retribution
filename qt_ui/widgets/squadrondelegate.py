@@ -73,8 +73,9 @@ GROUP_HEADER_TEXT = QColor("#BEDCF6")
 
 CHIP_ON_SELECTED = QColor("#2B4A66")
 
-#: Eleven colours over forty rows is a fruit salad, so tasks collapse to three
-#: families: what a squadron is *for* is the question the chip answers.
+#: The family a task belongs to. CHIP_TASKS below gives each task its own colour
+#: inside its family's band of the wheel, so the hue still answers "what is this
+#: for" at a glance while two air-to-ground tasks no longer paint the same.
 AIR_TO_AIR = {
     FlightType.BARCAP,
     FlightType.TARCAP,
@@ -111,6 +112,40 @@ CHIP_FAMILIES = {
     "other": (QColor("#26343F"), QColor("#9FADB9")),
 }
 CHIP_DEPLETED = (QColor("#2E2723"), QColor("#9A8168"))
+
+#: Hues spaced around the wheel with the families kept contiguous, at the saturation
+#: and lightness the amber chip already used. Every cross-family pair is at least 11
+#: dE76 apart; the pairs closer than that are all inside one family -- the SEAD three,
+#: the two OCA -- where looking alike is the point.
+CHIP_TASKS: dict[FlightType, tuple[QColor, QColor]] = {
+    FlightType.STRIKE: (QColor("#38211E"), QColor("#E17970")),
+    FlightType.OCA_AIRCRAFT: (QColor("#38251E"), QColor("#E18E70")),
+    FlightType.OCA_RUNWAY: (QColor("#38291E"), QColor("#E19F70")),
+    FlightType.CAS: (QColor("#382D1E"), QColor("#E1B070")),
+    FlightType.BAI: (QColor("#38321E"), QColor("#E1C470")),
+    FlightType.ARMED_RECON: (QColor("#37381E"), QColor("#DDE170")),
+    FlightType.AIR_ASSAULT: (QColor("#2E381E"), QColor("#B2E170")),
+    FlightType.TRANSPORT: (QColor("#25381E"), QColor("#8CE170")),
+    FlightType.AEWC: (QColor("#1E3824"), QColor("#70E186")),
+    FlightType.FERRY: (QColor("#1E382C"), QColor("#70E1AC")),
+    FlightType.REFUELING: (QColor("#1E3832"), QColor("#70E1C6")),
+    FlightType.RECOVERY: (QColor("#1E3838"), QColor("#70E1DF")),
+    FlightType.ANTISHIP: (QColor("#1E3338"), QColor("#70CAE1")),
+    FlightType.TARCAP: (QColor("#1E2E38"), QColor("#70B5E1")),
+    FlightType.BARCAP: (QColor("#1E2A38"), QColor("#70A1E1")),
+    FlightType.ESCORT: (QColor("#1E2438"), QColor("#708AE1")),
+    FlightType.INTERCEPTION: (QColor("#1E1E38"), QColor("#7070E1")),
+    FlightType.SWEEP: (QColor("#251E38"), QColor("#8E70E1")),
+    FlightType.SEAD_ESCORT: (QColor("#301E38"), QColor("#BB70E1")),
+    FlightType.SEAD_SWEEP: (QColor("#351E38"), QColor("#D270E1")),
+    FlightType.SEAD: (QColor("#381E37"), QColor("#E170D9")),
+    FlightType.DEAD: (QColor("#381E2E"), QColor("#E170B2")),
+}
+
+
+def chip_colours(task: FlightType) -> tuple[QColor, QColor]:
+    """Fill and ink for a task's chip, falling back to its family's pair."""
+    return CHIP_TASKS.get(task, CHIP_FAMILIES[chip_family(task)])
 
 
 def chip_family(task: FlightType) -> str:
@@ -427,7 +462,7 @@ class SquadronDelegate(QStyledItemDelegate):
         if depleted:
             fill, text = CHIP_DEPLETED
         else:
-            fill, text = CHIP_FAMILIES[chip_family(squadron.primary_task)]
+            fill, text = chip_colours(squadron.primary_task)
         if selected:
             fill = CHIP_ON_SELECTED
 

@@ -12,6 +12,7 @@
 * **[FIX]** The fuel estimate charged a large aircraft a fighter's rate per mile, so a B-1B's 195,000 lb came out at 433 lb a mile and a 306 nm route asked for more fuel than the aircraft holds. The warning also says how short it is rather than always reading *tight*.
 * **[UI]** The waypoint table shows each leg's distance and the route total.
 * **[UI]** Qt updated to 6.11.2.
+* **[UI]** Every task has its own chip colour in the package and Air Wing lists; CAS, Strike, DEAD and Armed Recon all painted the same brown.
 * **[UI]** Back to the native Windows file, colour and font dialogs.
 * **[FIX]** Nine factions had no early-warning radar, so their EWR markers fielded a SAM's acquisition radar instead.
 * **[Settings]** GPS jamming, cruise missile strikes and naval magazines are switched on by their plugin alone, and their options live with it.
