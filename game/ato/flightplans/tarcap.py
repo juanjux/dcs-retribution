@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Type
 
-from game.utils import Distance, Speed
+from game.utils import Distance, Speed, nautical_miles
 from .capbuilder import CapBuilder
 from .refuelneed import needs_refuelling
 from .patrolling import PatrollingFlightPlan, PatrollingLayout
@@ -113,8 +113,22 @@ class Builder(CapBuilder[TarCapFlightPlan, TarCapLayout]):
 
         # TARCAP asked for neither a helicopter check nor a tanker in the air wing,
         # so it was the one plan that added the waypoint unconditionally.
+        #
+        # Its laps are most of what it burns: a patrol judged on the way out and back
+        # alone comes out at about half its real need, which is the one flight type
+        # that most often does want a tanker.
+        settings = self.flight.coalition.game.settings
+        hours = settings.desired_tarcap_mission_duration.total_seconds() / 3600.0
+        on_station = nautical_miles(
+            self.flight.unit_type.preferred_patrol_speed(patrol_alt).knots * hours
+        )
         if self.package.waypoints is not None and needs_refuelling(
-            self.flight, self.package, self.flight.coalition.game.settings
+            self.flight,
+            self.package,
+            settings,
+            patrol_alt,
+            patrol_alt,
+            on_station,
         ):
             refuel = builder.refuel(self.package.waypoints.refuel)
             nav_from_origin = refuel.position

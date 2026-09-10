@@ -266,7 +266,15 @@ class FormationAttackBuilder(IBuilder[FlightPlanT, LayoutT], ABC):
         if not self.package.waypoints:
             return None
         settings = self.flight.coalition.game.settings
-        if not needs_refuelling(self.flight, self.package, settings):
+        # The bands the rest of this layout is about to be built at, so the estimate
+        # is charged at the altitudes the flight will really be flown at.
+        if not needs_refuelling(
+            self.flight,
+            self.package,
+            settings,
+            builder.get_cruise_altitude,
+            builder.get_combat_altitude,
+        ):
             return None
         return builder.refuel(self.package.waypoints.refuel)
 

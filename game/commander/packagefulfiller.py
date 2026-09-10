@@ -247,6 +247,15 @@ class PackageFulfiller:
                             mission, escort, builder, missing_types, purchase_multiplier
                         )
 
+            # A tanker is a convenience, not a requirement: the package flies without
+            # one, its flights just have less margin. Leaving REFUELING in here scrubs
+            # the whole Strike/OCA/DEAD package -- main flights included -- the moment
+            # the wing's one or two tanker airframes are already tasked, which is most
+            # of the turn. It could not happen before, because the tanker escort was
+            # never attempted at all. plan_flight has already filed the purchase
+            # request, so the wing still buys one for next turn.
+            missing_types.discard(FlightType.REFUELING)
+
             # Check again for unavailable aircraft. If the escort was required and
             # none were found, scrub the mission.
             if missing_types:
