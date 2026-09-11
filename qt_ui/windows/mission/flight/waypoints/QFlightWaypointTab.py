@@ -296,6 +296,8 @@ class QFlightWaypointTab(QFrame):
             "QPushButton { background: #3B2523; color: #E8B7B3;"
             " border: 1px solid #A8443F; border-radius: 3px; font-size: 12px; }"
             "QPushButton:hover { background: #4A2B29; }"
+            "QPushButton:disabled { background: #241D1D; color: #6B5352;"
+            " border-color: #4A3230; }"
         )
         self.delete_selected.clicked.connect(self.on_delete_waypoint)
 
@@ -313,7 +315,21 @@ class QFlightWaypointTab(QFrame):
         manual_box = QWidget()
         make_transparent(manual_box)
         manual_box.setLayout(manual_layout)
-        rlayout.addLayout(carded("Manual editing", manual_box, "not for AI flights"))
+
+        # A hand-edited route is what a player can fly and the AI cannot: we have
+        # already seen a deleted waypoint take DCS down with it. So the section is
+        # greyed out for any flight with an AI seat in it, and says why.
+        ai_seats = sum(
+            1 for member in self.flight.iter_members() if not member.is_player
+        )
+        if ai_seats:
+            crew = "seat" if ai_seats == 1 else "seats"
+            hint = f"disabled: {ai_seats} AI {crew} in this flight"
+        else:
+            hint = "all seats are players"
+        self.manual_box = manual_box
+        manual_box.setEnabled(not ai_seats)
+        rlayout.addLayout(carded("Manual editing", manual_box, hint, loud_hint=True))
 
         rlayout.addStretch()
         self.setLayout(layout)

@@ -35,6 +35,11 @@ IDLE_TEXT = "#B7C6D2"
 IDLE_BG = "#26343F"
 BORDER = "#3A4B5C"
 
+#: Greyed: there is nothing to choose here until something else is turned off.
+DISABLED_BG = "#1B2530"
+DISABLED_TEXT = "#4F6070"
+DISABLED_BORDER = "#28333D"
+
 
 def mono(size: int = 13) -> QFont:
     font = QFont("Consolas")
@@ -159,9 +164,16 @@ def styled_input(widget: QWidget, width: Optional[int] = None) -> QWidget:
     widget.setFixedHeight(CONTROL_HEIGHT)
     if width is not None:
         widget.setFixedWidth(width)
+    # The disabled state is spelled out, because a stylesheet replaces the palette
+    # the style would otherwise have greyed for us: the payload preset is disabled
+    # whenever Custom loadout is on, and without this it looked like a combo that
+    # simply refused to open.
     widget.setStyleSheet(
-        f"background: {IDLE_BG}; color: {VALUE}; border: 1px solid {BORDER};"
-        " border-radius: 3px; padding: 0 6px; font-size: 12px;"
+        f"QWidget {{ background: {IDLE_BG}; color: {VALUE};"
+        f" border: 1px solid {BORDER}; border-radius: 3px; padding: 0 6px;"
+        " font-size: 12px; }"
+        f"QWidget:disabled {{ background: {DISABLED_BG}; color: {DISABLED_TEXT};"
+        f" border-color: {DISABLED_BORDER}; }}"
     )
     return widget
 

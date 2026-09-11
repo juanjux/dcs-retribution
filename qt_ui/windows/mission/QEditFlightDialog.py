@@ -55,7 +55,11 @@ class QEditFlightDialog(QDialog):
 
         self.setWindowTitle("Edit flight")
         self.setWindowIcon(EVENT_ICONS["strike"])
-        self.setModal(True)
+        # Deliberately NOT modal. Picking another flight in the main window's list is
+        # meant to bring it up here, and a modal dialog eats that click -- the window
+        # flashed and nothing happened. Everything here applies as it is changed, so
+        # there is no half-finished state a stray click could leave behind.
+        self.setModal(False)
 
         self._layout = QVBoxLayout()
         self.header: Optional[FlightHeader] = None

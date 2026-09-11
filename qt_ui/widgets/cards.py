@@ -26,6 +26,8 @@ CARD_BG = "#14202B"
 CARD_BORDER = "#1D2731"
 CAPTION = "#6B7A87"
 HINT = "#4F6070"
+#: For a hint that explains why something is switched off.
+LOUD_HINT = "#E0A86B"
 
 CAPTION_HEIGHT = 20
 
@@ -71,7 +73,7 @@ def card() -> QWidget:
     return widget
 
 
-def caption(text: str, hint: str = "") -> QWidget:
+def caption(text: str, hint: str = "", loud_hint: bool = False) -> QWidget:
     """A section's name, above its card rather than inside a frame.
 
     The hint is for the sentence a group box would have put inside itself and pushed
@@ -91,8 +93,13 @@ def caption(text: str, hint: str = "") -> QWidget:
 
     if hint:
         note = QLabel(hint)
+        # A hint that is a warning -- "this is off, and here is why" -- has to be
+        # readable; the quiet grey is for hints you are free to ignore.
+        colour = LOUD_HINT if loud_hint else HINT
+        weight = "600" if loud_hint else "normal"
         note.setStyleSheet(
-            f"font-size: 11px; color: {HINT}; background: transparent; border: none;"
+            f"font-size: {'11.5' if loud_hint else '11'}px; color: {colour};"
+            f" font-weight: {weight}; background: transparent; border: none;"
         )
         row.addWidget(note)
 
@@ -104,19 +111,27 @@ def caption(text: str, hint: str = "") -> QWidget:
 
 
 def section(
-    name: str, content: QWidget, hint: str = "", spacing: int = 10
+    name: str,
+    content: QWidget,
+    hint: str = "",
+    spacing: int = 10,
+    loud_hint: bool = False,
 ) -> QVBoxLayout:
     """A caption and its card, as one thing to add to a column."""
     column = QVBoxLayout()
     column.setContentsMargins(0, 0, 0, 0)
     column.setSpacing(spacing)
-    column.addWidget(caption(name, hint))
+    column.addWidget(caption(name, hint, loud_hint))
     column.addWidget(content)
     return column
 
 
 def carded(
-    name: str, inner: QWidget, hint: str = "", margins: Optional[tuple] = None
+    name: str,
+    inner: QWidget,
+    hint: str = "",
+    margins: Optional[tuple] = None,
+    loud_hint: bool = False,
 ) -> QVBoxLayout:
     """The common case: wrap a widget in a card and give it a caption.
 
@@ -131,4 +146,4 @@ def carded(
     make_transparent(inner)
     layout.addWidget(inner)
     holder.setLayout(layout)
-    return section(name, holder, hint)
+    return section(name, holder, hint, loud_hint=loud_hint)
