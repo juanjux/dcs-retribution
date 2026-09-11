@@ -31,6 +31,7 @@ from game.server import EventStream
 from game.sim import GameUpdateEvents
 from qt_ui.models import GameModel, PackageModel
 from qt_ui.uiconstants import EVENT_ICONS
+from qt_ui.widgets.cards import make_transparent
 from qt_ui.windows.mission.flight.header import FlightHeader
 from qt_ui.windows.mission.flight.QFlightPlanner import QFlightPlanner
 
@@ -56,22 +57,56 @@ class QEditFlightDialog(QDialog):
         self.setWindowIcon(EVENT_ICONS["strike"])
         self.setModal(True)
 
-        layout = QVBoxLayout()
+        self._layout = QVBoxLayout()
+        self.header: Optional[FlightHeader] = None
+        self.flight_planner: Optional[QFlightPlanner] = None
+        self._build_for_flight()
+        self._layout.addWidget(self._footer())
+        self.setLayout(self._layout)
 
+    # --- the flight this dialog is showing ----------------------------------
+
+    def _build_for_flight(self) -> None:
+        """Put the header and the tabs in, for whichever flight is current."""
         # Above the tabs and on every one of them: what flies, whose it is, where it
         # is going, and what still needs deciding.
-        self.header = FlightHeader(flight)
-        layout.addWidget(self.header)
+        self.header = FlightHeader(self.flight)
+        self._layout.insertWidget(0, self.header)
 
-        self.flight_planner = QFlightPlanner(package_model, flight, game_model)
+        self.flight_planner = QFlightPlanner(
+            self.package_model, self.flight, self.game_model
+        )
         self.flight_planner.squadron_changed.connect(self.on_squadron_change)
         self.flight_planner.header_changed.connect(self.header.refresh)
         self.header.jump_to_tab.connect(self.flight_planner.setCurrentIndex)
-        layout.addWidget(self.flight_planner)
+        self.header.switch_to_flight.connect(self.switch_to)
+        self._layout.insertWidget(1, self.flight_planner)
 
-        layout.addWidget(self._footer())
+    def switch_to(self, flight: Flight) -> None:
+        """Show another flight of the same package without closing.
 
-        self.setLayout(layout)
+        Editing a package means going round its flights, and every trip round used to
+        cost closing this and finding the next one in the list behind it. The checks
+        that run when the dialog closes run here too, on the flight being left: they
+        are about what you just changed, not about the window.
+        """
+        if flight is self.flight or flight.package is not self.flight.package:
+            return
+
+        tab = self.flight_planner.currentIndex() if self.flight_planner else 0
+        self._apply_pending_changes()
+
+        for widget in (self.header, self.flight_planner):
+            if widget is not None:
+                self._layout.removeWidget(widget)
+                widget.setParent(None)
+                widget.deleteLater()
+
+        self.flight = flight
+        self._build_for_flight()
+        if self.flight_planner is not None:
+            self.flight_planner.setCurrentIndex(tab)
+        self.game_model.ato_model.client_slots_changed.emit()
 
     def _footer(self) -> QWidget:
         """A way out, and a way up.
@@ -115,7 +150,7 @@ class QEditFlightDialog(QDialog):
         row.addWidget(done)
         holder = QWidget()
         holder.setFixedHeight(44)
-        holder.setStyleSheet("background: transparent; border: none;")
+        make_transparent(holder)
         holder.setLayout(row)
         return holder
 
@@ -138,11 +173,21 @@ class QEditFlightDialog(QDialog):
         new_dialog.show()
 
     def on_close(self, _result) -> None:
+        self._apply_pending_changes()
+        self.game_model.ato_model.client_slots_changed.emit()
+
+    def _apply_pending_changes(self) -> None:
+        """The questions that are asked about what was just edited.
+
+        Called when the dialog closes, and when it swaps to another flight of the same
+        package -- the edits are the same edits either way, and asking about them only
+        on the way out would have let a trip round the package skip every one.
+        """
         self._recreate_package_if_standoff_changed()
         self._offer_to_move_the_refuelling_waypoint()
         self.events = self.events.update_flight(self.flight)
         EventStream.put_nowait(self.events)
-        self.game_model.ato_model.client_slots_changed.emit()
+        self.events = GameUpdateEvents()
 
     def _recreate_package_if_standoff_changed(self) -> None:
         """Move the ingress point when the package's stand-off range changed.

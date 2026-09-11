@@ -23,6 +23,7 @@ from PySide6.QtWidgets import (
 from dcs import lua
 
 from game import Game
+from qt_ui.widgets.cards import make_transparent
 from qt_ui.widgets.controls import mono
 from game.ato.flight import Flight
 from game.ato.flightmember import FlightMember
@@ -96,7 +97,7 @@ class QLoadoutEditor(QWidget):
         header.addWidget(self.custom_check)
         header.addStretch()
         header_holder = QWidget()
-        header_holder.setStyleSheet("background: transparent; border: none;")
+        make_transparent(header_holder)
         header_holder.setLayout(header)
         vbox.addWidget(header_holder)
 
@@ -146,7 +147,7 @@ class QLoadoutEditor(QWidget):
         footer.addWidget(self.save_btn)
 
         footer_holder = QWidget()
-        footer_holder.setStyleSheet("background: transparent; border: none;")
+        make_transparent(footer_holder)
         footer_holder.setLayout(footer)
         vbox.addWidget(footer_holder)
 

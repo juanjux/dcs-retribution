@@ -18,8 +18,8 @@ from PySide6.QtWidgets import (
 )
 
 from game import Game
-from qt_ui.widgets.cards import carded
-from qt_ui.widgets.controls import mono, styled_input
+from qt_ui.widgets.cards import carded, make_transparent
+from qt_ui.widgets.controls import mono, styled_input, wrapped_tooltip
 from game.ato.flight import Flight
 from game.ato.flightplans.custom import CustomFlightPlan
 from game.ato.flightplans.formationattack import FormationAttackFlightPlan
@@ -66,7 +66,7 @@ class FuelBar(QWidget):
         self.setFixedSize(self.WIDTH, self.HEIGHT + 6)
         self.required = 0.0
         self.carried = 0.0
-        self.setStyleSheet("background: transparent; border: none;")
+        make_transparent(self)
 
     def show_fuel(self, required: float, carried: float) -> None:
         self.required, self.carried = required, carried
@@ -214,9 +214,11 @@ class QFlightWaypointTab(QFrame):
         self.bulk_altitude.setValue(self._default_bulk_altitude())
         self.bulk_altitude.setSuffix(" ft")
         self.bulk_altitude.setToolTip(
-            "Apply this MSL altitude to every en-route waypoint. Takeoff, landing, "
-            "divert, target, landing-zone, tanker, and ground (AGL) waypoints are "
-            "left unchanged."
+            wrapped_tooltip(
+                "Apply this MSL altitude to every en-route waypoint. Takeoff, landing, "
+                "divert, target, landing-zone, tanker, and ground (AGL) waypoints are "
+                "left unchanged."
+            )
         )
         self.apply_bulk_altitude = QPushButton("Apply to all")
         self.apply_bulk_altitude.setFixedHeight(28)
@@ -227,7 +229,7 @@ class QFlightWaypointTab(QFrame):
         bulk_alt_layout.addWidget(styled_input(self.bulk_altitude), 1)
         bulk_alt_layout.addWidget(self.apply_bulk_altitude)
         altitude_box = QWidget()
-        altitude_box.setStyleSheet("background: transparent; border: none;")
+        make_transparent(altitude_box)
         altitude_box.setLayout(bulk_alt_layout)
         rlayout.addLayout(
             carded("En-route altitude", altitude_box, "leaves the fixed points alone")
@@ -274,7 +276,7 @@ class QFlightWaypointTab(QFrame):
         generator_layout.addLayout(recreate_row)
         generator_layout.addWidget(self.add_nav_waypoint)
         generator_box = QWidget()
-        generator_box.setStyleSheet("background: transparent; border: none;")
+        make_transparent(generator_box)
         generator_box.setLayout(generator_layout)
         rlayout.addLayout(carded("Regenerate", generator_box, "AI compatible"))
 
@@ -309,7 +311,7 @@ class QFlightWaypointTab(QFrame):
         manual_layout.addLayout(manual_top)
         manual_layout.addWidget(self.delete_selected)
         manual_box = QWidget()
-        manual_box.setStyleSheet("background: transparent; border: none;")
+        make_transparent(manual_box)
         manual_box.setLayout(manual_layout)
         rlayout.addLayout(carded("Manual editing", manual_box, "not for AI flights"))
 

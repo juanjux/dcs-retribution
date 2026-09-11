@@ -59,13 +59,18 @@ class QFlightPlanner(QTabWidget):
         # Restyled here rather than in style.css: this is the only tab bar in the
         # application that follows the redesign's vocabulary, and putting it in the
         # global sheet would drag every other one along with it.
+        # An unselected tab needs to look like a tab you can press: as bare text on
+        # the same ground as the dialog it read as a label, and only the selected one
+        # looked like anything at all.
         self.setStyleSheet(
-            "QTabBar::tab { background: transparent; color: #8E9DAA; padding: 6px 16px;"
-            " font-size: 12.5px; border: none; }"
+            "QTabBar::tab { background: #1B2732; color: #8E9DAA; padding: 7px 18px;"
+            " font-size: 12.5px; border: 1px solid #1D2731; border-bottom: none;"
+            " border-top-left-radius: 3px; border-top-right-radius: 3px;"
+            " margin-right: 2px; }"
+            "QTabBar::tab:hover { background: #24333F; color: #B7C6D2; }"
             "QTabBar::tab:selected { background: #2D3E50; color: #F2F7FA;"
-            " font-weight: 600; border-top-left-radius: 3px;"
-            " border-top-right-radius: 3px; }"
-            "QTabWidget::pane { border: none; }"
+            " font-weight: 600; border-color: #3A4B5C; }"
+            "QTabWidget::pane { border: none; border-top: 1px solid #1D2731; }"
         )
         self.waypoint_tab.flight_waypoint_list.route_length_changed.connect(
             self.show_waypoint_count

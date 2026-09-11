@@ -21,9 +21,10 @@ from game.ato.fuelestimate import estimate_fuel
 from game.data.fueltanks import loadout_fuel
 from game.utils import kgs
 from qt_ui.widgets.QLabeledWidget import QLabeledWidget
-from qt_ui.widgets.cards import carded
+from qt_ui.widgets.cards import CARD_BG, carded, make_transparent
 from qt_ui.widgets.controls import Segmented, mono, styled_input
 from qt_ui.widgets.combos.QSquadronLiverySelector import SquadronLiverySelector
+from qt_ui.widgets.searchablecombo import SearchableComboBox
 from .QLoadoutEditor import QLoadoutEditor
 from .ownlasercodeinfo import OwnLaserCodeInfo
 from .propertyeditor import PropertyEditor
@@ -36,9 +37,15 @@ GAP = 24
 MARGIN = 20
 
 
-class DcsLoadoutSelector(QComboBox):
+class DcsLoadoutSelector(SearchableComboBox):
+    """The preset list, which for a Hornet runs to a few hundred entries.
+
+    Searchable, because finding "SEAD mio" in a list sorted alphabetically among every
+    payload the community has ever saved is scrolling, not choosing.
+    """
+
     def __init__(self, flight: Flight, member: FlightMember) -> None:
-        super().__init__()
+        super().__init__(placeholder="Type to find a payload…")
         for loadout in Loadout.iter_for(flight):
             self.addItem(loadout.name, loadout)
         self.model().sort(0)
@@ -338,12 +345,22 @@ class QFlightPayloadTab(QFrame):
 
         scroll_content = QWidget()
         scrolling_layout = QVBoxLayout()
+        scrolling_layout.setContentsMargins(14, 10, 14, 10)
+        # Tight, and everything pinned to the top: the rows used to be spread down the
+        # whole panel, so the sentence about laser codes floated half a screen away
+        # from the laser codes it was about.
+        scrolling_layout.setSpacing(6)
         scroll_content.setLayout(scrolling_layout)
 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setWidget(scroll_content)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        # The viewport covers the card completely, so rather than trying to see the
+        # card through it, the viewport IS the card's face.
+        scroll.viewport().setStyleSheet(f"background: {CARD_BG};")
+        make_transparent(scroll)
         self.systems_scroll = scroll
 
         self.own_laser_code_info = OwnLaserCodeInfo(
@@ -373,6 +390,7 @@ class QFlightPayloadTab(QFrame):
             self.flight, self.member_selector.selected_member, game
         )
         scrolling_layout.addLayout(self.property_editor)
+        scrolling_layout.addStretch()
 
         # Docs Link
         docsText = QLabel(
@@ -423,7 +441,7 @@ class QFlightPayloadTab(QFrame):
         loadout_card.addWidget(self.payload_editor, 1)
         loadout_card.addWidget(docsText)
         loadout_holder = QWidget()
-        loadout_holder.setStyleSheet("background: transparent; border: none;")
+        make_transparent(loadout_holder)
         loadout_holder.setLayout(loadout_card)
 
         # --- two columns ----------------------------------------------------
@@ -435,7 +453,7 @@ class QFlightPayloadTab(QFrame):
                 "Aircraft systems",
                 scroll,
                 "laser codes and the aircraft's own switches",
-                margins=(0, 0, 0, 0),
+                margins=(0, 4, 0, 4),
             )
         )
 

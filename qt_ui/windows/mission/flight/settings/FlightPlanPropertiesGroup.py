@@ -27,7 +27,9 @@ from game.ato.flight import Flight
 from game.ato.flightplans.planningerror import PlanningError
 from qt_ui.models import PackageModel
 from qt_ui.widgets.combos.QArrivalAirfieldSelector import QArrivalAirfieldSelector
+from qt_ui.widgets.cards import make_transparent
 from qt_ui.widgets.controls import (
+    wrapped_tooltip,
     Segmented,
     key_value,
     styled_input,
@@ -90,7 +92,7 @@ class FlightPlanPropertiesGroup(QWidget):
         divert_row.addStretch()
         divert_row.addWidget(styled_input(self.divert, width=200))
         divert_holder = QWidget()
-        divert_holder.setStyleSheet("background: transparent; border: none;")
+        make_transparent(divert_holder)
         divert_holder.setLayout(divert_row)
         layout.addWidget(key_value("Divert", divert_holder, height=40))
 
@@ -127,7 +129,7 @@ class FlightPlanPropertiesGroup(QWidget):
         # Wide enough for mm:ss AND the spin arrows: at 76 the seconds were under them.
         row.addWidget(styled_input(self.tot_offset_spinner, width=96))
         holder = QWidget()
-        holder.setStyleSheet("background: transparent; border: none;")
+        make_transparent(holder)
         holder.setLayout(row)
         return holder
 
@@ -143,17 +145,19 @@ class FlightPlanPropertiesGroup(QWidget):
             )
             self.release_at_ingress_checkbox.setChecked(self.flight.release_at_ingress)
             self.release_at_ingress_checkbox.setToolTip(
-                "For a decoy (e.g. TALD) SEAD run. Normally the AI closes to the "
-                "decoy's launch range before releasing, which means flying deep into "
-                "the SAM envelope and getting shot before it fires. With this on, the "
-                "flight releases its decoys from stand-off instead -- at a hidden bait "
-                "point just inside the threat ring -- so it fires from outside the "
-                "SAM's reach and the decoys glide the rest of the way in to draw "
-                "fire.\n\n"
-                "Only affects decoys; guided and anti-radiation weapons (HARM, JDAM) "
-                "still close to the target as usual.\n\n"
-                "Tip: place the flight's ingress waypoint OUTSIDE the SAM ring for the "
-                "stand-off effect to matter."
+                wrapped_tooltip(
+                    "For a decoy (e.g. TALD) SEAD run. Normally the AI closes to the "
+                    "decoy's launch range before releasing, which means flying deep into "
+                    "the SAM envelope and getting shot before it fires. With this on, the "
+                    "flight releases its decoys from stand-off instead -- at a hidden bait "
+                    "point just inside the threat ring -- so it fires from outside the "
+                    "SAM's reach and the decoys glide the rest of the way in to draw "
+                    "fire.\n\n"
+                    "Only affects decoys; guided and anti-radiation weapons (HARM, JDAM) "
+                    "still close to the target as usual.\n\n"
+                    "Tip: place the flight's ingress waypoint OUTSIDE the SAM ring for the "
+                    "stand-off effect to matter."
+                )
             )
             self.release_at_ingress_checkbox.toggled.connect(
                 self.set_release_at_ingress
@@ -168,14 +172,16 @@ class FlightPlanPropertiesGroup(QWidget):
                 self.flight.remain_at_destination
             )
             self.remain_at_destination_checkbox.setToolTip(
-                "The helicopters land at the objective and do NOT fly home. At the "
-                "end of the turn:\n"
-                " - if you CAPTURE the objective's base, the helicopters redeploy "
-                "there (a free ferry to the new base);\n"
-                " - if you do NOT capture it, the helicopters are LOST.\n\n"
-                "Lets a one-way assault use the helicopter's full ferry range instead "
-                "of its round-trip radius, and forward-stages the aircraft on the "
-                "captured base. Helicopters only."
+                wrapped_tooltip(
+                    "The helicopters land at the objective and do NOT fly home. At the "
+                    "end of the turn:\n"
+                    " - if you CAPTURE the objective's base, the helicopters redeploy "
+                    "there (a free ferry to the new base);\n"
+                    " - if you do NOT capture it, the helicopters are LOST.\n\n"
+                    "Lets a one-way assault use the helicopter's full ferry range instead "
+                    "of its round-trip radius, and forward-stages the aircraft on the "
+                    "captured base. Helicopters only."
+                )
             )
             self.remain_at_destination_checkbox.toggled.connect(
                 self.set_remain_at_destination
@@ -193,7 +199,7 @@ class FlightPlanPropertiesGroup(QWidget):
         row.setContentsMargins(14, 6, 14, 6)
         row.addWidget(checkbox)
         holder = QWidget()
-        holder.setStyleSheet("background: transparent; border: none;")
+        make_transparent(holder)
         holder.setLayout(row)
         return holder
 

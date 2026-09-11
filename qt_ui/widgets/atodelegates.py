@@ -204,6 +204,18 @@ class FlightRowDelegate(AtoRowDelegate):
     """Aircraft and how many, then who flies them and from where."""
 
     @staticmethod
+    def _paint_player_chip(
+        painter: QPainter, x: int, text: str, selected: bool
+    ) -> None:
+        width = painter.fontMetrics().horizontalAdvance(text) + 2 * CHIP_PADDING
+        rect = QRect(x, LINE_2 - 11, width, 15)
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(PLAYER_CHIP_BG_SELECTED if selected else PLAYER_CHIP_BG)
+        painter.drawRoundedRect(rect, 3, 3)
+        painter.setPen(PLAYER_CHIP_TEXT)
+        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, text)
+
+    @staticmethod
     def flight(index: QModelIndex) -> Flight:
         return index.data(PackageModel.FlightRole)
 
@@ -249,6 +261,19 @@ class FlightRowDelegate(AtoRowDelegate):
                 CHIP_X, LINE_2, self._elided(painter, where, width - CHIP_X - 110)
             )
 
+            # The package row says the package has player slots; this says which
+            # flight they are in, which is the question you ask next.
+            clients = flight.client_count
+            if clients:
+                seats = "seat" if clients == 1 else "seats"
+                after_where = CHIP_X + painter.fontMetrics().horizontalAdvance(
+                    self._elided(painter, where, width - CHIP_X - 110)
+                )
+                painter.setFont(_font(10, QFont.Weight.Bold))
+                self._paint_player_chip(
+                    painter, after_where + 8, f"{clients} player {seats}", selected
+                )
+
             try:
                 painter.setFont(_font(11.5, mono=True))
                 painter.setPen(TEXT_LABEL)
@@ -258,6 +283,11 @@ class FlightRowDelegate(AtoRowDelegate):
             except Exception:
                 # A flight plan that cannot answer yet is not worth a broken row.
                 pass
+
+
+PLAYER_CHIP_BG = QColor("#2B4A66")
+PLAYER_CHIP_BG_SELECTED = QColor("#3A5D7D")
+PLAYER_CHIP_TEXT = QColor("#BEDCF6")
 
 
 def _right_text(

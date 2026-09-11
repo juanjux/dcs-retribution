@@ -22,6 +22,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from qt_ui.widgets.cards import make_transparent
+
 ROW_HEIGHT = 36
 CONTROL_HEIGHT = 28
 
@@ -132,7 +134,7 @@ def key_value(
 
     holder = QWidget()
     holder.setFixedHeight(height)
-    holder.setStyleSheet("background: transparent; border: none;")
+    make_transparent(holder)
     holder.setLayout(row)
     return holder
 
@@ -167,3 +169,39 @@ def styled_input(widget: QWidget, width: Optional[int] = None) -> QWidget:
 def on_click(button: QPushButton, handler: Callable[[], None]) -> QPushButton:
     button.clicked.connect(lambda _checked=False: handler())
     return button
+
+
+#: Qt lays a plain-text tooltip out on one line per paragraph and lets it run as wide
+#: as it likes, so a paragraph of explanation becomes a band across the whole monitor.
+#: Rich text wraps where it is told to, so the wrapping is done here.
+TOOLTIP_COLUMNS = 82
+
+
+def wrapped_tooltip(text: str, columns: int = TOOLTIP_COLUMNS) -> str:
+    """A long explanation as rich text, wrapped to a readable column."""
+    import html
+    import textwrap
+
+    blank_line = chr(10) * 2
+    paragraphs = []
+    for block in text.split(blank_line):
+        lines: list[str] = []
+        for raw in block.splitlines():
+            stripped = raw.strip()
+            if not stripped:
+                continue
+            # Keep the indent of a bulleted line, so a list still reads as a list.
+            indent = " " * (len(raw) - len(raw.lstrip()))
+            lines.extend(
+                textwrap.wrap(
+                    stripped,
+                    width=columns,
+                    initial_indent=indent,
+                    # Only a line that was already indented -- a bullet -- keeps a hanging
+                    # indent; an ordinary paragraph would just look ragged.
+                    subsequent_indent=indent + ("  " if indent else ""),
+                )
+                or [""]
+            )
+        paragraphs.append("<br>".join(html.escape(line) for line in lines))
+    return "<div>" + "<br><br>".join(paragraphs) + "</div>"

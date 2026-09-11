@@ -18,6 +18,7 @@ from typing import Optional
 from PySide6.QtCore import QRect, Qt, Signal
 from PySide6.QtGui import QColor, QFont, QFontMetrics, QPainter, QPixmap
 from PySide6.QtWidgets import (
+    QComboBox,
     QFrame,
     QHBoxLayout,
     QSizePolicy,
@@ -263,6 +264,8 @@ class FlightHeader(QFrame):
     """Identity on the left, the things that need deciding on the right."""
 
     jump_to_tab = Signal(int)
+    #: Another flight of the same package was picked from the header's selector.
+    switch_to_flight = Signal(object)
 
     def __init__(self, flight: Flight) -> None:
         super().__init__()
@@ -279,6 +282,7 @@ class FlightHeader(QFrame):
         layout.addWidget(self.identity, 1)
 
         self.pills = QVBoxLayout()
+        self._add_flight_picker(layout)
         # Three pills of 24 with 6 between them is 84, which is what a 100-high
         # header leaves once these margins are taken off.
         self.pills.setContentsMargins(0, 8, 0, 8)
@@ -288,6 +292,38 @@ class FlightHeader(QFrame):
         self.setLayout(layout)
 
         self.refresh()
+
+    def _add_flight_picker(self, layout: QHBoxLayout) -> None:
+        """A way to the package's other flights without leaving the dialog.
+
+        Omitted for a package of one, where it would be a control with one choice.
+        """
+        flights = list(self.flight.package.flights)
+        if len(flights) < 2:
+            return
+
+        picker = QComboBox()
+        picker.setFixedHeight(24)
+        picker.setStyleSheet(
+            "QComboBox { background: #26343F; color: #B7C6D2;"
+            " border: 1px solid #3A4B5C; border-radius: 3px; padding: 0 8px;"
+            " font-size: 11.5px; }"
+        )
+        picker.setToolTip("Edit another flight in this package.")
+        for other in flights:
+            label = f"{other.flight_type} · {other.unit_type} ×{other.count}"
+            picker.addItem(label, other)
+        picker.setCurrentIndex(flights.index(self.flight))
+        picker.activated.connect(
+            lambda index: self.switch_to_flight.emit(picker.itemData(index))
+        )
+
+        column = QVBoxLayout()
+        column.setContentsMargins(0, 10, 10, 0)
+        column.setAlignment(Qt.AlignmentFlag.AlignTop)
+        column.addWidget(picker)
+        layout.addLayout(column)
+        self.flight_picker = picker
 
     def refresh(self) -> None:
         """Rebuild the identity and the pills from the flight as it stands now."""

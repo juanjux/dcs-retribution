@@ -55,6 +55,25 @@ class QFlightList(QListView):
         self.setIconSize(QSize(91, 24))
         self.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectItems)
         self.doubleClicked.connect(self.on_double_click)
+        self.clicked.connect(self.on_click)
+
+    def on_click(self, index: QModelIndex) -> None:
+        """Follow the selection with an already-open flight editor.
+
+        Editing a package means going round its flights. With the editor open, picking
+        the next one in this list used to do nothing until you had closed the editor
+        and found the list again behind it.
+        """
+        from qt_ui.dialogs import Dialog
+
+        dialog = getattr(Dialog, "edit_flight_dialog", None)
+        if dialog is None or not dialog.isVisible():
+            return
+        if not index.isValid() or self.package_model is None:
+            return
+        flight = self.package_model.flight_at_index(index)
+        if flight is not None:
+            dialog.switch_to(flight)
 
     def set_package(self, model: Optional[PackageModel]) -> None:
         """Sets the package model to display."""

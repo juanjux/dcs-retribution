@@ -14,6 +14,7 @@ from __future__ import annotations
 
 from typing import Optional
 
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
@@ -29,11 +30,43 @@ HINT = "#4F6070"
 CAPTION_HEIGHT = 20
 
 
-def card() -> QWidget:
-    """An empty card. Give it a layout and put the content in."""
-    widget = QWidget()
+#: Qt style sheets cascade to children, so "background: transparent; border: none;"
+#: set on a card's contents strips the border off every line edit, button and combo
+#: inside it -- which is exactly what happened: the text boxes and the Assign button
+#: became invisible labels. Scoping the rule to one object name keeps it where it was
+#: meant to be.
+_TRANSPARENT_SERIAL = [0]
+
+
+def make_transparent(widget: QWidget) -> QWidget:
+    """Give this widget -- and only this widget -- no background and no border."""
+    if not widget.objectName():
+        _TRANSPARENT_SERIAL[0] += 1
+        widget.setObjectName(f"cardInner{_TRANSPARENT_SERIAL[0]}")
+    name = widget.objectName()
+    existing = widget.styleSheet() or ""
     widget.setStyleSheet(
-        f"background: {CARD_BG}; border: 1px solid {CARD_BORDER}; border-radius: 3px;"
+        f"{existing} #{name} {{ background: transparent; border: none; }}"
+    )
+    return widget
+
+
+def card() -> QWidget:
+    """An empty card. Give it a layout and put the content in.
+
+    Scoped to the card's own object name, because an unscoped rule cascades: a card
+    that said "border: 1px solid" drew that border around every label inside it as
+    well, and cancelling the cascade wholesale took the border off the line edits and
+    buttons that needed one.
+    """
+    widget = QWidget()
+    # A plain QWidget does not paint a stylesheet background unless it is told to.
+    widget.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+    _TRANSPARENT_SERIAL[0] += 1
+    widget.setObjectName(f"card{_TRANSPARENT_SERIAL[0]}")
+    widget.setStyleSheet(
+        f"#{widget.objectName()} {{ background: {CARD_BG};"
+        f" border: 1px solid {CARD_BORDER}; border-radius: 3px; }}"
     )
     return widget
 
@@ -95,9 +128,7 @@ def carded(
     left, top, right, bottom = margins if margins is not None else (12, 10, 12, 10)
     layout.setContentsMargins(left, top, right, bottom)
     layout.setSpacing(8)
-    inner.setStyleSheet(
-        (inner.styleSheet() or "") + " background: transparent; border: none;"
-    )
+    make_transparent(inner)
     layout.addWidget(inner)
     holder.setLayout(layout)
     return section(name, holder, hint)

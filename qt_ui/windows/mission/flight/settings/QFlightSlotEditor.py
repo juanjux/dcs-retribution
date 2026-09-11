@@ -31,6 +31,7 @@ from game.theater import ControlPoint, OffMapSpawn
 from game.utils import nautical_miles
 from qt_ui.models import PackageModel
 from qt_ui.rankstars import rank_stars_text
+from qt_ui.widgets.cards import make_transparent
 from qt_ui.widgets.controls import mono, styled_input
 from qt_ui.widgets.pilotrow import (
     PaintedPilotCombo,
@@ -197,7 +198,7 @@ class PilotControls(QWidget):
         self.pilot_index = idx
         self.pilots_changed = pilots_changed
         self.setFixedHeight(self.ROW_HEIGHT)
-        self.setStyleSheet("background: transparent; border: none;")
+        make_transparent(self)
 
         row = QHBoxLayout()
         row.setContentsMargins(14, 0, 14, 0)
