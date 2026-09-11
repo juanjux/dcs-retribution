@@ -282,3 +282,61 @@ def test_the_id_does_not_change_what_equals_means() -> None:
     two men of the same name already compare equal. Giving every pilot an id must not
     quietly turn that into identity."""
     assert _pilot("Twin") == _pilot("Twin")
+
+
+# --- the man in front -------------------------------------------------------------
+
+
+def _four_ship() -> tuple[Pilot, Pilot, Pilot, Pilot]:
+    return _pilot("Lead"), _pilot("Two"), _pilot("Three"), _pilot("Four")
+
+
+def test_the_leader_is_half_of_what_a_wingman_makes_of_a_four_ship() -> None:
+    """Two for the man in front against one each for the wingmen: two of the four
+    weights, so half of it."""
+    lead, two, three, four = _four_ship()
+    friendship.move(two, lead, 4.0)  # 9.0 towards the leader, 5.0 to the others
+    assert friendship.mean_towards(two, [lead, three, four], lead) == 7.0
+
+
+def test_how_much_the_man_in_front_counts_for_is_a_setting() -> None:
+    """At three it is three of five weights, which is sixty per cent of it."""
+    lead, two, three, four = _four_ship()
+    friendship.move(two, lead, 4.0)
+    settings = _settings(friendship_leader_spoke_weight=3.0)
+    assert friendship.mean_towards(two, [lead, three, four], lead, settings) == 7.4
+
+
+def test_from_where_the_leader_sits_there_is_nobody_in_front() -> None:
+    """His own three weigh the same. He is not his own leader."""
+    lead, two, three, four = _four_ship()
+    friendship.move(lead, two, 4.0)
+    crew = [two, three, four]
+    assert friendship.mean_towards(lead, crew, lead) == friendship.mean_towards(
+        lead, crew
+    )
+
+
+def test_in_a_pair_only_the_other_man_matters() -> None:
+    a, b = _pilot("A"), _pilot("B")
+    friendship.move(a, b, 3.0)
+    assert friendship.mean_towards(a, [b], b) == 8.0
+    assert friendship.mean_towards(a, [b]) == 8.0
+
+
+def test_the_men_who_look_for_him_are_weighted_the_same_way() -> None:
+    """The other direction, because the man running the formation decides how hard
+    anybody looks."""
+    lead, two, three, four = _four_ship()
+    friendship.move(lead, two, 4.0)  # the leader thinks the world of him
+    assert friendship.mean_from(two, [lead, three, four], lead) == 7.0
+
+
+def test_a_formation_is_what_the_men_in_it_experience() -> None:
+    """Each man's own weighted mean, averaged -- so a crew that would follow its lead
+    reads better than the plain mean of every pair would say."""
+    lead, two, three, four = _four_ship()
+    for wingman in (two, three, four):
+        friendship.move(wingman, lead, 4.0)
+    # Each wingman: (2*9 + 5 + 5) / 4 = 7.0. The lead, unweighted: 5.0.
+    assert friendship.synergy([lead, two, three, four], lead) == (7.0 * 3 + 5.0) / 4

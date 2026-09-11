@@ -143,6 +143,19 @@ you lose if they capture yours. Think in terms of a campaign, not a single turn.
   turns than he asked, or refuse the steadiest man and rest the worst one. A squadron
   where most pilots are Shaken and all of them are told no will keep going down: rest
   them in ones and twos over several turns rather than losing them together.
+- **Hardening**: what the bad weeks left behind, and the reason a squadron that has
+  been through something does not simply collapse. A pilot earns a point for every turn
+  he spends Shaken, two for Shattered and three for Broken, up to 40 — and **it never
+  comes off**. It buys him three things: every knock to his morale lands lighter (up to
+  80% lighter at the top of the ruler, on top of what his rank already softens), he is
+  likelier to walk away from a wreck and likelier to be pulled out of one, and he is
+  **slower to make friends** — up to 60% slower, which is the price of the rest.
+
+  Each pilot carries `hardened` and `hardened_of` once he has any. Read it next to his
+  morale rather than instead of it: a hardened man at Shaken is steadier than a fresh
+  one at Normal, and the squadron that has been fed into a grinder is the one whose
+  survivors you want leading the next hard mission.
+
 - **Friendship**: what each pilot thinks of each other pilot, 0 to 10 and starting at
   5. It is **one-way** -- what he thinks of somebody is not what they think of him --
   and it is worth reading before you crew anything, because it decides four things:
@@ -159,8 +172,11 @@ you lose if they capture yours. Think in terms of a campaign, not a single turn.
   4. **What it costs you when he dies.** A death lands on the men who were up there with
      him as many times over as they thought of him.
 
-  **The leader's own relationships weigh heaviest** in a formation, so spreading your
-  senior pilots one to a flight is worth more than stacking them in one.
+  **What each man makes of his leader counts double** what he makes of a wingman, so
+  in a four-ship half of what a wingman feels about the formation is what he feels
+  about the man leading it. Spreading your senior pilots one to a flight is therefore
+  worth more than stacking them in one. (The leader weighs his own three the same:
+  from where he sits there is nobody in front.)
 
   Each pilot in `squadrons/{squadron_id}/pilots` and in `flights/{flight_id}/crew`
   carries an `id` and his `relationships`: the strongest bonds he has, `towards` and

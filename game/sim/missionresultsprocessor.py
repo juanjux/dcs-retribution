@@ -26,6 +26,7 @@ from game.dcs.skills import one_promotion_at_most
 from game.ground_forces.combat_stance import CombatStance
 from game.dcs.skills import SKILL_LADDER
 from game.squadrons import friendship
+from game.squadrons import hardening
 from game.squadrons import morale as morale_rules
 from game.squadrons.pilot import Pilot
 from game.squadrons.xplog import XpLog
@@ -83,6 +84,9 @@ class MissionResultsProcessor:
     def _note_friendship(self, pilot: Any, other: Any, amount: float) -> None:
         """He saw a bit more of this man today. Spent at the end of the pass."""
         if pilot is other or not amount:
+            return
+        amount = hardening.slows_making_friends(pilot, amount, self.game.settings)
+        if not amount:
             return
         key = (id(pilot), id(other))
         running = self._friendship_gains.get(key)
@@ -441,10 +445,17 @@ class MissionResultsProcessor:
             if other is not None and other is not pilot
         ]
         rescue = (
-            friendship.survival_bonus(friendship.mean_from(pilot, mates), settings)
+            friendship.survival_bonus(
+                friendship.mean_from(pilot, mates, squadron.leader_of(mates), settings),
+                settings,
+            )
             if friendship.in_play(settings)
             else 0.0
         )
+        # And what he has been through himself, which is the half nobody else is
+        # needed for: he has done this before and knows when to stop trying to save
+        # the aircraft.
+        rescue += hardening.survival_bonus(pilot.hardened, settings)
         rolls = settings.live_pilots_enabled and settings.live_pilots_rank_survival
         chance = (
             survival_chance(squadron.pilot_skill(pilot), settings) if rolls else 0.0
@@ -945,6 +956,11 @@ class MissionResultsProcessor:
             return 1.0
         morale_on = getattr(settings, "morale_enabled", True)
         best = squadron.pilot_skill(pilot)
+        # The same man twice over: the one who teaches, and the one the formation is
+        # measured through. He starts as the pilot himself, so a man who is the senior
+        # one in his flight weighs everybody equally -- from where he sits there is
+        # nobody in front.
+        leader = pilot
         mates = []
         for other in flight.roster.iter_pilots():
             if other is None:
@@ -958,6 +974,7 @@ class MissionResultsProcessor:
             )
             if SKILL_LADDER.index(skill) > SKILL_LADDER.index(best):
                 best = skill
+                leader = other
         # The player has no morale to be worth more or less for; flying with someone
         # better than you is not morale, so he keeps that half of it.
         state = (
@@ -971,7 +988,9 @@ class MissionResultsProcessor:
             else 0.0
         )
         company = (
-            friendship.xp_bonus(friendship.mean_towards(pilot, mates), settings)
+            friendship.xp_bonus(
+                friendship.mean_towards(pilot, mates, leader, settings), settings
+            )
             if friendship.in_play(settings)
             else 0.0
         )

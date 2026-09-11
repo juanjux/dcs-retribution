@@ -82,6 +82,7 @@ LIVE_PILOTS_SURVIVAL_SECTION = "Survival Chance"
 LIVE_PILOTS_MORALE_SECTION = "Morale"
 LIVE_PILOTS_MORALE_STATES_SECTION = "Morale States"
 LIVE_PILOTS_MORALE_EVENTS_SECTION = "Morale Event Values"
+LIVE_PILOTS_HARDENING_SECTION = "Hardening"
 LIVE_PILOTS_FRIENDSHIP_SECTION = "Friendship"
 LIVE_PILOTS_FRIENDSHIP_DRIFT_SECTION = "Drifting Together and Apart"
 LIVE_PILOTS_FRIENDSHIP_EVENTS_SECTION = "Friendship Event Values"
@@ -2118,6 +2119,94 @@ class Settings:
             " asks often. You answer at the end of the turn."
         ),
     )
+    hardening_enabled: bool = boolean_option(
+        "Enable hardening",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_HARDENING_SECTION,
+        default=True,
+        detail=(
+            "What the bad weeks leave behind. A pilot earns a point or three for every"
+            " turn he spends Shaken or worse, and it never comes off: the knocks land"
+            " softer, he is likelier to walk away from a wreck, and he is slower to let"
+            " anybody new close enough to matter. It is what stops a run of losses"
+            " taking a whole squadron to Broken together and leaving it there."
+        ),
+    )
+    hardening_max: int = bounded_int_option(
+        "Most a pilot can be hardened",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_HARDENING_SECTION,
+        default=40,
+        min=1,
+        max=200,
+        detail=(
+            "The top of the ruler. Everything below is priced against it, so lowering"
+            " this makes every effect arrive sooner rather than making it smaller."
+        ),
+    )
+    hardening_shaken: int = bounded_int_option(
+        "A turn spent Shaken",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_HARDENING_SECTION,
+        default=1,
+        min=0,
+        max=10,
+        detail="Counted on the state he started the turn in, not the one he ends it in.",
+    )
+    hardening_shattered: int = bounded_int_option(
+        "A turn spent Shattered",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_HARDENING_SECTION,
+        default=2,
+        min=0,
+        max=10,
+    )
+    hardening_broken: int = bounded_int_option(
+        "A turn spent Broken",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_HARDENING_SECTION,
+        default=3,
+        min=0,
+        max=10,
+    )
+    hardening_morale_relief_full: int = bounded_int_option(
+        "Knocks land lighter, at the top (%)",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_HARDENING_SECTION,
+        default=80,
+        min=0,
+        max=100,
+        detail=(
+            "Taken off the size of every knock, scaled straight down the ruler: at half"
+            " hardened he gets half of this. It multiplies with the softening his rank"
+            " already gives him, and no knock ever costs nothing."
+        ),
+    )
+    hardening_survival_full: int = bounded_int_option(
+        "Survival and rescue, at the top (%)",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_HARDENING_SECTION,
+        default=20,
+        min=0,
+        max=100,
+        detail=(
+            "Added to the roll that gets him out of the aircraft and to the one that"
+            " has the medics reach him in time. He has been here before."
+        ),
+    )
+    hardening_friendship_damping_full: int = bounded_int_option(
+        "Slower to make friends, at the top (%)",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_HARDENING_SECTION,
+        default=60,
+        min=0,
+        max=100,
+        detail=(
+            "The price of the rest of it. Taken off how fast his own opinion of"
+            " somebody rises -- never off how fast it falls, and never off what anybody"
+            " thinks of him."
+        ),
+    )
     friendship_enabled: bool = boolean_option(
         "Enable friendship",
         page=LIVE_PILOTS_PAGE,
@@ -2332,18 +2421,22 @@ class Settings:
             " no more."
         ),
     )
-    friendship_leader_weight: int = bounded_int_option(
-        "The leader's share of a formation (%)",
+    friendship_leader_spoke_weight: float = bounded_float_option(
+        "The man in front counts for",
         page=LIVE_PILOTS_PAGE,
         section=LIVE_PILOTS_FRIENDSHIP_SECTION,
         subsection=LIVE_PILOTS_FRIENDSHIP_EFFECTS_SECTION,
-        default=35,
-        min=0,
-        max=100,
+        default=2.0,
+        min=1.0,
+        max=5.0,
+        divisor=10,
         detail=(
-            "How much of a formation's standing comes from its senior pilot's own"
-            " relationships rather than from everybody's. Spreading your veterans one"
-            " to a flight is worth more than stacking them in one."
+            "What each man's opinion of his leader is worth against his opinion of"
+            " each wingman. At two, in a four-ship, half of what a wingman makes of"
+            " the formation is what he makes of the man leading it -- so spreading"
+            " your veterans one to a flight is worth more than stacking them in one."
+            " The leader himself weighs his three the same: from where he sits there"
+            " is nobody in front."
         ),
     )
     friendship_desertion_per_point: int = bounded_int_option(

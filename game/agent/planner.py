@@ -24,6 +24,7 @@ from game.profiling import MultiEventTracer
 from game.agent import schemas, views
 from game.dcs.skills import SKILL_LADDER
 from game.squadrons import friendship
+from game.squadrons import hardening
 from game.squadrons import morale as morale_rules
 
 if TYPE_CHECKING:
@@ -1778,6 +1779,11 @@ def _pilot_view(
             view["asking_for_leave"] = True
         if pilot.on_leave and pilot.leave_turns:
             view["leave_turns_remaining"] = pilot.leave_turns
+        if pilot.hardened and hardening.in_play(settings):
+            # What the bad weeks left behind. It never comes off, so a high figure on a
+            # man whose morale is fine is a man who has already been through it.
+            view["hardened"] = pilot.hardened
+            view["hardened_of"] = hardening.ceiling(settings)
 
     if getattr(squadron, "friendship_in_play", False):
         # The id, because two men of the same name are two men, and a relationship has

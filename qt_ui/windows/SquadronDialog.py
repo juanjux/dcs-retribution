@@ -50,6 +50,7 @@ from game.ato.flighttype import FlightType
 from game.ato.flightwaypointtype import FlightWaypointType
 from game.dcs.aircrafttype import AircraftType
 from game.settings import Settings
+from game.squadrons import hardening
 from game.squadrons import morale as morale_rules
 from game.squadrons.experience import turns_phrase
 from game.purchaseadapter import AircraftPurchaseAdapter, TransactionError
@@ -350,6 +351,14 @@ class PilotDelegate(QStyledItemDelegate, PilotRowPainter):
         if self.morale_shown_for(pilot):
             state = morale_rules.morale_state(pilot.morale, self.settings)
             lines.append(f"Morale: {state.name}")
+        if pilot.hardened and hardening.in_play(self.settings):
+            # It never comes off, so a high figure on a man whose morale is fine is a
+            # man who has already been through it and come out the other side.
+            relief = round(hardening.morale_relief(pilot.hardened, self.settings) * 100)
+            lines.append(
+                f"Hardened: {pilot.hardened} of {hardening.ceiling(self.settings)}"
+                f" — knocks land {relief}% lighter"
+            )
         status, _, detail, _ = self._status_of(pilot, False)
         lines.append(f"{status} {detail}".strip())
         note = self.note_for(pilot)

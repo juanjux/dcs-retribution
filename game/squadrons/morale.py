@@ -247,11 +247,26 @@ def resistance(skill: Skill) -> float:
     return 1.0 - 0.15 * rung
 
 
-def apply(morale: int, event: MoraleEvent, skill: Skill, settings: Any = None) -> int:
-    """Move a pilot by one event, softened by his rank if it is a knock."""
+def apply(
+    morale: int,
+    event: MoraleEvent,
+    skill: Skill,
+    settings: Any = None,
+    relief: float = 0.0,
+) -> int:
+    """Move a pilot by one event, softened if it is a knock.
+
+    Twice over: by his rank, which is armour he was given, and by ``relief`` -- what he
+    has already been through, which is armour he earned. The two multiply, because they
+    are separate reasons the same news lands lighter, and neither applies to good news.
+
+    A knock never costs nothing, however hard the man: the floor of one point is the
+    rule rather than a rounding guard.
+    """
     amount = event.amount(settings)
     if amount < 0:
-        amount = -max(1, round(-amount * resistance(skill)))
+        softened = resistance(skill) * max(0.0, 1.0 - relief)
+        amount = -max(1, round(-amount * softened))
     return clamp(morale + amount)
 
 

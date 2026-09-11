@@ -23,6 +23,8 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Iterable, Optional, Sequence
 from uuid import UUID
 
+from game.squadrons import hardening
+
 if TYPE_CHECKING:
     from game.squadrons.airwing import AirWing
     from game.squadrons.pilot import Pilot
@@ -126,16 +128,53 @@ def feeling(pilot: Pilot, other: Pilot) -> float:
     return pilot.friendships.get(other.id, FRIENDSHIP_START)
 
 
-def mean_towards(pilot: Pilot, others: Iterable[Pilot]) -> float:
-    """What he thinks of them, averaged. Neutral when there is nobody."""
-    values = [feeling(pilot, other) for other in others if other is not pilot]
-    return sum(values) / len(values) if values else FRIENDSHIP_START
+def mean_towards(
+    pilot: Pilot,
+    others: Iterable[Pilot],
+    leader: Optional[Pilot] = None,
+    settings: Any = None,
+) -> float:
+    """What he thinks of them, averaged. Neutral when there is nobody.
+
+    With a leader named, the spoke that touches him is worth
+    :data:`LEADER_SPOKE_WEIGHT` of each of the others: a formation is the man in front
+    and the men who follow him, and in a four-ship that puts half of what each wingman
+    feels about the formation on the one man leading it. Asked about the leader
+    himself, it is the plain mean -- from where he sits there is nobody in front.
+    """
+    weight = leader_spoke_weight(settings)
+    total = 0.0
+    divisor = 0.0
+    for other in others:
+        if other is pilot:
+            continue
+        share = weight if other is leader else 1.0
+        total += feeling(pilot, other) * share
+        divisor += share
+    return total / divisor if divisor else FRIENDSHIP_START
 
 
-def mean_from(pilot: Pilot, others: Iterable[Pilot]) -> float:
-    """What they think of him, averaged. The half that decides who looks for him."""
-    values = [feeling(other, pilot) for other in others if other is not pilot]
-    return sum(values) / len(values) if values else FRIENDSHIP_START
+def mean_from(
+    pilot: Pilot,
+    others: Iterable[Pilot],
+    leader: Optional[Pilot] = None,
+    settings: Any = None,
+) -> float:
+    """What they think of him, averaged. The half that decides who looks for him.
+
+    Weighted the same way: the man running the formation counts for more than the
+    wingman, which is as true of who organises a search as of anything else.
+    """
+    weight = leader_spoke_weight(settings)
+    total = 0.0
+    divisor = 0.0
+    for other in others:
+        if other is pilot:
+            continue
+        share = weight if other is leader else 1.0
+        total += feeling(other, pilot) * share
+        divisor += share
+    return total / divisor if divisor else FRIENDSHIP_START
 
 
 def group_affinity(pilot: Pilot, others: Iterable[Pilot]) -> float:
@@ -153,25 +192,19 @@ def group_affinity(pilot: Pilot, others: Iterable[Pilot]) -> float:
 def synergy(
     pilots: Sequence[Pilot], leader: Optional[Pilot] = None, settings: Any = None
 ) -> float:
-    """How well a whole formation gets on, with its leader weighted heaviest.
+    """How well a whole formation gets on, as the men in it experience it.
 
-    Not the plain mean of every directed pair: the pairs that touch the leader are worth
-    :data:`LEADER_WEIGHT` of the answer on their own. A formation is the man in front
-    and the men who follow him, and pricing it that way is what makes spreading senior
-    pilots one to a flight worth more than stacking them in one.
+    Each man's own weighted mean of the others -- the one in front counting double --
+    and the formation's figure is the mean of those. Pricing it that way is what makes
+    spreading senior pilots one to a flight worth more than stacking them in one: four
+    flights with a leader their crews would follow beats one flight of veterans and
+    three of strangers.
     """
     crew = [pilot for pilot in pilots if pilot is not None]
     if len(crew) < 2:
         return FRIENDSHIP_START
-    every = [feeling(a, b) for a in crew for b in crew if a is not b]
-    plain = sum(every) / len(every)
-    if leader is None or leader not in crew:
-        return plain
-    rest = [pilot for pilot in crew if pilot is not leader]
-    leaders = [feeling(leader, other) for other in rest]
-    leaders += [feeling(other, leader) for other in rest]
-    weight = leader_weight(settings)
-    return plain * (1 - weight) + (sum(leaders) / len(leaders)) * weight
+    values = [mean_towards(member, crew, leader, settings) for member in crew]
+    return sum(values) / len(values)
 
 
 # --- writing --------------------------------------------------------------------
@@ -253,8 +286,11 @@ FRIENDLY_FIRE_GROUND = -2.0
 #: below divide by a hundred, so nothing outside this section has to remember which of
 #: the two it is holding.
 
-#: The leader's share of a formation's synergy.
-LEADER_WEIGHT = 35
+#: What the spoke that touches the leader is worth, against one for everybody else.
+#: At two, in a four-ship, half of what a wingman makes of the formation is what he
+#: makes of the man leading it. Not a percentage: a weight, so it lives outside the
+#: block below.
+LEADER_SPOKE_WEIGHT = 2.0
 
 #: What a point of friendship is worth to each effect, and how far each can pile up.
 XP_PER_POINT = 5
@@ -306,8 +342,10 @@ def drift_ceiling(settings: Any = None) -> float:
     return float(_setting(settings, "friendship_drift_ceiling", DRIFT_CEILING))
 
 
-def leader_weight(settings: Any = None) -> float:
-    return _percent(settings, "friendship_leader_weight", LEADER_WEIGHT)
+def leader_spoke_weight(settings: Any = None) -> float:
+    return float(
+        _setting(settings, "friendship_leader_spoke_weight", LEADER_SPOKE_WEIGHT)
+    )
 
 
 def drift_odds(same_squadron: bool, settings: Any = None) -> tuple[float, float]:
@@ -514,6 +552,9 @@ def tend_friendships(air_wing: AirWing, settings: Any = None) -> None:
                 step = drift_step(
                     other_squadron is squadron, feeling(pilot, other), settings
                 )
+                # A man who has watched enough people go down is slower to think well
+                # of the next one. Only the rises: he is not slower to fall out.
+                step = hardening.slows_making_friends(pilot, step, settings)
                 if step:
                     move(pilot, other, step)
 

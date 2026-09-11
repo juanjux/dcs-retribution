@@ -20,6 +20,7 @@ from game.theater.player import Player
 from .pilot import Pilot, PilotStatus
 from game.dcs.skills import CADET_SKILL, SKILL_LADDER, skill_for_experience
 from game.squadrons import friendship
+from game.squadrons import hardening
 from game.squadrons import morale as morale_rules
 from game.squadrons.morale import TURNS_BEFORE_LEAVE_IS_MISSED, shifted_skill
 
@@ -278,9 +279,9 @@ class Squadron:
         members = [member for member in crew if member is not None]
         if not self.friendship_in_play or len(members) < 2:
             return None
-        return friendship.synergy(members, self._leader_of(members), self.settings)
+        return friendship.synergy(members, self.leader_of(members), self.settings)
 
-    def _leader_of(self, crew: Sequence[Pilot]) -> Optional[Pilot]:
+    def leader_of(self, crew: Sequence[Optional[Pilot]]) -> Optional[Pilot]:
         """The senior man in a formation, whose own relationships weigh heaviest.
 
         Ranked rather than seated: spreading senior pilots one to a flight is supposed
@@ -292,6 +293,8 @@ class Squadron:
         best: Optional[Pilot] = None
         best_rung = -1
         for pilot in crew:
+            if pilot is None:
+                continue
             try:
                 rung = SKILL_LADDER.index(self.pilot_skill(pilot))
             except ValueError:
@@ -542,6 +545,10 @@ class Squadron:
             # Judged on the state he arrived in. The drift below lifts a man who is
             # merely low, so asking afterwards would read the wrong number.
             was_at_rock_bottom = was <= morale_rules.REFUSES_TO_FLY_AT
+
+            # And a turn spent down there leaves something behind, on the same
+            # reading of the same figure.
+            hardening.harden(pilot, was, self.settings)
 
             pilot.turns_since_leave += 1
             if pilot.turns_since_leave > TURNS_BEFORE_LEAVE_IS_MISSED:

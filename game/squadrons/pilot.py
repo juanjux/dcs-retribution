@@ -9,6 +9,7 @@ from faker import Faker
 
 from dcs.unit import Skill
 
+from game.squadrons import hardening
 from game.squadrons.morale import (
     MORALE_HISTORY_LIMIT,
     SORTIE_HISTORY_LIMIT,
@@ -71,6 +72,12 @@ class Pilot:
     #: save written before morale existed reads from the class.
     morale: int = field(default=MORALE_START)
 
+    #: What the bad weeks left behind, 0 upwards and never down. Earned a point or
+    #: three per turn spent Shaken or worse, and read by everything that decides how
+    #: hard the next one lands. A plain default, so a pilot from a save written before
+    #: it reads 0 from the class.
+    hardened: int = field(default=0)
+
     #: Turns of leave left, counted exactly like a wound.
     leave_turns: int = field(default=0)
 
@@ -123,6 +130,7 @@ class Pilot:
     )
 
     def __setstate__(self, state: dict[str, Any]) -> None:
+        state.setdefault("hardened", 0)
         state.setdefault("wounded_turns", 0)
         state.setdefault("wounded_on_turn", -1)
         state.setdefault("morale", MORALE_START)
@@ -209,7 +217,13 @@ class Pilot:
         if not self.has_morale:
             return 0
         before = self.morale
-        self.morale = apply_morale(before, event, skill, settings)
+        self.morale = apply_morale(
+            before,
+            event,
+            skill,
+            settings,
+            relief=hardening.morale_relief(self.hardened, settings),
+        )
         return self.note_morale_change(before, event.reason, turn)
 
     def note_morale_change(self, before: int, reason: str, turn: int = -1) -> int:
