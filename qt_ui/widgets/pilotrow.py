@@ -13,7 +13,7 @@ you can pick by morale rather than opening the Air Wing to find out.
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 
 from PySide6.QtCore import QModelIndex, QRect, QSize, Qt
 from PySide6.QtGui import QColor, QFont, QFontMetrics, QPainter
@@ -27,6 +27,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from game.squadrons import friendship
 from game.squadrons import morale as morale_rules
 from game.squadrons.pilot import Pilot
 from qt_ui.rankstars import (
@@ -53,6 +54,18 @@ MORALE_COLOURS = {
 #: The label recedes further than the dot for a pilot nobody needs to think about.
 MORALE_LABEL_OVERRIDE = {"Normal": "#B7C6D2"}
 MORALE_LABEL_OVERRIDE_SELECTED = {"Normal": "#E4EDF4"}
+
+#: How far the friendship wash behind a row can go, out of 255. A wash rather than a
+#: colour: the name and the morale dot are what the row is read for, and a fill that
+#: competes with them makes the list harder to use rather than easier. Halved on the
+#: selected row, which already has a fill of its own under it.
+TINT_ALPHA = 64
+TINT_ALPHA_SELECTED = 32
+
+#: What the faintest band is still worth, as a share of the ceiling. A pair only just
+#: into Friendly is news -- it is the first band that is -- and at a strictly linear
+#: ramp it arrived so close to nothing that the row read as Neutral.
+TINT_FLOOR = 0.35
 
 ROW_HEIGHT = 28
 
@@ -97,6 +110,29 @@ def morale_word(pilot: Pilot, squadron: Any) -> Optional[str]:
     return str(state.name)
 
 
+def affinity_tint(
+    affinity: Optional[float], selected: bool = False
+) -> Optional[QColor]:
+    """The wash behind a man whose company would change the flight.
+
+    None for a pair nobody needs to think about, which is what Neutral is: only what is
+    news gets painted. Blended by alpha rather than by hue so the band's own colour
+    still means what it means in every other list.
+    """
+    if affinity is None:
+        return None
+    band = friendship.band(affinity)
+    if band.colour is None:
+        return None
+    strength = min(abs(friendship.points(affinity)), 5.0) / 5.0
+    strength = TINT_FLOOR + (1.0 - TINT_FLOOR) * strength
+    colour = QColor(band.colour)
+    colour.setAlpha(
+        int(round(strength * (TINT_ALPHA_SELECTED if selected else TINT_ALPHA)))
+    )
+    return colour
+
+
 def paint_pilot(
     painter: QPainter,
     rect: QRect,
@@ -104,6 +140,7 @@ def paint_pilot(
     squadron: Any,
     selected: bool = False,
     unassigned_text: str = "Unassigned — choose a pilot",
+    affinity: Optional[float] = None,
 ) -> None:
     """Draw one pilot into ``rect``. Used by the popup and by the closed combo."""
     painter.save()
@@ -119,6 +156,10 @@ def paint_pilot(
         )
         painter.restore()
         return
+
+    tint = affinity_tint(affinity, selected)
+    if tint is not None:
+        painter.fillRect(rect, tint)
 
     baseline = rect.center().y() + 5
     x = float(rect.left() + LEFT)
@@ -213,9 +254,17 @@ def row_width_hint(squadron: Any) -> int:
 class PilotItemDelegate(QStyledItemDelegate):
     """Paints the rows of the pilot drop-down."""
 
-    def __init__(self, squadron: Any, parent: Optional[QWidget] = None) -> None:
+    def __init__(
+        self,
+        squadron: Any,
+        parent: Optional[QWidget] = None,
+        affinity_of: Optional[Callable[[Pilot], Optional[float]]] = None,
+    ) -> None:
         super().__init__(parent)
         self.squadron = squadron
+        #: How well this man would get on with the rest of the crew, when whoever owns
+        #: the list knows. The delegate never learns what a flight is.
+        self.affinity_of = affinity_of
 
     def sizeHint(self, option: QStyleOptionViewItem, index: QModelIndex) -> QSize:
         return QSize(option.rect.width(), ROW_HEIGHT)
@@ -243,7 +292,14 @@ class PilotItemDelegate(QStyledItemDelegate):
             painter.restore()
             return
 
-        paint_pilot(painter, option.rect, pilot, self.squadron, selected)
+        paint_pilot(
+            painter,
+            option.rect,
+            pilot,
+            self.squadron,
+            selected,
+            affinity=self.affinity_of(pilot) if self.affinity_of else None,
+        )
 
 
 class PaintedPilotCombo(QComboBox):
@@ -254,9 +310,15 @@ class PaintedPilotCombo(QComboBox):
     through the style as usual and then draws the row into the space that is left.
     """
 
-    def __init__(self, squadron: Any, parent: Optional[QWidget] = None) -> None:
+    def __init__(
+        self,
+        squadron: Any,
+        parent: Optional[QWidget] = None,
+        affinity_of: Optional[Callable[[Pilot], Optional[float]]] = None,
+    ) -> None:
         super().__init__(parent)
         self.squadron = squadron
+        self.affinity_of = affinity_of
 
     def paintEvent(self, event: object) -> None:  # noqa: N802 (Qt naming)
         painter = QStylePainter(self)
@@ -280,4 +342,10 @@ class PaintedPilotCombo(QComboBox):
                 "No aircraft",
             )
             return
-        paint_pilot(painter, area, pilot, self.squadron)
+        paint_pilot(
+            painter,
+            area,
+            pilot,
+            self.squadron,
+            affinity=self.affinity_of(pilot) if self.affinity_of else None,
+        )

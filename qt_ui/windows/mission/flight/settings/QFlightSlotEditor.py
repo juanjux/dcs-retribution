@@ -1,5 +1,5 @@
 import logging
-from typing import Optional, Callable
+from typing import Any, Optional, Callable
 
 from PySide6.QtCore import QModelIndex, QRect, Qt, Signal
 from PySide6.QtGui import QColor, QPainter
@@ -24,7 +24,7 @@ from game.ato.flight import Flight
 from game.ato.flightroster import FlightRoster
 from game.ato.iflightroster import IFlightRoster
 from game.dcs.aircrafttype import AircraftType
-from game.squadrons import Squadron
+from game.squadrons import Squadron, friendship
 from game.squadrons.morale import emoji_for, rank_level
 from game.squadrons.pilot import Pilot
 from game.theater import ControlPoint, OffMapSpawn
@@ -32,7 +32,7 @@ from game.utils import nautical_miles
 from qt_ui.models import PackageModel
 from qt_ui.rankstars import rank_stars_text
 from qt_ui.widgets.cards import make_transparent
-from qt_ui.widgets.controls import mono, styled_input
+from qt_ui.widgets.controls import mono, styled_input, wrapped_tooltip
 from qt_ui.widgets.pilotrow import (
     PaintedPilotCombo,
     PilotItemDelegate,
@@ -61,10 +61,13 @@ class PilotSelector(PaintedPilotCombo):
     def __init__(
         self, squadron: Optional[Squadron], roster: Optional[IFlightRoster], idx: int
     ) -> None:
-        super().__init__(squadron)
+        super().__init__(squadron, affinity_of=self.affinity_of)
         self.roster = roster
         self.pilot_index = idx
-        self.setItemDelegate(PilotItemDelegate(squadron, self))
+        self.setItemDelegate(PilotItemDelegate(squadron, self, self.affinity_of))
+        # Once, here: connected inside the rebuild it accumulated a connection per
+        # rebuild, and every seat rebuilds whenever any seat changes.
+        self.currentIndexChanged.connect(self.replace_pilot)
         # The default policy measures the box once, at its first show. These are
         # rebuilt whenever another selector changes, so a longer name arriving after
         # that was elided for good -- in the box AND in the list, whatever the dialog
@@ -82,6 +85,63 @@ class PilotSelector(PaintedPilotCombo):
         """
         self.view().setMinimumWidth(
             row_width_hint(self.squadron) + self.POPUP_CHROME_PX
+        )
+
+    def crew_without_this_seat(self) -> list[Pilot]:
+        """Who he would be joining: the other seats, with this one left out."""
+        if self.roster is None:
+            return []
+        return [
+            other
+            for index, other in enumerate(self.roster.iter_pilots())
+            if other is not None and index != self.pilot_index
+        ]
+
+    def affinity_of(self, pilot: Optional[Pilot]) -> Optional[float]:
+        """How he and the rest of this crew would get on, both directions averaged.
+
+        Both, because the question here is whether they would get on rather than what
+        one of them thinks. Nothing for the first seat -- there is nobody to get on
+        with yet -- and nothing at all while friendship is off, so the list is
+        byte-for-byte what it always was.
+        """
+        if pilot is None or self.squadron is None:
+            return None
+        if not getattr(self.squadron, "friendship_in_play", False):
+            return None
+        others = [
+            other for other in self.crew_without_this_seat() if other is not pilot
+        ]
+        if not others:
+            return None
+        return friendship.group_affinity(pilot, others)
+
+    def affinity_tooltip(self, pilot: Pilot) -> Optional[str]:
+        """What the colour behind his name means, named man by man.
+
+        The only place the player can find out that the wash is about friendship at
+        all, so it says the word as well as the men.
+        """
+        affinity = self.affinity_of(pilot)
+        if affinity is None:
+            return None
+        others = [
+            other for other in self.crew_without_this_seat() if other is not pilot
+        ]
+        pairs = sorted(
+            others,
+            key=lambda other: abs(
+                friendship.points(friendship.group_affinity(pilot, [other]))
+            ),
+            reverse=True,
+        )[:3]
+        lines = [
+            f"  {other.name}: "
+            f"{friendship.band_name(friendship.group_affinity(pilot, [other]))}"
+            for other in pairs
+        ]
+        return wrapped_tooltip(
+            "\n".join([f"With this crew: {friendship.band_name(affinity)}"] + lines)
         )
 
     def text_for(self, pilot: Pilot) -> str:
@@ -129,16 +189,34 @@ class PilotSelector(PaintedPilotCombo):
         # same rule the Air Wing roster sorts by, and it flattens to nothing while Live
         # Pilots is off, leaving the old alphabetical order untouched.
         squadron = self.squadron
-        for pilot in sorted(
-            choices, key=lambda p: (not p.player, *squadron.rank_order(p), p.name)
-        ):
+
+        def order(pilot: Pilot) -> tuple[Any, ...]:
+            # Rank first, because the list's first job is still "who is my best
+            # pilot"; friendship only orders the men who hold the same rank, where
+            # experience alone would decide it and the tint is what you are reading.
+            rank = tuple(squadron.rank_order(pilot))
+            affinity = self.affinity_of(pilot)
+            # Sliced rather than unpacked: rank_order is free to say as much or as
+            # little as Live Pilots is switched on for, and friendship goes after the
+            # first thing it says rather than after all of them.
+            return (
+                not pilot.player,
+                rank[:1],
+                -(affinity if affinity is not None else friendship.FRIENDSHIP_START),
+                rank[1:],
+                pilot.name,
+            )
+
+        for pilot in sorted(choices, key=order):
             self.addItem(self.text_for(pilot), pilot)
+            tip = self.affinity_tooltip(pilot)
+            if tip is not None:
+                self.setItemData(self.count() - 1, tip, Qt.ItemDataRole.ToolTipRole)
         if current_pilot is None:
             self.setCurrentText("Unassigned")
         else:
             self.setCurrentText(self.text_for(current_pilot))
         self._fit_popup_to_contents()
-        self.currentIndexChanged.connect(self.replace_pilot)
 
     def rebuild(self) -> None:
         # The contents of the selector depend on the selection of the other selectors
@@ -166,7 +244,7 @@ class PilotSelector(PaintedPilotCombo):
     ) -> None:
         self.squadron = squadron
         self.roster = new_roster
-        self.setItemDelegate(PilotItemDelegate(squadron, self))
+        self.setItemDelegate(PilotItemDelegate(squadron, self, self.affinity_of))
         self.rebuild()
 
 

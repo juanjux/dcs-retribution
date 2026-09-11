@@ -330,25 +330,37 @@ class Squadron:
         self._recruit_pilots(1)
         return self.available_pilots.pop()
 
-    def claim_available_pilot(self) -> Optional[Pilot]:
+    def claim_available_pilot(self, alongside: Sequence[Pilot] = ()) -> Optional[Pilot]:
+        """Take a man off the list for a seat.
+
+        ``alongside`` is who he would be flying with, and it only ever orders the men
+        who already matched the player's preference about players and AI -- that still
+        decides who is eligible. Greedy rather than optimal: the first seat has nobody
+        to get on with, so the crew grows around whoever was at the top of the list.
+        Trying to group them is what was asked for, not building the best crew that
+        could be made out of the squadron.
+        """
         if not self.available_pilots:
             return self.claim_new_pilot_if_allowed()
 
         # For opfor, so player/AI option is irrelevant.
         if self.player != Player.BLUE:
-            return self.available_pilots.pop()
+            return self._take(
+                self._pick(self.available_pilots, alongside, self.available_pilots[-1])
+            )
 
         preference = self.settings.auto_ato_behavior
 
         # No preference, so the first pilot is fine.
         if preference is AutoAtoBehavior.Default:
-            return self.available_pilots.pop()
+            return self._take(
+                self._pick(self.available_pilots, alongside, self.available_pilots[-1])
+            )
 
         prefer_players = preference is AutoAtoBehavior.Prefer
-        for pilot in self.available_pilots:
-            if pilot.player == prefer_players:
-                self.available_pilots.remove(pilot)
-                return pilot
+        matching = [p for p in self.available_pilots if p.player == prefer_players]
+        if matching:
+            return self._take(self._pick(matching, alongside, matching[0]))
 
         # No pilot was found that matched the user's preference.
         #
@@ -360,6 +372,33 @@ class Squadron:
         if not prefer_players:
             return self.claim_new_pilot_if_allowed()
         return self.available_pilots.pop()
+
+    def _pick(
+        self, candidates: Sequence[Pilot], alongside: Sequence[Pilot], default: Pilot
+    ) -> Pilot:
+        """Whoever this crew would get on with best, or the man the list offered.
+
+        ``default`` is exactly who the branch would have taken anyway, so a campaign
+        with friendship switched off -- or a first seat, which has nobody to get on
+        with -- crews the way it always did. A candidate nobody has an opinion about
+        is not an improvement on one, so Neutral loses to the default.
+        """
+        if not alongside or not self.friendship_in_play or len(candidates) < 2:
+            return default
+        best = max(
+            candidates, key=lambda pilot: friendship.group_affinity(pilot, alongside)
+        )
+        if friendship.group_affinity(best, alongside) <= friendship.FRIENDSHIP_START:
+            return default
+        return best
+
+    def _take(self, pilot: Pilot) -> Pilot:
+        """Off the list by identity, for the reason :meth:`claim_pilot` explains."""
+        for index, candidate in enumerate(self.available_pilots):
+            if candidate is pilot:
+                del self.available_pilots[index]
+                break
+        return pilot
 
     def claim_pilot(self, pilot: Pilot) -> None:
         """Take this man off the list -- this man, not one who looks like him.
