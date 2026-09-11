@@ -1043,23 +1043,8 @@ class SquadronDialog(QDialog):
         row.addWidget(self.roster_summary)
         row.addStretch()
 
-        # The campaign's pilot limit is a ceiling and nothing more: raising it
-        # mid-campaign recruits nobody, and replenishment trickles men in at its own
-        # rate. This is how you actually fill a squadron that has just been gutted.
-        self.recruit_button = QPushButton()
-        self.recruit_button.setFixedHeight(24)
-        self.recruit_button.clicked.connect(self._on_recruit)
-        row.addWidget(self.recruit_button)
-
         self._refresh_roster_summary()
         return row
-
-    def _on_recruit(self) -> None:
-        hired = self.squadron_model.recruit_to_limit()
-        if not hired:
-            return
-        logging.info("Recruited %d pilots into %s", hired, self.squadron)
-        self._refresh_roster_summary()
 
     def _refresh_roster_summary(self) -> None:
         pilots = self.squadron.living_pilots
@@ -1078,28 +1063,6 @@ class SquadronDialog(QDialog):
             # under-used and one you know to rest.
             parts.append(f"{refusing} refusing to fly")
         self.roster_summary.setText(" · ".join(parts))
-        self._refresh_recruit_button()
-
-    def _refresh_recruit_button(self) -> None:
-        button = getattr(self, "recruit_button", None)
-        if button is None:
-            return
-        if not self.squadron.pilot_limits_enabled:
-            button.hide()
-            return
-        room = self.squadron.unfilled_pilot_slots()
-        button.setVisible(True)
-        button.setEnabled(bool(room))
-        limit = self.squadron.pilot_limit
-        if room:
-            button.setText(f"Recruit {room}")
-            button.setToolTip(
-                f"Fill this squadron to its limit of {limit} pilots now, instead of "
-                "waiting for replenishment."
-            )
-        else:
-            button.setText("Full")
-            button.setToolTip(f"This squadron is at its limit of {limit} pilots.")
 
     @staticmethod
     def _build_column_headers() -> QWidget:

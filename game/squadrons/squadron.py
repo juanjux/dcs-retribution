@@ -74,6 +74,12 @@ class Squadron:
         init=False, hash=False, compare=False, default=None
     )
 
+    #: This squadron's own pilot ceiling, or None to follow the campaign setting.
+    #: Defaulted, so a save written before it existed reads as "follow the setting".
+    pilot_limit_override: Optional[int] = field(
+        init=False, hash=False, compare=False, default=None
+    )
+
     owned_aircraft: int = field(init=False, hash=False, compare=False, default=0)
     untasked_aircraft: int = field(init=False, hash=False, compare=False, default=0)
     pending_deliveries: int = field(init=False, hash=False, compare=False, default=0)
@@ -98,6 +104,10 @@ class Squadron:
             state["initial_aircraft"] = state.get("owned_aircraft", 0)
         if "destroyed_aircraft" not in state:
             state["destroyed_aircraft"] = 0
+        if "pilot_limit_override" not in state:
+            # A campaign started before squadrons could carry their own ceiling keeps
+            # following the campaign setting, which is what it was doing anyway.
+            state["pilot_limit_override"] = None
         if "purchased_aircraft" not in state:
             state["purchased_aircraft"] = 0
         self.__dict__.update(state)
@@ -495,18 +505,6 @@ class Squadron:
             return 0
         return max(0, self._number_of_unfilled_pilot_slots)
 
-    def recruit_to_limit(self) -> int:
-        """Fill every empty slot now, and say how many that was.
-
-        Replenishment trickles men in at the campaign's rate, which is right for a
-        squadron bleeding slowly and useless for one that has just lost half its
-        aircrew, or for a campaign whose limit was raised after it started.
-        """
-        room = self.unfilled_pilot_slots()
-        if room:
-            self._recruit_pilots(room)
-        return room
-
     def discharge(self, pilot: Pilot) -> None:
         """Throw a pilot out. He leaves the roster and joins the roll below it."""
         pilot.discharge()
@@ -610,6 +608,15 @@ class Squadron:
 
     @property
     def pilot_limit(self) -> int:
+        """How many pilots this squadron may hold.
+
+        The campaign setting is the default for every squadron; a squadron may carry
+        its own figure instead. There was a setting for the limit and nowhere to set a
+        squadron's own, so a wing of sixteen-man squadrons could not have one small
+        training unit or one oversized front-line outfit.
+        """
+        if self.pilot_limit_override is not None:
+            return self.pilot_limit_override
         return self.settings.squadron_pilot_limit
 
     @property

@@ -160,6 +160,38 @@ class SquadronSizeSpinner(QSpinBox):
     #     return size
 
 
+class PilotLimitSpinner(QSpinBox):
+    """This squadron's own pilot ceiling, or the campaign's if it has none.
+
+    The campaign setting is shown as the value when nothing has been chosen, and the
+    suffix says so, so the box reads as "this is what it will be" rather than as an
+    empty field somebody forgot to fill in.
+    """
+
+    def __init__(self, squadron: Squadron, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.squadron = squadron
+        self.setMinimum(1)
+        self.setMaximum(200)
+        self._default = squadron.settings.squadron_pilot_limit
+        override = squadron.pilot_limit_override
+        self.setValue(self._default if override is None else override)
+        self.setToolTip(
+            "How many pilots this squadron may hold. Leave it at the campaign's own "
+            f"figure ({self._default}) to follow that setting."
+        )
+        self.valueChanged.connect(self._update_suffix)
+        self._update_suffix(self.value())
+
+    def _update_suffix(self, value: int) -> None:
+        self.setSuffix("  (campaign default)" if value == self._default else "")
+
+    @property
+    def chosen_limit(self) -> Optional[int]:
+        """None while it matches the campaign, so moving that setting still moves it."""
+        return None if self.value() == self._default else self.value()
+
+
 class AirWingConfigParkingTracker(QWidget):
     allocation_changed = Signal()
 
@@ -257,6 +289,15 @@ class SquadronConfigurationBox(QGroupBox):
         self.max_size_selector = SquadronSizeSpinner(self.squadron.max_size, self)
         self.max_size_selector.valueChanged.connect(self.update_max_size)
         size_column.addWidget(self.max_size_selector)
+
+        pilots_column = QVBoxLayout()
+        task_and_size_row.addLayout(pilots_column)
+        pilots_column.addWidget(QLabel("Max pilots:"))
+        # There was a campaign-wide setting for the pilot ceiling and nowhere at all to
+        # give a squadron its own, so a wing could not hold one small training unit
+        # beside its front-line outfits.
+        self.pilot_limit_selector = PilotLimitSpinner(self.squadron, self)
+        pilots_column.addWidget(self.pilot_limit_selector)
 
         task_column = QVBoxLayout()
         task_and_size_row.addLayout(task_column)
@@ -376,6 +417,7 @@ class SquadronConfigurationBox(QGroupBox):
 
     def update_max_size(self) -> None:
         self.squadron.max_size = self.max_size_selector.value()
+        self.squadron.pilot_limit_override = self.pilot_limit_selector.chosen_limit
         self.parking_tracker.signal_change()
 
     def update_aircraft_count_label(self) -> None:
@@ -471,6 +513,7 @@ class SquadronConfigurationBox(QGroupBox):
         self.squadron.name = self.name_edit.text()
         self.squadron.nickname = self.nickname_edit.text()
         self.squadron.max_size = self.max_size_selector.value()
+        self.squadron.pilot_limit_override = self.pilot_limit_selector.chosen_limit
         if (primary_task := self.primary_task_selector.selected_task) is not None:
             self.squadron.primary_task = primary_task
         else:
