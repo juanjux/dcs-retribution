@@ -547,6 +547,14 @@ class SquadronModel(QAbstractListModel):
         finally:
             self.endResetModel()
 
+    def recruit_to_limit(self) -> int:
+        """Fill the squadron to the campaign's pilot limit and redraw the roster."""
+        self.beginResetModel()
+        try:
+            return self.squadron.recruit_to_limit()
+        finally:
+            self.endResetModel()
+
     def discharge_pilot(self, index: QModelIndex) -> None:
         pilot = self.pilot_at_index(index)
         self.beginResetModel()

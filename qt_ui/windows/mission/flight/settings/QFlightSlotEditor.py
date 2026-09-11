@@ -1,7 +1,8 @@
 import logging
 from typing import Optional, Callable
 
-from PySide6.QtCore import Signal, QModelIndex
+from PySide6.QtCore import QModelIndex, QRect, Qt, Signal
+from PySide6.QtGui import QColor, QPainter
 from PySide6.QtWidgets import (
     QLabel,
     QGroupBox,
@@ -30,9 +31,29 @@ from game.theater import ControlPoint, OffMapSpawn
 from game.utils import nautical_miles
 from qt_ui.models import PackageModel
 from qt_ui.rankstars import rank_stars_text
+from qt_ui.widgets.cards import make_transparent
+from qt_ui.widgets.controls import mono, styled_input
+from qt_ui.widgets.pilotrow import (
+    PaintedPilotCombo,
+    PilotItemDelegate,
+    row_width_hint,
+)
+
+#: The amber of a seat nobody is in, and the quieter ground of a seat this flight
+#: does not have.
+AMBER = "#E0A86B"
+UNCREWED_ROW = "#182430"
 
 
-class PilotSelector(QComboBox):
+class PilotSelector(PaintedPilotCombo):
+    """The seat, painted rather than written.
+
+    Qt draws a combo's current item as plain text, so the five things you pick a pilot
+    on -- rank, name, whether he is you, how he is holding up -- arrived as one line in
+    one colour, with morale reduced to an emoji. Both the closed box and the popup now
+    go through the same painter as the squadron roster.
+    """
+
     available_pilots_changed = Signal()
 
     #: Room for the drop-down arrow, the view's frame and a scrollbar, so the widest
@@ -42,10 +63,10 @@ class PilotSelector(QComboBox):
     def __init__(
         self, squadron: Optional[Squadron], roster: Optional[IFlightRoster], idx: int
     ) -> None:
-        super().__init__()
-        self.squadron = squadron
+        super().__init__(squadron)
         self.roster = roster
         self.pilot_index = idx
+        self.setItemDelegate(PilotItemDelegate(squadron, self))
         # The default policy measures the box once, at its first show. These are
         # rebuilt whenever another selector changes, so a longer name arriving after
         # that was elided for good -- in the box AND in the list, whatever the dialog
@@ -58,13 +79,12 @@ class PilotSelector(QComboBox):
 
         A rank and a name that do not fit the closed combo are exactly what you open
         it to read, so the popup is allowed to be wider than the widget it hangs off.
+        The width comes from the painter's own reckoning, not from the item text, which
+        is no longer what is drawn.
         """
-        metrics = self.fontMetrics()
-        widest = max(
-            (metrics.horizontalAdvance(self.itemText(i)) for i in range(self.count())),
-            default=0,
+        self.view().setMinimumWidth(
+            row_width_hint(self.squadron) + self.POPUP_CHROME_PX
         )
-        self.view().setMinimumWidth(widest + self.POPUP_CHROME_PX)
 
     def text_for(self, pilot: Pilot) -> str:
         """The pilot as he is addressed: his seniority, his rank, his name.
@@ -148,11 +168,23 @@ class PilotSelector(QComboBox):
     ) -> None:
         self.squadron = squadron
         self.roster = new_roster
+        self.setItemDelegate(PilotItemDelegate(squadron, self))
         self.rebuild()
 
 
-class PilotControls(QHBoxLayout):
+class PilotControls(QWidget):
+    """One seat: its number, who is in it, and whether that is you.
+
+    A row rather than a pair of controls in a form, so an empty seat can carry an
+    amber bar and be the one thing on the tab that draws the eye -- an unfilled slot
+    discovered at take-off is a mission flown one aircraft short.
+    """
+
     player_toggled = Signal()
+
+    ROW_HEIGHT = 44
+    INDEX_WIDTH = 22
+    SELECTOR_WIDTH = 440
 
     def __init__(
         self,
@@ -165,24 +197,62 @@ class PilotControls(QHBoxLayout):
         self.roster = roster
         self.pilot_index = idx
         self.pilots_changed = pilots_changed
+        self.setFixedHeight(self.ROW_HEIGHT)
+        make_transparent(self)
+
+        row = QHBoxLayout()
+        row.setContentsMargins(14, 0, 14, 0)
+        row.setSpacing(10)
+
+        self.index_label = QLabel(str(idx + 1))
+        self.index_label.setFont(mono(12))
+        self.index_label.setFixedWidth(self.INDEX_WIDTH)
+        self.index_label.setStyleSheet(
+            "color: #8E9DAA; background: transparent; border: none;"
+        )
+        row.addWidget(self.index_label)
 
         self.selector = PilotSelector(squadron, roster, idx)
         self.selector.setSizePolicy(
-            QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
         )
+        self.selector.setMinimumWidth(self.SELECTOR_WIDTH)
+        self.selector.setFixedHeight(28)
         self.selector.currentIndexChanged.connect(self.on_pilot_changed)
-        self.addWidget(self.selector)
+        self.selector.currentIndexChanged.connect(lambda _index: self.update())
+        row.addWidget(self.selector, 1)
 
         self.player_checkbox = QCheckBox(text="Player")
         self.player_checkbox.setToolTip("Checked if this pilot is a player.")
+        self.player_checkbox.setStyleSheet(
+            "font-size: 12px; background: transparent; border: none;"
+        )
         self.on_pilot_changed(self.selector.currentIndex())
         enabled = False
         if self.roster is not None and squadron is not None:
             enabled = squadron.aircraft.flyable
         self.player_checkbox.setEnabled(enabled)
-        self.addWidget(self.player_checkbox)
+        row.addWidget(self.player_checkbox)
 
         self.player_checkbox.toggled.connect(self.on_player_toggled)
+        self.setLayout(row)
+
+    @property
+    def _has_a_seat(self) -> bool:
+        return self.roster is not None and self.pilot_index < self.roster.max_size
+
+    def paintEvent(self, event: object) -> None:  # noqa: N802 (Qt naming)
+        """An amber bar down the left of a seat nobody is in, and a quieter ground
+        under one this flight does not have."""
+        painter = QPainter(self)
+        try:
+            if not self._has_a_seat:
+                painter.fillRect(self.rect(), QColor(UNCREWED_ROW))
+                return
+            if self.pilot is None:
+                painter.fillRect(QRect(0, 0, 3, self.height()), QColor(AMBER))
+        finally:
+            painter.end()
 
     @property
     def pilot(self) -> Optional[Pilot]:
@@ -271,7 +341,7 @@ class FlightRosterEditor(QVBoxLayout):
                 make_reset_callback(pilot_idx)
             )
             self.pilot_controls.append(controls)
-            self.addLayout(controls)
+            self.addWidget(controls)
 
     def update_available_pilots(self, source_idx: int) -> None:
         for idx, controls in enumerate(self.pilot_controls):
@@ -339,7 +409,14 @@ class QSquadronSelector(QDialog):
         vbox.addLayout(hbox)
 
 
-class QFlightSlotEditor(QGroupBox):
+class QFlightSlotEditor(QWidget):
+    """The squadron and its seats.
+
+    A plain widget rather than a group box: the card it sits in draws the frame and
+    the caption above it, so a title inside a second border would be the same word
+    twice.
+    """
+
     flight_resized = Signal(int)
     squadron_changed = Signal(Flight)
 
@@ -349,7 +426,7 @@ class QFlightSlotEditor(QGroupBox):
         flight: Flight,
         game: Game,
     ):
-        super().__init__("Slots")
+        super().__init__()
         self.package_model = package_model
         self.flight = flight
         self.game = game
@@ -362,31 +439,79 @@ class QFlightSlotEditor(QGroupBox):
         if max_count > 4:
             max_count = 4
 
-        layout = QGridLayout()
+        layout = QVBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 6)
+        layout.setSpacing(0)
+        layout.addWidget(self._squadron_strip(max_count))
 
-        self.aircraft_count = QLabel("Aircraft count:")
+        self.roster_editor = FlightRosterEditor(flight.squadron, flight.roster)
+        layout.addLayout(self.roster_editor)
+
+        self.setLayout(layout)
+
+    def _squadron_strip(self, max_count: int) -> QWidget:
+        """Whose flight this is, how many are going, and how many are left to send.
+
+        One strip above the seats rather than two rows of a form: the squadron and its
+        base are context for the roster, not two more fields to fill in.
+        """
+        squadron = self.flight.squadron
+
+        name = QLabel(squadron.name)
+        name.setStyleSheet(
+            "font-size: 13px; font-weight: 600; color: #F2F7FA;"
+            " background: transparent; border: none;"
+        )
+
+        detail = f'"{squadron.nickname}"' if squadron.nickname else ""
+        detail = f"{detail}  {squadron.location}".strip()
+        base = QLabel(detail)
+        base.setStyleSheet(
+            "font-size: 12px; color: #7C8B99; background: transparent; border: none;"
+        )
+
+        ready = len(list(squadron.available_pilots))
+        pilots = QLabel(f"{ready} pilots ready")
+        pilots.setStyleSheet(
+            f"font-size: 11px; color: {'#86C39A' if ready else '#5F8A6C'};"
+            " background: transparent; border: none;"
+        )
+
         self.aircraft_count_spinner = QSpinBox()
         self.aircraft_count_spinner.setMinimum(1)
         self.aircraft_count_spinner.setMaximum(max_count)
-        self.aircraft_count_spinner.setValue(flight.count)
+        self.aircraft_count_spinner.setValue(self.flight.count)
+        self.aircraft_count_spinner.setPrefix("× ")
+        self.aircraft_count_spinner.setToolTip("How many aircraft fly this mission.")
         self.aircraft_count_spinner.valueChanged.connect(self._changed_aircraft_count)
+        styled_input(self.aircraft_count_spinner, width=88)
 
-        layout.addWidget(self.aircraft_count, 0, 0)
-        layout.addWidget(self.aircraft_count_spinner, 0, 1)
-
-        layout.addWidget(QLabel("Squadron:"), 1, 0)
-        hbox = QHBoxLayout()
-        hbox.addWidget(QLabel(str(self.flight.squadron)))
-        squadron_btn = QPushButton("Change Squadron")
+        squadron_btn = QPushButton("Change…")
+        squadron_btn.setFixedHeight(24)
+        squadron_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        squadron_btn.setStyleSheet(
+            "QPushButton { background: #26343F; color: #B7C6D2;"
+            " border: 1px solid #3A4B5C; border-radius: 3px; padding: 0 10px;"
+            " font-size: 12px; }"
+            "QPushButton:hover { background: #33475C; }"
+        )
         squadron_btn.clicked.connect(self._change_squadron)
-        hbox.addWidget(squadron_btn)
-        layout.addLayout(hbox, 1, 1)
 
-        layout.addWidget(QLabel("Assigned pilots:"), 2, 0)
-        self.roster_editor = FlightRosterEditor(flight.squadron, flight.roster)
-        layout.addLayout(self.roster_editor, 2, 1)
+        row = QHBoxLayout()
+        row.setContentsMargins(14, 0, 14, 0)
+        row.setSpacing(10)
+        row.addWidget(name)
+        row.addWidget(base)
+        row.addWidget(pilots)
+        row.addStretch()
+        row.addWidget(self.aircraft_count_spinner)
+        row.addWidget(squadron_btn)
 
-        self.setLayout(layout)
+        strip = QWidget()
+        strip.setFixedHeight(40)
+        strip.setStyleSheet("background: #1B2732; border: none;")
+        strip.setLayout(row)
+        return strip
 
     def _change_squadron(self):
         dialog = QSquadronSelector(self.flight)

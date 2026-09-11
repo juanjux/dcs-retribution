@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Iterator, Optional
 from uuid import UUID
 
+from game.data.units import UnitClass
 from game.dcs.groundunittype import GroundUnitType
 from game.theater.iadsnetwork.iadsrole import IadsRole
 from game.theater.theatergroundobject import (
@@ -36,6 +37,29 @@ class IadsNetworkException(Exception):
 STATIC_BACKED_ROLES = frozenset(
     {IadsRole.COMMAND_CENTER, IadsRole.CONNECTION_NODE, IadsRole.POWER_SOURCE}
 )
+
+
+def brings_its_own_power(group: IadsGroundGroup) -> bool:
+    """Whether this site generates its own electricity.
+
+    A Patriot battery deploys with an EPP-III, a SAMP/T with its MGE: the power is
+    part of the site, not something it is fed. Bombing the substation that happens to
+    be nearest does nothing to it, and until now it switched it off.
+
+    Read from the unit class the campaign data already carries, rather than a list of
+    ids in Python: a mod that ships a generator is classed Power like the rest, and
+    starts working the day it is registered.
+
+    Alive units only, and asked when the mission is written rather than when the
+    network is built: kill the generator and the site is back on the grid the next
+    time a mission is generated.
+    """
+    return any(
+        unit.alive
+        and unit.unit_type is not None
+        and unit.unit_type.unit_class is UnitClass.POWER
+        for unit in group.units
+    )
 
 
 @dataclass
@@ -147,7 +171,13 @@ class IadsNetwork:
             #  (originating from SkynetNode.dcs_name_for_group)
             # but if it does, we want to know because it's supposed to be impossible afaict
             skynet_node = SkynetNode.from_group(node.group)
+            self_powered = brings_its_own_power(node.group)
             for connection in node.connections.values():
+                # A site with its own generator has no power dependency at all. An
+                # empty list is exactly what Skynet reads as "powered", so leaving the
+                # connection out IS the feature -- no Lua change needed.
+                if self_powered and connection.iads_role is IadsRole.POWER_SOURCE:
+                    continue
                 # A destroyed building has to keep reaching Skynet. Dropping it here left
                 # the element with an empty list, and genericCheckOneObjectIsAlive reads
                 # an empty list as alive -- so bombing a power station switched its SAMs

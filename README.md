@@ -29,10 +29,15 @@ Each item links to the fork PR that implements it. The authoritative, up-to-date
 list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=is%3Apr).
 
 ### Map & UI
-- **Air Wing squadron list, redesigned** — the aircraft type leads the row so the list
-  can be scanned, the primary task shows as a role chip, and the list gained a filter, a
-  sort order and grouping by type or base, both remembered between openings.
-  ([#118](https://github.com/juanjux/dcs-retribution/pull/118))
+- **The interface has been rebuilt.** The Air Wing list, the squadron dialog, the ATO
+  package and flight lists, the event log, the settings dialog, the command bar above the
+  map and the flight dialog were all redrawn to one vocabulary: a task chip in a fixed
+  colour family, the thing you came to read as the only large text, figures and times in
+  mono so they line up down a column, and amber reserved for the one thing in a row that
+  wants a decision. Dialogs remember the size you give them and open once rather than ten
+  times. Nothing about how the campaign plays changed -- same fields, same signals, same
+  validations, only where they live and how they read.
+  ([design by Claude Design](https://claude.ai/))
 
   <img src="https://raw.githubusercontent.com/juanjux/dcs-retribution/juanjux/screenshots/airwing-redesign.png" width="760">
 
@@ -155,72 +160,16 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   1.6 KB of a 12 MB campaign. Reopening it re-offers the leave requests still waiting
   (the promotion box is told once, not on every reopening).
 
-- **The squadron dialog fits its own text, and keeps the size you give it.** It opened
-  at 1200 px, which left the notes column 35 px of the roster's 564 -- the identity
-  column and the morale block take the rest -- so *every* note was shortened, down to
-  "Requests leave" itself becoming "Requests l...". The minimum is 1320 now, which fits
-  the longest of them ("Will refuse to fly next mission", 142 px) in 155. And the size
-  is remembered between openings, for any squadron, the same way the main window
-  remembers its own.
-
-- **Air Wing and Transfers open once.** Pressing Air Wing ten times opened ten of them,
-  each one held by the main window it was parented to; an open one is brought to the
-  front now. The two also shared a single reference, so opening Transfers dropped the
-  only one the transfers dialog had. A closed dialog is rebuilt rather than shown again,
-  so it never returns with a turn-old view.
-
-- **The six boxes above the map became one command bar.** Turn, weather, factions,
-  budget and intel used to be five group boxes with five frames, five sets of margins
-  and their own type sizes, next to a sixth full of buttons. They are one 80 px strip
-  now, with hairline dividers, the same 10.5 px caps captions as everywhere else, and
-  two big mono numbers -- turn and budget -- as the anchors. Intel is three bars with a
-  one-word verdict instead of "strong advantage" three times in 9 px type. A frame means
-  you can click it: Budget and Intel open dialogs and are framed, the read-only cells are
-  not. The toolbar icons move into the menu row as flat 22 px buttons, which gives their
-  old row back to the map. Narrow windows drop Intel first, then the winds.
-  ([design by Claude Design](https://claude.ai/))
-
-- **Packages and flights are rows, not prose.** Both ATO lists were four blocks of the
-  same 10 pt text in a two-by-two grid — name and TOT on the left, "Player Slots: 2" and
-  "Missing pilots: 1" on the right. They are 56 px rows now in the vocabulary the Air
-  Wing list already taught: the task chip first in the same three colour families, the
-  target or the airframe as the only large bold text, and the times in mono where they
-  line up down the column. A package with no flights, an unfilled flight or a missing
-  pilot is the one amber thing in the row, so it is not discovered at take-off.
-
-- **The log became an event list.** Every line began
-  `[2012-05-18 21:03:44][11]` — twenty-eight characters of prefix on every row, and the
-  wall clock is when the message object was built, which is not a fact about the
-  campaign. A row now carries the turn in mono, a category chip (repair, allied, enemy,
-  info, classified from the wording the twenty-odd message sites use) and the message
-  with its subject in bold. This turn's entries get an amber bar, the filter narrows to
-  one category, and the panel shows this turn until you ask for all of them. The full
-  timestamp lives in the tooltip.
-
-- **Live Pilots is one master switch, and the morale numbers have their own box.**
-  Turning it off used to leave morale, the enemy-aircrew report and the rank ladder
-  live; the rule is by page now, so everything on it greys out together and whatever is
-  added later is covered without anyone remembering. With morale off, its sixteen event
-  values grey out too. "Show pilot ranks in mission" is gone -- it is part of Live
-  Pilots, not a choice of its own. Two rules changed with the re-weighing: a wound is
-  felt every turn the medics keep him rather than the first three, and going without
-  leave costs the same each turn rather than compounding.
-- **One Mission Plugins page instead of two.** A row per plugin -- switch, name, and a
-  gear where there is something to set -- with the description underneath, and the
-  options in their own dialog. Turning CTLD on and setting it up used to be two pages
-  apart, and the options page was a wall of boxes for plugins you had not enabled.
+- **Two morale rules were re-weighed** when Live Pilots became a single master switch: a
+  wound is felt every turn the medics keep him rather than only the first three, and going
+  without leave costs the same each turn rather than compounding. "Show pilot ranks in
+  mission" is gone -- it is part of Live Pilots, not a choice of its own.
 
 - **The debriefing's morale section listed everyone who flew.** It reported any
   movement past a fixed size, and flying the mission is exactly that size, so every man
   who came home earned a row -- reading "Normal -> Normal", since the row names his
   state at each end. It reports a change of state now, which is the thing the row can
   show; the figures stay in the ledger.
-
-- **Settings pages index their own sections.** A page with several boxes was a scroll
-  rather than something to navigate -- Campaign Management now has seven. Any page with
-  more than one section gets a list of them beside it and shows one at a time, the same
-  move the dialog makes with its pages, and a section with nothing left to show drops out
-  of the list. "Campaign Management+" is folded into Campaign Management.
 
 - **Ignore parking space at airbases.** Airbases hold as many aircraft as you can pay
   for, whatever their ramp size. Carriers and FOBs are unaffected.
@@ -234,10 +183,6 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
 - **Search box for the settings.** Two hundred settings over six pages, plus the
   plugins' own options behind their gears. Type a word, pick a hit, and it opens the
   page, the gear or the plugin's options and flashes the setting. ([#181](https://github.com/juanjux/dcs-retribution/pull/181))
-- **The settings dialog got a working-over.** It opens wide enough that nothing is
-  cut off, sections index themselves without the index scrolling away, a switch with
-  tuning behind it carries a gear instead of a page, and *Mission Start* and *AI* are
-  their own sections. ([#170](https://github.com/juanjux/dcs-retribution/pull/170), [#174](https://github.com/juanjux/dcs-retribution/pull/174), [#179](https://github.com/juanjux/dcs-retribution/pull/179))
 - **Ranks, with a price.** *Rank Names* is *Ranks*, and what each rung costs in XP is
   set there beside its name. The morale bands are settings too, and a pilot's rank
   shift follows them. ([#174](https://github.com/juanjux/dcs-retribution/pull/174), [#179](https://github.com/juanjux/dcs-retribution/pull/179))
@@ -280,6 +225,48 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   [#20](https://github.com/juanjux/dcs-retribution/pull/20))
 
 ### Missions, AI & tasking
+- **Refuelling that actually happens.** Upstream had three per-task tanker options that
+  asked for a tanker the fulfiller then always pruned, and it hung a refuelling waypoint
+  on flights whether or not they needed one. Underneath, the waypoint could not work even
+  when it was wanted: the DCS task carried a start condition of *"every unit is at or
+  above 20% fuel"*, so a flight arriving at the tanker below a fifth of its fuel -- the
+  one case the whole thing exists for -- never began refuelling at all, and went home, or
+  to whatever airfield it could reach. That is why flights came back on fumes past a
+  tanker that was right there.
+
+  Now it is one setting, and the fuel decides. A package's route is costed leg by leg --
+  the climb at the climb rate, the run in at the combat rate, everything else at cruise
+  with the altitude correction -- against what the flight leaves the ground with,
+  internal plus its drop tanks. If it will not make it, and the faction has a tanker to
+  send, it gets a refuelling waypoint **after the target, on the way home**, in friendly
+  airspace, and the package asks for a tanker. Patrols get one too: a BARCAP orbits for
+  hours and is the flight most likely to want one.
+
+  The decision is made again when **you** edit the flight. The planner decides once,
+  while it builds the plan, so taking the drop tanks off or taking the route down to
+  eight thousand feet left a flight short with nothing noticing. On the way out of the
+  flight editor it asks, the way it already asks whether the ingress point should move:
+  *"Add waypoint and tanker"* or *"Add waypoint only"*, with the first greyed out and the
+  reason on screen when there is nothing to send. Saying yes does not rebuild the plan --
+  that would throw away the edits that made the flight short in the first place.
+
+  A tanker sent this way orbits at the very point the waypoint was put, so the two cannot
+  disagree, and it is not offered at all when that point is inside enemy air defences: a
+  tanker is large, slow, unarmed and flies in a straight line for an hour. Every idle
+  tanker squadron is offered rather than the first, with **the refuelling system each one
+  uses**, because nothing in the aircraft data -- ours or pydcs's -- says whether a
+  receiver has a probe or a receptacle, and a Hornet sent to a boom-only KC-135 comes home
+  empty.
+
+  And it is still there when the flight arrives. The tanker used to hold for five minutes
+  plus four a head -- ten minutes for a single flight -- centred on an arrival time that
+  is itself an estimate, and to reach station ninety seconds before it. It now holds for
+  the campaign's configured tanker on-station time and is there **ten minutes early**,
+  because a flight that fought, routed around a threat or simply flew its legs at another
+  speed is minutes out either way, and nearly always late.
+  ([#211](https://github.com/juanjux/dcs-retribution/pull/211),
+  [#213](https://github.com/juanjux/dcs-retribution/pull/213),
+  [#214](https://github.com/juanjux/dcs-retribution/pull/214))
 - **The LLM can see and choose its pilots, and read every setting.** Two parity gaps the
   OPFOR agent reported: it could see a flight's uncrewed count and nothing else about the
   people in it, and `/settings` was a hand-written subset that happened not to include

@@ -548,7 +548,12 @@ class SquadronDelegate(QStyledItemDelegate):
 
         pilots_font = self._font(option, 12, QFont.Weight.Normal)
         pilots_metrics = QFontMetrics(pilots_font)
-        pilots = f"{len(squadron.living_pilots)} pilots"
+        # Both numbers: what you can send, out of what is on the books. The bare
+        # headcount counted the wounded, the ones away and the ones who will not fly,
+        # so a squadron with nobody to send still read "16 pilots".
+        fit = len(squadron.fit_for_duty)
+        living = len(squadron.living_pilots)
+        pilots = f"{fit} pilots" if fit == living else f"{fit}/{living} pilots"
         painter.setFont(pilots_font)
         painter.setPen(TEXT_TERTIARY)
         pilots_width = pilots_metrics.horizontalAdvance(pilots)

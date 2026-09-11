@@ -24,6 +24,8 @@ MISSION_LOG_DEFAULTS = {
     engaging = true,
     duration = 20,
     maxmessages = 12,
+    goodnews = "YEAH!",
+    badnews = "OH NO!",
 }
 
 local function option(name)
@@ -39,6 +41,22 @@ local function option(name)
 end
 
 local DURATION = tonumber(option("duration")) or MISSION_LOG_DEFAULTS.duration
+
+-- A kill and a loss are the two lines you want to find again in a column that
+-- scrolls, and by the time you look they have gone past. A word in front of each
+-- is what the eye catches; the campaign chooses the words, and an empty one turns
+-- the whole thing off without another switch to find.
+local function cheer(good, text)
+    local word = option(good and "goodnews" or "badnews")
+    if word == nil then
+        return text
+    end
+    word = tostring(word):gsub("^%s+", ""):gsub("%s+$", "")
+    if word == "" then
+        return text
+    end
+    return word .. " " .. text
+end
 
 local logger = mist and mist.Logger:new("MissionLog", "info") or nil
 
@@ -448,12 +466,16 @@ local function queue_ground(e)
     if e.category == "groundkills" then
         forget_damage(e.target_id)
     end
+    -- Whose the target was is part of the key: a friendly T-72 and an enemy
+    -- one killed in the same window are not "3 enemy T-72".
     local key = table.concat(
-        {tostring(e.side), e.category, e.actor, e.verb, e.target, e.weapon}, "\30")
+        {tostring(e.side), e.category, e.actor, e.verb, e.target,
+         e.weapon, tostring(e.enemy == true)}, "\30")
     local bucket = pending_ground[key]
     if bucket == nil then
         bucket = {side = e.side, category = e.category, actor = e.actor,
                   verb = e.verb, target = e.target, weapon = e.weapon,
+                  enemy = e.enemy == true,
                   scenery = e.scenery == true, actor_type = e.actor_type,
                   actor_pilot = e.actor_pilot, weapon_name = e.weapon_name,
                   seen = {}, count = 0}
@@ -474,9 +496,10 @@ local function flush_ground()
             what = string.format("%s in the %s",
                 bucket.count > 1 and "several objects" or "an object", bucket.target)
         elseif bucket.count > 1 then
-            what = string.format("%d %s", bucket.count, bucket.target)
+            what = string.format("%d %s%s", bucket.count,
+                bucket.enemy and "enemy " or "", bucket.target)
         else
-            what = "the " .. bucket.target
+            what = (bucket.enemy and "the enemy " or "the ") .. bucket.target
         end
         -- Recorded here, not at queue time: the count is the fact worth
         -- keeping, and it is only known once the window closes.
@@ -484,8 +507,14 @@ local function flush_ground()
                 actor_type = bucket.actor_type, actor_pilot = bucket.actor_pilot,
                 target_type = bucket.target, count = bucket.count,
                 scenery = bucket.scenery, weapon = bucket.weapon_name})
-        announce(bucket.side, bucket.category, string.format(
-            "%s %s %s%s", bucket.actor, bucket.verb, what, bucket.weapon))
+        local line = string.format(
+            "%s %s %s%s", bucket.actor, bucket.verb, what, bucket.weapon)
+        if bucket.category == "groundkills" then
+            -- Ours only when what died was theirs: blue blowing up blue is not a
+            -- moment for a cheer.
+            line = cheer(bucket.enemy, line)
+        end
+        announce(bucket.side, bucket.category, line)
         pending_ground[key] = nil
     end
 end
@@ -501,6 +530,9 @@ end
 
 -- Text, dedup id, and whether this is scenery, for one ground target. Returns
 -- nil for anything not worth a line.
+--
+-- The name is bare here; whether it belongs to the enemy is decided by the
+-- caller, which is the only place that knows who did the shooting.
 local function ground_target(unit)
     if is_scenery(unit) then
         local objective = scenery_objective(unit)
@@ -593,21 +625,25 @@ function handler:onEvent(event)
                     weapon = weapon_name(event)})
             local hostile = shooter ~= nil and victim ~= nil and shooter ~= victim
             if shooter then
-                announce(shooter, "airkills", with_weapon(string.format(
-                    "%s shot down %s", killer_text,
-                    describe(event.target, hostile)), event))
+                announce(shooter, "airkills", cheer(true, with_weapon(string.format(
+                    "%s SHOT DOWN %s", killer_text,
+                    describe(event.target, hostile)), event)))
             end
             if victim then
-                announce(victim, "losses", with_weapon(string.format(
-                    "%s was shot down by %s", victim_text,
-                    describe(event.initiator, hostile)), event))
+                announce(victim, "losses", cheer(false, with_weapon(string.format(
+                    "%s was SHOT DOWN by %s", victim_text,
+                    describe(event.initiator, hostile)), event)))
             end
         elseif shooter then
             local text, target_id, scenery = ground_target(event.target)
             if text ~= nil then
                 local kind, pilot = unit_fields(event.initiator)
+                local target_side = side_of(event.target)
+                local hostile_ground = shooter ~= nil and target_side ~= nil
+                    and shooter ~= target_side
                 queue_ground({side = shooter, category = "groundkills",
-                    actor = killer_text, verb = "destroyed", target = text,
+                    enemy = hostile_ground,
+                    actor = killer_text, verb = "DESTROYED", target = text,
                     weapon = weapon_suffix(event), weapon_name = weapon_name(event),
                     target_id = target_id, scenery = scenery,
                     actor_type = kind, actor_pilot = pilot})
@@ -626,7 +662,10 @@ function handler:onEvent(event)
             local text, target_id, scenery = ground_target(event.target)
             if text ~= nil then
                 local kind, pilot = unit_fields(event.initiator)
+                local damaged_side = side_of(event.target)
                 queue_ground({side = shooter, category = "damage",
+                    enemy = shooter ~= nil and damaged_side ~= nil
+                        and shooter ~= damaged_side,
                     actor = describe(event.initiator), verb = "hit", target = text,
                     weapon = weapon_suffix(event), weapon_name = weapon_name(event),
                     target_id = target_id, scenery = scenery,
@@ -642,7 +681,7 @@ function handler:onEvent(event)
             local kind, pilot = unit_fields(event.initiator)
             record({kind = "ejection", side = side,
                     actor_type = kind, actor_pilot = pilot})
-            announce(side, "losses", string.format("%s ejected", describe(event.initiator)))
+            announce(side, "losses", string.format("%s EJECTED", describe(event.initiator)))
         end
         return
     end
@@ -656,7 +695,8 @@ function handler:onEvent(event)
             local kind, pilot = unit_fields(event.initiator)
             record({kind = "crash", side = side,
                     actor_type = kind, actor_pilot = pilot})
-            announce(side, "crashes", string.format("%s crashed", describe(event.initiator)))
+            announce(side, "crashes",
+                cheer(false, string.format("%s CRASHED", describe(event.initiator))))
         end
         return
     end

@@ -432,7 +432,7 @@ class Settings:
         ),
     )
     max_threat_range: int = bounded_int_option(
-        "Maxiumum threat range (NM)",
+        "Maximum threat range (NM)",
         page=CAMPAIGN_DOCTRINE_PAGE,
         section=DOCTRINE_DISTANCES_SECTION,
         default=200,

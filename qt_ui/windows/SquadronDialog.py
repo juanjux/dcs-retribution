@@ -60,6 +60,11 @@ from game.theater import ConflictTheater, ControlPoint, ParkingType
 from game.squadrons.pilot import PilotStatus
 from qt_ui.delegates import painter_context
 from game.squadrons.morale import RANK_LEVELS
+from qt_ui.widgets.pilotrow import (
+    MORALE_COLOURS,
+    MORALE_LABEL_OVERRIDE,
+    MORALE_LABEL_OVERRIDE_SELECTED,
+)
 from qt_ui.rankstars import (
     STAR_EMPTY,
     STAR_EMPTY_DIMMED,
@@ -110,20 +115,8 @@ ON_LEAVE = "#8FC3F0"
 ON_LEAVE_SELECTED = "#BEDCF6"
 ON_LEAVE_DETAIL = "#6E93B0"
 
-#: The morale ramp, cold to hot, matching the states in :mod:`game.squadrons.morale`.
-#: Normal is deliberately grey: a squadron that is holding up should read as quiet, and
-#: colour should mean something is unusual.
-MORALE_COLOURS = {
-    "Triumphant": "#8FC3F0",
-    "Confident": "#86C39A",
-    "Normal": "#8E9DAA",
-    "Shaken": "#E0A86B",
-    "Shattered": "#D97B4F",
-    "Broken": "#D9645E",
-}
-#: The label recedes further than the dot for a pilot nobody needs to think about.
-MORALE_LABEL_OVERRIDE = {"Normal": "#B7C6D2"}
-MORALE_LABEL_OVERRIDE_SELECTED = {"Normal": "#E4EDF4"}
+#: The morale ramp lives with the row painter now, so the roster here and the pilot
+#: selector in the flight dialog cannot drift apart -- they draw the same row.
 
 FATE_CHIPS = {
     PilotStatus.Dead: ("KIA", "#3B2523", "#D9645E"),
@@ -1049,20 +1042,64 @@ class SquadronDialog(QDialog):
         self.roster_summary.setStyleSheet("font-size: 12px; color: #8E9DAA;")
         row.addWidget(self.roster_summary)
         row.addStretch()
+
+        # The campaign's pilot limit is a ceiling and nothing more: raising it
+        # mid-campaign recruits nobody, and replenishment trickles men in at its own
+        # rate. This is how you actually fill a squadron that has just been gutted.
+        self.recruit_button = QPushButton()
+        self.recruit_button.setFixedHeight(24)
+        self.recruit_button.clicked.connect(self._on_recruit)
+        row.addWidget(self.recruit_button)
+
         self._refresh_roster_summary()
         return row
+
+    def _on_recruit(self) -> None:
+        hired = self.squadron_model.recruit_to_limit()
+        if not hired:
+            return
+        logging.info("Recruited %d pilots into %s", hired, self.squadron)
+        self._refresh_roster_summary()
 
     def _refresh_roster_summary(self) -> None:
         pilots = self.squadron.living_pilots
         wounded = sum(1 for p in pilots if p.wounded)
         on_leave = sum(1 for p in pilots if p.on_leave)
-        available = len(pilots) - wounded - on_leave
+        refusing = len(self.squadron.refusing_pilots)
+        available = len(self.squadron.fit_for_duty)
         parts = [f"<b>{len(pilots)}</b>", f"{available} available"]
         if wounded:
             parts.append(f"{wounded} wounded")
         if on_leave:
             parts.append(f"{on_leave} on leave")
+        if refusing:
+            # A man at rock bottom is out of the count for the same reason a wounded
+            # one is, and saying so is the difference between a squadron that looks
+            # under-used and one you know to rest.
+            parts.append(f"{refusing} refusing to fly")
         self.roster_summary.setText(" · ".join(parts))
+        self._refresh_recruit_button()
+
+    def _refresh_recruit_button(self) -> None:
+        button = getattr(self, "recruit_button", None)
+        if button is None:
+            return
+        if not self.squadron.pilot_limits_enabled:
+            button.hide()
+            return
+        room = self.squadron.unfilled_pilot_slots()
+        button.setVisible(True)
+        button.setEnabled(bool(room))
+        limit = self.squadron.pilot_limit
+        if room:
+            button.setText(f"Recruit {room}")
+            button.setToolTip(
+                f"Fill this squadron to its limit of {limit} pilots now, instead of "
+                "waiting for replenishment."
+            )
+        else:
+            button.setText("Full")
+            button.setToolTip(f"This squadron is at its limit of {limit} pilots.")
 
     @staticmethod
     def _build_column_headers() -> QWidget:
