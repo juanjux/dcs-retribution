@@ -201,16 +201,67 @@ class Squadron:
         """
         return friendship.in_play(self.settings)
 
-    def mission_skill(self, pilot: Pilot) -> Skill:
-        """The rung he will actually fly at, once his state of mind is counted.
+    def mission_skill(self, pilot: Pilot, flight: Optional[Flight] = None) -> Skill:
+        """The rung he will actually fly at, once how he is and who he is with count.
 
         Kept apart from :meth:`pilot_skill` on purpose. Rank is derived from that one,
         so shifting it for morale would demote a Major to Captain on a bad week and
         promote him back on a good one. Only the mission file reads this.
+
+        Without a flight it answers about the man alone, which is what the squadron
+        list and the planner want; with one it can see the formation he is in.
         """
-        if not self.morale_in_play or not pilot.has_morale:
-            return self.pilot_skill(pilot)
-        return shifted_skill(self.pilot_skill(pilot), pilot.morale, self.settings)
+        skill = self.pilot_skill(pilot)
+        if self.morale_in_play and pilot.has_morale:
+            skill = shifted_skill(skill, pilot.morale, self.settings)
+        return self._with_synergy(skill, flight)
+
+    def _with_synergy(self, skill: Skill, flight: Optional[Flight]) -> Skill:
+        """A rung for a formation that gets on.
+
+        The flight or the package, whichever reaches Close first -- one rung, never
+        two, however it was earned. It sits on top of whatever morale did, and that is
+        as far as this goes: two steps is a bigger lie than the engine should be told
+        about a cadet.
+        """
+        if flight is None or not self.friendship_in_play:
+            return skill
+        crews = [list(flight.roster.iter_pilots())]
+        package = getattr(flight, "package", None)
+        if package is not None:
+            crews.append(
+                [
+                    member
+                    for other in package.flights
+                    for member in other.roster.iter_pilots()
+                ]
+            )
+        for crew in crews:
+            members = [member for member in crew if member is not None]
+            value = friendship.synergy(members, self._leader_of(members), self.settings)
+            if friendship.flies_a_rung_better(value, self.settings):
+                return morale_rules.bumped_skill(skill, 1)
+        return skill
+
+    def _leader_of(self, crew: Sequence[Pilot]) -> Optional[Pilot]:
+        """The senior man in a formation, whose own relationships weigh heaviest.
+
+        Ranked rather than seated: spreading senior pilots one to a flight is supposed
+        to be worth more than stacking them in one, and that is only true if the man in
+        front is the one the formation is measured through. A package reaches across
+        squadrons and a pilot does not carry his own, so everyone here is read against
+        this squadron's ladder -- near enough to pick a leader by.
+        """
+        best: Optional[Pilot] = None
+        best_rung = -1
+        for pilot in crew:
+            try:
+                rung = SKILL_LADDER.index(self.pilot_skill(pilot))
+            except ValueError:
+                rung = 0
+            if rung > best_rung:
+                best, best_rung = pilot, rung
+        return best
 
     def pilot_rank(self, pilot: Pilot) -> Optional[Rank]:
         """The rank the pilot holds, or None while Live Pilots is switched off.
@@ -380,6 +431,9 @@ class Squadron:
         """
         if not self.morale_in_play:
             return
+        # Taken before anybody is moved: who is away at the same time as him must not
+        # depend on where he happens to sit in the roster.
+        away = [pilot for pilot in self.current_roster if pilot.on_leave]
         for pilot in list(self.current_roster):
             if not pilot.alive:
                 continue
@@ -391,7 +445,10 @@ class Squadron:
 
             if pilot.on_leave:
                 pilot.move_morale(
-                    morale_rules.ON_LEAVE, self.pilot_skill(pilot), self.settings, turn
+                    self._leave_event(pilot, away),
+                    self.pilot_skill(pilot),
+                    self.settings,
+                    turn,
                 )
                 # Served whether or not morale is his: leave the player granted
                 # himself still has to run out, or he never comes back.
@@ -417,18 +474,14 @@ class Squadron:
                     turn,
                 )
             before_drift = pilot.morale
-            pilot.morale = morale_rules.clamp(
-                pilot.morale + morale_rules.drift(pilot.morale, self.settings)
-            )
+            pilot.morale = morale_rules.clamp(pilot.morale + self._drift_for(pilot))
             pilot.note_morale_change(before_drift, "time passing", turn)
 
             if was_at_rock_bottom:
                 pilot.turns_at_zero += 1
                 # A roll, not a countdown: every turn a man is left at the bottom is a
                 # turn he might not come back from, and rank is what holds him there.
-                if random.random() < morale_rules.desertion_chance(
-                    self.pilot_skill(pilot)
-                ):
+                if random.random() < self._desertion_chance(pilot):
                     logging.info(
                         f"{pilot.name} has deserted {self} after "
                         f"{pilot.turns_at_zero} turns at rock bottom"
@@ -457,6 +510,73 @@ class Squadron:
                 pilot.leave_turns_requested = morale_rules.requested_leave_turns(
                     pilot.morale
                 )
+
+    def _leave_event(
+        self, pilot: Pilot, away: Sequence[Pilot]
+    ) -> morale_rules.MoraleEvent:
+        """A turn of leave, and what the company of the others away with him is worth.
+
+        Worked out again every turn, which is the whole character of it: three men who
+        go together and come back on different turns each lose the bonus as the others
+        return, so the last week alone is worth an ordinary week. Nobody's leave is
+        lengthened or shortened by it -- only what the company does for him while it
+        lasts.
+        """
+        event = morale_rules.ON_LEAVE
+        if not self.friendship_in_play:
+            return event
+        others = [other for other in away if other is not pilot]
+        if not others:
+            return event
+        return event.scaled_by(
+            friendship.leave_multiplier(
+                friendship.mean_towards(pilot, others), self.settings
+            ),
+            self.settings,
+        )
+
+    def _drift_for(self, pilot: Pilot) -> int:
+        """His step back towards the middle, and what the company does to it.
+
+        A man who is struggling comes home faster for each close friend in the
+        squadron; a man who is flying high comes down faster for each one who cannot
+        stand him. Only ever faster, and never past the middle: the drift has somewhere
+        to be, and friendship decides how quickly he gets there rather than where it
+        ends.
+        """
+        step = morale_rules.drift(pilot.morale, self.settings)
+        if not step or not self.friendship_in_play:
+            return step
+        if pilot.morale < morale_rules.MORALE_START:
+            company = sum(
+                1
+                for other in self.living_pilots
+                if other is not pilot
+                and friendship.is_close(friendship.feeling(pilot, other))
+            )
+        else:
+            company = sum(
+                1
+                for other in self.living_pilots
+                if other is not pilot
+                and friendship.is_hostile(friendship.feeling(other, pilot))
+            )
+        distance = abs(pilot.morale - morale_rules.MORALE_START)
+        moved = round(step * friendship.drift_help(company, self.settings))
+        return max(-distance, min(distance, moved))
+
+    def _desertion_chance(self, pilot: Pilot) -> float:
+        """How likely he is to walk away this turn.
+
+        Rank is what held him in his seat until now. The man in the next bunk is the
+        better half of the story.
+        """
+        chance = morale_rules.desertion_chance(self.pilot_skill(pilot))
+        if not self.friendship_in_play:
+            return chance
+        return chance * friendship.desertion_modifier(
+            friendship.mean_towards(pilot, self.living_pilots), self.settings
+        )
 
     def spare_pilots(self, excluding: Optional[Pilot] = None) -> int:
         """Who would still be available if this man were let go.
@@ -526,6 +646,34 @@ class Squadron:
         turn = self.coalition.game.turn
         for pilot in self.wounded_pilots:
             pilot.serve_a_turn_wounded(turn)
+            if not pilot.wounded:
+                self._note_recovery(pilot, turn)
+
+    def _note_recovery(self, pilot: Pilot, turn: int) -> None:
+        """He walked out of the hospital, and the squadron got him back.
+
+        The mirror of the wound, weighted the same way: the men who took his being
+        carried out hardest are the ones who are gladdest to see him. The flight he was
+        hurt in is long gone by now -- the ATO is cleared between turns -- so this is
+        the squadron's, which is who carried the loss of him in the first place.
+        """
+        if not self.morale_in_play:
+            return
+        for mate in self.living_pilots:
+            if mate is pilot or not mate.has_morale:
+                continue
+            times = 1
+            if self.friendship_in_play:
+                times = friendship.grief_times(
+                    1, friendship.feeling(mate, pilot), self.settings
+                )
+            for _ in range(times):
+                mate.move_morale(
+                    morale_rules.SQUADRON_RECOVERED,
+                    self.pilot_skill(mate),
+                    self.settings,
+                    turn,
+                )
 
     def replenish_lost_pilots(self) -> None:
         if self.pilot_limits_enabled and self.replenish_count > 0:

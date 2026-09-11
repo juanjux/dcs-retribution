@@ -2000,6 +2000,19 @@ class Settings:
         max=0,
         detail="As above, again, for the men who were up there with him.",
     )
+    morale_squadron_recovered: int = bounded_int_option(
+        "Squadron mate back from hospital",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_MORALE_SECTION,
+        subsection=LIVE_PILOTS_MORALE_EVENTS_SECTION,
+        default=4,
+        min=0,
+        max=50,
+        detail=(
+            "Once, when the medics let him go. Smaller than what the wound cost them,"
+            " so a man being hurt is never worth it on balance."
+        ),
+    )
     morale_base_lost: int = bounded_int_option(
         "Base lost",
         page=LIVE_PILOTS_PAGE,

@@ -92,6 +92,30 @@ def band_name(value: float) -> str:
     return band(value).name
 
 
+def _floor_of(name: str) -> float:
+    for candidate in FRIENDSHIP_BANDS:
+        if candidate.name == name:
+            return candidate.floor
+    raise KeyError(name)
+
+
+#: The two bands the morale drift reads: who is worth having around on a bad week, and
+#: who is worth avoiding on a good one. Taken from the table above rather than written
+#: out a second time, so moving a band moves these with it.
+CLOSE_FLOOR = _floor_of("Close")
+FROSTY_FLOOR = _floor_of("Frosty")
+
+
+def is_close(value: float) -> bool:
+    """Close or better: a man he is glad to have around."""
+    return value >= CLOSE_FLOOR
+
+
+def is_hostile(value: float) -> bool:
+    """Hostile or worse: below the bottom of Frosty, where it stops being coolness."""
+    return value < FROSTY_FLOOR
+
+
 # --- reading --------------------------------------------------------------------
 
 

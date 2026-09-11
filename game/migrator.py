@@ -177,7 +177,7 @@ class Migrator:
     def _restate_the_morale_numbers(self) -> None:
         """Move a campaign in progress onto the re-weighed morale figures.
 
-        The fifteen event sizes are settings, and settings ride inside the save, so a
+        The event sizes are settings, and settings ride inside the save, so a
         campaign started before they were re-weighed would keep playing by the old ones
         for ever. Only the ones still sitting on the previous default are moved: a
         figure the player set himself is his.
