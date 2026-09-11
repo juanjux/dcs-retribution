@@ -88,6 +88,14 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   day it is registered. No Lua change was needed after all: Skynet reads an empty power
   list as "powered", so leaving the connection out of the table *is* the feature. Kill
   the generator itself and the site is back on the grid next mission.
+- **The map can be searched.** A log line or a message from the OPFOR planner names a
+  site — MINK, or "the Patriot north of Creech" — and finding it meant panning around
+  hunting a code name among two hundred icons. The box on the top left searches every
+  objective and every base by name, **by what is parked there** (so "Patriot" or
+  "Linebacker" finds the site that holds one, and the row says which unit it was), and by
+  what kind of thing it is, with chips to narrow it to a side or a kind. Hovering a
+  result marks it on the map, clicking it goes there. Entirely client-side: the map
+  already holds every name and unit list, so there is nothing to ask the server for.
 - **A deletable waypoint can be deleted on an AI flight.** Hand-*adding* waypoints stays
   reserved for all-player flights — an edited route has taken DCS down before — but
   whether a waypoint can go is a property of the waypoint, not of the crew: one you added

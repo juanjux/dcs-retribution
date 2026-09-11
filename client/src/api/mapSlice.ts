@@ -40,19 +40,23 @@ const mapSlice = createSlice({
   reducers: {
     setHoveredEmitter(
       state,
-      action: PayloadAction<
-        { id: string; source: EmitterHoverSource } | null
-      >
+      action: PayloadAction<{ id: string; source: EmitterHoverSource } | null>,
     ) {
       state.hoveredEmitterId = action.payload?.id ?? null;
       state.hoveredEmitterSource = action.payload?.source ?? null;
+    },
+    // Where the map should be looking. The map watches this rather than being moved
+    // directly, because it re-centres itself on what the store says after every
+    // render -- a flyTo of its own would be undone by the next one.
+    setMapCenter(state, action: PayloadAction<LatLngLiteral>) {
+      state.center = action.payload;
     },
     setHighlightEmitters(state, action: PayloadAction<boolean>) {
       state.highlightEmitters = action.payload;
     },
     setShowDestroyedNonRepairable(
       state,
-      action: PayloadAction<{ blue: boolean; value: boolean }>
+      action: PayloadAction<{ blue: boolean; value: boolean }>,
     ) {
       if (action.payload.blue) {
         state.showDestroyedNonRepairable.blue = action.payload.value;
@@ -78,6 +82,7 @@ const mapSlice = createSlice({
 export const {
   setHoveredEmitter,
   setHighlightEmitters,
+  setMapCenter,
   setShowDestroyedNonRepairable,
 } = mapSlice.actions;
 

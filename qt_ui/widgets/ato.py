@@ -9,6 +9,7 @@ from PySide6.QtCore import (
     QModelIndex,
     QSize,
     Qt,
+    Signal,
 )
 from PySide6.QtGui import (
     QContextMenuEvent,
@@ -40,6 +41,10 @@ from .atodelegates import FlightRowDelegate, PackageRowDelegate
 
 class QFlightList(QListView):
     """List view for displaying the flights of a package."""
+
+    #: A flight was cancelled with the keyboard. The package dialog listens, because
+    #: emptying a package is what re-offers its auto-create button.
+    flight_deleted = Signal()
 
     def __init__(
         self, game_model: GameModel, package_model: Optional[PackageModel]
@@ -156,6 +161,28 @@ class QFlightList(QListView):
         menu.addAction(delete_action)
 
         menu.exec_(event.globalPos())
+
+    def keyPressEvent(self, event: QKeyEvent) -> None:
+        # Delete/Supr cancels the selected flight, the same key that already cancels a
+        # package: clearing four flights out of a package should not mean four trips
+        # through the context menu.
+        if event.key() == Qt.Key.Key_Delete and self.package_model is not None:
+            index = self.currentIndex()
+            if index.isValid():
+                row = index.row()
+                self.cancel_or_abort_flight(index)
+                # Keep a flight selected so a held Delete works down the list: the same
+                # row now holds the next one, clamped to the new last. A flight that
+                # was only aborted rather than cancelled is still there, and this
+                # re-selects it harmlessly.
+                remaining = self.model().rowCount()
+                if remaining:
+                    self.setCurrentIndex(self.model().index(min(row, remaining - 1), 0))
+                # noinspection PyUnresolvedReferences
+                self.flight_deleted.emit()
+                event.accept()
+                return
+        super().keyPressEvent(event)
 
 
 class QFlightPanel(QGroupBox):
