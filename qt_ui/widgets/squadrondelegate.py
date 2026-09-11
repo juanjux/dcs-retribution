@@ -18,7 +18,7 @@ from PySide6.QtGui import QColor, QFont, QFontMetrics, QIcon, QPainter
 from PySide6.QtWidgets import QStyle, QStyledItemDelegate, QStyleOptionViewItem
 
 from game.ato.flighttype import FlightType
-from game.squadrons import Squadron
+from game.squadrons import Squadron, friendship
 from qt_ui.models import AirWingModel
 
 ROW_HEIGHT = 48
@@ -247,6 +247,7 @@ class SquadronDelegate(QStyledItemDelegate):
         self._paint_type(painter, option, squadron, selected, depleted)
         self._paint_base(painter, option, squadron, selected, depleted)
         self._paint_task_chip(painter, option, squadron, selected, depleted)
+        self._paint_cohesion(painter, option, squadron)
         self._paint_strength(painter, option, squadron, width, selected, depleted)
 
         painter.restore()
@@ -512,6 +513,28 @@ class SquadronDelegate(QStyledItemDelegate):
             f"{count} squadron" + ("" if count == 1 else "s"),
         )
         painter.restore()
+
+    def _paint_cohesion(
+        self,
+        painter: QPainter,
+        option: QStyleOptionViewItem,
+        squadron: Squadron,
+    ) -> None:
+        """How well the squadron gets on, under its task chip.
+
+        The word rather than the number, in the same band colour the pilot picker
+        washes its rows with, so the two lists speak one language. Nothing at all for a
+        squadron nobody needs to think about, which is what Neutral is.
+        """
+        value = squadron.cohesion
+        if value is None:
+            return
+        band = friendship.band(value)
+        if band.colour is None:
+            return
+        painter.setFont(self._font(option, 11.5, QFont.Weight.Normal))
+        painter.setPen(QColor(band.colour))
+        painter.drawText(COL_CHIP_X, self._line_2, band.name)
 
     def _paint_strength(
         self,

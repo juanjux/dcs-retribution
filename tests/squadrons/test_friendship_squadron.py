@@ -312,3 +312,43 @@ def test_nobody_notices_while_he_is_still_in_the_bed() -> None:
     squadron.tend_the_wounded()
     assert hurt.status is PilotStatus.Wounded
     assert stranger.morale == morale_rules.MORALE_START
+
+
+# --- cohesion --------------------------------------------------------------------
+
+
+def test_cohesion_is_the_whole_roster_averaged() -> None:
+    squadron = _squadron(_settings())
+    crew = [Pilot(f"P{index}") for index in range(3)]
+    squadron.current_roster = crew
+    assert squadron.cohesion == friendship.FRIENDSHIP_START
+
+    _close(*crew)
+    squadron._cohesion = None
+    assert squadron.cohesion == friendship.FRIENDSHIP_MAX
+
+
+def test_cohesion_is_worked_out_once_a_turn() -> None:
+    """It is O(n^2) in the roster, which is nothing once and wasteful on every repaint
+    of the Air Wing list."""
+    squadron = _squadron(_settings())
+    crew = [Pilot(f"P{index}") for index in range(3)]
+    squadron.current_roster = crew
+    was = squadron.cohesion
+
+    _close(*crew)
+    assert squadron.cohesion == was  # still the answer from earlier in the turn
+
+    squadron.destination = None
+    squadron.tend_the_wounded = lambda: None
+    squadron.tend_morale = lambda turn: None
+    squadron.replenish_lost_pilots = lambda: None
+    squadron.deliver_orders = lambda: None
+    squadron.end_turn()
+    assert squadron.cohesion == friendship.FRIENDSHIP_MAX
+
+
+def test_a_squadron_with_friendship_off_has_nothing_to_say_about_it() -> None:
+    squadron = _squadron(_settings(friendship_enabled=False))
+    squadron.current_roster = [Pilot("A"), Pilot("B")]
+    assert squadron.cohesion is None

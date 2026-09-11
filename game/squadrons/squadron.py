@@ -94,6 +94,14 @@ class Squadron:
 
     use_livery_set: bool = False  # if livery-set should be used when present
 
+    #: How well the squadron gets on with itself, worked out once a turn. It is O(n^2)
+    #: in a roster of twenty or thirty, which is nothing once and wasteful on every
+    #: repaint of the Air Wing list. Defaulted, so a squadron out of a save written
+    #: before friendship existed reads "not worked out yet" rather than raising.
+    _cohesion: Optional[float] = field(
+        init=False, hash=False, compare=False, repr=False, default=None
+    )
+
     def __setstate__(self, state: dict[str, Any]) -> None:
         if "id" not in state:
             state["id"] = uuid4()
@@ -191,6 +199,22 @@ class Squadron:
         return self.settings.live_pilots_enabled and getattr(
             self.settings, "morale_enabled", True
         )
+
+    @property
+    def cohesion(self) -> Optional[float]:
+        """How well the squadron gets on with itself, on the 0-to-10 ruler.
+
+        Every directed pair among the living, averaged: the question the pilot picker
+        asks about one crew, asked about the whole roster. It is what answers "which of
+        my squadrons is a crew and which is a list of names".
+
+        None while friendship is off, because then there is nothing to say.
+        """
+        if not self.friendship_in_play:
+            return None
+        if self._cohesion is None:
+            self._cohesion = friendship.synergy(self.living_pilots)
+        return self._cohesion
 
     @property
     def friendship_in_play(self) -> bool:
@@ -455,6 +479,9 @@ class Squadron:
         self.initial_aircraft = self.owned_aircraft
 
     def end_turn(self) -> None:
+        # Everything below moves somebody, and the drift moves everybody: worked out
+        # again the next time the Air Wing asks.
+        self._cohesion = None
         if self.destination is not None:
             self.relocate_to(self.destination)
         self.tend_the_wounded()
