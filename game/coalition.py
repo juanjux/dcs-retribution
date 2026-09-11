@@ -15,7 +15,7 @@ from game.navmesh import NavMesh
 from game.orderedset import OrderedSet
 from game.procurement import AircraftProcurementRequest, ProcurementAi
 from game.profiling import MultiEventTracer, logged_duration
-from game.squadrons import AirWing
+from game.squadrons import AirWing, friendship
 from game.theater.bullseye import Bullseye
 from game.theater.player import Player
 from game.theater.transitnetwork import TransitNetwork, TransitNetworkBuilder
@@ -182,6 +182,13 @@ class Coalition:
         `Game.finish_turn`.
         """
         self.air_wing.end_turn()
+
+        # After the air wing rather than before it: a squadron that moved this turn has
+        # to meet its new neighbours, and this turn's recruits have to start meeting
+        # anybody. Here rather than in Squadron.end_turn because the drift crosses
+        # squadrons at a base, and per-squadron would roll every crossing pair twice.
+        friendship.tend_friendships(self.air_wing, self.game.settings)
+
         self.budget += Income(self.game, self.player).total
 
         # Need to recompute before transfers and deliveries to account for captures.

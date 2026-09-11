@@ -10,6 +10,10 @@ class BoundedFloatOption(OptionDescription):
     max: float
     divisor: int
 
+    #: What the spinner puts in front of the number. Defaults to the multiplier these
+    #: mostly are; a quantity passes an empty one.
+    prefix: str = "X "
+
 
 def bounded_float_option(
     text: str,
@@ -19,6 +23,7 @@ def bounded_float_option(
     min: float,
     max: float,
     divisor: int,
+    prefix: str = "X ",
     detail: Optional[str] = None,
     tooltip: Optional[str] = None,
     subsection: Optional[str] = None,
@@ -37,6 +42,7 @@ def bounded_float_option(
                 min=min,
                 max=max,
                 divisor=divisor,
+                prefix=prefix,
                 subsection=subsection,
                 enabled_when=enabled_when,
             )

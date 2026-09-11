@@ -19,6 +19,7 @@ from game.theater import ParkingType
 from game.theater.player import Player
 from .pilot import Pilot, PilotStatus
 from game.dcs.skills import CADET_SKILL, SKILL_LADDER, skill_for_experience
+from game.squadrons import friendship
 from game.squadrons import morale as morale_rules
 from game.squadrons.morale import TURNS_BEFORE_LEAVE_IS_MISSED, shifted_skill
 
@@ -190,6 +191,15 @@ class Squadron:
         return self.settings.live_pilots_enabled and getattr(
             self.settings, "morale_enabled", True
         )
+
+    @property
+    def friendship_in_play(self) -> bool:
+        """Friendship rides on Live Pilots and can be switched off on its own.
+
+        Switched off nothing reads the graph and nothing writes to it: no drift pass,
+        no tint in the picker, and every effect falls back to what it was in Tier III.
+        """
+        return friendship.in_play(self.settings)
 
     def mission_skill(self, pilot: Pilot) -> Skill:
         """The rung he will actually fly at, once his state of mind is counted.

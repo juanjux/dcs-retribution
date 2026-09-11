@@ -10,9 +10,14 @@ class FloatSpinner(QSpinBox):
         minimum: Optional[float] = None,
         maximum: Optional[float] = None,
         initial: Optional[float] = None,
+        prefix: str = "X ",
     ) -> None:
         super().__init__()
         self.divisor = divisor
+        #: What the number means. Most of these are multipliers, which is why "X " is
+        #: the default, but a setting that is a quantity rather than a multiplier
+        #: passes its own -- an empty one included.
+        self.prefix = prefix
 
         if minimum is not None:
             self.setMinimum(int(minimum * divisor))
@@ -22,7 +27,7 @@ class FloatSpinner(QSpinBox):
             self.setValue(int(initial * divisor))
 
     def textFromValue(self, val: int) -> str:
-        return f"X {val / self.divisor:.1f}"
+        return f"{self.prefix}{val / self.divisor:.1f}"
 
     @property
     def real_value(self) -> float:

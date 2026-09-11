@@ -82,6 +82,10 @@ LIVE_PILOTS_SURVIVAL_SECTION = "Survival Chance"
 LIVE_PILOTS_MORALE_SECTION = "Morale"
 LIVE_PILOTS_MORALE_STATES_SECTION = "Morale States"
 LIVE_PILOTS_MORALE_EVENTS_SECTION = "Morale Event Values"
+LIVE_PILOTS_FRIENDSHIP_SECTION = "Friendship"
+LIVE_PILOTS_FRIENDSHIP_DRIFT_SECTION = "Drifting Together and Apart"
+LIVE_PILOTS_FRIENDSHIP_EVENTS_SECTION = "Friendship Event Values"
+LIVE_PILOTS_FRIENDSHIP_EFFECTS_SECTION = "What Friendship Is Worth"
 
 
 GAMEPLAY_SECTION = "Gameplay"
@@ -2099,6 +2103,336 @@ class Settings:
             "Per pilot per turn at middling morale. It rises as he wears down and falls"
             " as he picks up, so a contented man asks now and then and a hollow one"
             " asks often. You answer at the end of the turn."
+        ),
+    )
+    friendship_enabled: bool = boolean_option(
+        "Enable friendship",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_FRIENDSHIP_SECTION,
+        default=True,
+        detail=(
+            "Pilots form an opinion of each other, 0 to 10 and starting at 5, and it"
+            " decides what a sortie is worth to a man, how hard his squadron looks for"
+            " him when he goes down, how well the formation flies and how much it hurts"
+            " when the man beside him does not come back. It is one-way: what he thinks"
+            " of somebody is not what they think of him."
+        ),
+    )
+    friendship_drift_squadron_up: int = bounded_int_option(
+        "Warms to a squadron-mate (%)",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_FRIENDSHIP_SECTION,
+        subsection=LIVE_PILOTS_FRIENDSHIP_DRIFT_SECTION,
+        default=35,
+        min=0,
+        max=100,
+        detail=(
+            "Every pair of pilots at a base rolls once a turn, in each direction. What"
+            " is left over after this and the figure below is a turn in which nothing"
+            " happened between them."
+        ),
+    )
+    friendship_drift_squadron_down: int = bounded_int_option(
+        "Cools towards a squadron-mate (%)",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_FRIENDSHIP_SECTION,
+        subsection=LIVE_PILOTS_FRIENDSHIP_DRIFT_SECTION,
+        default=20,
+        min=0,
+        max=100,
+    )
+    friendship_drift_base_up: int = bounded_int_option(
+        "Warms to another squadron at the base (%)",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_FRIENDSHIP_SECTION,
+        subsection=LIVE_PILOTS_FRIENDSHIP_DRIFT_SECTION,
+        default=22,
+        min=0,
+        max=100,
+        detail="The men he queues behind rather than the men he flies with.",
+    )
+    friendship_drift_base_down: int = bounded_int_option(
+        "Cools towards another squadron at the base (%)",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_FRIENDSHIP_SECTION,
+        subsection=LIVE_PILOTS_FRIENDSHIP_DRIFT_SECTION,
+        default=10,
+        min=0,
+        max=100,
+    )
+    friendship_drift_step: float = bounded_float_option(
+        "How far a quiet turn moves a pair",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_FRIENDSHIP_SECTION,
+        subsection=LIVE_PILOTS_FRIENDSHIP_DRIFT_SECTION,
+        default=1.0,
+        min=0.0,
+        max=3.0,
+        divisor=10,
+        prefix="",
+    )
+    friendship_drift_ceiling: float = bounded_float_option(
+        "Highest a quiet turn can reach",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_FRIENDSHIP_SECTION,
+        subsection=LIVE_PILOTS_FRIENDSHIP_DRIFT_SECTION,
+        default=7.0,
+        min=5.0,
+        max=10.0,
+        divisor=10,
+        prefix="",
+        detail=(
+            "Drifting along at a base makes acquaintances and no more. Everything above"
+            " this is earned in the air, which is what keeps the bands that pay for"
+            " something out of reach of a campaign that does nothing. Falling out has"
+            " no such floor: losing touch with somebody needs nothing but time."
+        ),
+    )
+    friendship_flew_together: float = bounded_float_option(
+        "Flew in the same formation",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_FRIENDSHIP_SECTION,
+        subsection=LIVE_PILOTS_FRIENDSHIP_EVENTS_SECTION,
+        default=2.0,
+        min=0.0,
+        max=5.0,
+        divisor=10,
+        prefix="",
+    )
+    friendship_same_package: float = bounded_float_option(
+        "Flew in the same package",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_FRIENDSHIP_SECTION,
+        subsection=LIVE_PILOTS_FRIENDSHIP_EVENTS_SECTION,
+        default=1.0,
+        min=0.0,
+        max=5.0,
+        divisor=10,
+        prefix="",
+        detail="A different formation on the same mission. Worth less than a wing.",
+    )
+    friendship_max_gain_per_turn: float = bounded_float_option(
+        "Most a pair can gain in one turn",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_FRIENDSHIP_SECTION,
+        subsection=LIVE_PILOTS_FRIENDSHIP_EVENTS_SECTION,
+        default=4.0,
+        min=0.0,
+        max=10.0,
+        divisor=10,
+        prefix="",
+        detail=(
+            "Without a ceiling, three flights a turn with the same four men reaches the"
+            " top of the scale in a fortnight and friendship stops being slow."
+        ),
+    )
+    friendship_ff_air_flight: float = bounded_float_option(
+        "Shot down one of ours: taken off by his own formation",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_FRIENDSHIP_SECTION,
+        subsection=LIVE_PILOTS_FRIENDSHIP_EVENTS_SECTION,
+        default=3.0,
+        min=0.0,
+        max=10.0,
+        divisor=10,
+        prefix="",
+        detail="They watched it happen. Taken off what they think of the shooter.",
+    )
+    friendship_ff_air_squadron: float = bounded_float_option(
+        "Shot down one of ours: taken off by the victim's squadron",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_FRIENDSHIP_SECTION,
+        subsection=LIVE_PILOTS_FRIENDSHIP_EVENTS_SECTION,
+        default=6.0,
+        min=0.0,
+        max=10.0,
+        divisor=10,
+        prefix="",
+        detail=(
+            "A man in both his formation and the victim's squadron takes the larger of"
+            " the two, never the sum."
+        ),
+    )
+    friendship_ff_ground: float = bounded_float_option(
+        "Hit our own on the ground",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_FRIENDSHIP_SECTION,
+        subsection=LIVE_PILOTS_FRIENDSHIP_EVENTS_SECTION,
+        default=2.0,
+        min=0.0,
+        max=10.0,
+        divisor=10,
+        prefix="",
+    )
+    friendship_xp_per_point: int = bounded_int_option(
+        "Experience multiplier, per point (%)",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_FRIENDSHIP_SECTION,
+        subsection=LIVE_PILOTS_FRIENDSHIP_EFFECTS_SECTION,
+        default=5,
+        min=0,
+        max=25,
+        detail=(
+            "Measured against the men he flew with, counted from Neutral, so it is"
+            " signed: a formation he cannot stand is worth less than flying alone."
+            " Experience itself never goes backwards however low it drives the"
+            " multiplier."
+        ),
+    )
+    friendship_survival_per_point: int = bounded_int_option(
+        "Survival and rescue, per point (%)",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_FRIENDSHIP_SECTION,
+        subsection=LIVE_PILOTS_FRIENDSHIP_EFFECTS_SECTION,
+        default=3,
+        min=0,
+        max=15,
+        detail=(
+            "How much harder they look for a man they like, added to the survival roll"
+            " and to the wound roll. This one reads what they think of him rather than"
+            " what he thinks of them, and it is positive only: being disliked does not"
+            " make anybody slower to reach a burning cockpit."
+        ),
+    )
+    friendship_survival_cap: int = bounded_int_option(
+        "Most survival and rescue can add (%)",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_FRIENDSHIP_SECTION,
+        subsection=LIVE_PILOTS_FRIENDSHIP_EFFECTS_SECTION,
+        default=20,
+        min=0,
+        max=100,
+    )
+    friendship_synergy_floor: float = bounded_float_option(
+        "A formation flies a rung better from",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_FRIENDSHIP_SECTION,
+        subsection=LIVE_PILOTS_FRIENDSHIP_EFFECTS_SECTION,
+        default=7.1,
+        min=5.0,
+        max=10.0,
+        divisor=10,
+        prefix="",
+        detail=(
+            "A flight or a package this close flies one rung above the rank its pilots"
+            " hold. The two never stack: one rung from getting on, one from morale, and"
+            " no more."
+        ),
+    )
+    friendship_leader_weight: int = bounded_int_option(
+        "The leader's share of a formation (%)",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_FRIENDSHIP_SECTION,
+        subsection=LIVE_PILOTS_FRIENDSHIP_EFFECTS_SECTION,
+        default=35,
+        min=0,
+        max=100,
+        detail=(
+            "How much of a formation's standing comes from its senior pilot's own"
+            " relationships rather than from everybody's. Spreading your veterans one"
+            " to a flight is worth more than stacking them in one."
+        ),
+    )
+    friendship_desertion_per_point: int = bounded_int_option(
+        "Desertion chance cut, per point (%)",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_FRIENDSHIP_SECTION,
+        subsection=LIVE_PILOTS_FRIENDSHIP_EFFECTS_SECTION,
+        default=5,
+        min=0,
+        max=20,
+        detail="Against his own squadron. Rank held him there; so does the next bunk.",
+    )
+    friendship_desertion_cap: int = bounded_int_option(
+        "Most desertion can be cut by (%)",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_FRIENDSHIP_SECTION,
+        subsection=LIVE_PILOTS_FRIENDSHIP_EFFECTS_SECTION,
+        default=50,
+        min=0,
+        max=100,
+    )
+    friendship_leave_together_per_point: int = bounded_int_option(
+        "Leave taken in company, per point (%)",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_FRIENDSHIP_SECTION,
+        subsection=LIVE_PILOTS_FRIENDSHIP_EFFECTS_SECTION,
+        default=8,
+        min=0,
+        max=25,
+        detail=(
+            "Measured against the men from his squadron who are away at the same time,"
+            " and only while they are. As each of them comes back the rest lose what he"
+            " was worth, so the last week alone is an ordinary week."
+        ),
+    )
+    friendship_leave_together_cap: int = bounded_int_option(
+        "Most leave in company can add (%)",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_FRIENDSHIP_SECTION,
+        subsection=LIVE_PILOTS_FRIENDSHIP_EFFECTS_SECTION,
+        default=50,
+        min=0,
+        max=200,
+    )
+    friendship_drift_help_per_friend: int = bounded_int_option(
+        "Morale drifts home faster, per friend (%)",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_FRIENDSHIP_SECTION,
+        subsection=LIVE_PILOTS_FRIENDSHIP_EFFECTS_SECTION,
+        default=5,
+        min=0,
+        max=25,
+        detail=(
+            "A man who is Shaken or worse comes back towards Normal faster for each"
+            " Close friend around him, and a man above Normal falls back faster for"
+            " each one who cannot stand him."
+        ),
+    )
+    friendship_drift_help_cap: int = bounded_int_option(
+        "Most company can bend that drift by (%)",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_FRIENDSHIP_SECTION,
+        subsection=LIVE_PILOTS_FRIENDSHIP_EFFECTS_SECTION,
+        default=30,
+        min=0,
+        max=100,
+    )
+    friendship_grief_per_point: int = bounded_int_option(
+        "A friend's death hits harder, per point (%)",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_FRIENDSHIP_SECTION,
+        subsection=LIVE_PILOTS_FRIENDSHIP_EFFECTS_SECTION,
+        default=33,
+        min=0,
+        max=100,
+        detail=(
+            "What a death costs the men who were up there with him, weighed by what"
+            " they thought of him. A man they could not stand still counts once."
+        ),
+    )
+    friendship_grief_cap: float = bounded_float_option(
+        "Most a death can be multiplied by",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_FRIENDSHIP_SECTION,
+        subsection=LIVE_PILOTS_FRIENDSHIP_EFFECTS_SECTION,
+        default=4.0,
+        min=1.0,
+        max=10.0,
+        divisor=10,
+    )
+    friendship_limit: int = bounded_int_option(
+        "Opinions a pilot carries",
+        page=LIVE_PILOTS_PAGE,
+        section=LIVE_PILOTS_FRIENDSHIP_SECTION,
+        subsection=LIVE_PILOTS_FRIENDSHIP_EFFECTS_SECTION,
+        default=120,
+        min=10,
+        max=500,
+        detail=(
+            "He keeps the ones he holds most strongly and forgets the rest, so a long"
+            " campaign does not end with every survivor carrying an entry for every man"
+            " he ever shared a base with."
         ),
     )
     live_pilots_wounded_chance: int = bounded_int_option(

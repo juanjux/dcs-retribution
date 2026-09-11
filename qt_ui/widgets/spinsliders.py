@@ -14,7 +14,12 @@ SLIDER_WIDTH = 260
 
 class FloatSpinSlider(QHBoxLayout):
     def __init__(
-        self, minimum: float, maximum: float, initial: float, divisor: int
+        self,
+        minimum: float,
+        maximum: float,
+        initial: float,
+        divisor: int,
+        prefix: str = "X ",
     ) -> None:
         super().__init__()
 
@@ -23,7 +28,7 @@ class FloatSpinSlider(QHBoxLayout):
         slider.setMinimum(int(minimum * divisor))
         slider.setMaximum(int(maximum * divisor))
         slider.setValue(int(initial * divisor))
-        self.spinner = FloatSpinner(divisor, minimum, maximum, initial)
+        self.spinner = FloatSpinner(divisor, minimum, maximum, initial, prefix)
         slider.valueChanged.connect(lambda x: self.spinner.setValue(x))
         self.spinner.valueChanged.connect(lambda x: slider.setValue(x))
 
