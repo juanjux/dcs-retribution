@@ -1,6 +1,11 @@
 ﻿# Retribution v1.6.3 (414th)
 
 ## Features/Improvements
+* **[Mission Generator]** A battery that deploys with its own generator (Patriot EPP, SAMP/T MGE) no longer goes dark when the nearest substation is bombed; killing the generator itself puts it back on the grid.
+* **[UI]** A SAM cut off from its network draws an amber dashed ring and one with no power a faded grey one, with the reason in the tooltip, instead of the same confident ring as a fully networked battery.
+* **[Campaign AI]** The OPFOR API reports which sites are autonomous or dark and why, on targets, threats and /iads.
+* **[FIX]** A destroyed site was dropped from the IADS network, so its links vanished from the map instead of drawing broken -- and losing your last command centre handed command back.
+* **[UI]** A single-aircraft AI flight has NAV where a formation would have JOIN and SPLIT; adding a second aircraft brings them back.
 * **[FIX]** The tanker the auto-planner proposed for Strike, OCA and DEAD packages was pruned every time, so the three settings that asked for it did nothing.
 * **[Campaign AI]** One *Plan a tanker and a refuelling waypoint when a package needs the fuel* option replaces the three per-task ones, and the refuelling waypoint is only added to a flight the fuel estimate says cannot make the plan.
 * **[FIX]** The METAR refresh button drew a text glyph that fell back to the wrong font; it uses the reload icon now, on a slightly larger button.
