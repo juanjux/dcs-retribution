@@ -483,6 +483,30 @@ class Squadron:
                 self.coalition.game.turn,
             )
 
+    def unfilled_pilot_slots(self) -> int:
+        """How many more men this squadron could hold, or 0 with limits off.
+
+        The campaign setting is a ceiling, and changing it mid-campaign does nothing
+        on its own -- nobody is recruited into the room it just made, and nobody is
+        removed when it shrinks. This is the number the player needs to see to know
+        that, and to act on it.
+        """
+        if not self.pilot_limits_enabled:
+            return 0
+        return max(0, self._number_of_unfilled_pilot_slots)
+
+    def recruit_to_limit(self) -> int:
+        """Fill every empty slot now, and say how many that was.
+
+        Replenishment trickles men in at the campaign's rate, which is right for a
+        squadron bleeding slowly and useless for one that has just lost half its
+        aircrew, or for a campaign whose limit was raised after it started.
+        """
+        room = self.unfilled_pilot_slots()
+        if room:
+            self._recruit_pilots(room)
+        return room
+
     def discharge(self, pilot: Pilot) -> None:
         """Throw a pilot out. He leaves the roster and joins the roll below it."""
         pilot.discharge()
@@ -650,6 +674,29 @@ class Squadron:
     @property
     def number_of_available_pilots(self) -> int:
         return len(self.available_pilots)
+
+    @property
+    def refusing_pilots(self) -> list[Pilot]:
+        """The men at rock bottom, who will not take a seat however free it is."""
+        if not self.morale_in_play:
+            return []
+        return [p for p in self.living_pilots if p.refuses_to_fly]
+
+    @property
+    def fit_for_duty(self) -> list[Pilot]:
+        """Who could be given a seat if one were free.
+
+        Not the same question as :attr:`available_pilots`, which is the untasked pool
+        and so shrinks as you plan. This is what the counts the player reads mean: on
+        the books, not hurt, not away, and willing. The three displays that answer it
+        each subtracted their own idea of who was out, and the one that forgot the
+        refusers said a squadron had seven men for four seats.
+        """
+        return [
+            pilot
+            for pilot in self.living_pilots
+            if not pilot.wounded and not pilot.on_leave and not pilot.refuses_to_fly
+        ]
 
     def can_provide_pilots(self, count: int) -> bool:
         return not self.pilot_limits_enabled or self.number_of_available_pilots >= count

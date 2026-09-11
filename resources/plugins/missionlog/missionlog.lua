@@ -24,6 +24,8 @@ MISSION_LOG_DEFAULTS = {
     engaging = true,
     duration = 20,
     maxmessages = 12,
+    goodnews = "YEAH!",
+    badnews = "OH NO!",
 }
 
 local function option(name)
@@ -39,6 +41,22 @@ local function option(name)
 end
 
 local DURATION = tonumber(option("duration")) or MISSION_LOG_DEFAULTS.duration
+
+-- A kill and a loss are the two lines you want to find again in a column that
+-- scrolls, and by the time you look they have gone past. A word in front of each
+-- is what the eye catches; the campaign chooses the words, and an empty one turns
+-- the whole thing off without another switch to find.
+local function cheer(good, text)
+    local word = option(good and "goodnews" or "badnews")
+    if word == nil then
+        return text
+    end
+    word = tostring(word):gsub("^%s+", ""):gsub("%s+$", "")
+    if word == "" then
+        return text
+    end
+    return word .. " " .. text
+end
 
 local logger = mist and mist.Logger:new("MissionLog", "info") or nil
 
@@ -489,8 +507,14 @@ local function flush_ground()
                 actor_type = bucket.actor_type, actor_pilot = bucket.actor_pilot,
                 target_type = bucket.target, count = bucket.count,
                 scenery = bucket.scenery, weapon = bucket.weapon_name})
-        announce(bucket.side, bucket.category, string.format(
-            "%s %s %s%s", bucket.actor, bucket.verb, what, bucket.weapon))
+        local line = string.format(
+            "%s %s %s%s", bucket.actor, bucket.verb, what, bucket.weapon)
+        if bucket.category == "groundkills" then
+            -- Ours only when what died was theirs: blue blowing up blue is not a
+            -- moment for a cheer.
+            line = cheer(bucket.enemy, line)
+        end
+        announce(bucket.side, bucket.category, line)
         pending_ground[key] = nil
     end
 end
@@ -601,14 +625,14 @@ function handler:onEvent(event)
                     weapon = weapon_name(event)})
             local hostile = shooter ~= nil and victim ~= nil and shooter ~= victim
             if shooter then
-                announce(shooter, "airkills", with_weapon(string.format(
+                announce(shooter, "airkills", cheer(true, with_weapon(string.format(
                     "%s SHOT DOWN %s", killer_text,
-                    describe(event.target, hostile)), event))
+                    describe(event.target, hostile)), event)))
             end
             if victim then
-                announce(victim, "losses", with_weapon(string.format(
+                announce(victim, "losses", cheer(false, with_weapon(string.format(
                     "%s was SHOT DOWN by %s", victim_text,
-                    describe(event.initiator, hostile)), event))
+                    describe(event.initiator, hostile)), event)))
             end
         elseif shooter then
             local text, target_id, scenery = ground_target(event.target)
@@ -671,7 +695,8 @@ function handler:onEvent(event)
             local kind, pilot = unit_fields(event.initiator)
             record({kind = "crash", side = side,
                     actor_type = kind, actor_pilot = pilot})
-            announce(side, "crashes", string.format("%s CRASHED", describe(event.initiator)))
+            announce(side, "crashes",
+                cheer(false, string.format("%s CRASHED", describe(event.initiator))))
         end
         return
     end
