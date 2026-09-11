@@ -261,11 +261,24 @@ class Squadron:
                 ]
             )
         for crew in crews:
-            members = [member for member in crew if member is not None]
-            value = friendship.synergy(members, self._leader_of(members), self.settings)
-            if friendship.flies_a_rung_better(value, self.settings):
+            value = self.formation_synergy(crew)
+            if value is not None and friendship.flies_a_rung_better(
+                value, self.settings
+            ):
                 return morale_rules.bumped_skill(skill, 1)
         return skill
+
+    def formation_synergy(self, crew: Sequence[Optional[Pilot]]) -> Optional[float]:
+        """How well a formation gets on, with its leader weighted heaviest.
+
+        The figure :meth:`mission_skill` reads to decide whether they fly a rung above
+        their rank, and the one the planner is shown so it can crew for it. None while
+        friendship is off, or for a formation too small to have an opinion.
+        """
+        members = [member for member in crew if member is not None]
+        if not self.friendship_in_play or len(members) < 2:
+            return None
+        return friendship.synergy(members, self._leader_of(members), self.settings)
 
     def _leader_of(self, crew: Sequence[Pilot]) -> Optional[Pilot]:
         """The senior man in a formation, whose own relationships weigh heaviest.

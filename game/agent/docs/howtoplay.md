@@ -143,6 +143,38 @@ you lose if they capture yours. Think in terms of a campaign, not a single turn.
   turns than he asked, or refuse the steadiest man and rest the worst one. A squadron
   where most pilots are Shaken and all of them are told no will keep going down: rest
   them in ones and twos over several turns rather than losing them together.
+- **Friendship**: what each pilot thinks of each other pilot, 0 to 10 and starting at
+  5. It is **one-way** -- what he thinks of somebody is not what they think of him --
+  and it is worth reading before you crew anything, because it decides four things:
+
+  1. **What a sortie pays him**, measured against the men he flew with. A formation he
+     cannot stand is worth *less* to him than flying alone.
+  2. **How the formation flies**. A flight, or a whole package, that is **Close** or
+     better flies **one rung above** the rank its pilots hold -- on top of whatever
+     morale did. `flights/{flight_id}/crew` reports the formation's `synergy`: its
+     `value`, its `band`, and `flies_a_rung_better`, which is the thing to crew for.
+  3. **Whether he is pulled out of a wreck**. This one reads the other end of the pair:
+     what *they* think of *him*. Being disliked never makes anybody slower -- there is
+     no penalty, only men who look harder.
+  4. **What it costs you when he dies.** A death lands on the men who were up there with
+     him as many times over as they thought of him.
+
+  **The leader's own relationships weigh heaviest** in a formation, so spreading your
+  senior pilots one to a flight is worth more than stacking them in one.
+
+  Each pilot in `squadrons/{squadron_id}/pilots` and in `flights/{flight_id}/crew`
+  carries an `id` and his `relationships`: the strongest bonds he has, `towards` and
+  `from` each man, with the band's name -- both signs and across squadrons, because an
+  enemy is exactly as actionable as a friend and a package is crewed out of more than
+  one squadron. A seat in a crew also carries `skill_breakdown`, which is the working
+  behind `flies_at`: the rank he holds, the rungs morale moved him, and the rung the
+  company he is in is worth. The roster carries the squadron's own `cohesion`, which
+  answers whether it is a crew or a list of names.
+
+  Pilots at a base warm to each other slowly on their own, but **a quiet turn can never
+  carry a pair past Friendly**: everything above that is earned in the air. That is the
+  one thing worth planning around -- a crew you keep together across turns becomes worth
+  a rung of skill, and a crew you shuffle every turn never will.
 - **Ground forces**: vehicle groups at your bases and along the front. You buy them,
   move them between bases (transfers), and commit them via front-line stance.
 - **Money**: you earn income each turn and spend it on aircraft and ground units.

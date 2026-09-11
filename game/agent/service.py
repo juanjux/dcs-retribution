@@ -200,8 +200,10 @@ def capabilities() -> dict:
             "aircraft/pylons (weapons each pylon accepts, to build a custom payload)",
             "aircraft/loadouts (named ready-made loadouts for an airframe)",
             "waypoints/{flight_id} (a flight's waypoints, to adjust its route)",
-            "squadrons/{squadron_id}/pilots (rank, experience, skill, wounds, and who is already flying)",
-            "flights/{flight_id}/crew (who is in each seat, and which pilots are free)",
+            "squadrons/{squadron_id}/pilots (rank, experience, skill, wounds, who is"
+            " already flying, and who gets on with whom)",
+            "flights/{flight_id}/crew (who is in each seat, which pilots are free, and"
+            " how well the crew flies together)",
             "ground/mine (YOUR OWN ground objects with their ids -- turn_context.targets is the enemy's, so this is the only place to get an id to rebuild/upgrade one of yours)",
             "ground/options/{tgo_id} (what a SAM/EWR/armor/ship site can be rebuilt into + costs)",
             "validate",
