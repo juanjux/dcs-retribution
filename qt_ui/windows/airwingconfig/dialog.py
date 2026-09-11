@@ -228,11 +228,15 @@ class AirWingConfigurationTab(QWidget):
         return card
 
     def on_card_expanded(self, opened: SquadronCard) -> None:
-        """One at a time: four open forms is the page this replaced."""
-        for cards in self.cards.values():
-            for card in cards:
-                if card is not opened:
-                    card.set_open(False)
+        """One open card per type.
+
+        Per type rather than per dialog: opening a Hornet squadron used to close the
+        Warthog one you had open, so going to look at something else and coming back
+        left you where you had not been.
+        """
+        for card in self.cards.get(opened.squadron.aircraft, []):
+            if card is not opened:
+                card.set_open(False)
 
     def on_changed(self) -> None:
         self.type_list.refresh()
@@ -384,10 +388,18 @@ class AirWingConfigurationDialog(QDialog):
         super().__init__(parent)
         self.game = game
         self.cheat = cheat
-        self.setMinimumSize(1180, 780)
-        self.resize(1280, 860)
+        # Wide enough for an open card: 300 of types, 300 of form and the chips
+        # beside it, 300 of bases, and the gaps between them.
+        self.setMinimumSize(1300, 780)
+        self.resize(1420, 880)
         self.setWindowTitle("Air Wing Configuration")
-        self.setStyleSheet(f"QDialog {{ background: {BG}; }}")
+        # The app stylesheet gives every QWidget -- labels included -- a background
+        # colour, so each label painted a blue-grey box of its own over whatever it sat
+        # on. Over the cheat header that reads as mud. A label that wants a background
+        # (the task chip, the CHEAT chip) sets its own, and its own stylesheet wins.
+        self.setStyleSheet(
+            f"QDialog {{ background: {BG}; }} QLabel {{ background: transparent; }}"
+        )
 
         column = QVBoxLayout()
         column.setContentsMargins(0, 0, 0, 0)
@@ -743,16 +755,35 @@ class AirWingConfigurationDialog(QDialog):
         super().accept()
 
     def reject(self) -> None:
-        result = QMessageBox.information(
-            None,
-            "Discard changes?",
-            "Are you sure you want to discard your changes?",
-            QMessageBox.StandardButton.Yes,
-            QMessageBox.StandardButton.No,
+        """Closing the window is a question, not a discard.
+
+        "Are you sure you want to discard your changes? Yes / No" asks you to answer a
+        question about a question. Keep and Discard are the two things that can happen.
+        """
+        box = QMessageBox(self)
+        box.setWindowTitle("Close Air Wing Configuration")
+        box.setText("Keep the changes you have made?")
+        keep = box.addButton("Keep", QMessageBox.ButtonRole.AcceptRole)
+        discard = box.addButton("Discard", QMessageBox.ButtonRole.DestructiveRole)
+        keep.setStyleSheet(
+            (
+                f"background: {AMBER}; color: #2A1F12;"
+                if self.cheat
+                else f"background: {ACCENT}; color: #0F1922;"
+            )
+            + " border: none; border-radius: 3px; padding: 6px 18px;"
+            " font-weight: 600;"
         )
-        if result == QMessageBox.StandardButton.No:
-            return
-        super().reject()
+        discard.setStyleSheet(
+            "background: #A8443F; color: #FFFFFF; border: none; border-radius: 3px;"
+            " padding: 6px 18px;"
+        )
+        box.setDefaultButton(keep)
+        box.exec_()
+        if box.clickedButton() is discard:
+            super().reject()
+        else:
+            self.accept()
 
 
 __all__ = ["AirWingConfigurationDialog", "PresetSquadronSelector"]

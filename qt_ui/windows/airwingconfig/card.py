@@ -232,7 +232,8 @@ class SquadronCard(QWidget):
         header.setLayout(row)
 
         self.arrow = QLabel("▸")
-        self.arrow.setStyleSheet(f"font-size: 12px; color: {TEXT_LABEL};")
+        self.arrow.setFixedWidth(16)
+        self.arrow.setAlignment(Qt.AlignmentFlag.AlignCenter)
         row.addWidget(self.arrow)
 
         text = QVBoxLayout()
@@ -296,6 +297,11 @@ class SquadronCard(QWidget):
         self._open = is_open
         self.body.setVisible(is_open)
         self.arrow.setText("▾" if is_open else "▸")
+        # Big enough to be the thing you aim at: it is the only control on a closed
+        # card, and at 12 px it was a smudge.
+        self.arrow.setStyleSheet(
+            f"font-size: 17px; color: {ACCENT if is_open else TEXT_SECONDARY};"
+        )
         self.replace_button.setVisible(is_open)
         self.remove_button.setVisible(is_open)
         self.refresh()
