@@ -4,12 +4,13 @@ import logging
 import uuid
 from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Iterator, Optional
+from typing import Any, TYPE_CHECKING, Iterator, Optional
 from uuid import UUID
 
 from game.data.units import UnitClass
 from game.dcs.groundunittype import GroundUnitType
 from game.theater.iadsnetwork.iadsrole import IadsRole
+from game.theater.iadsnetwork.iadsstate import IadsStateMap, IadsStatus
 from game.theater.theatergroundobject import (
     IadsBuildingGroundObject,
     IadsGroundObject,
@@ -149,6 +150,32 @@ class IadsNetwork:
             else:
                 raise RuntimeError("Invalid iads_config in campaign")
 
+        self._state_map: Optional[IadsStateMap] = None
+
+    def __getstate__(self) -> dict[str, Any]:
+        # Derived from the nodes, so it is rebuilt rather than carried in the save.
+        state = self.__dict__.copy()
+        state["_state_map"] = None
+        return state
+
+    def __setstate__(self, state: dict[str, Any]) -> None:
+        state.setdefault("_state_map", None)
+        self.__dict__.update(state)
+
+    @property
+    def state_map(self) -> IadsStateMap:
+        """What Skynet will do with each site: networked, autonomous or dark.
+
+        Worked out once and kept until something changes the network, because every
+        site's answer depends on every other site's.
+        """
+        if self._state_map is None:
+            self._state_map = IadsStateMap(self)
+        return self._state_map
+
+    def invalidate_state_map(self) -> None:
+        self._state_map = None
+
     def skynet_nodes(self, game: Game) -> list[SkynetNode]:
         """Get all skynet nodes from the IADS Network"""
         skynet_nodes: list[SkynetNode] = []
@@ -249,7 +276,30 @@ class IadsNetwork:
             self._update_network(tgo, events)
 
     def update_tgo(self, tgo: TheaterGroundObject, events: GameUpdateEvents) -> None:
-        """Update the IADS Network for the given TGO"""
+        """Update the IADS Network for the given TGO, and anything it drags with it."""
+        # One site's power station going down changes what half the network is doing,
+        # so the derived state is thrown away wholesale rather than patched -- and
+        # every site whose answer changed is pushed to the map. Without that second
+        # half, bombing a substation leaves its SAMs drawing confident threat rings
+        # until the campaign is reloaded, because nothing touched THOSE objects.
+        before = {obj: status for obj, status in self.state_map}
+        self.invalidate_state_map()
+        try:
+            self._update_tgo(tgo, events)
+        finally:
+            self._push_state_changes(before, events)
+
+    def _push_state_changes(
+        self,
+        before: dict[TheaterGroundObject, IadsStatus],
+        events: GameUpdateEvents,
+    ) -> None:
+        after = {obj: status for obj, status in self.state_map}
+        for obj in before.keys() | after.keys():
+            if before.get(obj) != after.get(obj):
+                events.update_tgo(obj)
+
+    def _update_tgo(self, tgo: TheaterGroundObject, events: GameUpdateEvents) -> None:
         if self.advanced_iads and IadsRole.for_category(tgo.category).is_comms_or_power:
             return self._update_iads_comms_and_power(tgo, events)
         # Remove existing nodes for the given tgo. Iterate a copy: removing from the
@@ -340,6 +390,7 @@ class IadsNetwork:
         # basic mode if no advanced iads support or network init created no connections
         if not self.nodes:
             self.initialize_basic_iads()
+        self.invalidate_state_map()
 
     def initialize_basic_iads(self) -> None:
         """Initialize the IADS Network in basic mode (SAM & EWR only)"""

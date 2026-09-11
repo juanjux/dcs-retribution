@@ -584,6 +584,24 @@ no `ConnectionNode` anywhere: only the sites the campaign author wired in become
 That is normal, not missing data — take what `/iads` gives you and do not hunt for a
 power grid that was never authored.
 
+**Read `state` before you spend anything on a site.** It is the answer the whole graph
+exists to give, and it is already computed:
+
+- **no `state`** — the site is networked and working. Its `threat_nm` is real.
+- **`"autonomous"`** — you have already cut it off. It still shoots, but only at what its
+  own radar finds, which is a fraction of what the network was feeding it. Worth routing
+  around; rarely worth a second DEAD package when there are networked sites left.
+- **`"dark"`** — no power. It will not bring its radar up for the whole mission, so its
+  ring is not a threat next turn. Do **not** spend a package on it: spend the package on
+  the site that is still live, and fly through this one.
+- **`blind:true`** — its search radar is gone. Networked, it can still be handed targets
+  by an EWR; autonomous or dark, it is harmless until somebody repairs it.
+
+These follow from what you have destroyed, so they change turn to turn: a power station
+you bombed last turn is why three sites read `"dark"` this turn, and repairing it is the
+first thing the enemy will do. It is also worth reading the other way round — the sites
+with no `state` are the ones your packages have not touched.
+
 - **What the roles mean.** `Sam` / `SamAsEwr` / `Ewr` are the shooters and the eyes.
   `PowerSource` (power station) and `ConnectionNode` (comms tower) feed them.
   `CommandCenter` runs the network. The last three are **buildings** — cheap to kill,
@@ -602,9 +620,13 @@ power grid that was never authored.
   - **Power cut** (`PowerSource`): the site goes **DARK** — radar off. Stronger than a
     comms cut, and the only one of the two that actually silences a battery.
   - An **EWR** left autonomous goes dark by default rather than staying up.
-  - **A SAM's own generator vehicle does not count.** Only static buildings are wired as
-    power sources, so a Patriot with its power truck intact still goes dark when the grid
-    station feeding it dies. Do not go hunting the generator; find the building.
+  - **A battery that brought its own generator is NOT on the grid.** A Patriot deploys
+    with an EPP-III and a SAMP/T with an MGE, and those sites are wired to no power
+    station at all: bombing the substation next door does nothing to them. `/iads` says
+    so — such a site has no `PowerSource` in its `depends_on`, and cutting power is
+    simply not an option against it. Kill the launchers and the radars instead, or cut
+    its comms to set it loose. Every other site does go dark when the building feeding
+    it dies.
 - **So what do you actually gain?** Three things: it can no longer be CUED by a distant
   EWR, so it only sees what its own radar sees; it no longer engages in concert with the
   other sites; and because it goes live instead of lying dark waiting for a cue, it is
@@ -1183,6 +1205,13 @@ means none/empty** (stated once so the per-turn payloads stay small).
   none. **This is what tells a code-named building apart from a warehouse** — a
   `PowerSource` feeds radars, and killing it blinds them without a DEAD package. Call
   `GET /iads` for which node depends on which),
+  `iads_state`?/`iads_reason`?/`iads_blind`? (what the network will actually DO with
+  this site next mission: `"autonomous"` — cut off, engaging only what its own radar
+  finds — or `"dark"` — no power, so its radar never comes up and it does not shoot at
+  all. `iads_reason` is the one-line why, `iads_blind` says nothing it has left can find
+  a target for itself. **All omitted when the site is working normally**, so their
+  presence means you have already broken something and `threat_nm` overstates it. A
+  `"dark"` site is not worth a DEAD package this turn),
   `composition`? (alive-unit count per class — **ships:** hulls per class, e.g.
   `{"Constellation": 2}`, so you can spot **Aegis escorts** (Constellation/Ticonderoga)
   and count hulls before committing an ANTISHIP strike; **SAM sites:** alive
@@ -1199,7 +1228,9 @@ means none/empty** (stated once so the per-turn payloads stay small).
 - `threats[]` — **every** blue air-defense umbrella (radar SAMs + SAM-armed ships)
   **ranked by reach** (largest first), so you needn't sort them — {`id` (same id as the
   target → DEAD a sam / ANTISHIP a ship to remove it), `name`, `kind` (sam/ship),
-  `threat_nm`, `pos`}. These are the route-shapers: keep strike/transit routes outside
+  `threat_nm`, `pos`, `iads_state`?/`iads_reason`?/`iads_blind`? — see `targets[]`;
+  present only when the site is NOT working normally, and then `threat_nm` is a ring it
+  cannot enforce: a `"dark"` site does not shoot next mission at all}. These are the route-shapers: keep strike/transit routes outside
   them, or suppress/sink them first. **The list is complete, not a sample** — it used to
   stop at the twelve longest-ranged, which on a dense map hid dozens of live batteries
   and cut a tie in half. Anything with a live radar and launchers is here; a site that is
@@ -1255,12 +1286,23 @@ loadout?, weapons?, startup_min?, tot_offset_min?}]}]`.
   cannot make its TOT). `tot_offset_min?` its arrival relative to the PACKAGE TOT,
   negative = ahead of it. Both are absent when zero.
 
-`GET /iads?side=red` → `{advanced, nodes:[{id, name, role, alive, depends_on?}]}` — the
-ENEMY air-defense network as a graph. `role` is `Sam` / `SamAsEwr` / `Ewr` /
+`GET /iads?side=red` →
+`{advanced, nodes:[{id, name, role, alive, depends_on?, state?, state_reason?, blind?}]}`
+— the ENEMY air-defense network as a graph. `role` is `Sam` / `SamAsEwr` / `Ewr` /
 `CommandCenter` / `PowerSource` / `ConnectionNode`; `depends_on` lists the ids of the
 sites feeding that node. A code-named building that reads `PowerSource` is a radar's
 mains supply, not a warehouse. `alive:false` means it is already down, so its dependants
-are already degraded — do not strike them again for that reason. The same `role` appears
+are already degraded — do not strike them again for that reason.
+
+`state` is what those dependencies **add up to**, so you do not have to work it out from
+the graph: `"autonomous"` (cut off — it engages only what its own radar finds) or
+`"dark"` (no power — the radar never comes up and it will not shoot at all next
+mission), with `state_reason` giving the one-line why. `blind:true` means nothing it has
+left can find a target for itself. **All three are omitted when the site is working
+normally**, so a node that carries a `state` is a node whose dependencies you have
+already broken — and a node without one is a site at full effectiveness. The same
+fields ride along on `targets[]` and `threats[]` as `iads_state` / `iads_reason` /
+`iads_blind`, so you can see it without calling this endpoint. The same `role` appears
 on the matching entry in `targets[]`, so you can spot the network sites without calling
 this at all. When `advanced:false` the campaign wires no power/comms and only the sites
 themselves matter. **See "Fighting the IADS, not just the launchers" in §4 for what

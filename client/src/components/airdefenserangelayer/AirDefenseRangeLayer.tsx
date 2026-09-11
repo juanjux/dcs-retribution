@@ -15,6 +15,34 @@ import {
 import { Fragment } from "react";
 import { Circle, CircleMarker, LayerGroup, Tooltip } from "react-leaflet";
 
+// Why this ring is not the threat it looks like, for the ring's own tooltip.
+function IadsStateLine(props: {
+  state?: string | null;
+  reason?: string | null;
+  blind?: boolean;
+}) {
+  const label =
+    props.state === "dark"
+      ? "Dark"
+      : props.state === "autonomous"
+        ? "Autonomous"
+        : props.blind
+          ? "No radar of its own"
+          : null;
+  if (label == null) {
+    return null;
+  }
+  return (
+    <div style={{ marginTop: "0.4em", opacity: 0.85 }}>
+      <b>
+        {label}
+        {props.blind && props.state ? ", and blind" : ""}
+      </b>
+      {props.reason ? <div>{props.reason}</div> : null}
+    </div>
+  );
+}
+
 interface RangeCirclesProps {
   emitterId: string;
   name: string;
@@ -23,6 +51,9 @@ interface RangeCirclesProps {
   threat_ranges: number[];
   detection_ranges: number[];
   jamming_range?: number | null;
+  iads_state?: string | null;
+  iads_reason?: string | null;
+  iads_blind?: boolean;
   blue: boolean;
   detection?: boolean;
   // When set, clicking the ring opens the emitter's info dialog (same as
@@ -37,6 +68,35 @@ export function colorFor(blue: boolean, detection: boolean) {
     return detection ? "#bb89ff" : "#0084ff";
   }
   return detection ? "#eee17b" : "#c85050";
+}
+
+// A site cut off from its network, or switched off for want of power, is not the
+// threat its ring says it is: an autonomous SAM only sees what its own radar sees, and
+// a dark one never brings the radar up at all. The ring is still drawn -- the site is
+// there, and a repair puts it back -- but it stops looking like a live one.
+//
+// The state is derived, not measured: DCS never reports it. So this restyles the ring
+// rather than removing it, and the tooltip says what was worked out and why.
+const IADS_STYLES: Record<
+  string,
+  { color: string; blueColor: string; dashArray?: string; opacity: number }
+> = {
+  autonomous: {
+    color: "#e39a4a",
+    blueColor: "#5bc8ff",
+    dashArray: "7 6",
+    opacity: 0.9,
+  },
+  dark: {
+    color: "#8f8f8f",
+    blueColor: "#9aa8b5",
+    dashArray: "2 7",
+    opacity: 0.6,
+  },
+};
+
+export function iadsStyleFor(state?: string | null) {
+  return state ? IADS_STYLES[state] : undefined;
 }
 
 // Bright colour used to mark the hovered ring and its emitter.
@@ -76,7 +136,12 @@ const RangeCircles = (props: RangeCirclesProps) => {
   const radii = props.detection
     ? props.detection_ranges
     : [...props.threat_ranges, ...passive];
-  const color = colorFor(props.blue, props.detection === true);
+  const iadsStyle = iadsStyleFor(props.iads_state);
+  const color = iadsStyle
+    ? props.blue
+      ? iadsStyle.blueColor
+      : iadsStyle.color
+    : colorFor(props.blue, props.detection === true);
   const baseWeight = props.detection ? 1 : 2;
   const dispatch = useAppDispatch();
 
@@ -129,11 +194,12 @@ const RangeCircles = (props: RangeCirclesProps) => {
             pathOptions={{
               color: highlighted ? HIGHLIGHT_COLOR : color,
               weight: highlighted ? baseWeight + 2 : baseWeight,
+              opacity: highlighted ? 1 : (iadsStyle?.opacity ?? 1),
               fill: false,
               dashArray:
                 !props.detection && passive.includes(radius)
                   ? "10 12"
-                  : undefined,
+                  : iadsStyle?.dashArray,
             }}
             interactive={false}
           />
@@ -157,6 +223,11 @@ const RangeCircles = (props: RangeCirclesProps) => {
               {summarizeUnits(props.units).map((unit, i) => (
                 <div key={i}>{unit}</div>
               ))}
+              <IadsStateLine
+                state={props.iads_state}
+                reason={props.iads_reason}
+                blind={props.iads_blind}
+              />
             </Tooltip>
           </Circle>
         </Fragment>
@@ -209,6 +280,9 @@ export const AirDefenseRangeLayer = (props: AirDefenseRangeLayerProps) => {
             threat_ranges={tgo.threat_ranges}
             detection_ranges={tgo.detection_ranges}
             jamming_range={tgo.jamming_range}
+            iads_state={tgo.iads_state}
+            iads_reason={tgo.iads_reason}
+            iads_blind={tgo.iads_blind}
             selectable
             {...props}
           />

@@ -175,29 +175,106 @@ describe("AirDefenseRangeLayer", () => {
     },
   });
 
-  // An EWR or a jamming site sees but does not shoot, so it has no threat ring at
-  // all. It draws its detection ring on the threat layer instead, dashed, or it is
-  // invisible unless you happen to have SAM detection ranges turned on.
-  it("draws a radar-only site on the threat layer, dashed", () => {
+  // A site that only detects has no threat ring, and its detection ring belongs on
+  // the detection layer under the switch the player already has for it. Drawing it on
+  // the threat layer dashed made a radar-only SAM look exactly like a GPS jammer.
+  it("keeps a radar-only site off the threat layer", () => {
     renderWithProviders(<AirDefenseRangeLayer blue={true} />, {
+      preloadedState: radarOnlyState(true) as any,
+    });
+    expect(mockCircle).not.toHaveBeenCalled();
+  });
+
+  it("draws a radar-only site on the detection layer", () => {
+    renderWithProviders(<AirDefenseRangeLayer blue={true} detection />, {
       preloadedState: radarOnlyState(true) as any,
     });
     expect(mockCircle).toHaveBeenCalledWith(
       expect.objectContaining({
         radius: 300,
+        pathOptions: expect.objectContaining({ color: colorFor(true, true) }),
+      }),
+    );
+  });
+
+  const withIadsState = (state: string | null, blind = false) => ({
+    tgos: {
+      tgos: {
+        sam: {
+          id: "sam",
+          name: "Sam",
+          control_point_name: "Bar",
+          category: "AA",
+          blue: false,
+          position: { lat: 10, lng: 20 },
+          units: [],
+          threat_ranges: [500],
+          detection_ranges: [],
+          dead: false,
+          purchasable: true,
+          sidc: "",
+          task: [],
+          mobile: false,
+          iads_state: state,
+          iads_reason: "Because.",
+          iads_blind: blind,
+        },
+      },
+    },
+  });
+
+  // A site cut off from its network or switched off for want of power is not the
+  // threat its ring says it is, and the ring should stop looking like a live one.
+  it("marks an autonomous site's ring", () => {
+    renderWithProviders(<AirDefenseRangeLayer blue={false} />, {
+      preloadedState: withIadsState("autonomous") as any,
+    });
+    expect(mockCircle).toHaveBeenCalledWith(
+      expect.objectContaining({
+        radius: 500,
         pathOptions: expect.objectContaining({
-          color: colorFor(true, false),
+          color: expect.not.stringMatching(colorFor(false, false)),
           dashArray: expect.any(String),
         }),
       }),
     );
   });
 
-  it("does not draw a radar-only site twice", () => {
-    renderWithProviders(<AirDefenseRangeLayer blue={true} detection />, {
-      preloadedState: radarOnlyState(true) as any,
+  it("fades a dark site's ring", () => {
+    renderWithProviders(<AirDefenseRangeLayer blue={false} />, {
+      preloadedState: withIadsState("dark") as any,
     });
-    expect(mockCircle).not.toHaveBeenCalled();
+    const call = mockCircle.mock.calls.find(
+      (c: any) => c[0].radius === 500 && c[0].interactive === false,
+    );
+    expect(call?.[0].pathOptions.opacity).toBeLessThan(1);
+  });
+
+  // The ring is drawn either way: the state is derived rather than measured, and the
+  // site is still there for a repair to bring back.
+  it("still draws the ring of a dark site", () => {
+    renderWithProviders(<AirDefenseRangeLayer blue={false} />, {
+      preloadedState: withIadsState("dark") as any,
+    });
+    expect(mockCircle).toHaveBeenCalledWith(
+      expect.objectContaining({ radius: 500 }),
+    );
+  });
+
+  it("leaves a networked site alone", () => {
+    renderWithProviders(<AirDefenseRangeLayer blue={false} />, {
+      preloadedState: withIadsState("networked") as any,
+    });
+    expect(mockCircle).toHaveBeenCalledWith(
+      expect.objectContaining({
+        radius: 500,
+        pathOptions: expect.objectContaining({
+          color: colorFor(false, false),
+          dashArray: undefined,
+          opacity: 1,
+        }),
+      }),
+    );
   });
 
   it("leaves a shooting site's threat ring solid", () => {

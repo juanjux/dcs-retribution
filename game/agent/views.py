@@ -21,6 +21,7 @@ from dcs.weather import Weather as PydcsWeather, Wind
 from pydantic import BaseModel, Field
 
 from game.income import Income
+from game.theater.iadsnetwork.iadsstate import IadsStatus
 from game.theater.player import Player
 from game.utils import meters, mps
 
@@ -297,6 +298,18 @@ class TargetView(BaseModel):
         # driving/sailing. It is MOVING: plan the intercept along this line, not at pos.
     )
     damage: str | None = None  # 'lightly/heavily damaged' (omitted at full strength)
+    iads_state: str | None = (
+        None  # "autonomous" (cut off from its network: it engages only what its own
+        # radar finds) or "dark" (no power: the radar never comes up, so it will not
+        # shoot at all this mission). OMITTED when the site is working normally, which
+        # is the usual case. iads_reason says why.
+    )
+    iads_reason: str | None = None  # one line: why it is autonomous or dark
+    iads_blind: bool | None = (
+        None  # true when nothing it has left can find a target for itself -- its search
+        # radar is gone. A networked site can still be handed targets; an autonomous
+        # blind one is harmless until repaired. Omitted when false.
+    )
 
 
 class ThreatView(BaseModel):
@@ -309,6 +322,13 @@ class ThreatView(BaseModel):
     kind: str  # sam / ship (ships project naval-SAM umbrellas — SM-6 etc.)
     threat_nm: int  # umbrella radius (nm): your flights are engaged within it
     pos: list[float]  # [lat, lng]
+    iads_state: str | None = (
+        None  # "autonomous" or "dark" -- this umbrella is not what its radius says. A
+        # dark site does not shoot this mission at all; an autonomous one engages only
+        # what its own radar finds. Omitted when the site is working normally.
+    )
+    iads_reason: str | None = None  # one line: why
+    iads_blind: bool | None = None  # nothing left that can find a target for itself
 
 
 class IadsNodeView(BaseModel):
@@ -322,6 +342,17 @@ class IadsNodeView(BaseModel):
         None  # ids of the sites feeding this one (power, comms, command). Kill one of
         # these and this node goes down without touching the node itself — that is the
         # whole point of striking the network instead of the launchers.
+    )
+    state: str | None = (
+        None  # what this site will actually do next mission: "autonomous" (cut off from
+        # the network, engaging only what its own radar finds) or "dark" (no power, so
+        # the radar never comes up and it does not shoot at all). OMITTED when the site
+        # is networked and working, which is the usual case -- so a node WITH a state is
+        # a node whose dependencies you have already broken.
+    )
+    state_reason: str | None = None  # one line: which dependency did it
+    blind: bool | None = (
+        None  # nothing left that can find a target for itself. Omitted when false.
     )
 
 
@@ -872,6 +903,13 @@ def _build_target(game: Game, tgo, kind: str, task: str) -> TargetView:
         # Alive launchers/radars per type — shows partial battle damage on a SAM site
         # (e.g. TELs killed but the radar still up), not just alive/dead.
         composition = _unit_composition(tgo)
+    # Only when it is news. A planner does not need telling that every SAM on the map
+    # is doing its job, and this list is long.
+    status = _iads_status(game, tgo)
+    notable = status is not None and status.notable
+    iads_state = status.state.value if notable and status is not None else None
+    iads_reason = status.reason if notable and status is not None else None
+    iads_blind = True if status is not None and status.blind else None
     return TargetView(
         id=str(tgo.id),
         name=tgo.name,
@@ -885,6 +923,9 @@ def _build_target(game: Game, tgo, kind: str, task: str) -> TargetView:
         damage=_damage_word(tgo),
         iads_role=_iads_role(tgo),
         rebuild=_rebuild_state(tgo),
+        iads_state=iads_state,
+        iads_reason=iads_reason,
+        iads_blind=iads_blind,
     )
 
 
@@ -914,6 +955,18 @@ def _rebuild_state(tgo: object) -> RebuildView | None:
             break
     fallback = getattr(tgo, "name", "")
     return RebuildView(force_group=str(name or fallback), turns_remaining=int(turns))
+
+
+def _iads_status(game: Game, tgo: object) -> IadsStatus | None:
+    """What the IADS will do with this site next mission, or None if it is not in one.
+
+    Derived from the network rather than measured: DCS never reports the state back.
+    The network caches the answer for the whole map, so asking per site is cheap.
+    """
+    try:
+        return game.theater.iads_network.state_map.status_for(tgo)  # type: ignore[arg-type]
+    except Exception:
+        return None
 
 
 def _iads_role(tgo) -> str | None:
@@ -1091,7 +1144,14 @@ def build_threats(targets: list[TargetView]) -> list[ThreatView]:
     )
     return [
         ThreatView(
-            id=t.id, name=t.name, kind=t.kind, threat_nm=t.threat_nm or 0, pos=t.pos
+            id=t.id,
+            name=t.name,
+            kind=t.kind,
+            threat_nm=t.threat_nm or 0,
+            pos=t.pos,
+            iads_state=t.iads_state,
+            iads_reason=t.iads_reason,
+            iads_blind=t.iads_blind,
         )
         for t in ranked
     ]
@@ -1722,6 +1782,11 @@ def build_iads(game: Game, side: str) -> IadsView:
     Only the opponent's half is returned — this is a targeting aid, not a view of
     one's own network. Dead nodes are kept: knowing a power station is already down
     is what tells you the radars behind it are blind.
+
+    Each node also carries what its dependencies add up to: a site whose power is gone
+    reads "dark" and will not fire next mission at all, and one that has lost its comms
+    or its command centre reads "autonomous" and engages only what its own radar finds.
+    That is the result of the graph, so nobody has to work it out from the graph.
     """
     player = player_for_side(side)
     network = game.theater.iads_network
@@ -1737,6 +1802,8 @@ def build_iads(game: Game, side: str) -> IadsView:
             for conn in node.connections.values()
             if conn.ground_object.id != tgo.id
         ]
+        status = network.state_map.status_for(tgo)
+        notable = status is not None and status.notable
         nodes.append(
             IadsNodeView(
                 id=str(tgo.id),
@@ -1744,6 +1811,9 @@ def build_iads(game: Game, side: str) -> IadsView:
                 role=str(node.group.iads_role.value),
                 alive=node.group.alive_units > 0,
                 depends_on=sorted(set(depends)) or None,
+                state=status.state.value if notable and status is not None else None,
+                state_reason=status.reason if notable and status is not None else None,
+                blind=True if status is not None and status.blind else None,
             )
         )
     return IadsView(advanced=network.advanced_iads, nodes=nodes)

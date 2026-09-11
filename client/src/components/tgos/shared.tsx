@@ -67,6 +67,36 @@ export function TgoTooltip(props: { tgo: TgoModel }) {
       {`${props.tgo.name} (${props.tgo.control_point_name})`}
       <br />
       <SplitLines items={props.tgo.units} />
+      <IadsStateLine tgo={props.tgo} />
     </Tooltip>
   );
+}
+
+// What the IADS will do with this site once the mission starts, and why. Only shown
+// when it is something other than a site working as designed: saying "networked" on
+// every SAM on the map would be noise.
+export function IadsStateLine(props: { tgo: TgoModel }) {
+  const label = iadsStateLabel(props.tgo);
+  if (label == null) {
+    return null;
+  }
+  return (
+    <div style={{ marginTop: "0.4em", opacity: 0.85 }}>
+      <b>{label}</b>
+      {props.tgo.iads_reason ? <div>{props.tgo.iads_reason}</div> : null}
+    </div>
+  );
+}
+
+export function iadsStateLabel(tgo: TgoModel): string | null {
+  if (tgo.iads_state === "dark") {
+    return tgo.iads_blind ? "IADS: dark, and blind" : "IADS: dark";
+  }
+  if (tgo.iads_state === "autonomous") {
+    return tgo.iads_blind ? "IADS: autonomous, and blind" : "IADS: autonomous";
+  }
+  if (tgo.iads_blind) {
+    return "IADS: no radar of its own";
+  }
+  return null;
 }

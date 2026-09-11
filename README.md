@@ -61,6 +61,27 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   its emitters; package route lines show flight/package info on hover. (The
   click-to-select half of this made it upstream as #761.)
   ([#8](https://github.com/juanjux/dcs-retribution/pull/8))
+- **A site cut off from its network stops looking like a live one.** An autonomous SAM
+  engages only what its own radar finds, and a dark one never brings its radar up at all,
+  but both drew the same confident threat ring as a fully networked battery. The ring is
+  now amber and dashed when the site is autonomous and faded grey when it is dark, and
+  the tooltip says which and why — "No power: its substation is down and it carries no
+  generator". The ring is still drawn, because the site is there and a repair brings it
+  back. The state is derived, not measured: DCS never reports it, so the rules are lifted
+  from the plugin function by function — `goLive()` refuses without power,
+  `genericCheckOneObjectIsAlive` reads an empty dependency list as "fine",
+  `setToCorrectAutonomousState` needs a live parent radar that covers the site, and
+  `buildRadarCoverage` decides that by range. The same three fields ride the API
+  (`iads_state` / `iads_reason` / `iads_blind` on targets and threats, `state` /
+  `state_reason` / `blind` on `/iads`), omitted whenever a site is working normally, so
+  a planner that sees one knows it has already broken something.
+- **A battery with its own generator is not on the grid.** A Patriot deploys with an
+  EPP-III and a SAMP/T with an MGE, so bombing whichever substation happened to be
+  nearest should do nothing to it — and it was switching the battery off. Read from the
+  `class: Power` the unit data already carries, so a mod that ships a generator works the
+  day it is registered. No Lua change was needed after all: Skynet reads an empty power
+  list as "powered", so leaving the connection out of the table *is* the feature. Kill
+  the generator itself and the site is back on the grid next mission.
 - **The IADS update interval is a setting.** Skynet re-reads every radar in the network
   and re-decides who wakes every **5 seconds**, which is the single biggest cost it
   carries on a large map -- MANTIS, for comparison, runs its equivalent at 30. It is now
@@ -1045,24 +1066,6 @@ and it is longer than this section.
 
 Planned, not started. Enough detail here to pick each one up cold.
 
-- **IADS: a power generator keeps its own battery alive.** A SAM whose power line is cut
-  goes dark. A battery that carries its own generator should stay up regardless, and only
-  go dark when that generator is destroyed — it powers itself, it does not feed the
-  neighbour. Five `class: Power` units are already modelled (Patriot EPP, two CurrentHill,
-  LvS-103, the SAMP/T MGE) and all of them already live inside their own SAM's group, so
-  the data is there. The catch is that this is not a Python-only change:
-  `skynetiads-config.lua` resolves power sources with `StaticObject.getByName`, which
-  returns nil for a vehicle, so the generators need their own array on the Lua side.
-  Apply it only to sites already wired to a substation — otherwise a Patriot goes from
-  "always powered" to "switched off by killing one truck", which is worse than today.
-  `game/agent/docs/howtoplay.md` currently states the opposite and has to be corrected in
-  the same change.
-- **IADS: network state on the map.** Show which sites are autonomous or dark, on the
-  health bar and the threat ring, instead of leaving the player to guess. The state is
-  never persisted and never comes back from DCS, so it has to be derived from which nodes
-  are still alive — which is exactly what Skynet itself looks at. Suppressing the ring is
-  free. The trap: without also pushing the TGO when a power station dies, the map keeps
-  drawing the stale ring until the campaign is reloaded.
 - **[from 414Ret] Strikes timed behind their SEAD.** Packages are scheduled independently
   today, so nothing stops a strike entering a threat ring before the SEAD servicing it.
 
