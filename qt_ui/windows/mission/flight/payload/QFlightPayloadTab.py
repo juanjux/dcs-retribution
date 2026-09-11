@@ -389,7 +389,7 @@ class QFlightPayloadTab(QFrame):
         # A little air before the aircraft's own switches: they are a different
         # subject from the laser codes above them, and with everything pulled tight
         # the DATALINK heading sat on the sentence before it.
-        scrolling_layout.addSpacing(12)
+        scrolling_layout.addSpacing(24)
 
         self.property_editor = PropertyEditor(
             self.flight, self.member_selector.selected_member, game
