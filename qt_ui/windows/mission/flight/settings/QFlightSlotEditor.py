@@ -39,10 +39,8 @@ from qt_ui.widgets.pilotrow import (
     row_width_hint,
 )
 
-#: The amber of a seat nobody is in, and the quieter ground of a seat this flight
-#: does not have.
+#: The amber of a seat nobody is in.
 AMBER = "#E0A86B"
-UNCREWED_ROW = "#182430"
 
 
 class PilotSelector(PaintedPilotCombo):
@@ -242,12 +240,18 @@ class PilotControls(QWidget):
         return self.roster is not None and self.pilot_index < self.roster.max_size
 
     def paintEvent(self, event: object) -> None:  # noqa: N802 (Qt naming)
-        """An amber bar down the left of a seat nobody is in, and a quieter ground
-        under one this flight does not have."""
+        """An amber bar down the left of a seat nobody is in.
+
+        A seat this flight does not have is left on whatever ground it sits on. It used
+        to get a fill of its own, but a fill can only be quiet against the one
+        background it was mixed for: on the Crew card it was four shades off the card
+        and invisible, while the Create flight dialog, which has no card, turned it
+        into a dark slab under every seat past the last one the flight has. The greyed
+        "No aircraft" box says the same thing on both.
+        """
         painter = QPainter(self)
         try:
             if not self._has_a_seat:
-                painter.fillRect(self.rect(), QColor(UNCREWED_ROW))
                 return
             if self.pilot is None:
                 painter.fillRect(QRect(0, 0, 3, self.height()), QColor(AMBER))
