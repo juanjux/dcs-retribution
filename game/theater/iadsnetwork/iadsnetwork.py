@@ -289,17 +289,36 @@ class IadsNetwork:
                 return cn
 
         # Create new connection_node if none exists
+        # A destroyed site used to be taken out of the network altogether, which took
+        # its links off the map with it: a link whose POWER STATION died drew broken,
+        # and a link whose SAM died simply vanished -- so the state you most want to
+        # see was the one state never drawn. A site with nothing alive still gets a
+        # node, and its links go dashed like any other break.
+        #
+        # Whoever is alive still leads, though. A site whose SAM is dead but whose
+        # point defence is not keeps being led by that point defence, which is how it
+        # goes on reaching Skynet and fighting; handing the lead to the dead group
+        # would have taken a live Vulcan out of the IADS.
+        #
+        # What Skynet is given barely changes: skynet_nodes drops a node whose group is
+        # entirely dead, except for the static-backed roles, where being missing is read
+        # as "no such dependency". That exception is the second thing this fixes -- a
+        # command centre bombed flat used to leave the network, and Skynet's
+        # isCommandCenterUsable() returns true on an empty table, so losing the last
+        # command centre handed command back.
+        groups = [g for g in tgo.groups if isinstance(g, IadsGroundGroup)]
+        leaders = [g for g in groups if g.iads_role.participate and g.alive_units > 0]
+        if not leaders:
+            leaders = [g for g in groups if g.iads_role.participate]
+
         node: Optional[IadsNetworkNode] = None
-        for group in tgo.groups:
-            # TODO Cleanup
-            if isinstance(group, IadsGroundGroup) and group.alive_units > 0:
-                # The first IadsGroundGroup is always the primary Group
-                if not node and group.iads_role.participate:
-                    # Primary Node
-                    node = self.node_for_group(group)
-                elif node and group.iads_role == IadsRole.POINT_DEFENSE:
-                    # Point Defense Node for this TGO
-                    node.add_connection_for_group(group)
+        for group in groups:
+            if not node and group in leaders:
+                # Primary Node
+                node = self.node_for_group(group)
+            elif node and group.iads_role == IadsRole.POINT_DEFENSE:
+                # Point Defense Node for this TGO
+                node.add_connection_for_group(group)
 
         if node is None:
             logging.debug(f"TGO {tgo.name} not participating to IADS")
