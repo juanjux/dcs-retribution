@@ -70,33 +70,14 @@ export function colorFor(blue: boolean, detection: boolean) {
   return detection ? "#eee17b" : "#c85050";
 }
 
-// A site cut off from its network, or switched off for want of power, is not the
-// threat its ring says it is: an autonomous SAM only sees what its own radar sees, and
-// a dark one never brings the radar up at all. The ring is still drawn -- the site is
-// there, and a repair puts it back -- but it stops looking like a live one.
-//
-// The state is derived, not measured: DCS never reports it. So this restyles the ring
-// rather than removing it, and the tooltip says what was worked out and why.
-const IADS_STYLES: Record<
-  string,
-  { color: string; blueColor: string; dashArray?: string; opacity: number }
-> = {
-  autonomous: {
-    color: "#e39a4a",
-    blueColor: "#5bc8ff",
-    dashArray: "7 6",
-    opacity: 0.9,
-  },
-  dark: {
-    color: "#8f8f8f",
-    blueColor: "#9aa8b5",
-    dashArray: "2 7",
-    opacity: 0.6,
-  },
-};
-
-export function iadsStyleFor(state?: string | null) {
-  return state ? IADS_STYLES[state] : undefined;
+// A site Skynet will not switch on has no ring at all: it will not see and it will not
+// shoot for the whole mission, and drawing the circle it would have had is drawing a
+// threat that is not there. An autonomous one keeps its ring exactly as it is -- it
+// does still shoot, at whatever its own radar finds -- and says so in the tooltip and
+// on its health bar. Which is why nothing here is recoloured or dashed: dashed already
+// means a GPS jamming bubble.
+export function ringsAreOff(state?: string | null): boolean {
+  return state === "dark";
 }
 
 // Bright colour used to mark the hovered ring and its emitter.
@@ -133,15 +114,12 @@ const RangeCircles = (props: RangeCirclesProps) => {
   // The detection layer draws every detection range, including that of a site with
   // nothing left to shoot with: a search radar that survived its launchers still sees,
   // still feeds the IADS, and is still worth striking.
-  const radii = props.detection
-    ? props.detection_ranges
-    : [...props.threat_ranges, ...passive];
-  const iadsStyle = iadsStyleFor(props.iads_state);
-  const color = iadsStyle
-    ? props.blue
-      ? iadsStyle.blueColor
-      : iadsStyle.color
-    : colorFor(props.blue, props.detection === true);
+  const radii = ringsAreOff(props.iads_state)
+    ? []
+    : props.detection
+      ? props.detection_ranges
+      : [...props.threat_ranges, ...passive];
+  const color = colorFor(props.blue, props.detection === true);
   const baseWeight = props.detection ? 1 : 2;
   const dispatch = useAppDispatch();
 
@@ -194,12 +172,11 @@ const RangeCircles = (props: RangeCirclesProps) => {
             pathOptions={{
               color: highlighted ? HIGHLIGHT_COLOR : color,
               weight: highlighted ? baseWeight + 2 : baseWeight,
-              opacity: highlighted ? 1 : (iadsStyle?.opacity ?? 1),
               fill: false,
               dashArray:
                 !props.detection && passive.includes(radius)
                   ? "10 12"
-                  : iadsStyle?.dashArray,
+                  : undefined,
             }}
             interactive={false}
           />

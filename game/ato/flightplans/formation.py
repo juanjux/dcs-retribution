@@ -22,13 +22,13 @@ class FormationLayout(LoiterLayout, ABC):
     split: FlightWaypoint
     refuel: Optional[FlightWaypoint]
 
-    def label_formation_waypoints(self, lone_ship: bool) -> None:
-        """Name the join and the split for the size of the flight.
+    def label_formation_waypoints(self, alone_in_package: bool) -> None:
+        """Name the join and the split for the size of the package.
 
-        A single aircraft has nobody to meet and nobody to leave, so calling those two
-        points JOIN and SPLIT says something that is not happening. For a lone AI ship
-        they read as nav points, and they go back to being a join and a split the
-        moment a second aircraft is added.
+        A flight that is the whole package has nobody to meet and nobody to leave, so
+        calling those two points JOIN and SPLIT says something that is not happening.
+        On its own they read as nav points, and they go back to being a join and a
+        split the moment a second flight joins the package.
 
         Only the labels move. The package still meets and parts there, every time in
         the plan is measured from them, and the mission generator finds them through
@@ -49,7 +49,7 @@ class FormationLayout(LoiterLayout, ABC):
         ):
             name, kind, description, pretty_name = (
                 ("NAV", FlightWaypointType.NAV, "NAV", "Nav")
-                if lone_ship
+                if alone_in_package
                 else formation
             )
             waypoint.name = name

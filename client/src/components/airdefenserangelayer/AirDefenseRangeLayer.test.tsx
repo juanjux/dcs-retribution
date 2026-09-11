@@ -197,7 +197,11 @@ describe("AirDefenseRangeLayer", () => {
     );
   });
 
-  const withIadsState = (state: string | null, blind = false) => ({
+  const withIadsState = (
+    state: string | null,
+    blind = false,
+    detection_ranges: number[] = [],
+  ) => ({
     tgos: {
       tgos: {
         sam: {
@@ -209,7 +213,7 @@ describe("AirDefenseRangeLayer", () => {
           position: { lat: 10, lng: 20 },
           units: [],
           threat_ranges: [500],
-          detection_ranges: [],
+          detection_ranges,
           dead: false,
           purchasable: true,
           sidc: "",
@@ -223,9 +227,26 @@ describe("AirDefenseRangeLayer", () => {
     },
   });
 
-  // A site cut off from its network or switched off for want of power is not the
-  // threat its ring says it is, and the ring should stop looking like a live one.
-  it("marks an autonomous site's ring", () => {
+  // A site Skynet will not switch on gets no ring at all: it will not see and it will
+  // not shoot for the whole mission, so drawing the circle it would have had is drawing
+  // a threat that is not there.
+  it("draws no ring at all for a dark site", () => {
+    renderWithProviders(<AirDefenseRangeLayer blue={false} />, {
+      preloadedState: withIadsState("dark") as any,
+    });
+    expect(mockCircle).not.toHaveBeenCalled();
+  });
+
+  it("draws no detection ring for a dark site either", () => {
+    renderWithProviders(<AirDefenseRangeLayer blue={false} detection />, {
+      preloadedState: withIadsState("dark", false, [400]) as any,
+    });
+    expect(mockCircle).not.toHaveBeenCalled();
+  });
+
+  // An autonomous site still shoots, at whatever its own radar finds, so its ring is
+  // left exactly as it is. Dashing or recolouring it would say "jamming bubble".
+  it("leaves an autonomous site's ring alone", () => {
     renderWithProviders(<AirDefenseRangeLayer blue={false} />, {
       preloadedState: withIadsState("autonomous") as any,
     });
@@ -233,45 +254,8 @@ describe("AirDefenseRangeLayer", () => {
       expect.objectContaining({
         radius: 500,
         pathOptions: expect.objectContaining({
-          color: expect.not.stringMatching(colorFor(false, false)),
-          dashArray: expect.any(String),
-        }),
-      }),
-    );
-  });
-
-  it("fades a dark site's ring", () => {
-    renderWithProviders(<AirDefenseRangeLayer blue={false} />, {
-      preloadedState: withIadsState("dark") as any,
-    });
-    const call = mockCircle.mock.calls.find(
-      (c: any) => c[0].radius === 500 && c[0].interactive === false,
-    );
-    expect(call?.[0].pathOptions.opacity).toBeLessThan(1);
-  });
-
-  // The ring is drawn either way: the state is derived rather than measured, and the
-  // site is still there for a repair to bring back.
-  it("still draws the ring of a dark site", () => {
-    renderWithProviders(<AirDefenseRangeLayer blue={false} />, {
-      preloadedState: withIadsState("dark") as any,
-    });
-    expect(mockCircle).toHaveBeenCalledWith(
-      expect.objectContaining({ radius: 500 }),
-    );
-  });
-
-  it("leaves a networked site alone", () => {
-    renderWithProviders(<AirDefenseRangeLayer blue={false} />, {
-      preloadedState: withIadsState("networked") as any,
-    });
-    expect(mockCircle).toHaveBeenCalledWith(
-      expect.objectContaining({
-        radius: 500,
-        pathOptions: expect.objectContaining({
           color: colorFor(false, false),
           dashArray: undefined,
-          opacity: 1,
         }),
       }),
     );

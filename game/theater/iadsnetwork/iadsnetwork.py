@@ -151,6 +151,9 @@ class IadsNetwork:
                 raise RuntimeError("Invalid iads_config in campaign")
 
         self._state_map: Optional[IadsStateMap] = None
+        # A network built by this code keeps its destroyed sites, so the one-time
+        # repair in the migrator has nothing to do to it.
+        self.keeps_destroyed_nodes = True
 
     def __getstate__(self) -> dict[str, Any]:
         # Derived from the nodes, so it is rebuilt rather than carried in the save.

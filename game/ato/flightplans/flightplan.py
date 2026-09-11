@@ -61,11 +61,17 @@ class FlightPlan(ABC, Generic[LayoutT]):
         self.label_formation_waypoints()
 
     def label_formation_waypoints(self) -> None:
-        """Name the join and the split for the size of the flight, if it has them."""
+        """Name the join and the split for the size of the PACKAGE, if it has them.
+
+        A package with one flight in it has nobody to meet and nobody to part from,
+        however many aircraft that flight has: joining and splitting is what flights do
+        with each other. The moment a second flight is in the package they are a join
+        and a split again, for every flight in it.
+        """
         from .formation import FormationLayout
 
         if isinstance(self.layout, FormationLayout):
-            self.layout.label_formation_waypoints(self.flight.is_lone_ai_ship)
+            self.layout.label_formation_waypoints(len(self.flight.package.flights) < 2)
 
     def __setstate__(self, state: dict[str, Any]) -> None:
         if "tot_offset" not in state:

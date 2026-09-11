@@ -771,6 +771,18 @@ INVENTORY_TILES = (
     ("INITIAL", "initial_aircraft", "#8E9DAA"),
 )
 
+#: The same treatment for the men: the ceiling, who is on the books, then the three
+#: reasons a pilot is not flying, and what is left. Available is the only one you act
+#: on, so it is the only one in green.
+ROSTER_TILES = (
+    ("MAX", "max", "#8E9DAA"),
+    ("CURRENT", "current", "#F2F7FA"),
+    ("ON LEAVE", "on_leave", "#B7C6D2"),
+    ("WOUNDED", "wounded", "#E0A86B"),
+    ("BROKEN", "broken", "#C08A72"),
+    ("AVAILABLE", "available", "#7FCF7F"),
+)
+
 
 def _section_label(text: str) -> QLabel:
     label = QLabel(text.upper())
@@ -843,6 +855,10 @@ class SquadronDialog(QDialog):
         left_column.addWidget(_section_label("Aircraft inventory"))
         self.inventory_tiles: dict[str, QLabel] = {}
         left_column.addLayout(self._build_inventory_tiles())
+
+        left_column.addWidget(_section_label("Pilots roster"))
+        self.roster_tiles: dict[str, QLabel] = {}
+        left_column.addLayout(self._build_roster_tiles())
 
         # Buying aircraft is only meaningful for the player's own squadrons.
         if self.squadron.player.is_blue:
@@ -1009,12 +1025,47 @@ class SquadronDialog(QDialog):
 
     def _build_inventory_tiles(self) -> QHBoxLayout:
         """Five figures instead of four lines of prose: they are read, not parsed."""
+        return self._build_tiles(
+            INVENTORY_TILES,
+            {a: str(getattr(self.squadron, a)) for _, a, _ in INVENTORY_TILES},
+            self.inventory_tiles,
+        )
+
+    def _build_roster_tiles(self) -> QHBoxLayout:
+        """The roster in the same shape as the aircraft, and read the same way."""
+        return self._build_tiles(
+            ROSTER_TILES, self._roster_figures(), self.roster_tiles
+        )
+
+    def _roster_figures(self) -> dict[str, str]:
+        """Who is on the books, and why each of them is not flying.
+
+        MAX is a dash when the campaign runs no pilot limit: there is a ceiling in the
+        settings, but nothing enforces it, and printing it would say otherwise.
+        """
+        squadron = self.squadron
+        pilots = squadron.living_pilots
+        return {
+            "max": str(squadron.pilot_limit) if squadron.pilot_limits_enabled else "—",
+            "current": str(len(pilots)),
+            "on_leave": str(sum(1 for pilot in pilots if pilot.on_leave)),
+            "wounded": str(sum(1 for pilot in pilots if pilot.wounded)),
+            "broken": str(len(squadron.refusing_pilots)),
+            "available": str(len(squadron.fit_for_duty)),
+        }
+
+    def _build_tiles(
+        self,
+        specs: tuple[tuple[str, str, str], ...],
+        figures: dict[str, str],
+        store: dict[str, QLabel],
+    ) -> QHBoxLayout:
         row = QHBoxLayout()
         row.setSpacing(6)
-        for label, attribute, colour in INVENTORY_TILES:
+        for label, attribute, colour in specs:
             tile = QVBoxLayout()
             tile.setSpacing(0)
-            value = QLabel(str(getattr(self.squadron, attribute)))
+            value = QLabel(figures[attribute])
             value.setAlignment(Qt.AlignmentFlag.AlignCenter)
             value.setStyleSheet(
                 f"font-family: Consolas, monospace; font-size: 20px;"
@@ -1031,7 +1082,7 @@ class SquadronDialog(QDialog):
             holder.setFixedHeight(64)
             holder.setStyleSheet(TILE_STYLE)
             row.addWidget(holder)
-            self.inventory_tiles[attribute] = value
+            store[attribute] = value
         return row
 
     def _build_roster_header(self) -> QHBoxLayout:
@@ -1047,22 +1098,20 @@ class SquadronDialog(QDialog):
         return row
 
     def _refresh_roster_summary(self) -> None:
-        pilots = self.squadron.living_pilots
-        wounded = sum(1 for p in pilots if p.wounded)
-        on_leave = sum(1 for p in pilots if p.on_leave)
-        refusing = len(self.squadron.refusing_pilots)
-        available = len(self.squadron.fit_for_duty)
-        parts = [f"<b>{len(pilots)}</b>", f"{available} available"]
-        if wounded:
-            parts.append(f"{wounded} wounded")
-        if on_leave:
-            parts.append(f"{on_leave} on leave")
-        if refusing:
-            # A man at rock bottom is out of the count for the same reason a wounded
-            # one is, and saying so is the difference between a squadron that looks
-            # under-used and one you know to rest.
-            parts.append(f"{refusing} refusing to fly")
-        self.roster_summary.setText(" · ".join(parts))
+        """How full the squadron is, in one figure pair.
+
+        What each of them is doing used to be spelled out here; the roster tiles on the
+        left say it in a form you read rather than parse, so this is left with the one
+        thing they do not answer at a glance -- how much room there is.
+        """
+        figures = self._roster_figures()
+        self.roster_summary.setText(
+            f"<b>{figures['current']}/{figures['max']}</b>"
+            if self.squadron.pilot_limits_enabled
+            else f"<b>{figures['current']}</b>"
+        )
+        for attribute, tile in getattr(self, "roster_tiles", {}).items():
+            tile.setText(figures[attribute])
 
     @staticmethod
     def _build_column_headers() -> QWidget:

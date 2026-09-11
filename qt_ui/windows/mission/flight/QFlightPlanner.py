@@ -35,11 +35,6 @@ class QFlightPlanner(QTabWidget):
         self.general_settings_tab.flight_size_changed.connect(
             self.payload_tab.resize_for_flight
         )
-        # Crossing one aircraft renames the join and the split -- a lone ship has
-        # neither -- so the route has to be redrawn when the count changes.
-        self.general_settings_tab.flight_size_changed.connect(
-            self.waypoint_tab.flight_waypoint_list.update_list
-        )
         self.general_settings_tab.squadron_changed.connect(self.squadron_changed)
 
         # The waypoint tab's footer weighs the route against what the aircraft carries,

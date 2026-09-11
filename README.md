@@ -63,11 +63,13 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   ([#8](https://github.com/juanjux/dcs-retribution/pull/8))
 - **A site cut off from its network stops looking like a live one.** An autonomous SAM
   engages only what its own radar finds, and a dark one never brings its radar up at all,
-  but both drew the same confident threat ring as a fully networked battery. The ring is
-  now amber and dashed when the site is autonomous and faded grey when it is dark, and
-  the tooltip says which and why — "No power: its substation is down and it carries no
-  generator". The ring is still drawn, because the site is there and a repair brings it
-  back. The state is derived, not measured: DCS never reports it, so the rules are lifted
+  but both drew the same confident threat ring as a fully networked battery. **The health
+  bar** carries it: violet when the site is autonomous, grey when it is dark, with the
+  reason in the tooltip — "No power: its substation is down and it carries no generator".
+  A dark site draws **no range rings at all**, because it will neither see nor shoot for
+  the whole mission; an autonomous one keeps its rings exactly as they are, since it does
+  still shoot. Nothing is recoloured or dashed out there: a dashed ring already means a
+  GPS jamming bubble. The state is derived, not measured: DCS never reports it, so the rules are lifted
   from the plugin function by function — `goLive()` refuses without power,
   `genericCheckOneObjectIsAlive` reads an empty dependency list as "fine",
   `setToCorrectAutonomousState` needs a live parent radar that covers the site, and

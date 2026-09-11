@@ -1,8 +1,9 @@
-"""A single aircraft has no formation to form.
+"""A flight that is the whole package has no formation to form.
 
-Calling its two package waypoints JOIN and SPLIT describes something that is not
-happening, so for a lone AI ship they read as nav points -- and go back to being a join
-and a split the moment a second aircraft is added.
+Joining and splitting is what flights do with each other, so calling those two points
+JOIN and SPLIT on a package of one describes something that is not happening. They read
+as nav points, and go back to being a join and a split the moment a second flight is in
+the package -- however many aircraft each flight has.
 """
 
 from __future__ import annotations
@@ -53,19 +54,19 @@ def _layout() -> _Layout:
     )
 
 
-def test_a_lone_ship_navigates_where_a_formation_would_join() -> None:
+def test_the_only_flight_in_a_package_navigates_where_a_formation_would_join() -> None:
     layout = _layout()
-    layout.label_formation_waypoints(lone_ship=True)
+    layout.label_formation_waypoints(alone_in_package=True)
     assert layout.join.waypoint_type is FlightWaypointType.NAV
     assert layout.split.waypoint_type is FlightWaypointType.NAV
     assert layout.join.name == "NAV"
     assert layout.join.pretty_name == "Nav"
 
 
-def test_adding_a_second_aircraft_gives_the_join_back() -> None:
+def test_adding_a_second_flight_gives_the_join_back() -> None:
     layout = _layout()
-    layout.label_formation_waypoints(lone_ship=True)
-    layout.label_formation_waypoints(lone_ship=False)
+    layout.label_formation_waypoints(alone_in_package=True)
+    layout.label_formation_waypoints(alone_in_package=False)
     assert layout.join.waypoint_type is FlightWaypointType.JOIN
     assert layout.split.waypoint_type is FlightWaypointType.SPLIT
     assert layout.join.pretty_name == "Join"
@@ -78,7 +79,7 @@ def test_the_waypoints_stay_put() -> None:
     layout = _layout()
     join, split = layout.join, layout.split
     positions = (join.position, split.position, join.alt, split.alt)
-    layout.label_formation_waypoints(lone_ship=True)
+    layout.label_formation_waypoints(alone_in_package=True)
     assert layout.join is join
     assert layout.split is split
     assert (join.position, split.position, join.alt, split.alt) == positions
@@ -87,5 +88,5 @@ def test_the_waypoints_stay_put() -> None:
 def test_a_name_the_player_typed_survives() -> None:
     layout = _layout()
     layout.join.custom_name = "PUSH"
-    layout.label_formation_waypoints(lone_ship=True)
+    layout.label_formation_waypoints(alone_in_package=True)
     assert layout.join.custom_name == "PUSH"
