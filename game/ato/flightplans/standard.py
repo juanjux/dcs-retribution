@@ -68,6 +68,14 @@ class StandardLayout(Layout, ABC):
         new_wpt = WaypointBuilder.nav(new_pos, max(wpt.alt, next_alt))
         return new_wpt
 
+    def can_delete_waypoint(self, waypoint: FlightWaypoint) -> bool:
+        return (
+            waypoint is self.divert
+            or waypoint in self.nav_to
+            or waypoint in self.nav_from
+            or waypoint in self.custom_waypoints
+        )
+
     def delete_waypoint(self, waypoint: FlightWaypoint) -> bool:
         if waypoint is self.divert:
             self.divert = None

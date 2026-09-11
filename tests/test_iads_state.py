@@ -25,6 +25,7 @@ def _unit(alive: bool = True, detection: float = 0.0, power: bool = False) -> An
         detection_range=SimpleNamespace(meters=detection if alive else 0.0),
         unit_type=SimpleNamespace(
             unit_class=UnitClass.POWER if power else UnitClass.LAUNCHER,
+            display_name="EPP-III" if power else "Launcher",
             skynet_properties=SimpleNamespace(autonomous_behaviour=None),
         ),
     )
@@ -100,7 +101,19 @@ def test_losing_the_substation_puts_a_site_out_for_the_mission() -> None:
 def test_a_battery_with_its_own_generator_ignores_the_substation() -> None:
     dead_power = _group("SUBSTATION", IadsRole.POWER_SOURCE, _unit(alive=False))
     sam = _group("PATRIOT", IadsRole.SAM, _unit(detection=90_000), _unit(power=True))
-    assert _status(_map(_node(sam, dead_power)), sam).state is not IadsState.DARK
+    status = _status(_map(_node(sam, dead_power)), sam)
+    assert status.state is not IadsState.DARK
+    # And it names the truck: the opponent's way of switching this site off is to bomb
+    # that one vehicle, and guessing which is not the same as being told.
+    assert "EPP-III" in status.reason
+
+
+def test_a_battery_on_the_grid_says_nothing_about_generators() -> None:
+    """The note is about a site running on its own power, not about owning a generator:
+    with the substation standing there is nothing to say."""
+    live_power = _group("SUBSTATION", IadsRole.POWER_SOURCE, _unit())
+    sam = _group("PATRIOT", IadsRole.SAM, _unit(detection=90_000), _unit(power=True))
+    assert "EPP-III" not in _status(_map(_node(sam, live_power)), sam).reason
 
 
 def test_cutting_the_comms_sets_a_sam_loose_rather_than_switching_it_off() -> None:
@@ -170,9 +183,13 @@ def test_a_site_that_still_has_a_tracker_is_not_blind() -> None:
     assert _status(_map(_node(sam)), sam).blind is False
 
 
-def test_a_destroyed_site_is_dark() -> None:
+def test_a_destroyed_site_says_so_rather_than_dark() -> None:
+    """Kept apart from dark on purpose: a site with no power needs its threat ring
+    taken away, and a flattened one needs whatever survives around it left alone."""
     sam = _group("BADGER", IadsRole.SAM, _unit(alive=False))
-    assert _status(_map(_node(sam)), sam).state is IadsState.DARK
+    status = _status(_map(_node(sam)), sam)
+    assert status.state is IadsState.DESTROYED
+    assert not status.notable  # the map and the API already say it is gone
 
 
 def test_infrastructure_has_no_state_of_its_own() -> None:

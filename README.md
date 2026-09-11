@@ -69,7 +69,11 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   A dark site draws **no range rings at all**, because it will neither see nor shoot for
   the whole mission; an autonomous one keeps its rings exactly as they are, since it does
   still shoot. Nothing is recoloured or dashed out there: a dashed ring already means a
-  GPS jamming bubble. The state is derived, not measured: DCS never reports it, so the rules are lifted
+  GPS jamming bubble. A battery whose substation is down but which runs on its own
+  generator says so and **names the vehicle**, because bombing that one truck is how the
+  other side switches it off. A destroyed site is left alone entirely: it keeps its own
+  bar and whatever rings its surviving point defence has, which is a live threat.
+  The state is derived, not measured: DCS never reports it, so the rules are lifted
   from the plugin function by function — `goLive()` refuses without power,
   `genericCheckOneObjectIsAlive` reads an empty dependency list as "fine",
   `setToCorrectAutonomousState` needs a live parent radar that covers the site, and
@@ -84,6 +88,17 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   day it is registered. No Lua change was needed after all: Skynet reads an empty power
   list as "powered", so leaving the connection out of the table *is* the feature. Kill
   the generator itself and the site is back on the grid next mission.
+- **A deletable waypoint can be deleted on an AI flight.** Hand-*adding* waypoints stays
+  reserved for all-player flights — an edited route has taken DCS down before — but
+  whether a waypoint can go is a property of the waypoint, not of the crew: one you added
+  yourself, a refuelling stop, or the join of a flight that is the whole package all
+  leave a plan the AI can still fly. The delete button now turns itself on for a
+  selection it can actually reach, and the join and split it deletes come back the moment
+  a second flight joins the package.
+- **The squadron roster reads as figures.** Max, current, on leave, wounded, broken and
+  available, in the same tiles as the aircraft inventory, with the Pilots header saying
+  how full the squadron is. Pilots can be selected several at a time: sending nine men on
+  leave one dialog at a time is a thing a squadron has every turn.
 - **The IADS update interval is a setting.** Skynet re-reads every radar in the network
   and re-decides who wakes every **5 seconds**, which is the single biggest cost it
   carries on a large map -- MANTIS, for comparison, runs its equivalent at 30. It is now

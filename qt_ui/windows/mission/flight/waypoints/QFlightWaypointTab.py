@@ -311,25 +311,45 @@ class QFlightWaypointTab(QFrame):
         manual_layout.setContentsMargins(0, 0, 0, 0)
         manual_layout.setSpacing(8)
         manual_layout.addLayout(manual_top)
-        manual_layout.addWidget(self.delete_selected)
         manual_box = QWidget()
         make_transparent(manual_box)
         manual_box.setLayout(manual_layout)
 
-        # A hand-edited route is what a player can fly and the AI cannot: we have
-        # already seen a deleted waypoint take DCS down with it. So the section is
-        # greyed out for any flight with an AI seat in it, and says why.
+        # A hand-added waypoint is what a player can fly and the AI cannot: we have
+        # already seen an edited route take DCS down with it. So ADDING is greyed out
+        # for any flight with an AI seat in it, and says why.
+        #
+        # Deleting is not, because whether it is safe is a property of the waypoint
+        # rather than of the crew: taking back a nav point you added yourself, or a
+        # refuelling stop, or the join of a flight that is the whole package, leaves a
+        # plan the AI can still fly. So the button sits OUTSIDE the greyed box -- a
+        # disabled parent disables its children whatever they say -- and turns itself
+        # on for a selection it can actually reach.
         ai_seats = sum(
             1 for member in self.flight.iter_members() if not member.is_player
         )
         if ai_seats:
             crew = "seat" if ai_seats == 1 else "seats"
-            hint = f"disabled: {ai_seats} AI {crew} in this flight"
+            hint = f"adding disabled: {ai_seats} AI {crew} in this flight"
         else:
             hint = "all seats are players"
         self.manual_box = manual_box
         manual_box.setEnabled(not ai_seats)
-        rlayout.addLayout(carded("Manual editing", manual_box, hint, loud_hint=True))
+
+        editing = QVBoxLayout()
+        editing.setContentsMargins(0, 0, 0, 0)
+        editing.setSpacing(8)
+        editing.addWidget(manual_box)
+        editing.addWidget(self.delete_selected)
+        editing_box = QWidget()
+        make_transparent(editing_box)
+        editing_box.setLayout(editing)
+        rlayout.addLayout(carded("Manual editing", editing_box, hint, loud_hint=True))
+
+        self.flight_waypoint_list.selectionModel().selectionChanged.connect(
+            self.refresh_delete_button
+        )
+        self.refresh_delete_button()
 
         rlayout.addStretch()
         self.setLayout(layout)
@@ -366,8 +386,9 @@ class QFlightWaypointTab(QFrame):
             )
             self.on_change()
 
-    def on_delete_waypoint(self):
-        waypoints = []
+    def selected_waypoints(self) -> list[FlightWaypoint]:
+        """The waypoints under the selection, in list order, without the departure."""
+        waypoints: list[FlightWaypoint] = []
         selection = self.flight_waypoint_list.selectionModel()
         for selected_row in selection.selectedIndexes():
             if selected_row.row() <= 0:
@@ -377,9 +398,37 @@ class QFlightWaypointTab(QFrame):
             waypoint = self.flight_waypoint_list.waypoint_at_row(selected_row.row())
             if waypoint is not None and waypoint not in waypoints:
                 waypoints.append(waypoint)
-        for waypoint in waypoints:
+        return waypoints
+
+    def refresh_delete_button(self, *_args: object) -> None:
+        """On for a selection this flight can actually give up.
+
+        Every selected waypoint has to be one, not just one of them: half a deletion is
+        worse than none, and a player who selected four things and got one deleted has
+        to work out which.
+        """
+        if self.delete_selected is None:
+            return
+        waypoints = self.selected_waypoints()
+        deletable = bool(waypoints) and all(
+            self.waypoint_is_deletable(waypoint) for waypoint in waypoints
+        )
+        self.delete_selected.setEnabled(deletable or self.manual_box.isEnabled())
+
+    def waypoint_is_deletable(self, waypoint: FlightWaypoint) -> bool:
+        """Whether this one can go without rebuilding the plan around it."""
+        fp = self.flight.flight_plan
+        if isinstance(fp, FormationAttackFlightPlan):
+            targets = fp.target_area_waypoint.targets
+            if waypoint in targets and len(targets) > 1:
+                return True
+        return fp.can_delete_waypoint(waypoint)
+
+    def on_delete_waypoint(self):
+        for waypoint in self.selected_waypoints():
             self.delete_waypoint(waypoint)
         self.on_change()
+        self.refresh_delete_button()
 
     def delete_waypoint(self, waypoint: FlightWaypoint) -> None:
         # Need to degrade to a custom flight plan and remove the waypoint.
@@ -393,7 +442,7 @@ class QFlightWaypointTab(QFrame):
                 fp.target_area_waypoint.targets.remove(waypoint)
                 return
         model = self.flight_waypoint_list.model
-        if fp.layout.delete_waypoint(waypoint):
+        if fp.delete_waypoint(waypoint):
             model.removeRow(model.rowCount() - 1)
             return
 

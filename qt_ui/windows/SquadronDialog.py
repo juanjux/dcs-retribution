@@ -540,6 +540,10 @@ class PilotList(QListView):
         self.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectItems)
         if fallen:
             self.setSelectionMode(QAbstractItemView.SelectionMode.NoSelection)
+        else:
+            # Sending nine men on leave one at a time, each with its own dialog asking
+            # how long, is the kind of thing a squadron has every turn.
+            self.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
 
 
 class AutoAssignedTaskControls(QVBoxLayout):
@@ -1381,21 +1385,51 @@ class SquadronDialog(QDialog):
             "Convert to AI" if pilot.player else "Convert to player"
         )
 
+    def selected_pilots(self) -> list[Pilot]:
+        """Every pilot under the selection, resolved before anything changes.
+
+        The model resets after each pilot it touches, so rows have to become men first
+        or the second one acted on is the wrong man.
+        """
+        rows = {
+            index.row() for index in self.pilot_list.selectionModel().selectedIndexes()
+        }
+        current = self.pilot_list.currentIndex()
+        if not rows and current.isValid():
+            rows = {current.row()}
+        pilots = []
+        for row in sorted(rows):
+            index = self.squadron_model.index(row, 0, QModelIndex())
+            if index.isValid():
+                pilots.append(self.squadron_model.pilot_at_index(index))
+        return pilots
+
     def toggle_leave(self) -> None:
-        """Grant leave for a length, or call a man back and pay for it."""
+        """Grant leave for a length, or call men back and pay for it.
+
+        The button follows the pilot under the cursor, and acts on everyone selected
+        who is in the same state as him: a mixed selection sends the ones who are here
+        away, or calls the ones who are away back, but never both at once.
+        """
         index = self.pilot_list.currentIndex()
         if not index.isValid():
             logging.error("Cannot toggle on leave state: no pilot is selected")
             return
-        pilot = self.squadron_model.pilot_at_index(index)
+        current = self.squadron_model.pilot_at_index(index)
+        pilots = [
+            pilot
+            for pilot in self.selected_pilots()
+            if pilot.on_leave == current.on_leave
+        ] or [current]
         turns = 0
-        if not pilot.on_leave:
+        if not current.on_leave:
             # For how long, rather than until you remember him: leave granted here now
             # runs down on its own like a wound.
+            who = pilots[0].name if len(pilots) == 1 else f"{len(pilots)} pilots"
             turns, ok = QInputDialog.getInt(
                 self,
                 "Send on leave",
-                f"How many turns of leave for {pilot.name}?",
+                f"How many turns of leave for {who}?",
                 morale_rules.DEFAULT_LEAVE_TURNS,
                 1,
                 morale_rules.MAX_LEAVE_TURNS,
@@ -1403,7 +1437,10 @@ class SquadronDialog(QDialog):
             if not ok:
                 return
         with report_errors("Could not change leave", self):
-            self.squadron_model.toggle_leave_state(index, turns)
+            for pilot in pilots:
+                # Room runs out as they go: a squadron at its ceiling cannot have
+                # everyone back at once, and the rest stay where they are.
+                self.squadron_model.toggle_leave_state_of(pilot, turns)
         self._refresh_roster_summary()
         self.reset_button_states(self.pilot_list.currentIndex())
 
@@ -1425,25 +1462,41 @@ class SquadronDialog(QDialog):
         )
 
     def discharge_pilot(self) -> None:
-        """Throw a pilot out. Asked about first: there is no getting him back."""
-        index = self.pilot_list.currentIndex()
-        if not index.isValid():
+        """Throw pilots out. Asked about first: there is no getting them back."""
+        pilots = self.selected_pilots()
+        if not pilots:
             logging.error("Cannot discharge: no pilot is selected")
             return
-        pilot = self.squadron_model.pilot_at_index(index)
-        rank = self.squadron.pilot_rank(pilot)
-        addressed = pilot.name if rank is None else f"{rank.abbreviation} {pilot.name}"
+        if len(pilots) == 1:
+            rank = self.squadron.pilot_rank(pilots[0])
+            addressed = (
+                pilots[0].name
+                if rank is None
+                else f"{rank.abbreviation} {pilots[0].name}"
+            )
+            question = (
+                f"Discharge {addressed} from {self.squadron}? "
+                "He leaves the squadron for good."
+            )
+        else:
+            # Named, not counted: discharging the wrong man is not undoable, and a
+            # number is not something you can check.
+            named = "\n".join(f"  {pilot.name}" for pilot in pilots)
+            question = (
+                f"Discharge {len(pilots)} pilots from {self.squadron}?\n\n{named}"
+                "\n\nThey leave the squadron for good."
+            )
         answer = QMessageBox.question(
             self,
-            "Discharge pilot",
-            f"Discharge {addressed} from {self.squadron}? "
-            "He leaves the squadron for good.",
+            "Discharge pilot" if len(pilots) == 1 else "Discharge pilots",
+            question,
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No,
         )
         if answer != QMessageBox.StandardButton.Yes:
             return
-        self.squadron_model.discharge_pilot(index)
+        for pilot in pilots:
+            self.squadron_model.discharge(pilot)
         self.dead_squadron_model.beginResetModel()
         self.dead_squadron_model.endResetModel()
         self._refresh_roster_summary()

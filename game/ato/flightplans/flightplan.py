@@ -45,6 +45,19 @@ class Layout(ABC):
     def delete_waypoint(self, waypoint: FlightWaypoint) -> bool:
         return False
 
+    def can_delete_waypoint(self, waypoint: FlightWaypoint) -> bool:
+        """Whether this waypoint can go without rebuilding the plan around it.
+
+        Beside delete_waypoint rather than inside it because the button has to know
+        before the player presses it, and asking by trying would delete the waypoint to
+        find out.
+        """
+        return False
+
+    def dropped_waypoints(self) -> list[FlightWaypoint]:
+        """Waypoints the layout still holds but that are no longer part of the route."""
+        return []
+
     def iter_waypoints(self) -> Iterator[FlightWaypoint]:
         """Iterates over all waypoints in the flight plan, in order."""
         raise NotImplementedError
@@ -89,7 +102,43 @@ class FlightPlan(ABC, Generic[LayoutT]):
 
     def iter_waypoints(self) -> Iterator[FlightWaypoint]:
         """Iterates over all waypoints in the flight plan, in order."""
-        yield from self.layout.iter_waypoints()
+        dropped = self.layout.dropped_waypoints()
+        if not dropped:
+            yield from self.layout.iter_waypoints()
+            return
+        for waypoint in self.layout.iter_waypoints():
+            if not any(waypoint is gone for gone in dropped):
+                yield waypoint
+
+    def can_delete_waypoint(self, waypoint: FlightWaypoint) -> bool:
+        """Whether this waypoint can go without rebuilding the plan around it.
+
+        The join and the split can, but only while this flight IS the package: there is
+        nothing to meet, they read as nav points, and putting them back is a matter of
+        a second flight joining the package. With somebody to meet they are structure,
+        and taking one out is the degrade-to-custom path, with its warning.
+        """
+        from .formation import FormationLayout
+
+        if (
+            isinstance(self.layout, FormationLayout)
+            and len(self.flight.package.flights) < 2
+            and self.layout.is_droppable(waypoint)
+        ):
+            return True
+        return self.layout.can_delete_waypoint(waypoint)
+
+    def delete_waypoint(self, waypoint: FlightWaypoint) -> bool:
+        """Take a waypoint out of the route. Says whether it could be done here."""
+        from .formation import FormationLayout
+
+        if (
+            isinstance(self.layout, FormationLayout)
+            and len(self.flight.package.flights) < 2
+            and self.layout.drop(waypoint)
+        ):
+            return True
+        return self.layout.delete_waypoint(waypoint)
 
     def edges(
         self, until: FlightWaypoint | None = None

@@ -2,7 +2,9 @@
 
 ## Features/Improvements
 * **[Mission Generator]** A battery that deploys with its own generator (Patriot EPP, SAMP/T MGE) no longer goes dark when the nearest substation is bombed; killing the generator itself puts it back on the grid.
-* **[UI]** A SAM cut off from its network paints its health bar violet, and one with no power paints it grey and draws no range rings at all, with the reason in the tooltip.
+* **[UI]** A SAM cut off from its network paints its health bar violet, and one with no power paints it grey and draws no range rings at all, with the reason in the tooltip. A battery running on its own generator says so and names the vehicle.
+* **[UI]** A waypoint you can give up — one you added, a refuelling stop, the join of a flight that is the whole package — can be deleted on an AI flight again; only *adding* is still reserved for all-player flights.
+* **[UI]** Pilots can be selected several at a time, for Discharge and for Send on leave.
 * **[Campaign AI]** The OPFOR API reports which sites are autonomous or dark and why, on targets, threats and /iads.
 * **[FIX]** A destroyed site was dropped from the IADS network, so its links vanished from the map instead of drawing broken -- and losing your last command centre handed command back.
 * **[UI]** The only flight in a package has NAV where a formation would have JOIN and SPLIT; a second flight in the package brings them back.

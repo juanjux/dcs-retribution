@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from functools import cached_property
 from typing import Any, TYPE_CHECKING, TypeGuard, Optional
@@ -22,6 +22,31 @@ class FormationLayout(LoiterLayout, ABC):
     split: FlightWaypoint
     refuel: Optional[FlightWaypoint]
 
+    #: Which of the two the player has deleted, by name. They are kept rather than
+    #: removed: every time in the plan is measured from them, and the package meets and
+    #: parts there. They are only offered for deletion while the flight is the whole
+    #: package -- where there is nothing to meet and they read as nav points -- and a
+    #: second flight in the package puts them back in the route.
+    dropped: set[str] = field(default_factory=set, kw_only=True)
+
+    def drop(self, waypoint: FlightWaypoint) -> bool:
+        """Take the join or the split out of the route. Says whether it was one."""
+        for name in ("join", "split"):
+            if waypoint is getattr(self, name):
+                if not hasattr(self, "dropped"):
+                    # Saved before this existed.
+                    self.dropped = set()
+                self.dropped.add(name)
+                return True
+        return False
+
+    def is_droppable(self, waypoint: FlightWaypoint) -> bool:
+        return waypoint is self.join or waypoint is self.split
+
+    def dropped_waypoints(self) -> list[FlightWaypoint]:
+        dropped = getattr(self, "dropped", ())
+        return [getattr(self, name) for name in ("join", "split") if name in dropped]
+
     def label_formation_waypoints(self, alone_in_package: bool) -> None:
         """Name the join and the split for the size of the package.
 
@@ -37,6 +62,10 @@ class FormationLayout(LoiterLayout, ABC):
         escort task, the flag that releases the escorts, jamming, unlimited fuel),
         are written exactly as before.
         """
+        if not alone_in_package:
+            # A join to fly to again, even if it was deleted while there was nothing
+            # to join.
+            getattr(self, "dropped", set()).clear()
         for waypoint, formation in (
             (
                 self.join,

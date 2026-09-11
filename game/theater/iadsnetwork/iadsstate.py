@@ -28,6 +28,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import TYPE_CHECKING, Iterator, Optional
 
+from game.data.units import UnitClass
 from game.theater.iadsnetwork.iadsrole import IadsRole
 
 if TYPE_CHECKING:
@@ -55,6 +56,13 @@ class IadsState(Enum):
     #: whole mission unless it is repaired first.
     DARK = "dark"
 
+    #: Nothing left of it. Kept apart from DARK because the two want opposite things
+    #: said about them: a site with no power keeps a threat ring it cannot enforce and
+    #: needs that ring taken away, while a destroyed one has already lost its ring and
+    #: what the map still has to show is whatever survives around it -- the point
+    #: defence of a flattened battery is alive and will shoot.
+    DESTROYED = "destroyed"
+
 
 @dataclass(frozen=True)
 class IadsStatus:
@@ -69,14 +77,32 @@ class IadsStatus:
 
     @property
     def notable(self) -> bool:
-        """Worth saying out loud: anything but a site working as designed."""
+        """Worth saying out loud.
+
+        Destroyed is not: every reader of this already knows a site is gone, from the
+        health bar on the map or from `alive` over the API, and repeating it would put
+        a line on most of the wrecks in a campaign that has been fought in.
+        """
+        if self.state is IadsState.DESTROYED:
+            return False
         return self.state is not IadsState.NETWORKED or self.blind
 
 
-def _brings_its_own_power(group: IadsGroundGroup) -> bool:
-    from game.theater.iadsnetwork.iadsnetwork import brings_its_own_power
+def _own_generator(group: IadsGroundGroup) -> Optional[str]:
+    """The name of the generator this site deploys with, if it still has one.
 
-    return brings_its_own_power(group)
+    The name and not just the fact of it: a battery running on its own power is a
+    battery with one truck worth bombing, and saying which truck is the difference
+    between knowing that and guessing.
+    """
+    for unit in group.units:
+        if (
+            unit.alive
+            and unit.unit_type is not None
+            and unit.unit_type.unit_class is UnitClass.POWER
+        ):
+            return str(unit.unit_type.display_name)
+    return None
 
 
 def _detection_range(group: IadsGroundGroup) -> float:
@@ -120,9 +146,9 @@ class IadsStateMap:
     # ---------------------------------------------------------------- internals
 
     @staticmethod
-    def _powered(node: IadsNetworkNode) -> bool:
-        if _brings_its_own_power(node.group):
-            return True
+    def _mains_are_up(node: IadsNetworkNode) -> bool:
+        """Whether the grid still reaches this site. Nothing to do with its own
+        generator: an empty list of power sources is what Skynet reads as powered."""
         sources = [
             group
             for group in node.connections.values()
@@ -148,7 +174,12 @@ class IadsStateMap:
             self._build_side(nodes)
 
     def _build_side(self, nodes: list[IadsNetworkNode]) -> None:
-        powered = {id(node): self._powered(node) for node in nodes}
+        mains = {id(node): self._mains_are_up(node) for node in nodes}
+        generators = {id(node): _own_generator(node.group) for node in nodes}
+        powered = {
+            id(node): mains[id(node)] or generators[id(node)] is not None
+            for node in nodes
+        }
         connected = {id(node): self._connected(node) for node in nodes}
 
         command_centres = [
@@ -178,7 +209,14 @@ class IadsStateMap:
                 # Infrastructure. It has no radar to switch on or off.
                 continue
             self._by_tgo[node.group.ground_object] = self._status_for_node(
-                node, powered[id(node)], connected[id(node)], has_command, parents
+                node,
+                powered[id(node)],
+                connected[id(node)],
+                has_command,
+                parents,
+                # Only worth mentioning when the grid has actually failed: a battery
+                # whose substation is standing is not running on its generator.
+                generators[id(node)] if not mains[id(node)] else None,
             )
 
     def _status_for_node(
@@ -188,16 +226,20 @@ class IadsStateMap:
         connected: bool,
         has_command: bool,
         parents: list[IadsNetworkNode],
+        own_generator: Optional[str] = None,
     ) -> IadsStatus:
         role = node.group.iads_role
+
+        if node.group.alive_units == 0:
+            # Nothing left to be blind with, and nothing to switch on. What the map
+            # shows about a wreck is that it is a wreck.
+            return IadsStatus(IadsState.DESTROYED, "Destroyed.", False)
+
         # A command centre is a building. It never had a radar, so having none is not
         # news about it.
         blind = (
             role is not IadsRole.COMMAND_CENTER and _detection_range(node.group) <= 0
         )
-
-        if node.group.alive_units == 0:
-            return IadsStatus(IadsState.DARK, "Destroyed.", blind)
 
         if not powered:
             # Skynet's goLive() refuses outright without power, so this is the one
@@ -205,7 +247,7 @@ class IadsStateMap:
             consequence = (
                 "so it directs nobody"
                 if role is IadsRole.COMMAND_CENTER
-                else "so the radar never comes up"
+                else "so it stays switched off"
             )
             return IadsStatus(
                 IadsState.DARK,
@@ -214,17 +256,29 @@ class IadsStateMap:
                 blind,
             )
 
+        mains_note = (
+            f" Its substation is down; it runs on its own {own_generator}, "
+            "which can be bombed like anything else."
+            if own_generator is not None
+            else ""
+        )
+
         if role is IadsRole.COMMAND_CENTER:
-            return IadsStatus(IadsState.NETWORKED, "Directing the network.", blind)
+            return IadsStatus(
+                IadsState.NETWORKED, "Directing the network." + mains_note, blind
+            )
 
         if role is IadsRole.EWR:
             if not connected:
                 return IadsStatus(
                     IadsState.AUTONOMOUS,
-                    "Comms cut: it still sees, but what it sees reaches nobody.",
+                    "Comms cut: it still sees, but what it sees reaches nobody."
+                    + mains_note,
                     blind,
                 )
-            return IadsStatus(IadsState.NETWORKED, "Feeding the network.", blind)
+            return IadsStatus(
+                IadsState.NETWORKED, "Feeding the network." + mains_note, blind
+            )
 
         # A SAM, or a SAM standing in for an early-warning radar.
         if not connected:
@@ -239,25 +293,29 @@ class IadsStateMap:
             )
             if covering:
                 return IadsStatus(
-                    IadsState.NETWORKED, f"Cued by {', '.join(covering)}.", blind
+                    IadsState.NETWORKED,
+                    f"Cued by {', '.join(covering)}." + mains_note,
+                    blind,
                 )
             reason = "No early-warning radar covers it any more."
 
         if _goes_dark_when_autonomous(node.group):
             return IadsStatus(
                 IadsState.DARK,
-                f"{reason} Set to stay dark when it loses the network.",
+                f"{reason} Set to stay dark when it loses the network." + mains_note,
                 blind,
             )
         if blind:
             return IadsStatus(
                 IadsState.AUTONOMOUS,
                 f"{reason} Its own search radar is gone, so it has nothing to look "
-                "with.",
+                "with." + mains_note,
                 blind,
             )
         return IadsStatus(
-            IadsState.AUTONOMOUS, f"{reason} Fighting on its own radar.", blind
+            IadsState.AUTONOMOUS,
+            f"{reason} Fighting on its own radar." + mains_note,
+            blind,
         )
 
     @staticmethod
