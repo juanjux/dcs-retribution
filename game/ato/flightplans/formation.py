@@ -10,6 +10,7 @@ from game.typeguard import self_type_guard
 from game.utils import Speed
 from .flightplan import FlightPlan
 from .loiter import LoiterFlightPlan, LoiterLayout
+from ..flightwaypointtype import FlightWaypointType
 
 if TYPE_CHECKING:
     from ..flightwaypoint import FlightWaypoint
@@ -20,6 +21,41 @@ class FormationLayout(LoiterLayout, ABC):
     join: FlightWaypoint
     split: FlightWaypoint
     refuel: Optional[FlightWaypoint]
+
+    def label_formation_waypoints(self, lone_ship: bool) -> None:
+        """Name the join and the split for the size of the flight.
+
+        A single aircraft has nobody to meet and nobody to leave, so calling those two
+        points JOIN and SPLIT says something that is not happening. For a lone AI ship
+        they read as nav points, and they go back to being a join and a split the
+        moment a second aircraft is added.
+
+        Only the labels move. The package still meets and parts there, every time in
+        the plan is measured from them, and the mission generator finds them through
+        this layout rather than through the label -- so the tasks that hang off a join
+        or a split, which are about the package and not about formation flying (the
+        escort task, the flag that releases the escorts, jamming, unlimited fuel),
+        are written exactly as before.
+        """
+        for waypoint, formation in (
+            (
+                self.join,
+                ("JOIN", FlightWaypointType.JOIN, "Rendezvous with package", "Join"),
+            ),
+            (
+                self.split,
+                ("SPLIT", FlightWaypointType.SPLIT, "Depart from package", "Split"),
+            ),
+        ):
+            name, kind, description, pretty_name = (
+                ("NAV", FlightWaypointType.NAV, "NAV", "Nav")
+                if lone_ship
+                else formation
+            )
+            waypoint.name = name
+            waypoint.waypoint_type = kind
+            waypoint.description = description
+            waypoint.pretty_name = pretty_name
 
     def delete_waypoint(self, waypoint: FlightWaypoint) -> bool:
         if waypoint == self.refuel:

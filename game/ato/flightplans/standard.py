@@ -27,6 +27,13 @@ class StandardLayout(Layout, ABC):
         self, wpt: FlightWaypoint, next_wpt: Optional[FlightWaypoint]
     ) -> bool:
         new_wpt = self.get_midpoint(wpt, next_wpt)
+        # A lone AI ship's split is labelled NAV, and a NAV is placed by where it sits
+        # in the nav lists -- which the split is not in. Asked by identity instead, so
+        # adding a waypoint after it still puts it on the way home. getattr because
+        # only a FormationLayout has a split, and importing it here would be a cycle.
+        if wpt is getattr(self, "split", None):
+            self.nav_from.insert(0, new_wpt)
+            return True
         if wpt.waypoint_type in [FlightWaypointType.TAKEOFF, FlightWaypointType.LOITER]:
             self.nav_to.insert(0, new_wpt)
             return True

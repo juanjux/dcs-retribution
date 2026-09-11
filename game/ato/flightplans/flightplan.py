@@ -58,6 +58,14 @@ class FlightPlan(ABC, Generic[LayoutT]):
         self.flight = flight
         self.layout = layout
         self.tot_offset = self.default_tot_offset()
+        self.label_formation_waypoints()
+
+    def label_formation_waypoints(self) -> None:
+        """Name the join and the split for the size of the flight, if it has them."""
+        from .formation import FormationLayout
+
+        if isinstance(self.layout, FormationLayout):
+            self.layout.label_formation_waypoints(self.flight.is_lone_ai_ship)
 
     def __setstate__(self, state: dict[str, Any]) -> None:
         if "tot_offset" not in state:

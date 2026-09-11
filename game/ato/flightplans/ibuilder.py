@@ -27,6 +27,11 @@ class IBuilder(ABC, Generic[FlightPlanT, LayoutT]):
         self._flight_plan: FlightPlanT | None = None
         self.settings = self.flight.coalition.game.settings
 
+    @property
+    def existing_flight_plan(self) -> FlightPlanT | None:
+        """The plan if one has been built, without building one to answer."""
+        return self._flight_plan
+
     def get_or_build(self) -> FlightPlanT:
         if self._flight_plan is None:
             self.regenerate()

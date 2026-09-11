@@ -264,9 +264,21 @@ class Flight(
     def position(self) -> Point:
         return self.state.estimate_position()
 
+    @property
+    def is_lone_ai_ship(self) -> bool:
+        """One aircraft, nobody in it. It has no formation to form."""
+        return self.count == 1 and not self.client_count
+
     def resize(self, new_size: int) -> None:
         self.squadron.claim_inventory(new_size - self.count)
         self.roster.resize(new_size)
+        # Crossing one in either direction changes what the join and the split are
+        # called. Done here rather than in the dialog so the server API and anything
+        # else that resizes a flight gets it too. An unbuilt plan needs nothing: it
+        # will read the new size when it is built.
+        existing = self._flight_plan_builder.existing_flight_plan
+        if existing is not None:
+            existing.label_formation_waypoints()
 
     def set_pilot(self, index: int, pilot: Optional[Pilot]) -> None:
         self.roster.set_pilot(index, pilot)
