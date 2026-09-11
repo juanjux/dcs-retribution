@@ -85,7 +85,7 @@ class MissionResultsProcessor:
         """He saw a bit more of this man today. Spent at the end of the pass."""
         if pilot is other or not amount:
             return
-        amount = hardening.slows_making_friends(pilot, amount, self.game.settings)
+        amount = hardening.feels(pilot, amount, self.game.settings)
         if not amount:
             return
         key = (id(pilot), id(other))
@@ -101,6 +101,10 @@ class MissionResultsProcessor:
         as badly of him for being in the room twice.
         """
         if mourner is shooter or not amount:
+            return
+        # A thick skin is thick both ways: he is slower to hold this against him too.
+        amount = hardening.feels(mourner, amount, self.game.settings)
+        if not amount:
             return
         key = (id(mourner), id(shooter))
         running = self._friendship_penalties.get(key)

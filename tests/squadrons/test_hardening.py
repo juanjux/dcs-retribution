@@ -77,6 +77,18 @@ def test_it_goes_up_and_never_down() -> None:
     assert pilot.hardened == 2
 
 
+def test_a_hospital_bed_is_not_a_bad_place_in_the_sense_that_matters() -> None:
+    """He may be lower there than anywhere. This is earned by turning up."""
+    settings = _settings()
+    hurt = _pilot(morale=-10)
+    hurt.wound(3, turn=1)
+    assert hardening.harden(hurt, -10, settings) == 0
+
+    away = _pilot(morale=-10)
+    away.send_on_leave(2, turn=1)
+    assert hardening.harden(away, -10, settings) == 0
+
+
 def test_it_stops_at_the_top_of_the_ruler() -> None:
     settings = _settings(hardening_max=5)
     pilot = _pilot(hardened=4)
@@ -163,15 +175,17 @@ def test_having_been_shot_at_before_helps_when_it_happens_again() -> None:
 
 def test_he_is_slower_to_think_well_of_anybody() -> None:
     settings = _settings()
-    assert hardening.slows_making_friends(_pilot(0), 2.0, settings) == 2.0
-    assert round(hardening.slows_making_friends(_pilot(20), 2.0, settings), 6) == 1.4
-    assert round(hardening.slows_making_friends(_pilot(40), 2.0, settings), 6) == 0.8
+    assert hardening.feels(_pilot(0), 2.0, settings) == 2.0
+    assert round(hardening.feels(_pilot(20), 2.0, settings), 6) == 1.4
+    assert round(hardening.feels(_pilot(40), 2.0, settings), 6) == 0.8
 
 
-def test_he_is_not_slower_to_fall_out_with_anybody() -> None:
-    """Only the rises. A hard man is not harder to offend."""
+def test_a_thick_skin_is_thick_both_ways() -> None:
+    """He is slower to take offence as well: one skin, and it does not know which way
+    the news is going."""
     settings = _settings()
-    assert hardening.slows_making_friends(_pilot(40), -3.0, settings) == -3.0
+    assert round(hardening.feels(_pilot(40), -3.0, settings), 6) == -1.2
+    assert round(hardening.feels(_pilot(20), -3.0, settings), 6) == -2.1
 
 
 def test_it_is_about_him_and_not_about_what_anybody_thinks_of_him() -> None:
@@ -179,8 +193,8 @@ def test_it_is_about_him_and_not_about_what_anybody_thinks_of_him() -> None:
     sergeant while the sergeant keeps his distance."""
     settings = _settings()
     sergeant, rookie = _pilot(40), _pilot(0)
-    assert hardening.slows_making_friends(sergeant, 2.0, settings) < 2.0
-    assert hardening.slows_making_friends(rookie, 2.0, settings) == 2.0
+    assert hardening.feels(sergeant, 2.0, settings) < 2.0
+    assert hardening.feels(rookie, 2.0, settings) == 2.0
 
 
 # --- switched off ----------------------------------------------------------------
@@ -192,7 +206,7 @@ def test_switched_off_nobody_hardens_and_nothing_changes() -> None:
     assert hardening.harden(pilot, -10, settings) == 0
     assert hardening.morale_relief(40, settings) == 0.0
     assert hardening.survival_bonus(40, settings) == 0.0
-    assert hardening.slows_making_friends(pilot, 2.0, settings) == 2.0
+    assert hardening.feels(pilot, 2.0, settings) == 2.0
 
 
 def test_without_morale_there_is_nothing_to_be_hardened_by() -> None:

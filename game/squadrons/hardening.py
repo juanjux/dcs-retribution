@@ -7,11 +7,14 @@ point of it -- a run of losses used to take a whole squadron to Broken together 
 leave it there, each death landing on men who were already at the bottom.
 
 What it buys is not cheerfulness. He feels the knocks exactly as often; they land
-softer. He is likelier to walk away from a wreck, because he has been in one. And he is
-slower to let anybody new close enough to matter, which is the price: a man who has
-watched enough people die keeps the next one at arm's length, and the rung of skill a
-crew that gets on flies at is that much further away for a squadron that has been fed
-into a grinder.
+softer. He is likelier to walk away from a wreck, because he has been in one. And his
+skin is thicker in both directions: a man who has watched enough people die keeps the
+next one at arm's length, which is the price -- the rung of skill a crew that gets on
+flies at is that much further away for a squadron that has been fed into a grinder --
+and shrugs off what would have been an insult a year ago, which is not.
+
+None of it is earned in a hospital bed or at home on leave. He may be lower there than
+anywhere; this comes from turning up and doing it again.
 
 The numbers below are defaults. Each carries the settings key that overrides it,
 exactly as :mod:`game.squadrons.morale` and :mod:`game.squadrons.friendship` do.
@@ -107,7 +110,13 @@ def harden(pilot: Pilot, morale: int, settings: Any = None) -> int:
 
     ``morale`` is the figure he *arrived* with rather than the one he leaves with: the
     turn is judged on the state he spent it in, the same way the desertion roll is.
+
+    A hospital bed and a week at home are not bad places in the sense that matters.
+    He may be as low there as anywhere -- lower, often -- but this is earned by turning
+    up and doing it again, not by feeling terrible somewhere safe.
     """
+    if pilot.wounded or pilot.on_leave:
+        return 0
     gained = gain_for(morale, settings)
     if not gained:
         return 0
@@ -145,10 +154,12 @@ def survival_bonus(hardened: int, settings: Any = None) -> float:
 
 
 def friendship_damping(hardened: int, settings: Any = None) -> float:
-    """How much slower he is to think well of somebody, as a fraction.
+    """How much less of any of it he feels, as a fraction.
 
-    The price of the rest of it. A man who has watched enough people go down does not
-    get attached at the speed the new arrival does.
+    Both ways, which is the whole of what a thick skin is: a man who has watched enough
+    people go down does not get attached at the speed the new arrival does, and he does
+    not take offence at that speed either. The first half is the price of hardening;
+    the second is another thing it buys.
     """
     if not in_play(settings):
         return 0.0
@@ -158,12 +169,14 @@ def friendship_damping(hardened: int, settings: Any = None) -> float:
     return share(hardened, settings) * full
 
 
-def slows_making_friends(pilot: Pilot, amount: float, settings: Any = None) -> float:
-    """One rise in what he thinks of somebody, at the speed he is capable of.
+def feels(pilot: Pilot, amount: float, settings: Any = None) -> float:
+    """How much of a movement in what he thinks of somebody actually lands on him.
 
-    Only rises, and only his own: what everybody else thinks of the hard old sergeant
-    is nobody's business but theirs, and he is not slower to fall out with anybody.
+    Only his own opinions: what everybody else makes of the hard old sergeant is
+    nobody's business but theirs. Both directions, though -- he is slower to warm to
+    the new arrival *and* slower to hold anything against him, because it is one skin
+    and it is thick both ways.
     """
-    if amount <= 0:
+    if not amount:
         return amount
     return amount * (1.0 - friendship_damping(pilot.hardened, settings))

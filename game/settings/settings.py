@@ -2195,16 +2195,17 @@ class Settings:
         ),
     )
     hardening_friendship_damping_full: int = bounded_int_option(
-        "Slower to make friends, at the top (%)",
+        "Thicker skin, at the top (%)",
         page=LIVE_PILOTS_PAGE,
         section=LIVE_PILOTS_HARDENING_SECTION,
         default=60,
         min=0,
         max=100,
         detail=(
-            "The price of the rest of it. Taken off how fast his own opinion of"
-            " somebody rises -- never off how fast it falls, and never off what anybody"
-            " thinks of him."
+            "Taken off how far his own opinion of anybody moves, warming and cooling"
+            " alike: he is slower to make a friend, which is the price of the rest of"
+            " this, and slower to take offence, which is not. Never off what anybody"
+            " thinks of him -- that is their business."
         ),
     )
     friendship_enabled: bool = boolean_option(

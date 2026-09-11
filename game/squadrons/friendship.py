@@ -552,9 +552,9 @@ def tend_friendships(air_wing: AirWing, settings: Any = None) -> None:
                 step = drift_step(
                     other_squadron is squadron, feeling(pilot, other), settings
                 )
-                # A man who has watched enough people go down is slower to think well
-                # of the next one. Only the rises: he is not slower to fall out.
-                step = hardening.slows_making_friends(pilot, step, settings)
+                # A man who has watched enough people go down feels less of any of
+                # it, warming and cooling alike.
+                step = hardening.feels(pilot, step, settings)
                 if step:
                     move(pilot, other, step)
 

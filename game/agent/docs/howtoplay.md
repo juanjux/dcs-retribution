@@ -148,8 +148,11 @@ you lose if they capture yours. Think in terms of a campaign, not a single turn.
   he spends Shaken, two for Shattered and three for Broken, up to 40 — and **it never
   comes off**. It buys him three things: every knock to his morale lands lighter (up to
   80% lighter at the top of the ruler, on top of what his rank already softens), he is
-  likelier to walk away from a wreck and likelier to be pulled out of one, and he is
-  **slower to make friends** — up to 60% slower, which is the price of the rest.
+  likelier to walk away from a wreck and likelier to be pulled out of one, and his
+  skin is **up to 60% thicker**: his own opinion of anybody moves that much less,
+  warming and cooling alike. He is slower to make a friend, which is the price of the
+  rest of it, and slower to take offence, which is not. He does not earn any of it in
+  hospital or on leave — it comes from turning up and doing it again.
 
   Each pilot carries `hardened` and `hardened_of` once he has any. Read it next to his
   morale rather than instead of it: a hardened man at Shaken is steadier than a fresh
