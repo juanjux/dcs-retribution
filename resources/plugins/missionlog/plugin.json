@@ -41,7 +41,7 @@
         {
             "nameInUI": "Fighters holding a contact without committing to it",
             "mnemonic": "monitoring",
-            "defaultValue": true
+            "defaultValue": false
         },
         {
             "nameInUI": "Our flights launching on a target",
