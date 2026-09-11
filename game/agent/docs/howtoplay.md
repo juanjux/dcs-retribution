@@ -1219,11 +1219,15 @@ means none/empty** (stated once so the per-turn payloads stay small).
   still up — not just alive/dead, so you can tell a lightly-scratched SA-10 from a
   nearly-dead one and not over-commit a DEAD package),
   `damage`? (a damaged target — don't waste sorties finishing it)};
-  `rebuild`? ({`force_group`, `turns_remaining`} -- the site is UNDER CONSTRUCTION,
-  not destroyed: all its units are dead but on a countdown, and they come alive in
-  `turns_remaining` turns. Read it both ways: an enemy SAM two turns from coming back
-  is not a free corridor to route through, and one of your own sites under
-  construction is not somewhere to send a repair),
+  `rebuild`? ({`force_group`, `turns_remaining`, `units_repairing`, `units_alive`} --
+  **work in progress on this site**, and it comes in two kinds. `units_alive: 0` is a
+  site UNDER CONSTRUCTION: every unit dead but on a countdown, coming alive in
+  `turns_remaining` turns. `units_alive` above zero is a **partial repair**: the site
+  is fighting NOW with what it has and gets `units_repairing` more units back in
+  `turns_remaining` turns. Read it both ways round: an enemy SAM two turns from coming
+  back is not a free corridor to route through, a battery that is about to get its
+  launchers back is worth hitting before it does, and one of your own sites already
+  under repair is not somewhere to send another),
   **aim a package at the `id`**;
 - `threats[]` — **every** blue air-defense umbrella (radar SAMs + SAM-armed ships)
   **ranked by reach** (largest first), so you needn't sort them — {`id` (same id as the
@@ -1298,7 +1302,11 @@ are already degraded — do not strike them again for that reason.
 the graph: `"autonomous"` (cut off — it engages only what its own radar finds) or
 `"dark"` (no power — the radar never comes up and it will not shoot at all next
 mission), with `state_reason` giving the one-line why. `blind:true` means nothing it has
-left can find a target for itself. **All three are omitted when the site is working
+left can find a target for itself. `repair_turns` is the countdown on any work being done
+to the site, present whether it is a wreck being rebuilt (`alive:false`) or a live one
+getting units back (`alive:true`) — so a power station you flattened last turn does not
+read as a permanent hole in their network. `targets[]` carries the same countdown with
+the unit counts. **All three are omitted when the site is working
 normally**, so a node that carries a `state` is a node whose dependencies you have
 already broken — and a node without one is a site at full effectiveness. The same
 fields ride along on `targets[]` and `threats[]` as `iads_state` / `iads_reason` /

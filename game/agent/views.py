@@ -245,10 +245,14 @@ class PackageView(BaseModel):
 
 
 class RebuildView(BaseModel):
-    """A site that is being rebuilt: what it will become, and when."""
+    """Work in progress on a site: what is coming back, and when."""
 
     force_group: str  # what it is being rebuilt into
-    turns_remaining: int  # turns until its units come alive
+    turns_remaining: int  # turns until the last of it comes alive
+    units_repairing: int = 0  # dead units with a countdown on them
+    units_alive: int = 0  # units already standing. 0 = the whole site is down and is
+    # being rebuilt; anything else = it is fighting now and getting stronger, which is
+    # a different thing to plan against
 
 
 class TargetView(BaseModel):
@@ -353,6 +357,13 @@ class IadsNodeView(BaseModel):
     state_reason: str | None = None  # one line: which dependency did it
     blind: bool | None = (
         None  # nothing left that can find a target for itself. Omitted when false.
+    )
+    repair_turns: int | None = (
+        None  # turns until the work on this site finishes. Present whenever ANYTHING
+        # on it is being repaired, whether it is a wreck being rebuilt or a live site
+        # getting a launcher back -- so a node you flattened last turn is not a free
+        # corridor. Omitted when nothing is under repair. `alive` says which of the two
+        # it is; targets[] carries the same countdown with the unit counts.
     )
 
 
@@ -930,21 +941,32 @@ def _build_target(game: Game, tgo, kind: str, task: str) -> TargetView:
 
 
 def _rebuild_state(tgo: object) -> RebuildView | None:
-    """Whether this site is under construction, and what it will be.
+    """What is being repaired on this site, and when it lands.
 
-    A rebuilt site spends the repair delay with all of its units dead but with a
+    A site rebuilt from nothing spends the delay with every unit dead but with a
     countdown on them, which reads exactly like a destroyed site: no composition, and
     for an enemy site, dropped from the target list entirely. The player sees the works
     on the map, so a planner that cannot is being asked to plan against a different
     board -- and it matters both ways round. An enemy SAM coming back in two turns is
     not a free corridor, and your own rebuilt site is not somewhere to send a repair.
+
+    A PARTIAL repair is the same news and used to be silent: this bailed out the moment
+    it found one unit standing, on the grounds that a site with something alive is
+    damaged rather than under construction. True, and beside the point -- a battery that
+    is firing today and gets its second launcher back next turn is a battery you are
+    planning against twice. ``units_alive`` is what tells the two apart, so nothing that
+    read this before has to guess.
     """
     turns = None
+    repairing = 0
+    alive = 0
     for unit in getattr(tgo, "units", []):
         if getattr(unit, "alive", True):
-            return None  # something is already up: this is damage, not construction
+            alive += 1
+            continue
         remaining = getattr(unit, "repair_turns_remaining", None)
         if remaining is not None:
+            repairing += 1
             turns = remaining if turns is None else max(turns, remaining)
     if turns is None:
         return None
@@ -954,7 +976,12 @@ def _rebuild_state(tgo: object) -> RebuildView | None:
         if name:
             break
     fallback = getattr(tgo, "name", "")
-    return RebuildView(force_group=str(name or fallback), turns_remaining=int(turns))
+    return RebuildView(
+        force_group=str(name or fallback),
+        turns_remaining=int(turns),
+        units_repairing=repairing,
+        units_alive=alive,
+    )
 
 
 def _iads_status(game: Game, tgo: object) -> IadsStatus | None:
@@ -1787,6 +1814,10 @@ def build_iads(game: Game, side: str) -> IadsView:
     reads "dark" and will not fire next mission at all, and one that has lost its comms
     or its command centre reads "autonomous" and engages only what its own radar finds.
     That is the result of the graph, so nobody has to work it out from the graph.
+
+    And what is being done about it: ``repair_turns`` is the countdown on any work in
+    progress, so a power station you flattened last turn does not read as a permanent
+    hole in their network.
     """
     player = player_for_side(side)
     network = game.theater.iads_network
@@ -1804,6 +1835,7 @@ def build_iads(game: Game, side: str) -> IadsView:
         ]
         status = network.state_map.status_for(tgo)
         notable = status is not None and status.notable
+        rebuild = _rebuild_state(tgo)
         nodes.append(
             IadsNodeView(
                 id=str(tgo.id),
@@ -1814,6 +1846,7 @@ def build_iads(game: Game, side: str) -> IadsView:
                 state=status.state.value if notable and status is not None else None,
                 state_reason=status.reason if notable and status is not None else None,
                 blind=True if status is not None and status.blind else None,
+                repair_turns=rebuild.turns_remaining if rebuild is not None else None,
             )
         )
     return IadsView(advanced=network.advanced_iads, nodes=nodes)
