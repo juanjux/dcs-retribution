@@ -102,7 +102,12 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   two situations the window opens in — composing an air force before a campaign, and
   reaching into a running one with the cheat on — are now told apart by a blue or amber
   header, an amber block around the cheat's own controls, and a primary button that says
-  which act it is.
+  which act it is. A squadron also gets a **Max pilots** of its own beside its Max size,
+  because there was a campaign-wide pilot limit and nowhere to give one squadron a
+  different one, so a wing could not hold a small training unit beside its front-line
+  outfits. It shows the campaign's figure until you move it and stores nothing while it
+  matches, so a squadron you never touched still follows that setting when you change it
+  later.
 - **The map can be searched.** A log line or a message from the OPFOR planner names a
   site — MINK, or "the Patriot north of Creech" — and finding it meant panning around
   hunting a code name among two hundred icons. The box on the top left searches every
@@ -111,17 +116,54 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   what kind of thing it is, with chips to narrow it to a side or a kind. Hovering a
   result marks it on the map, clicking it goes there. Entirely client-side: the map
   already holds every name and unit list, so there is nothing to ask the server for.
+- **Joining and splitting is something flights do with each other.** A flight that is the
+  whole package has nobody to meet and nobody to leave, so calling its two package
+  waypoints JOIN and SPLIT described something that was not happening — and it is the
+  package that decides, not the flight, however many aircraft that one flight has. They
+  read **NAV** on their own and are a join and a split again for everyone the moment a
+  second flight is in the package, from the dialog, the API or anywhere else that adds or
+  removes one. Only the labels move: the package still meets and parts there and every
+  time in the plan is measured from those two points, so everything that acts on them was
+  taught to ask the flight plan's **layout** which waypoint is which rather than reading
+  its name — the escort task, the flag that releases the escorts, jamming and the
+  unlimited-fuel toggle in the generator, and the map's drag handler. That last one was
+  not merely going to miss a join labelled NAV: for the primary flight it propagates the
+  drag to the others by waypoint type, so it would have dragged the first nav point of
+  every other flight in the package. A custom flight plan has no layout to ask and falls
+  back to the name, as before. Flight plans live in the save, so the ones already built
+  are relabelled once on load.
 - **A deletable waypoint can be deleted on an AI flight.** Hand-*adding* waypoints stays
   reserved for all-player flights — an edited route has taken DCS down before — but
   whether a waypoint can go is a property of the waypoint, not of the crew: one you added
-  yourself, a refuelling stop, or the join of a flight that is the whole package all
-  leave a plan the AI can still fly. The delete button now turns itself on for a
-  selection it can actually reach, and the join and split it deletes come back the moment
-  a second flight joins the package.
+  yourself, a refuelling stop, one of several target points, or the join and split of a
+  flight that is the whole package all leave a plan the AI can still fly. The delete
+  button leaves the greyed box and turns itself on for a selection it can actually reach
+  — every waypoint in it, not just one, because half a deletion is worse than none — and
+  the join and split it deletes come back the moment a second flight joins the package.
 - **The squadron roster reads as figures.** Max, current, on leave, wounded, broken and
   available, in the same tiles as the aircraft inventory, with the Pilots header saying
   how full the squadron is. Pilots can be selected several at a time: sending nine men on
   leave one dialog at a time is a thing a squadron has every turn.
+- **The long lists can be typed into.** A Hornet has 86 payload presets and one of its
+  pylons takes up to 75 stores, and finding the TALD among sixty rocket pods was
+  scrolling rather than choosing. The payload presets, the liveries, the predefined
+  waypoints, every pylon's own store list and the loadout list in the flight creator all
+  open with a search field above them. Below a dozen items the ordinary popup opens
+  instead: a search box over six entries is one more thing to read past.
+- **The flight editor is not modal, and it follows the flight you pick.** Editing a
+  package means going round its flights, and every trip round cost closing this window
+  and finding the next one in the list behind it — and picking one in the main window's
+  Flights list, which is meant to bring it up here, was eaten by the modal dialog: the
+  window flashed and nothing happened. A selector in the header lists the package's other
+  flights, clicking one in the main window switches the open editor to it, and the footer
+  has the *Go to package* that was previously reachable only by closing this and finding
+  the package again on the map. Everything applies as it is changed, so there is no
+  half-finished state a stray click can leave behind, and the checks that run on close now
+  run on the way out of each flight, so a trip round the package cannot skip them.
+- **Delete cancels a flight, not only a package.** The same key that already cancelled a
+  package cancels the selected flight inside one, and keeps a flight selected afterwards
+  so a held key works down the list. A flight already in the air is aborted rather than
+  cancelled, exactly as it is from the menu.
 - **The IADS update interval is a setting.** Skynet re-reads every radar in the network
   and re-decides who wakes every **5 seconds**, which is the single biggest cost it
   carries on a large map -- MANTIS, for comparison, runs its equivalent at 30. It is now
@@ -478,7 +520,19 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   toggle, and the roster is only seeded when the plugin is on. Interceptions are polled
   rather than eventful — DCS fires nothing for "I have seen him and I am going after
   him" — so every fighter group is asked what its radar holds and what the datalink
-  handed it, and the message says which of the two found the target.
+  handed it, and the message says which of the two found the target. The log has since
+  been quietened and then sharpened: *monitoring* — a fighter looking at something it has
+  not committed to, the commonest line by a distance and the least eventful — is off
+  until you ask for it; a ground kill carries the same "enemy" prefix an aircraft already
+  had, because "DESTROYED 3 T-72" and "DESTROYED 3 enemy T-72" are not the same sentence
+  on a front with both sides' armour on it (and whose it was is part of the batching key,
+  so a friendly and an enemy T-72 killed in the same window cannot merge into one line
+  that would have to lie about one of them); SHOT DOWN, CRASHED, EJECTED and DESTROYED
+  are shouted, because a kill and a takeoff read the same in a scrolling column and are
+  not the same news, while "hit" stays lower case since it is damage rather than a kill;
+  and the two lines you actually want to find again get a word in front of them — YEAH!
+  and OH NO! by default, both settings, an empty one turning it off. Good news only when
+  what died was theirs: blue blowing up blue gets the other word.
   ([#120](https://github.com/juanjux/dcs-retribution/pull/120))
 - **Turn times from the sun** — the four turn slots are derived from the
   theater's latitude and the campaign date instead of one fixed window per map.
@@ -559,6 +613,21 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   DCS that a static spawned dead answers `getByName=ok, isExist=false, life=0`, which is
   exactly what Skynet tests. Vehicle-backed roles still drop out, since their groups have
   no name left once every unit is gone.
+- **A destroyed site keeps its place in the network, and its links on the map.** The same
+  fault one layer up: a site with nothing alive was dropped from the IADS network
+  altogether, and its links went off the map with it — so a link whose power station died
+  drew as a break, and a link whose SAM died simply vanished. The state you most want to
+  see was the one state never drawn. On the Nevada save that is 9 nodes and 19 links
+  drawn where there are 17 and 34, and 24 of those 34 are breaks. A dead site keeps its
+  node now. Whoever is alive still *leads* it, though, so a site whose SAM is gone but
+  whose point defence is not goes on reaching Skynet and fighting; handing the lead to
+  the dead group would have taken a live Vulcan out of the IADS. The second fix of the
+  class is the command centre: flattened, it used to leave the network, and Skynet's
+  `isCommandCenterUsable()` returns true on an empty table, so losing the last one handed
+  command back. The damage is already in the saves, and nothing recreates a node that was
+  pruned, so a campaign that has been fought in builds its network once more on load,
+  from the campaign configuration and the objectives as they stand — the same thing that
+  happens when a campaign starts. Once is enough, because it cannot be pruned again.
 - **Ferry flights may return fire** — a relocating squadron flew on Weapon Hold, so it
   would evade a missile without ever shooting at the fighter that launched it and a
   relocation across contested airspace was a free kill. Ferries now fly Return Fire:
@@ -630,6 +699,34 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
 
 ### Fixes
 
+- **A SAM with no power woke up the moment it lost its comms.** Reported as two Patriots
+  keeping their threat rings and firing with their power stations destroyed. The data was
+  right the whole way down — the archived mission for that turn hands both sites to
+  Skynet with exactly what they depend on, and both power statics spawn into it with
+  `dead = true`, which is what Skynet reads as "no power". The fault is in Skynet's own
+  `goAutonomous()`: losing a connection node makes an element autonomous, and under
+  `AUTONOMOUS_STATE_DCS_AI`, which is what we set, autonomous meant `goLive()`
+  unconditionally. So bombing the comms node of a site whose power station was already
+  rubble was *worse than bombing nothing* — it woke a site the command centre would
+  otherwise have kept dark. Going autonomous means an element lost its network, not that
+  it grew a generator, so it now stays dark without power whatever its autonomous
+  behaviour says. Found by reading the archived `.miz` for the turn in question: the
+  sites had been destroyed since, so nothing in the current save could have shown it.
+- **A squadron with nobody willing to fly read as fully manned.** The engine was right —
+  of 43 broken pilots in one campaign save, not one was in an availability pool. The text
+  lied: the squadron dialog subtracted the wounded and the ones on leave and nothing
+  else, so a squadron with eight men refusing to fly still read "8 available", and the
+  Air Wing row showed the bare headcount, so one with nobody to send read "16 pilots".
+  Both go through `Squadron.fit_for_duty` now — on the books, not hurt, not away, willing
+  — which is what those counts have always meant to a player. Deliberately not
+  `available_pilots`: that is the untasked pool and shrinks as you plan, which is a
+  different question. The dialog names the refusers beside the wounded, because a
+  squadron you know to rest is not the same as one that looks under-used.
+- **A plugin could not ask the player for a word.** The plugin options dialog drew a
+  checkbox for a boolean and a spinner for a number, and for a string it drew the label
+  and no control at all — so the Mission Log's YEAH! and OH NO! arrived as two rows you
+  could read and not change. Strings get a field, and an empty one is an empty one: the
+  log already treats that as "say nothing".
 - **Three in the fuel figures.** Adding or removing a drop tank did not move the total;
   the estimate took no account of the altitude flown; and it charged the join and split
   legs at the combat rate, which put a strike's eighty-mile egress at over twice its
