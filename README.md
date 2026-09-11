@@ -88,6 +88,21 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   day it is registered. No Lua change was needed after all: Skynet reads an empty power
   list as "powered", so leaving the connection out of the table *is* the feature. Kill
   the generator itself and the site is back on the grid next mission.
+- **The Air Wing Configuration dialog was redrawn.** Three panes, one per question:
+  what this coalition flies and how much of it, what each squadron is allowed to be
+  given and where it is based, and — the one the old form did not have at all — whether
+  it all fits. Parking was a grey line at the bottom of one group box, and going over it
+  was the commonest mistake made in this window; now every base is on screen and turns
+  red the moment you bump a max size, with the header saying "1 over" before you look.
+  Squadron boxes became collapsible cards whose closed header answers what you go
+  looking for, one open at a time. The twenty-row *Mission Type / Auto-Assign* grid is
+  chips grouped into the three task families the rest of the app already colours by,
+  showing only what the airframe can fly and naming what it cannot; the primary task is
+  marked and cannot be switched off, which closes a trap the old form left open. And the
+  two situations the window opens in — composing an air force before a campaign, and
+  reaching into a running one with the cheat on — are now told apart by a blue or amber
+  header, an amber block around the cheat's own controls, and a primary button that says
+  which act it is.
 - **The map can be searched.** A log line or a message from the OPFOR planner names a
   site — MINK, or "the Patriot north of Creech" — and finding it meant panning around
   hunting a code name among two hundred icons. The box on the top left searches every

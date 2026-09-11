@@ -1,6 +1,7 @@
 ﻿# Retribution v1.6.3 (414th)
 
 ## Features/Improvements
+* **[UI]** The Air Wing Configuration dialog was redrawn: three panes (types, squadrons, bases) instead of a form, so parking is on screen instead of hidden at the bottom of a group box; squadrons are collapsible cards; the twenty-row task grid is chips grouped by family, showing only what the aircraft can fly; and the header says whether you are composing a new air wing or cheating into a running campaign.
 * **[Mission Generator]** A battery that deploys with its own generator (Patriot EPP, SAMP/T MGE) no longer goes dark when the nearest substation is bombed; killing the generator itself puts it back on the grid.
 * **[UI]** A SAM cut off from its network paints its health bar violet, and one with no power paints it grey and draws no range rings at all, with the reason in the tooltip. A battery running on its own generator says so and names the vehicle.
 * **[UI]** A waypoint you can give up — one you added, a refuelling stop, the join of a flight that is the whole package — can be deleted on an AI flight again; only *adding* is still reserved for all-player flights.
