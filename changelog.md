@@ -2,6 +2,8 @@
 
 ## Features/Improvements
 * **[FIX]** One of a strike's several target points could never be deleted: the rule meant to allow it asked the wrong object and never fired.
+* **[Plugins]** How far a comms tower and a power station reach are Skynet options now (15 and 35 nm, as before) instead of constants in the source.
+* **[UI]** A repair message names what was repaired -- "PYTHON (Factory)" -- instead of the code name alone.
 * **[FIX]** An objective added to a campaign already under way -- a migrated motorpool, for one -- could not be opened from the map.
 * **[FIX]** A player shot down with "invulnerable player pilots" on was paid the mission-complete experience as though he had landed.
 * **[FIX]** Closing a package dialog left every flight editor in the session unopenable, with "Internal C++ object (QEditFlightDialog) already deleted".
