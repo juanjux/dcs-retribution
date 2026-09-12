@@ -138,35 +138,29 @@ class ObjectiveFinder:
             yield target
 
     def motorpool_targets(self) -> Iterator[MotorpoolGroundObject]:
-        """Iterates over enemy motorpool depots worth striking this turn.
+        """Iterates over enemy motorpool depots worth striking this turn."""
+        from game.theater.theatergroundobject import motorpool_rendered_unit_count
 
-        A motorpool is a target only when it will actually render reserve armor,
-        so membership is gated on the per-TGO shared-cap projection plus the
-        motorpool being enabled with a positive spawn cap. Unlike
-        :meth:`strike_targets`, ``is_dead`` is intentionally *not* used: the
-        motorpool's groups are repopulated each mission *after* planning runs, so
-        ``is_dead`` (which reads ``alive_unit_count``) reflects a stale render
-        while the reserve pool is the current source of truth.
-
-        Targets are sorted by proximity to friendly control points, matching the
-        behavior of :meth:`strike_targets`.
-        """
-        settings = self.game.settings
-        if not settings.motorpool_enabled or settings.motorpool_spawn_cap <= 0:
+        if not self.game.settings.motorpool_enabled:
             return
-        from game.missiongenerator.motorpoolpopulator import (
-            motorpools_at,
-            projected_motorpool_counts,
-        )
+        spawn_cap = self.game.settings.motorpool_spawn_cap
+        if spawn_cap <= 0:
+            return
 
-        cap = settings.motorpool_spawn_cap
         candidates: list[MotorpoolGroundObject] = []
         for enemy_cp in self.enemy_control_points():
-            motorpools = motorpools_at(enemy_cp)
-            projected_counts = projected_motorpool_counts(motorpools, cap)
-            for motorpool in motorpools:
-                if projected_counts.get(motorpool.id, 0) > 0:
-                    candidates.append(motorpool)
+            for ground_object in enemy_cp.ground_objects:
+                if not isinstance(ground_object, MotorpoolGroundObject):
+                    continue
+                if (
+                    motorpool_rendered_unit_count(
+                        ground_object,
+                        self.game.settings.motorpool_enabled,
+                        spawn_cap,
+                    )
+                    > 0
+                ):
+                    candidates.append(ground_object)
         yield from self._targets_by_range(candidates)
 
     def front_lines(self) -> Iterator[FrontLine]:

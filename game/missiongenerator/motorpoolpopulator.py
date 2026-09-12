@@ -13,6 +13,12 @@ from game.ground_forces.ai_ground_planner import reserve_armor_for
 from game.theater.controlpoint import ControlPoint, ControlPointType
 from game.theater.theatergroup import TheaterGroup, TheaterUnit
 from game.theater.theatergroundobject import MotorpoolGroundObject
+from game.theater.theatergroup import TheaterGroup, TheaterUnit
+from game.theater.theatergroundobject import (
+    MotorpoolGroundObject,
+    motorpool_projected_counts,
+)
+from game.point_with_heading import PointWithHeading
 
 if TYPE_CHECKING:
     from game.game import Game
