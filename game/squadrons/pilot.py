@@ -3,11 +3,13 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import unique, Enum
 from typing import Any
+from uuid import UUID, uuid4
 
 from faker import Faker
 
 from dcs.unit import Skill
 
+from game.squadrons import hardening
 from game.squadrons.morale import (
     MORALE_HISTORY_LIMIT,
     SORTIE_HISTORY_LIMIT,
@@ -70,6 +72,12 @@ class Pilot:
     #: save written before morale existed reads from the class.
     morale: int = field(default=MORALE_START)
 
+    #: What the bad weeks left behind, 0 upwards and never down. Earned a point or
+    #: three per turn spent Shaken or worse, and read by everything that decides how
+    #: hard the next one lands. A plain default, so a pilot from a save written before
+    #: it reads 0 from the class.
+    hardened: int = field(default=0)
+
     #: Turns of leave left, counted exactly like a wound.
     leave_turns: int = field(default=0)
 
@@ -103,7 +111,26 @@ class Pilot:
     #: been worked lately is what decides whether he asks for a rest.
     sorties_by_turn: list[int] = field(default_factory=list)
 
+    #: Who he is, for the things that have to survive a save. Everything inside one
+    #: pass keys on id(pilot) and should go on doing so; this exists because a
+    #: friendship outlives the process.
+    #:
+    #: compare=False is not optional. Pilot is an eq=True dataclass with no __eq__ of
+    #: its own, so a comparing field would quietly turn value-equality into
+    #: identity-equality everywhere -- and Squadron.claim_pilot exists precisely
+    #: because value-equality bites. repr=False because the repr is interpolated into
+    #: that method's error message and is long enough already.
+    id: UUID = field(init=False, default_factory=uuid4, compare=False, repr=False)
+
+    #: What he thinks of the other pilots, by their id, 0 to 10 and starting at 5.
+    #: Directional: this is his opinion of them, not theirs of him. An edge that lands
+    #: back exactly on Neutral is deleted, so a man who has met nobody carries nothing.
+    friendships: dict[UUID, float] = field(
+        init=False, default_factory=dict, compare=False, repr=False
+    )
+
     def __setstate__(self, state: dict[str, Any]) -> None:
+        state.setdefault("hardened", 0)
         state.setdefault("wounded_turns", 0)
         state.setdefault("wounded_on_turn", -1)
         state.setdefault("morale", MORALE_START)
@@ -116,6 +143,12 @@ class Pilot:
         state.setdefault("morale_last_turn", MORALE_START)
         state.setdefault("morale_log", [])
         state.setdefault("sorties_by_turn", [])
+        state.setdefault("friendships", {})
+        if "id" not in state:
+            # A plain if rather than setdefault: a default_factory field has no class
+            # attribute to fall back on, and setdefault would build a UUID on every
+            # unpickle only to throw it away.
+            state["id"] = uuid4()
         self.__dict__.update(state)
 
     @property
@@ -184,7 +217,13 @@ class Pilot:
         if not self.has_morale:
             return 0
         before = self.morale
-        self.morale = apply_morale(before, event, skill, settings)
+        self.morale = apply_morale(
+            before,
+            event,
+            skill,
+            settings,
+            relief=hardening.morale_relief(self.hardened, settings),
+        )
         return self.note_morale_change(before, event.reason, turn)
 
     def note_morale_change(self, before: int, reason: str, turn: int = -1) -> int:

@@ -15,6 +15,34 @@ import {
 import { Fragment } from "react";
 import { Circle, CircleMarker, LayerGroup, Tooltip } from "react-leaflet";
 
+// Why this ring is not the threat it looks like, for the ring's own tooltip.
+function IadsStateLine(props: {
+  state?: string | null;
+  reason?: string | null;
+  blind?: boolean;
+}) {
+  const label =
+    props.state === "dark"
+      ? "Dark"
+      : props.state === "autonomous"
+        ? "Autonomous"
+        : props.blind
+          ? "No radar of its own"
+          : null;
+  if (label == null) {
+    return null;
+  }
+  return (
+    <div style={{ marginTop: "0.4em", opacity: 0.85 }}>
+      <b>
+        {label}
+        {props.blind && props.state ? ", and blind" : ""}
+      </b>
+      {props.reason ? <div>{props.reason}</div> : null}
+    </div>
+  );
+}
+
 interface RangeCirclesProps {
   emitterId: string;
   name: string;
@@ -23,6 +51,9 @@ interface RangeCirclesProps {
   threat_ranges: number[];
   detection_ranges: number[];
   jamming_range?: number | null;
+  iads_state?: string | null;
+  iads_reason?: string | null;
+  iads_blind?: boolean;
   blue: boolean;
   detection?: boolean;
   // When set, clicking the ring opens the emitter's info dialog (same as
@@ -37,6 +68,16 @@ export function colorFor(blue: boolean, detection: boolean) {
     return detection ? "#bb89ff" : "#0084ff";
   }
   return detection ? "#eee17b" : "#c85050";
+}
+
+// A site Skynet will not switch on has no ring at all: it will not see and it will not
+// shoot for the whole mission, and drawing the circle it would have had is drawing a
+// threat that is not there. An autonomous one keeps its ring exactly as it is -- it
+// does still shoot, at whatever its own radar finds -- and says so in the tooltip and
+// on its health bar. Which is why nothing here is recoloured or dashed: dashed already
+// means a GPS jamming bubble.
+export function ringsAreOff(state?: string | null): boolean {
+  return state === "dark";
 }
 
 // Bright colour used to mark the hovered ring and its emitter.
@@ -73,9 +114,11 @@ const RangeCircles = (props: RangeCirclesProps) => {
   // The detection layer draws every detection range, including that of a site with
   // nothing left to shoot with: a search radar that survived its launchers still sees,
   // still feeds the IADS, and is still worth striking.
-  const radii = props.detection
-    ? props.detection_ranges
-    : [...props.threat_ranges, ...passive];
+  const radii = ringsAreOff(props.iads_state)
+    ? []
+    : props.detection
+      ? props.detection_ranges
+      : [...props.threat_ranges, ...passive];
   const color = colorFor(props.blue, props.detection === true);
   const baseWeight = props.detection ? 1 : 2;
   const dispatch = useAppDispatch();
@@ -157,6 +200,11 @@ const RangeCircles = (props: RangeCirclesProps) => {
               {summarizeUnits(props.units).map((unit, i) => (
                 <div key={i}>{unit}</div>
               ))}
+              <IadsStateLine
+                state={props.iads_state}
+                reason={props.iads_reason}
+                blind={props.iads_blind}
+              />
             </Tooltip>
           </Circle>
         </Fragment>
@@ -209,6 +257,9 @@ export const AirDefenseRangeLayer = (props: AirDefenseRangeLayerProps) => {
             threat_ranges={tgo.threat_ranges}
             detection_ranges={tgo.detection_ranges}
             jamming_range={tgo.jamming_range}
+            iads_state={tgo.iads_state}
+            iads_reason={tgo.iads_reason}
+            iads_blind={tgo.iads_blind}
             selectable
             {...props}
           />

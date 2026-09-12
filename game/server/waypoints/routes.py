@@ -84,6 +84,27 @@ def set_position(
     EventStream.put_nowait(events.update_flight(flight))
 
 
+def formation_waypoint(
+    flight: Flight, kind: FlightWaypointType
+) -> FlightWaypoint | None:
+    """A flight's join or split, whatever it happens to be labelled.
+
+    A lone AI ship's two package waypoints read as NAV -- it has no formation to form --
+    so matching on the label would miss them here, and would then drag the first nav
+    point of every other flight in the package instead. The layout knows which waypoint
+    is which; a custom flight plan has no layout to ask, and falls back to the label.
+    """
+    from game.ato.flightplans.formation import FormationLayout
+
+    layout = flight.flight_plan.layout
+    if isinstance(layout, FormationLayout):
+        return layout.join if kind is FlightWaypointType.JOIN else layout.split
+    for wpt in flight.flight_plan.iter_waypoints():
+        if wpt.waypoint_type is kind:
+            return wpt
+    return None
+
+
 def update_package_waypoints_if_primary_flight(
     waypoint: FlightWaypoint,
     flight: Flight,
@@ -91,9 +112,12 @@ def update_package_waypoints_if_primary_flight(
 ) -> None:
     wpts = flight.package.waypoints
     if flight is flight.package.primary_flight and wpts:
-        if waypoint.waypoint_type is FlightWaypointType.JOIN:
+        moved: FlightWaypointType | None = None
+        if waypoint is formation_waypoint(flight, FlightWaypointType.JOIN):
+            moved = FlightWaypointType.JOIN
             wpts.join = waypoint.position
-        elif waypoint.waypoint_type is FlightWaypointType.SPLIT:
+        elif waypoint is formation_waypoint(flight, FlightWaypointType.SPLIT):
+            moved = FlightWaypointType.SPLIT
             wpts.split = waypoint.position
         elif waypoint.waypoint_type is FlightWaypointType.REFUEL:
             wpts.refuel = waypoint.position
@@ -107,13 +131,25 @@ def update_package_waypoints_if_primary_flight(
         for f in flight.package.flights:
             if f is flight:
                 continue
-            for wpt in f.flight_plan.iter_waypoints():
-                if wpt.waypoint_type == waypoint.waypoint_type or (
-                    "INGRESS" in wpt.waypoint_type.name
-                    and "INGRESS" in waypoint.waypoint_type.name
-                ):
-                    wpt.position = waypoint.position.new_in_same_map(
-                        waypoint.position.x, waypoint.position.y
-                    )
-                    events.update_flight(f)
-                    break
+            counterpart = (
+                formation_waypoint(f, moved)
+                if moved is not None
+                else _same_kind_of_waypoint(f, waypoint)
+            )
+            if counterpart is not None:
+                counterpart.position = waypoint.position.new_in_same_map(
+                    waypoint.position.x, waypoint.position.y
+                )
+                events.update_flight(f)
+
+
+def _same_kind_of_waypoint(
+    flight: Flight, waypoint: FlightWaypoint
+) -> FlightWaypoint | None:
+    for wpt in flight.flight_plan.iter_waypoints():
+        if wpt.waypoint_type == waypoint.waypoint_type or (
+            "INGRESS" in wpt.waypoint_type.name
+            and "INGRESS" in waypoint.waypoint_type.name
+        ):
+            return wpt
+    return None

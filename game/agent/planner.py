@@ -22,6 +22,10 @@ from game.commander.packagefulfiller import PackageFulfiller
 from game.profiling import MultiEventTracer
 
 from game.agent import schemas, views
+from game.dcs.skills import SKILL_LADDER
+from game.squadrons import friendship
+from game.squadrons import hardening
+from game.squadrons import morale as morale_rules
 
 if TYPE_CHECKING:
     from game import Game
@@ -1668,7 +1672,92 @@ def package_of(game: Game, side: str, flight):
     return None
 
 
-def _pilot_view(squadron: Any, pilot: Any) -> dict[str, Any]:
+#: How many bonds a pilot's view carries. Enough to crew around, and short of a dump
+#: of everybody he has ever shared a base with.
+RELATIONSHIP_LIMIT = 12
+
+
+def _rungs_between(before: Any, after: Any) -> int:
+    try:
+        return SKILL_LADDER.index(after) - SKILL_LADDER.index(before)
+    except ValueError:
+        return 0
+
+
+def _relationship_views(
+    pilot: Any, index: dict[Any, Any], settings: Any = None
+) -> list[dict[str, Any]]:
+    """Every bond worth mentioning, in both directions and across squadrons.
+
+    Both signs, because a man he cannot stand is exactly as actionable as a friend --
+    what you do about either is not put them in the same flight. And across squadrons,
+    because a package is crewed out of more than one of them.
+    """
+    others = set(pilot.friendships)
+    for other_id, (_, other) in index.items():
+        if other_id != pilot.id and pilot.id in other.friendships:
+            others.add(other_id)
+
+    bonds: list[tuple[float, dict[str, Any]]] = []
+    for other_id in others:
+        found = index.get(other_id)
+        if found is None:
+            continue  # dead, thrown out, or transferred out of the wing
+        other_squadron, other = found
+        towards = friendship.feeling(pilot, other)
+        from_him = friendship.feeling(other, pilot)
+        strength = max(
+            abs(friendship.points(towards)), abs(friendship.points(from_him))
+        )
+        if not strength:
+            continue
+        bonds.append(
+            (
+                strength,
+                {
+                    "id": str(other.id),
+                    "name": other.name,
+                    "squadron": str(other_squadron),
+                    "band": friendship.band_name(towards, settings),
+                    "towards": round(towards, 1),
+                    "from": round(from_him, 1),
+                },
+            )
+        )
+    bonds.sort(key=lambda item: (-item[0], item[1]["name"]))
+    return [view for _, view in bonds[:RELATIONSHIP_LIMIT]]
+
+
+def _skill_breakdown(squadron: Any, pilot: Any, flight: Any) -> dict[str, Any]:
+    """What made the rung he will fly at: his rank, his week and his company.
+
+    The answer is already in ``flies_at``; this is the working, so a crew worth keeping
+    together can be told from one that is merely senior.
+    """
+    morale_shift = 0
+    if getattr(squadron, "morale_in_play", False) and pilot.has_morale:
+        morale_shift = morale_rules.skill_shift(pilot.morale, squadron.settings)
+    return {
+        "rank": squadron.pilot_skill(pilot).value,
+        "morale": morale_shift,
+        "friendship": _rungs_between(
+            squadron.mission_skill(pilot), squadron.mission_skill(pilot, flight)
+        ),
+    }
+
+
+def _wing_index(squadron: Any) -> dict[Any, Any]:
+    """The whole wing by pilot id, or nothing when there is no friendship to resolve."""
+    if not getattr(squadron, "friendship_in_play", False):
+        return {}
+    coalition = getattr(squadron, "coalition", None)
+    air_wing = getattr(coalition, "air_wing", None)
+    return air_wing.pilot_index() if air_wing is not None else {}
+
+
+def _pilot_view(
+    squadron: Any, pilot: Any, index: Any = None, flight: Any = None
+) -> dict[str, Any]:
     """One pilot as the Air Wing shows him."""
     rank = squadron.pilot_rank(pilot)
     view: dict[str, Any] = {
@@ -1695,6 +1784,26 @@ def _pilot_view(squadron: Any, pilot: Any) -> dict[str, Any]:
             view["asking_for_leave"] = True
         if pilot.on_leave and pilot.leave_turns:
             view["leave_turns_remaining"] = pilot.leave_turns
+        if pilot.hardened and hardening.in_play(settings):
+            # What the bad weeks left behind. It never comes off, so a high figure on a
+            # man whose morale is fine is a man who has already been through it.
+            view["hardened"] = pilot.hardened
+            view["hardened_of"] = hardening.ceiling(settings)
+
+    if getattr(squadron, "friendship_in_play", False):
+        # The id, because two men of the same name are two men, and a relationship has
+        # to be able to name one of them.
+        view["id"] = str(pilot.id)
+        bonds = _relationship_views(
+            pilot,
+            _wing_index(squadron) if index is None else index,
+            getattr(squadron, "settings", None),
+        )
+        if bonds:
+            view["relationships"] = bonds
+        if flight is not None:
+            view["flies_at"] = squadron.mission_skill(pilot, flight).value
+            view["skill_breakdown"] = _skill_breakdown(squadron, pilot, flight)
     return view
 
 
@@ -1877,19 +1986,31 @@ def squadron_pilots(game: Game, side: str, squadron_id: str) -> dict[str, Any]:
                                 f"{flight.package.target.name}"
                             )
             pilots = []
+            index = _wing_index(squadron)
             for pilot in squadron.current_roster:
-                view = _pilot_view(squadron, pilot)
+                view = _pilot_view(squadron, pilot, index)
                 if id(pilot) in flying:
                     view["assigned_to"] = flying[id(pilot)]
                 pilots.append(view)
             # Senior first, the same order the Air Wing lists them in.
             pilots.sort(key=lambda v: (-v.get("xp", 0), v["name"]))
-            return {
+            roster: dict[str, Any] = {
                 "squadron": str(squadron),
                 "aircraft": str(squadron.aircraft),
                 "base": squadron.location.name,
                 "pilots": pilots,
             }
+            cohesion = (
+                squadron.cohesion
+                if getattr(squadron, "friendship_in_play", False)
+                else None
+            )
+            if cohesion is not None:
+                roster["cohesion"] = {
+                    "value": round(cohesion, 1),
+                    "band": friendship.band_name(cohesion, squadron.settings),
+                }
+            return roster
     return {"error": f"no squadron {squadron_id!r} on {side}"}
 
 
@@ -1904,22 +2025,37 @@ def flight_crew(game: Game, side: str, flight_id: str) -> dict[str, Any]:
     if flight is None:
         return {"error": f"no flight with id {flight_id!r}"}
     squadron = flight.squadron
+    index = _wing_index(squadron)
     seats = []
     for idx, pilot in enumerate(flight.roster.iter_pilots()):
         seat: dict[str, Any] = {"seat": idx}
         if pilot is None:
             seat["empty"] = True
         else:
-            seat.update(_pilot_view(squadron, pilot))
+            seat.update(_pilot_view(squadron, pilot, index, flight))
         seats.append(seat)
-    available = [_pilot_view(squadron, p) for p in squadron.available_pilots]
+    available = [_pilot_view(squadron, p, index) for p in squadron.available_pilots]
     available.sort(key=lambda v: (-v.get("xp", 0), v["name"]))
-    return {
+    crew: dict[str, Any] = {
         "flight_id": str(flight.id),
         "squadron": str(squadron),
         "seats": seats,
         "available": available,
     }
+    synergy = None
+    if getattr(squadron, "friendship_in_play", False):
+        synergy = squadron.formation_synergy(list(flight.roster.iter_pilots()))
+    if synergy is not None:
+        # A planner that can see the number can crew for it, which is the point of
+        # having it.
+        crew["synergy"] = {
+            "value": round(synergy, 1),
+            "band": friendship.band_name(synergy, squadron.settings),
+            "flies_a_rung_better": friendship.flies_a_rung_better(
+                synergy, squadron.settings
+            ),
+        }
+    return crew
 
 
 def set_flight_crew(

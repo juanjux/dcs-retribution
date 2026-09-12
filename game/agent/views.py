@@ -21,6 +21,7 @@ from dcs.weather import Weather as PydcsWeather, Wind
 from pydantic import BaseModel, Field
 
 from game.income import Income
+from game.theater.iadsnetwork.iadsstate import IadsStatus
 from game.theater.player import Player
 from game.utils import meters, mps
 
@@ -244,10 +245,14 @@ class PackageView(BaseModel):
 
 
 class RebuildView(BaseModel):
-    """A site that is being rebuilt: what it will become, and when."""
+    """Work in progress on a site: what is coming back, and when."""
 
     force_group: str  # what it is being rebuilt into
-    turns_remaining: int  # turns until its units come alive
+    turns_remaining: int  # turns until the last of it comes alive
+    units_repairing: int = 0  # dead units with a countdown on them
+    units_alive: int = 0  # units already standing. 0 = the whole site is down and is
+    # being rebuilt; anything else = it is fighting now and getting stronger, which is
+    # a different thing to plan against
 
 
 class TargetView(BaseModel):
@@ -297,6 +302,18 @@ class TargetView(BaseModel):
         # driving/sailing. It is MOVING: plan the intercept along this line, not at pos.
     )
     damage: str | None = None  # 'lightly/heavily damaged' (omitted at full strength)
+    iads_state: str | None = (
+        None  # "autonomous" (cut off from its network: it engages only what its own
+        # radar finds) or "dark" (no power: the radar never comes up, so it will not
+        # shoot at all this mission). OMITTED when the site is working normally, which
+        # is the usual case. iads_reason says why.
+    )
+    iads_reason: str | None = None  # one line: why it is autonomous or dark
+    iads_blind: bool | None = (
+        None  # true when nothing it has left can find a target for itself -- its search
+        # radar is gone. A networked site can still be handed targets; an autonomous
+        # blind one is harmless until repaired. Omitted when false.
+    )
 
 
 class ThreatView(BaseModel):
@@ -309,6 +326,13 @@ class ThreatView(BaseModel):
     kind: str  # sam / ship (ships project naval-SAM umbrellas — SM-6 etc.)
     threat_nm: int  # umbrella radius (nm): your flights are engaged within it
     pos: list[float]  # [lat, lng]
+    iads_state: str | None = (
+        None  # "autonomous" or "dark" -- this umbrella is not what its radius says. A
+        # dark site does not shoot this mission at all; an autonomous one engages only
+        # what its own radar finds. Omitted when the site is working normally.
+    )
+    iads_reason: str | None = None  # one line: why
+    iads_blind: bool | None = None  # nothing left that can find a target for itself
 
 
 class IadsNodeView(BaseModel):
@@ -322,6 +346,24 @@ class IadsNodeView(BaseModel):
         None  # ids of the sites feeding this one (power, comms, command). Kill one of
         # these and this node goes down without touching the node itself — that is the
         # whole point of striking the network instead of the launchers.
+    )
+    state: str | None = (
+        None  # what this site will actually do next mission: "autonomous" (cut off from
+        # the network, engaging only what its own radar finds) or "dark" (no power, so
+        # the radar never comes up and it does not shoot at all). OMITTED when the site
+        # is networked and working, which is the usual case -- so a node WITH a state is
+        # a node whose dependencies you have already broken.
+    )
+    state_reason: str | None = None  # one line: which dependency did it
+    blind: bool | None = (
+        None  # nothing left that can find a target for itself. Omitted when false.
+    )
+    repair_turns: int | None = (
+        None  # turns until the work on this site finishes. Present whenever ANYTHING
+        # on it is being repaired, whether it is a wreck being rebuilt or a live site
+        # getting a launcher back -- so a node you flattened last turn is not a free
+        # corridor. Omitted when nothing is under repair. `alive` says which of the two
+        # it is; targets[] carries the same countdown with the unit counts.
     )
 
 
@@ -872,6 +914,13 @@ def _build_target(game: Game, tgo, kind: str, task: str) -> TargetView:
         # Alive launchers/radars per type — shows partial battle damage on a SAM site
         # (e.g. TELs killed but the radar still up), not just alive/dead.
         composition = _unit_composition(tgo)
+    # Only when it is news. A planner does not need telling that every SAM on the map
+    # is doing its job, and this list is long.
+    status = _iads_status(game, tgo)
+    notable = status is not None and status.notable
+    iads_state = status.state.value if notable and status is not None else None
+    iads_reason = status.reason if notable and status is not None else None
+    iads_blind = True if status is not None and status.blind else None
     return TargetView(
         id=str(tgo.id),
         name=tgo.name,
@@ -885,25 +934,39 @@ def _build_target(game: Game, tgo, kind: str, task: str) -> TargetView:
         damage=_damage_word(tgo),
         iads_role=_iads_role(tgo),
         rebuild=_rebuild_state(tgo),
+        iads_state=iads_state,
+        iads_reason=iads_reason,
+        iads_blind=iads_blind,
     )
 
 
 def _rebuild_state(tgo: object) -> RebuildView | None:
-    """Whether this site is under construction, and what it will be.
+    """What is being repaired on this site, and when it lands.
 
-    A rebuilt site spends the repair delay with all of its units dead but with a
+    A site rebuilt from nothing spends the delay with every unit dead but with a
     countdown on them, which reads exactly like a destroyed site: no composition, and
     for an enemy site, dropped from the target list entirely. The player sees the works
     on the map, so a planner that cannot is being asked to plan against a different
     board -- and it matters both ways round. An enemy SAM coming back in two turns is
     not a free corridor, and your own rebuilt site is not somewhere to send a repair.
+
+    A PARTIAL repair is the same news and used to be silent: this bailed out the moment
+    it found one unit standing, on the grounds that a site with something alive is
+    damaged rather than under construction. True, and beside the point -- a battery that
+    is firing today and gets its second launcher back next turn is a battery you are
+    planning against twice. ``units_alive`` is what tells the two apart, so nothing that
+    read this before has to guess.
     """
     turns = None
+    repairing = 0
+    alive = 0
     for unit in getattr(tgo, "units", []):
         if getattr(unit, "alive", True):
-            return None  # something is already up: this is damage, not construction
+            alive += 1
+            continue
         remaining = getattr(unit, "repair_turns_remaining", None)
         if remaining is not None:
+            repairing += 1
             turns = remaining if turns is None else max(turns, remaining)
     if turns is None:
         return None
@@ -913,7 +976,24 @@ def _rebuild_state(tgo: object) -> RebuildView | None:
         if name:
             break
     fallback = getattr(tgo, "name", "")
-    return RebuildView(force_group=str(name or fallback), turns_remaining=int(turns))
+    return RebuildView(
+        force_group=str(name or fallback),
+        turns_remaining=int(turns),
+        units_repairing=repairing,
+        units_alive=alive,
+    )
+
+
+def _iads_status(game: Game, tgo: object) -> IadsStatus | None:
+    """What the IADS will do with this site next mission, or None if it is not in one.
+
+    Derived from the network rather than measured: DCS never reports the state back.
+    The network caches the answer for the whole map, so asking per site is cheap.
+    """
+    try:
+        return game.theater.iads_network.state_map.status_for(tgo)  # type: ignore[arg-type]
+    except Exception:
+        return None
 
 
 def _iads_role(tgo) -> str | None:
@@ -1091,7 +1171,14 @@ def build_threats(targets: list[TargetView]) -> list[ThreatView]:
     )
     return [
         ThreatView(
-            id=t.id, name=t.name, kind=t.kind, threat_nm=t.threat_nm or 0, pos=t.pos
+            id=t.id,
+            name=t.name,
+            kind=t.kind,
+            threat_nm=t.threat_nm or 0,
+            pos=t.pos,
+            iads_state=t.iads_state,
+            iads_reason=t.iads_reason,
+            iads_blind=t.iads_blind,
         )
         for t in ranked
     ]
@@ -1722,6 +1809,15 @@ def build_iads(game: Game, side: str) -> IadsView:
     Only the opponent's half is returned — this is a targeting aid, not a view of
     one's own network. Dead nodes are kept: knowing a power station is already down
     is what tells you the radars behind it are blind.
+
+    Each node also carries what its dependencies add up to: a site whose power is gone
+    reads "dark" and will not fire next mission at all, and one that has lost its comms
+    or its command centre reads "autonomous" and engages only what its own radar finds.
+    That is the result of the graph, so nobody has to work it out from the graph.
+
+    And what is being done about it: ``repair_turns`` is the countdown on any work in
+    progress, so a power station you flattened last turn does not read as a permanent
+    hole in their network.
     """
     player = player_for_side(side)
     network = game.theater.iads_network
@@ -1737,6 +1833,9 @@ def build_iads(game: Game, side: str) -> IadsView:
             for conn in node.connections.values()
             if conn.ground_object.id != tgo.id
         ]
+        status = network.state_map.status_for(tgo)
+        notable = status is not None and status.notable
+        rebuild = _rebuild_state(tgo)
         nodes.append(
             IadsNodeView(
                 id=str(tgo.id),
@@ -1744,6 +1843,10 @@ def build_iads(game: Game, side: str) -> IadsView:
                 role=str(node.group.iads_role.value),
                 alive=node.group.alive_units > 0,
                 depends_on=sorted(set(depends)) or None,
+                state=status.state.value if notable and status is not None else None,
+                state_reason=status.reason if notable and status is not None else None,
+                blind=True if status is not None and status.blind else None,
+                repair_turns=rebuild.turns_remaining if rebuild is not None else None,
             )
         )
     return IadsView(advanced=network.advanced_iads, nodes=nodes)

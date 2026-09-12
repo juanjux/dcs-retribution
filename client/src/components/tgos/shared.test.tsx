@@ -1,5 +1,5 @@
 import { Tgo as TgoModel } from "../../api/liberationApi";
-import { iconForTgo, isJammer, isRepairing } from "./shared";
+import { iadsBarColor, iconForTgo, isJammer, isRepairing } from "./shared";
 
 // APP-6(D) SIDC with the status/condition digit (index 6) parameterised.
 function sidc(status: string): string {
@@ -57,6 +57,55 @@ describe("iconForTgo health-bar colour", () => {
     const svg = decodeURIComponent(url.slice(url.indexOf(",") + 1));
     expect(svg).toContain("rgb(255,255,0)"); // still yellow
     expect(svg).not.toContain("rgb(255,140,0)");
+  });
+});
+
+// The health bar is the one thing on the map that says how well a site is working, so
+// what the IADS will do with it goes there -- and nowhere else: the range rings are left
+// in their own colours, because a recoloured or dashed ring reads as a jamming bubble.
+describe("iadsBarColor", () => {
+  const withState = (status: string, state: string | null) =>
+    ({ ...fakeTgo(false, status, false), iads_state: state }) as TgoModel;
+
+  it("greys the bar of a site with no power", () => {
+    expect(iadsBarColor(withState("2", "dark"))).toBe("rgb(130,140,150)");
+  });
+
+  it("paints a site cut off from its network violet", () => {
+    expect(iadsBarColor(withState("2", "autonomous"))).toBe("rgb(178,120,255)");
+  });
+
+  it("leaves a working site alone", () => {
+    expect(iadsBarColor(withState("2", "networked"))).toBeNull();
+    expect(iadsBarColor(withState("2", null))).toBeNull();
+  });
+
+  it("leaves a destroyed site red", () => {
+    // It is dark, of course it is -- but "destroyed" is the more useful of the two
+    // things to be told, and the red bar is the only place the map says it.
+    expect(iadsBarColor(withState("4", "dark"))).toBeNull();
+  });
+
+  it("wins over the repair orange", () => {
+    const tgo = {
+      ...fakeTgo(false, "3", true),
+      iads_state: "dark",
+    } as TgoModel;
+    const url = iconForTgo(tgo).options.iconUrl ?? "";
+    const svg = decodeURIComponent(url.slice(url.indexOf(",") + 1));
+    expect(svg).toContain("rgb(130,140,150)");
+    expect(svg).not.toContain("rgb(255,140,0)");
+  });
+
+  it("paints the bar of an intact autonomous site", () => {
+    const tgo = {
+      ...fakeTgo(false, "2", false),
+      iads_state: "autonomous",
+    } as TgoModel;
+    const url = iconForTgo(tgo).options.iconUrl ?? "";
+    const svg = decodeURIComponent(url.slice(url.indexOf(",") + 1));
+    expect(svg).toContain("rgb(178,120,255)");
+    expect(svg).not.toContain("rgb(0,255,0)");
   });
 });
 

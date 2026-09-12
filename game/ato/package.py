@@ -156,6 +156,7 @@ class Package(RadioFrequencyContainer):
         """Adds a flight to the package."""
         self.flights.append(flight)
         self._db.add(flight.id, flight)
+        self.label_formation_waypoints()
 
     def remove_flight(self, flight: Flight) -> None:
         """Removes a flight from the package."""
@@ -166,6 +167,18 @@ class Package(RadioFrequencyContainer):
             flight.cargo.transport = None
         if not self.flights:
             self.waypoints = None
+        self.label_formation_waypoints()
+
+    def label_formation_waypoints(self) -> None:
+        """Name every flight's join and split for the size of the package.
+
+        A package of one has nobody to meet and nobody to part from, so those two
+        points read as nav points; a second flight makes them a join and a split
+        again, for every flight in the package. Done here rather than per flight
+        because adding one flight changes what every other flight's route says.
+        """
+        for flight in self.flights:
+            flight.label_formation_waypoints()
 
     @property
     def primary_flight(self) -> Optional[Flight]:
