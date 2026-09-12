@@ -224,6 +224,32 @@ const injectedRtkApi = api.injectEndpoints({
         body: queryArg.leafletPoint,
       }),
     }),
+    editWaypoint: build.mutation<EditWaypointApiResponse, EditWaypointApiArg>({
+      query: (queryArg) => ({
+        url: `/waypoints/${queryArg.flightId}/${queryArg.waypointIdx}`,
+        method: "PATCH",
+        body: queryArg.waypointEdit,
+      }),
+    }),
+    deleteWaypoint: build.mutation<
+      DeleteWaypointApiResponse,
+      DeleteWaypointApiArg
+    >({
+      query: (queryArg) => ({
+        url: `/waypoints/${queryArg.flightId}/${queryArg.waypointIdx}`,
+        method: "DELETE",
+      }),
+    }),
+    insertWaypoint: build.mutation<
+      InsertWaypointApiResponse,
+      InsertWaypointApiArg
+    >({
+      query: (queryArg) => ({
+        url: `/waypoints/${queryArg.flightId}/${queryArg.waypointIdx}/insert`,
+        method: "POST",
+        body: queryArg.waypointInsert,
+      }),
+    }),
     getIadsNetwork: build.query<
       GetIadsNetworkApiResponse,
       GetIadsNetworkApiArg
@@ -385,6 +411,35 @@ export type SetWaypointPositionApiArg = {
   waypointIdx: number;
   leafletPoint: LatLng;
 };
+export type EditWaypointApiResponse =
+  /** status 204 Successful Response */ undefined;
+export type EditWaypointApiArg = {
+  flightId: string;
+  waypointIdx: number;
+  waypointEdit: WaypointEdit;
+};
+export type DeleteWaypointApiResponse =
+  /** status 204 Successful Response */ undefined;
+export type DeleteWaypointApiArg = {
+  flightId: string;
+  waypointIdx: number;
+};
+export type InsertWaypointApiResponse =
+  /** status 204 Successful Response */ undefined;
+export type InsertWaypointApiArg = {
+  flightId: string;
+  waypointIdx: number;
+  waypointInsert: WaypointInsert;
+};
+export type WaypointEdit = {
+  name?: string | null;
+  altitude_ft?: number | null;
+  altitude_reference?: string | null;
+};
+export type WaypointInsert = {
+  before?: boolean;
+  position?: LatLng | null;
+};
 export type GetIadsNetworkApiResponse =
   /** status 200 Successful Response */ IadsNetwork;
 export type GetIadsNetworkApiArg = void;
@@ -445,6 +500,9 @@ export type Waypoint = {
   should_mark: boolean;
   include_in_path: boolean;
   timing: string;
+  index: number;
+  can_delete: boolean;
+  speed_kts: number;
 };
 export type Flight = {
   id: string;
@@ -590,6 +648,9 @@ export const {
   useClearTgoDestinationMutation,
   useListAllWaypointsForFlightQuery,
   useSetWaypointPositionMutation,
+  useEditWaypointMutation,
+  useDeleteWaypointMutation,
+  useInsertWaypointMutation,
   useGetIadsNetworkQuery,
   useGetIadsConnectionsForTgoQuery,
 } = injectedRtkApi;

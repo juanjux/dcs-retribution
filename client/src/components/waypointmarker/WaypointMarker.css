@@ -1,0 +1,5 @@
+/* The selected waypoint, lit up: the same pin with a glow, so the one under the menu
+   is the one you are about to rename, move or delete. */
+.wp-marker-selected {
+  filter: drop-shadow(0 0 5px #ffff00) drop-shadow(0 0 2px #ffff00);
+}
