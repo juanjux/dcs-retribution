@@ -1,6 +1,7 @@
 ﻿# Retribution v1.6.3 (414th)
 
 ## Features/Improvements
+* **[UI]** The flight plan you have selected is drawn whether or not its side's flight plans are switched on in Map Layers.
 * **[FIX]** One of a strike's several target points could never be deleted: the rule meant to allow it asked the wrong object and never fired.
 * **[Plugins]** How far a comms tower and a power station reach are Skynet options now (15 and 35 nm, as before) instead of constants in the source.
 * **[UI]** A repair message names what was repaired -- "PYTHON (Factory)" -- instead of the code name alone.
