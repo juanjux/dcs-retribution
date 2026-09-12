@@ -94,11 +94,21 @@ iads_config:
     - PW-B
     - PW-C
 #NATO IADS
-# Blue had no comms and no power at all. Three relay towers and two power stations,
-# placed so that the coverage overlaps: CM-1 and CM-2 share NELLIS 1, CM-2 and CM-3
-# share NELLIS 2 and 3, which makes blue one network rather than three islands the
-# way red was. Its grid is meshed as far as the 35 nm range allows -- only NELLIS 1
-# sits inside both stations; Creech and Nellis are 37-48 nm apart.
+# Blue had no IADS at all beyond the bunker: no early-warning radar, no comms, no
+# power. Skynet keeps a SAM in the network only while a live parent radar covers it,
+# so without an EWR every blue site went autonomous whatever else it had. Two radars
+# (Creech and Nellis), three relay towers and two power stations, placed so that the
+# coverage overlaps -- CM-1 and CM-2 share NELLIS 1, CM-2 and CM-3 share NELLIS 2 and
+# 3 -- which makes blue one network rather than three islands the way red was. Its
+# grid is meshed as far as the 35 nm range allows: only NELLIS 1 sits inside both
+# stations, Creech and Nellis being 37-48 nm apart.
+  - NATO EWR-1:
+    - NATO CM-1
+    - NATO PW-1
+  - NATO EWR-2:
+    - NATO CM-2
+    - NATO CM-3
+    - NATO PW-2
   - NATO SAM-1:
     - NATO CM-1
     - NATO PW-1
