@@ -12,8 +12,10 @@ inferred from which tabs turned up, and the paragraph becomes figures.
 
 from __future__ import annotations
 
+from copy import deepcopy
 from typing import Optional
 
+from dcs.planes import B_1B
 from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (
     QGridLayout,
@@ -23,9 +25,17 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from game.theater import ControlPoint, Fob, NavalControlPoint, ParkingType
+from game.dcs.aircrafttype import AircraftType
+from game.theater import (
+    AMMO_DEPOT_FRONTLINE_UNIT_CONTRIBUTION,
+    FREE_FRONTLINE_UNIT_SUPPLY,
+    ControlPoint,
+    Fob,
+    NavalControlPoint,
+    ParkingType,
+)
 from qt_ui.widgets.cards import CAPTION, card, make_transparent
-from qt_ui.widgets.controls import KEY, VALUE, mono
+from qt_ui.widgets.controls import KEY, VALUE, mono, wrapped_tooltip
 
 #: The status of a thing that works, does not, or is being seen to.
 GOOD = "#86C39A"
@@ -38,6 +48,9 @@ OWNER_BLUE = "#8FC3F0"
 OWNER_RED = "#D9645E"
 
 BANNER_HEIGHT = 132
+
+#: Every kind of parking, because a base's figure counts every kind of aircraft.
+EVERY_PARKING = ParkingType(fixed_wing=True, fixed_wing_stol=True, rotary_wing=True)
 
 
 def chip(text: str, colour: str, filled: bool = False) -> QLabel:
@@ -102,6 +115,122 @@ def kind_of(cp: ControlPoint) -> str:
     if isinstance(cp, NavalControlPoint):
         return "SHIP"
     return "AIRBASE"
+
+
+def parking_breakdown(cp: ControlPoint) -> Optional[dict[str, dict[str, int]]]:
+    """Estimate per-category parking usage by simulating slot allocation.
+
+    The data model only tracks aircraft counts, not which slot each one
+    occupies, so this replicates the placement priority used elsewhere to
+    attribute aircraft to slot categories. The split is an estimate.
+    """
+    airport = cp.dcs_airport
+    if airport is None:
+        return None
+
+    pt_rotary = ParkingType(rotary_wing=True)
+    pt_stol = ParkingType(fixed_wing_stol=True)
+    slots = list(cp.parking_slots)
+    totals = {
+        "shared": len([s for s in slots if s.helicopter and s.airplanes]),
+        "fixed": len([s for s in slots if s.airplanes and not s.helicopter]),
+        "rotary": len([s for s in slots if s.helicopter and not s.airplanes])
+        + cp.total_aircraft_parking(pt_rotary),
+        "ground": cp.total_aircraft_parking(pt_stol),
+    }
+    counts: dict[str, dict[str, int]] = {
+        c: {"present": 0, "transferring": 0, "ordered": 0}
+        for c in ("shared", "fixed", "rotary", "ground")
+    }
+
+    ap = deepcopy(airport)
+    free_helipads = cp.total_aircraft_parking(pt_rotary)
+    free_ground = cp.total_aircraft_parking(pt_stol)
+    ground_start = cp.coalition.game.settings.ground_start_ai_planes
+
+    def place(aircraft: AircraftType, phase: str) -> None:
+        nonlocal free_helipads, free_ground
+        is_heli = aircraft.helicopter
+        is_vtol = not is_heli and aircraft.lha_capable
+        ground_ok = aircraft.flyable or ground_start
+        if free_helipads > 0 and is_heli:
+            free_helipads -= 1
+            counts["rotary"][phase] += 1
+        elif free_ground > 0 and (is_heli or is_vtol or ground_ok):
+            free_ground -= 1
+            counts["ground"][phase] += 1
+        else:
+            slot = ap.free_parking_slot(aircraft.dcs_unit_type)
+            if slot is None:
+                return
+            slot.unit_id = 1
+            if slot.helicopter and slot.airplanes:
+                counts["shared"][phase] += 1
+            elif slot.airplanes:
+                counts["fixed"][phase] += 1
+            else:
+                counts["rotary"][phase] += 1
+
+    staying = [s for s in cp.squadrons if s.destination is None]
+    incoming = [
+        s for s in cp.coalition.air_wing.iter_squadrons() if s.destination == cp
+    ]
+    for s in staying:
+        for _ in range(s.owned_aircraft):
+            place(s.aircraft, "present")
+    for s in incoming:
+        for _ in range(s.owned_aircraft):
+            place(s.aircraft, "transferring")
+    for s in staying + incoming:
+        for _ in range(max(s.pending_deliveries, 0)):
+            place(s.aircraft, "ordered")
+
+    # Fixed-wing slots split by size. "Big" slots are those that can host a
+    # heavy aircraft (C-130, B-1B, tankers, AWACS...). DCS uses two slot
+    # schemes: v1 maps flag big slots with .large, while v2 maps decide
+    # purely by physical dimensions, so we mirror pydcs' own v2 fit test
+    # against a representative heavy (the B-1B). Free counts come from the
+    # placement sim above, so they match what a transfer would actually find.
+    fw_slots = [s for s in ap.parking_slots if s.airplanes]
+    if ap.slot_version == 1:
+        big_flags = [s.large for s in fw_slots]
+    else:
+        big_flags = [
+            s.width is not None
+            and s.length is not None
+            and B_1B.width < s.width
+            and B_1B.height < (s.height or 1000)
+            and B_1B.length < s.length
+            for s in fw_slots
+        ]
+    big_total = sum(big_flags)
+    small_total = len(fw_slots) - big_total
+    free_big = sum(
+        1 for s, big in zip(fw_slots, big_flags) if big and s.unit_id is None
+    )
+    free_small = sum(
+        1 for s, big in zip(fw_slots, big_flags) if not big and s.unit_id is None
+    )
+
+    result: dict[str, dict[str, int]] = {}
+    for c, total in totals.items():
+        occ = counts[c]["present"]
+        tr = counts[c]["transferring"]
+        od = counts[c]["ordered"]
+        result[c] = {
+            "total": total,
+            "occupied": occ,
+            "transferring": tr,
+            "ordered": od,
+            "free": max(total - occ - tr - od, 0),
+        }
+    result["fixed_size"] = {
+        "small_total": small_total,
+        "free_small": free_small,
+        "big_total": big_total,
+        "free_big": free_big,
+    }
+    return result
 
 
 class BaseHeader(QWidget):
@@ -261,7 +390,10 @@ class FiguresStrip(QWidget):
     """Aircraft, ground units and money: the paragraph as three numbers.
 
     Budget belongs here rather than in the footer. It is a figure you read, not a
-    button, and it sits beside the two numbers it constrains.
+    button, and it sits beside the two numbers it constrains. The detail line under
+    each number is what the paragraph said in fifteen lines of indented rich text;
+    the rest of it -- how the deployable limit is arrived at, what is free where --
+    is the tooltip, where a figure you only sometimes want belongs.
     """
 
     def __init__(self, cp: ControlPoint, game_model) -> None:  # type: ignore[no-untyped-def]
@@ -269,19 +401,28 @@ class FiguresStrip(QWidget):
         self.cp = cp
         self.game_model = game_model
 
-        row = QHBoxLayout()
-        row.setContentsMargins(16, 10, 16, 10)
-        row.setSpacing(28)
-        for cell in self.cells():
-            row.addWidget(cell)
-        row.addStretch()
+        self._row = QHBoxLayout()
+        self._row.setContentsMargins(16, 10, 16, 10)
+        self._row.setSpacing(28)
 
         holder = card()
-        holder.setLayout(row)
+        holder.setLayout(self._row)
         outer = QVBoxLayout()
         outer.setContentsMargins(16, 0, 16, 12)
         outer.addWidget(holder)
         self.setLayout(outer)
+        self.refresh()
+
+    def refresh(self) -> None:
+        """Rebuilt rather than updated: a repaired runway changes which cells there are."""
+        while self._row.count():
+            taken = self._row.takeAt(0)
+            widget = taken.widget()
+            if widget is not None:
+                widget.deleteLater()
+        for cell in self.cells():
+            self._row.addWidget(cell)
+        self._row.addStretch()
 
     def cells(self) -> list[QWidget]:
         if self.cp.captured.is_blue:
@@ -289,33 +430,87 @@ class FiguresStrip(QWidget):
         return [self._aircraft(), self._ground()]
 
     def _aircraft(self) -> QWidget:
-        every = ParkingType(fixed_wing=True, fixed_wing_stol=True, rotary_wing=True)
-        allocation = self.cp.allocated_aircraft(every)
-        parking = self.cp.total_aircraft_parking(every)
+        allocation = self.cp.allocated_aircraft(EVERY_PARKING)
+        parking = self.cp.total_aircraft_parking(EVERY_PARKING)
         present = allocation.total_present
-        free = max(
-            parking
-            - present
-            - allocation.total_transferring
-            - allocation.total_ordered,
-            0,
-        )
-        note = f"{free} free"
+
+        parts = []
+        tooltip = ""
+        breakdown = parking_breakdown(self.cp)
+        if breakdown is not None:
+            sizes = breakdown["fixed_size"]
+            small, big = sizes["small_total"], sizes["big_total"]
+            rotary = breakdown["rotary"]
+            ground = breakdown["ground"]
+            if small:
+                parts.append(f"{small - sizes['free_small']}/{small} small")
+            if big:
+                parts.append(f"{big - sizes['free_big']}/{big} big")
+            if rotary["total"]:
+                parts.append(
+                    f"{rotary['total'] - rotary['free']}/{rotary['total']} rotary"
+                )
+            if ground["total"]:
+                parts.append(
+                    f"{ground['total'] - ground['free']}/{ground['total']} ground start"
+                )
+            tooltip = wrapped_tooltip(
+                "Which parking is taken is an estimate: the campaign counts aircraft, "
+                "not which slot each one sits in, so this places them the way the "
+                "mission generator would. A big slot is one a B-1B would fit in."
+            )
+        else:
+            free = max(parking - allocation.total, 0)
+            parts.append(f"{free} free")
+
+        if allocation.total_transferring:
+            parts.append(f"{allocation.total_transferring} transferring")
         if allocation.total_ordered:
-            note += f" · {allocation.total_ordered} ordered"
-        return figure(f"{present} / {parking}", "Aircraft", note)
+            parts.append(f"{allocation.total_ordered} ordered")
+
+        cell = figure(f"{present} / {parking}", "Aircraft", " · ".join(parts))
+        if tooltip:
+            cell.setToolTip(tooltip)
+        return cell
 
     def _ground(self) -> QWidget:
         transfers = self.game_model.game.coalition_for(self.cp.captured).transfers
         allocation = self.cp.allocated_ground_units(transfers)
         limit = self.cp.frontline_unit_count_limit
         reserve = max(allocation.total_present - limit, 0)
-        parts = [f"{reserve} reserve"]
+
+        parts = [f"{min(allocation.total_present, limit)}/{limit} deployable"]
+        if reserve:
+            parts.append(f"{reserve} reserve")
         if allocation.total_transferring_out:
             parts.append(f"{allocation.total_transferring_out} transferring out")
+        if allocation.total_transferring:
+            parts.append(f"{allocation.total_transferring} en route")
         if allocation.total_ordered:
             parts.append(f"{allocation.total_ordered} ordered")
-        return figure(f"{allocation.total_present}", "Ground units", " · ".join(parts))
+
+        cell = figure(f"{allocation.total_present}", "Ground units", " · ".join(parts))
+        cell.setToolTip(wrapped_tooltip(self.deployable_limit_explained()))
+        return cell
+
+    def deployable_limit_explained(self) -> str:
+        """Why the limit is what it is, which is not derivable from the number."""
+        text = (
+            f"{self.cp.frontline_unit_count_limit} deployable = "
+            f"{FREE_FRONTLINE_UNIT_SUPPLY} for the base + "
+            f"{AMMO_DEPOT_FRONTLINE_UNIT_CONTRIBUTION} for each of its "
+            f"{self.cp.total_ammo_depots_count} ammo depots."
+        )
+        if self.cp.has_active_frontline:
+            reserve = max(
+                self.cp.base.total_armor - self.cp.frontline_unit_count_limit, 0
+            )
+            if reserve:
+                text += (
+                    f" The {reserve} over that stay here in reserve rather than going "
+                    "to the front this turn."
+                )
+        return text
 
     def _budget(self) -> QWidget:
         budget = self.game_model.game.blue.budget
