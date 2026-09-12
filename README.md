@@ -29,6 +29,14 @@ Each item links to the fork PR that implements it. The authoritative, up-to-date
 list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=is%3Apr).
 
 ### Map & UI
+- **Each flight in a package shows its own timeline** -- off the ground, the moment it
+  starts working, and back down -- on a line of its own under the squadron. The middle
+  one is what that kind of flight actually does: the ingress for anything running in on
+  a target, the start of the corridor for a fighter sweep, the start of the orbit for a
+  patrol or a tanker. Lining those up across a package is how TOT offsets get set, and
+  it used to mean opening every flight in turn. Escort flights also carry a warning
+  under the TOT control: an "ahead" offset does nothing for them, because DCS ties an
+  escort to the flight it protects from the join point on.
 - **The interface has been rebuilt.** The Air Wing list, the squadron dialog, the ATO
   package and flight lists, the event log, the settings dialog, the command bar above the
   map and the flight dialog were all redrawn to one vocabulary: a task chip in a fixed
