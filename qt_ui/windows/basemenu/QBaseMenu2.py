@@ -1,6 +1,7 @@
 from copy import deepcopy
+from typing import Optional
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QSettings, QSize, Qt
 from PySide6.QtGui import QCloseEvent, QPixmap
 from PySide6.QtWidgets import (
     QDialog,
@@ -10,7 +11,6 @@ from PySide6.QtWidgets import (
     QPushButton,
     QVBoxLayout,
     QWidget,
-    QGridLayout,
 )
 
 from dcs.planes import B_1B
@@ -34,6 +34,12 @@ from game.theater import (
     Player,
 )
 from qt_ui.dialogs import Dialog
+from qt_ui.windows.airwingconfig.common import (
+    CHEAT_BG,
+    CHEAT_BORDER,
+    CHEAT_HEADER,
+)
+from qt_ui.windows.basemenu.header import BaseHeader, FiguresStrip, kind_of
 from qt_ui.models import GameModel
 from qt_ui.uiconstants import EVENT_ICONS
 from qt_ui.widgets.QFrequencyWidget import QFrequencyWidget
@@ -44,6 +50,11 @@ from qt_ui.windows.GameUpdateSignal import GameUpdateSignal
 from qt_ui.windows.basemenu.NewUnitTransferDialog import NewUnitTransferDialog
 from qt_ui.windows.basemenu.QBaseMenuTabs import QBaseMenuTabs
 from qt_ui.windows.basemenu.UnitTransactionFrame import UnitTransactionFrame
+
+#: What it opens at, and the floor it cannot be dragged under: below this the figures
+#: strip wraps and the tabs start scrolling sideways.
+DEFAULT_SIZE = QSize(1280, 900)
+MINIMUM_SIZE = QSize(1100, 760)
 
 
 class QBaseMenu2(QDialog):
@@ -61,71 +72,112 @@ class QBaseMenu2(QDialog):
         self.setWindowIcon(EVENT_ICONS["capture"])
 
         self.setWindowFlags(Qt.WindowType.WindowStaysOnTopHint)
-        self.setMinimumSize(300, 200)
-        self.setMinimumWidth(1024)
-        self.setMaximumWidth(1024)
+        # It was pinned to exactly 1024 wide, so a wide monitor bought nothing and the
+        # lists scrolled instead of widening. A floor and a first-open size, and after
+        # that the size you last chose for this kind of base.
+        self.setMinimumSize(MINIMUM_SIZE)
+        self.resize(DEFAULT_SIZE)
         self.setModal(True)
 
         self.setWindowTitle(self.cp.name)
 
-        base_menu_header = QWidget()
-        top_layout = QHBoxLayout()
+        header = BaseHeader(self.cp, self.game_model)
+        header.comms_rows = self._comms_rows()
+        header.setLayout(header.layout())
+        banner = header.findChild(QLabel)
+        if banner is not None:
+            pixmap = QPixmap(self.get_base_image())
+            if not pixmap.isNull():
+                banner.setPixmap(
+                    pixmap.scaledToWidth(
+                        1280, Qt.TransformationMode.SmoothTransformation
+                    )
+                )
 
-        header = QLabel(self)
-        header.setGeometry(0, 0, 655, 106)
-        pixmap = QPixmap(self.get_base_image())
-        header.setPixmap(pixmap)
+        main_layout = QVBoxLayout()
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
+        main_layout.addWidget(header)
+        main_layout.addWidget(FiguresStrip(self.cp, self.game_model))
 
-        cp_settings = QGridLayout()
-        top_layout.addLayout(cp_settings)
+        tabs_holder = QVBoxLayout()
+        tabs_holder.setContentsMargins(16, 0, 16, 0)
+        tabs_holder.addWidget(QBaseMenuTabs(cp, self.game_model))
+        main_layout.addLayout(tabs_holder, 1)
+        main_layout.addLayout(self._footer())
+        self.setLayout(main_layout)
+        self._restore_geometry()
 
-        title = QLabel("<b>" + self.cp.name + "</b>")
-        title.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
-        title.setProperty("style", "base-title")
-        cp_settings.addWidget(title, 0, 0, 1, 2)
-        cp_settings.setHorizontalSpacing(20)
+    def _comms_rows(self) -> list:
+        """The radio, TACAN, ICLS and Link 4 editors this base actually has.
 
-        counter = 2
-
+        Built here because they need the game model; the header only lays them out.
+        """
+        rows: list = []
         self.freq_widget = None
         self.link4_widget = None
-
-        is_friendly = cp.is_friendly(Player.BLUE)
-        if is_friendly and isinstance(cp, RadioFrequencyContainer):
+        cp = self.cp
+        if not cp.is_friendly(Player.BLUE):
+            return rows
+        if isinstance(cp, RadioFrequencyContainer):
             self.freq_widget = QFrequencyWidget(cp, self.game_model)
-            cp_settings.addWidget(self.freq_widget, counter // 2, counter % 2)
-            counter += 1
-
-        if is_friendly and isinstance(cp, TacanContainer):
+            rows.append(("Frequency", self.freq_widget))
+        if isinstance(cp, TacanContainer):
             self.tacan_widget = QTacanWidget(cp, self.game_model)
-            cp_settings.addWidget(self.tacan_widget, counter // 2, counter % 2)
-            counter += 1
-
-        if is_friendly and isinstance(cp, ICLSContainer):
+            rows.append(("TACAN", self.tacan_widget))
+        if isinstance(cp, ICLSContainer):
             self.icls_widget = QICLSWidget(cp, self.game_model)
-            cp_settings.addWidget(self.icls_widget, counter // 2, counter % 2)
-            counter += 1
-
-        if is_friendly and isinstance(cp, NavalControlPoint):
+            rows.append(("ICLS", self.icls_widget))
+        if isinstance(cp, NavalControlPoint):
             self.link4_widget = QLink4Widget(cp, self.game_model)
-            cp_settings.addWidget(self.link4_widget, counter // 2, counter % 2)
-            counter += 1
-
+            rows.append(("Link 4", self.link4_widget))
         if self.freq_widget and self.link4_widget:
-            # link them so on change they check freq
+            # They have to agree, so each checks the other when it changes.
             self.freq_widget.freq_changed.connect(self.link4_widget.check_freq)
             self.link4_widget.freq_changed.connect(self.freq_widget.check_freq)
+        return rows
 
-        self.intel_summary = QLabel()
-        self.intel_summary.setTextFormat(Qt.TextFormat.RichText)
-        self.intel_summary.setToolTip(self.generate_intel_tooltip())
-        self.update_intel_summary()
-        top_layout.addWidget(self.intel_summary)
-        top_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+    def _footer(self) -> QHBoxLayout:
+        """One primary action per owner, and the cheats in a block of their own.
 
-        runway_buttons_layout = QVBoxLayout()
-        top_layout.addLayout(runway_buttons_layout)
+        They used to sit in the same row as the real controls, which is how you end
+        up capturing a base you meant to close the window on.
+        """
+        row = QHBoxLayout()
+        row.setContentsMargins(16, 12, 16, 12)
+        row.setSpacing(10)
 
+        cheats = self._cheat_block()
+        if cheats is not None:
+            row.addWidget(cheats)
+        row.addStretch()
+
+        if self.cp.runway_is_destroyable and self.cp.runway_status is not None:
+            if self.cp.runway_status.damaged:
+                self.repair_button = QPushButton()
+                self.repair_button.clicked.connect(self.begin_runway_repair)
+                self.update_repair_button()
+                row.addWidget(self.repair_button)
+
+        if FlightType.OCA_RUNWAY in self.cp.mission_types(for_player=Player.BLUE):
+            strike = QPushButton("Plan airfield strike…")
+            strike.setProperty("style", "btn-danger")
+            strike.clicked.connect(self.new_package)
+            row.addWidget(strike)
+
+        if self.cp.captured.is_blue and self.has_transfer_destinations:
+            transfer = QPushButton("Transfer units…")
+            transfer.clicked.connect(self.open_transfer_dialog)
+            row.addWidget(transfer)
+
+        close = QPushButton("Close")
+        close.setProperty("style", "btn-primary")
+        close.clicked.connect(self.close)
+        row.addWidget(close)
+        return row
+
+    def _cheat_block(self) -> Optional[QWidget]:
+        buttons = []
         if (
             self.cp.runway_is_destroyable
             and self.game_model.game.settings.enable_runway_state_cheat
@@ -133,54 +185,36 @@ class QBaseMenu2(QDialog):
             self.cheat_runway_state = QPushButton()
             self.update_cheat_runway_state_text()
             self.cheat_runway_state.clicked.connect(self.on_cheat_runway_state)
-            runway_buttons_layout.addWidget(self.cheat_runway_state)
-
-        self.repair_button = QPushButton()
-        self.repair_button.clicked.connect(self.begin_runway_repair)
-        self.update_repair_button()
-        runway_buttons_layout.addWidget(self.repair_button)
-        runway_buttons_layout.addStretch()
-
-        base_menu_header.setProperty("style", "baseMenuHeader")
-        base_menu_header.setLayout(top_layout)
-
-        main_layout = QVBoxLayout()
-        main_layout.addWidget(header)
-        main_layout.addWidget(base_menu_header)
-        main_layout.addWidget(QBaseMenuTabs(cp, self.game_model))
-        bottom_row = QHBoxLayout()
-        main_layout.addLayout(bottom_row)
-
-        if FlightType.OCA_RUNWAY in self.cp.mission_types(for_player=Player.BLUE):
-            runway_attack_button = QPushButton("Attack airfield")
-            bottom_row.addWidget(runway_attack_button)
-
-            runway_attack_button.setProperty("style", "btn-danger")
-            runway_attack_button.clicked.connect(self.new_package)
-
-        if self.cp.captured.is_blue and self.has_transfer_destinations:
-            transfer_button = QPushButton("Transfer Units")
-            transfer_button.setProperty("style", "btn-success")
-            bottom_row.addWidget(transfer_button)
-            transfer_button.clicked.connect(self.open_transfer_dialog)
-
+            buttons.append(self.cheat_runway_state)
         if self.cheat_capturable:
             label = "Sink/Resurrect" if self.cp.is_fleet else "Capture"
-            capture_button = QPushButton(f"CHEAT: {label}")
-            capture_button.setProperty("style", "btn-danger")
-            bottom_row.addWidget(capture_button)
-            capture_button.clicked.connect(self.cheat_capture)
+            capture = QPushButton(label)
+            capture.clicked.connect(self.cheat_capture)
+            buttons.append(capture)
+        if not buttons:
+            return None
 
-        self.budget_display = QLabel(
-            UnitTransactionFrame.BUDGET_FORMAT.format(self.game_model.game.blue.budget)
+        row = QHBoxLayout()
+        row.setContentsMargins(10, 6, 10, 6)
+        row.setSpacing(8)
+        tag = QLabel("CHEAT")
+        tag.setStyleSheet(
+            f"color: {CHEAT_HEADER}; font-size: 11px; font-weight: bold;"
+            " letter-spacing: 1px; background: transparent; border: none;"
         )
-        self.budget_display.setAlignment(
-            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignBottom
+        row.addWidget(tag)
+        for button in buttons:
+            row.addWidget(button)
+
+        holder = QWidget()
+        holder.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        holder.setObjectName("baseCheats")
+        holder.setStyleSheet(
+            f"#baseCheats {{ background: {CHEAT_BG};"
+            f" border: 1px solid {CHEAT_BORDER}; border-radius: 3px; }}"
         )
-        self.budget_display.setProperty("style", "budget-label")
-        bottom_row.addWidget(self.budget_display)
-        GameUpdateSignal.get_instance().budgetupdated.connect(self.update_budget)
-        self.setLayout(main_layout)
+        holder.setLayout(row)
+        return holder
 
     @property
     def cheat_capturable(self) -> bool:
@@ -525,7 +559,24 @@ class QBaseMenu2(QDialog):
 
         return tooltip
 
+    # --- the size you chose -------------------------------------------------
+
+    #: Per kind rather than per base: a carrier holds different things from a FOB and
+    #: wants a different size, but every FOB wants the same one.
+    def geometry_key(self) -> str:
+        return f"baseMenuGeometry/{kind_of(self.cp)}"
+
+    @staticmethod
+    def _qsettings() -> QSettings:
+        return QSettings("DCS Retribution", "Qt UI")
+
+    def _restore_geometry(self) -> None:
+        saved = self._qsettings().value(self.geometry_key())
+        if saved is not None:
+            self.restoreGeometry(saved)
+
     def closeEvent(self, close_event: QCloseEvent):
+        self._qsettings().setValue(self.geometry_key(), self.saveGeometry())
         GameUpdateSignal.get_instance().updateGame(self.game_model.game)
 
     def get_base_image(self):
