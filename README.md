@@ -454,6 +454,29 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   the 500 for a sortie: losing the aircraft now forfeits the mission-complete award it
   was quietly still paying, so being shot down is never the better outcome.
   ([#134](https://github.com/juanjux/dcs-retribution/pull/134))
+- **Live Pilots IV: a pilot has an opinion of the man next to him.** A four-ship used to
+  be four strangers sharing a frequency. Now each pilot holds a **friendship** with each
+  other pilot, 0 to 10 from 5, and it is **one-way**: what he thinks of somebody is not
+  what they think of him, which is not decoration -- the two effects that read it read
+  opposite ends. It moves slowly between everyone at a base, faster in the air, and a
+  quiet turn can never carry a pair past *Friendly*: the levels that pay for anything are
+  earned flying together, so keeping a crew across turns is worth something. What it
+  buys: **a mission pays more** with men he likes and less than flying alone with men he
+  cannot stand; a flight or a package that reaches *Close* **flies one skill level above
+  its rank**, weighted so that what each man thinks of his lead counts double, which
+  makes spreading veterans one to a flight beat stacking them; the men who think well of
+  *him* **look harder** when he goes down; friends **hold him in his seat** where rank
+  alone did not, shorten a bad week and make leave taken together worth more. And it
+  costs: a death lands on the men who were up there with him as many times over as they
+  thought of him. Shooting down one of your own is the one thing that moves it sharply
+  the other way. Alongside it, **hardening**: a point for every turn a pilot spends
+  Shaken or worse, never lost, which softens every morale hit, makes him likelier to
+  survive a wreck, and thickens his skin both ways -- the answer to a run of losses
+  taking a whole squadron to Broken together and leaving it there. Friendship colours the
+  pilot picker, the leave dialog and the Air Wing roster in the same bands, the Air Wing
+  says which squadrons are crews rather than lists of names, the planner reads all of it
+  over the API, and every figure is a setting with its arithmetic spelled out.
+  ([#217](https://github.com/juanjux/dcs-retribution/pull/217))
 - **Live Pilots III: a pilot has a state of mind.** Everyone used to fly the same
   whatever the campaign had done to him -- the man shot down twice, who watched his
   squadron die and has not had leave in eleven turns, took off exactly as steady as the
