@@ -25,6 +25,8 @@ from game.squadrons.experience import (
 from game.dcs.skills import one_promotion_at_most
 from game.ground_forces.combat_stance import CombatStance
 from game.dcs.skills import SKILL_LADDER
+from game.squadrons import friendship
+from game.squadrons import hardening
 from game.squadrons import morale as morale_rules
 from game.squadrons.pilot import Pilot
 from game.squadrons.xplog import XpLog
@@ -56,6 +58,18 @@ class MissionResultsProcessor:
         #: ``id()`` of the men the medics took this turn. A pilot does not mourn his
         #: own wound, the way the dead do not mourn themselves.
         self._wounded_this_turn: set[int] = set()
+        #: What the turn's flying earned each directed pair, by (id(a), id(b)).
+        #: Collected rather than applied on the spot: the multiplier a sortie pays has
+        #: to be worked out from what the men thought of each other *before* it, or
+        #: what a man earns depends on where he happens to sit in the loop.
+        self._friendship_gains: dict[tuple[int, int], tuple[Any, Any, float]] = {}
+        #: And what somebody did to be thought less of. Never summed: a man in both the
+        #: shooter's flight and the victim's squadron takes the larger of the two.
+        self._friendship_penalties: dict[tuple[int, int], tuple[Any, Any, float]] = {}
+        #: The men who did not come home, by squadron, so the squadron's share of the
+        #: grief can be weighed by what each survivor thought of each of them. The
+        #: debriefing carries names; this carries the pilots.
+        self._dead_this_turn: dict[str, list[Any]] = {}
 
     def _note_morale(self, pilot: Any, event: Any, times: int = 1) -> None:
         """Remember that something happened to a pilot; it is applied at the end.
@@ -66,6 +80,52 @@ class MissionResultsProcessor:
         """
         if times > 0:
             self._morale_events.setdefault(id(pilot), []).extend([event] * times)
+
+    def _note_friendship(self, pilot: Any, other: Any, amount: float) -> None:
+        """He saw a bit more of this man today. Spent at the end of the pass."""
+        if pilot is other or not amount:
+            return
+        amount = hardening.feels(pilot, amount, self.game.settings)
+        if not amount:
+            return
+        key = (id(pilot), id(other))
+        running = self._friendship_gains.get(key)
+        total = amount if running is None else running[2] + amount
+        self._friendship_gains[key] = (pilot, other, total)
+
+    def _note_friendly_fire(self, mourner: Any, shooter: Any, amount: float) -> None:
+        """What one man who saw it makes of the man who did it.
+
+        The worst of the applicable penalties rather than their sum: somebody who is
+        both in the shooter's flight and in the victim's squadron does not think twice
+        as badly of him for being in the room twice.
+        """
+        if mourner is shooter or not amount:
+            return
+        # A thick skin is thick both ways: he is slower to hold this against him too.
+        amount = hardening.feels(mourner, amount, self.game.settings)
+        if not amount:
+            return
+        key = (id(mourner), id(shooter))
+        running = self._friendship_penalties.get(key)
+        worst = amount if running is None else min(running[2], amount)
+        self._friendship_penalties[key] = (mourner, shooter, worst)
+
+    def _commit_friendship(self) -> None:
+        """Spend the turn's tally, once everything that reads it has read it.
+
+        Gains are capped per pair: three flights a turn with the same four men must not
+        be a shortcut past bands that are meant to take a campaign to reach.
+        """
+        settings = self.game.settings
+        if friendship.in_play(settings):
+            cap = friendship.max_gain_per_turn(settings)
+            for pilot, other, amount in self._friendship_gains.values():
+                friendship.move(pilot, other, min(amount, cap))
+            for mourner, shooter, amount in self._friendship_penalties.values():
+                friendship.move(mourner, shooter, amount)
+        self._friendship_gains = {}
+        self._friendship_penalties = {}
 
     def _commit_morale(self, debriefing: Debriefing) -> None:
         """Spend the tally, once the experience has been paid at the old morale."""
@@ -116,6 +176,7 @@ class MissionResultsProcessor:
                             )
         self._morale_events = {}
         self._wounded_this_turn = set()
+        self._dead_this_turn = {}
 
     def _note_shared_morale(self, debriefing: Debriefing) -> None:
         """What the whole squadron or the whole coalition felt.
@@ -158,7 +219,19 @@ class MissionResultsProcessor:
                         and hurt.pilot_name == pilot.name
                         and hurt.squadron == str(squadron)
                     )
-                    self._note_morale(pilot, morale_rules.SQUADRON_DEATH, deaths)
+                    # Per man rather than per count, so each death is weighed by
+                    # what this pilot thought of him. Anything the pass did not see
+                    # die -- it should see all of them -- still counts once.
+                    known = self._dead_this_turn.get(str(squadron), [])
+                    for casualty in known:
+                        self._note_morale(
+                            pilot,
+                            morale_rules.SQUADRON_DEATH,
+                            self._grief_times(pilot, casualty),
+                        )
+                    self._note_morale(
+                        pilot, morale_rules.SQUADRON_DEATH, deaths - len(known)
+                    )
                     self._note_morale(
                         pilot, morale_rules.SQUADRON_WOUND, wounds - sum(his_own)
                     )
@@ -366,6 +439,27 @@ class MissionResultsProcessor:
         record = self._describe_loss(loss, debriefing)
         # However this ends for him, he did not bring the aircraft home.
         debriefing.pilot_outcomes.lost_aircraft.add(id(pilot))
+        # What the men who were up there with him think of *him*: the half of
+        # friendship that decides how hard anybody looks. Positive only -- being
+        # disliked does not make somebody slower to reach a burning cockpit -- and read
+        # before this turn's sorties are paid in, so today's flight cannot rescue him.
+        mates = [
+            other
+            for other in loss.flight.roster.iter_pilots()
+            if other is not None and other is not pilot
+        ]
+        rescue = (
+            friendship.survival_bonus(
+                friendship.mean_from(pilot, mates, squadron.leader_of(mates), settings),
+                settings,
+            )
+            if friendship.in_play(settings)
+            else 0.0
+        )
+        # And what he has been through himself, which is the half nobody else is
+        # needed for: he has done this before and knows when to stop trying to save
+        # the aircraft.
+        rescue += hardening.survival_bonus(pilot.hardened, settings)
         rolls = settings.live_pilots_enabled and settings.live_pilots_rank_survival
         chance = (
             survival_chance(squadron.pilot_skill(pilot), settings) if rolls else 0.0
@@ -375,6 +469,8 @@ class MissionResultsProcessor:
             chance = max(
                 0.0, min(1.0, chance + morale_rules.survival_modifier(pilot.morale))
             )
+        if rolls and rescue:
+            chance = max(0.0, min(1.0, chance + rescue))
         survived = rolls and random.random() < chance
 
         def note(outcome: str) -> None:
@@ -400,7 +496,7 @@ class MissionResultsProcessor:
             return
 
         if settings.live_pilots_enabled and (
-            random.random() < settings.live_pilots_wounded_chance / 100
+            random.random() < settings.live_pilots_wounded_chance / 100 + rescue
         ):
             turns = random.randint(*WOUNDED_TURNS)
             if getattr(settings, "morale_enabled", True):
@@ -433,6 +529,7 @@ class MissionResultsProcessor:
 
         note("died")
         pilot.kill()
+        self._dead_this_turn.setdefault(str(squadron), []).append(pilot)
         self._note_flight_morale(loss.flight, pilot, morale_rules.FLIGHT_DEATH)
         debriefing.pilot_outcomes.deaths.append(record)
 
@@ -456,11 +553,26 @@ class MissionResultsProcessor:
         """
         if not getattr(self.game.settings, "morale_enabled", True):
             return
-        times = morale_rules.wound_is_felt_for(turns) if turns > 1 else 1
+        base = morale_rules.wound_is_felt_for(turns) if turns > 1 else 1
         for mate in flight.roster.iter_pilots():
             if mate is None or mate is casualty or not mate.alive:
                 continue
-            self._note_morale(mate, event, times)
+            self._note_morale(mate, event, base * self._grief_times(mate, casualty))
+
+    def _grief_times(self, mourner: Any, casualty: Any) -> int:
+        """How many times what happened to one man lands on another.
+
+        By what the mourner thought of him, which is the effect that makes friendship
+        cost something -- without it the whole of it is upside. Never below once: a man
+        he could not stand going down in front of him is still a man going down in
+        front of him.
+        """
+        settings = self.game.settings
+        if not friendship.in_play(settings):
+            return 1
+        return friendship.grief_times(
+            1, friendship.feeling(mourner, casualty), settings
+        )
 
     def _describe_loss(self, loss: Any, debriefing: Debriefing) -> PilotDeath:
         squadron = loss.flight.squadron
@@ -577,7 +689,7 @@ class MissionResultsProcessor:
         return building_xp(getattr(tgo, "category", None))
 
     def _credited_events(
-        self, details: Any, debriefing: Debriefing
+        self, details: Any, debriefing: Debriefing, note_friendly_fire: bool = False
     ) -> Iterator[tuple[Pilot, str, Any, Any]]:
         """(pilot, target name, target, the killer's flight) for every credited record.
 
@@ -600,7 +712,12 @@ class MissionResultsProcessor:
             if victim_blue is not None and (
                 victim_blue == killer.flight.squadron.player.is_blue
             ):
-                continue  # nobody is paid for shooting his own side
+                # Nobody is paid for shooting his own side -- but from here on it is
+                # not free either. Only off the kills: a scratch is not the same story
+                # as a burning wingman, and the hits are the same events again.
+                if note_friendly_fire:
+                    self._note_friendly_fire_event(killer, victim)
+                continue
             yield killer.pilot, str(target), victim, killer.flight
 
     def _experience_from_kills(
@@ -614,7 +731,7 @@ class MissionResultsProcessor:
         earned: dict[int, int] = {}
         credited: set[tuple[int, str]] = set()
         for pilot, target, victim, flight in self._credited_events(
-            debriefing.state_data.kill_details, debriefing
+            debriefing.state_data.kill_details, debriefing, note_friendly_fire=True
         ):
             credited.add((id(pilot), target))
             xp = self._kill_xp(victim)
@@ -684,6 +801,7 @@ class MissionResultsProcessor:
                         continue
                     pilot.record.missions_flown += 1
                     pilot.note_sortie(self.game.turn)
+                    self._note_flying_together(package, flight, pilot)
                     self._note_mission_morale(
                         flight, squadron, pilot, debriefing, earned
                     )
@@ -776,22 +894,83 @@ class MissionResultsProcessor:
                         promotion,
                     )
 
+    def _note_flying_together(self, package: Any, flight: Any, pilot: Any) -> None:
+        """Who he flew with today, in his own direction only.
+
+        Only his own half of each pair. The other half is moved when that man's own
+        turn through the loop comes round, which is the only way a directed edge is
+        touched exactly once: moving both ends from here would pay for the sortie while
+        processing him and pay for it again while processing the other man.
+        """
+        settings = self.game.settings
+        if not friendship.in_play(settings):
+            return
+        wing = friendship.flew_together(settings)
+        rest_of_package = friendship.same_package(settings)
+        for other in flight.roster.iter_pilots():
+            if other is not None:
+                self._note_friendship(pilot, other, wing)
+        for other_flight in package.flights:
+            if other_flight is flight:
+                continue
+            for other in other_flight.roster.iter_pilots():
+                if other is not None:
+                    self._note_friendship(pilot, other, rest_of_package)
+
+    def _note_friendly_fire_event(self, killer: Any, victim: Any) -> None:
+        """What everybody makes of a man who destroyed one of ours.
+
+        It lands on what they think of *him*, which is the whole reason friendship has
+        a direction: his own flight because they watched it happen, and the victim's
+        squadron because they will hear about it for the rest of the campaign.
+        """
+        settings = self.game.settings
+        if not friendship.in_play(settings):
+            return
+        shooter = killer.pilot
+        if shooter is None:
+            return
+        air_flight, air_squadron, ground = friendship.friendly_fire_penalties(settings)
+        victim_flight = getattr(victim, "flight", None)
+        for mourner in killer.flight.roster.iter_pilots():
+            if mourner is not None:
+                self._note_friendly_fire(
+                    mourner, shooter, air_flight if victim_flight else ground
+                )
+        if victim_flight is None:
+            return  # a truck has no squadron to hear about it
+        squadron = getattr(victim_flight, "squadron", None)
+        for mourner in getattr(squadron, "current_roster", []):
+            self._note_friendly_fire(mourner, shooter, air_squadron)
+
     def _xp_multiplier(self, flight: Any, squadron: Any, pilot: Any) -> float:
         """What this sortie was worth to this man, and to nobody else in the flight.
 
-        Two things move it: how he is holding up, and who he flew with. Only the best
-        pilot in the formation teaches, and only the ones below him learn -- he gets
-        nothing out of it himself.
+        Three things move it: how he is holding up, who he had to learn from, and what
+        he makes of the men he flew with. Only the best pilot in the formation teaches,
+        and only the ones below him learn -- he gets nothing out of it himself.
+
+        The company he flew in is signed: a formation he cannot stand is worth less
+        than flying alone, which is the point of it. So the floor goes on the total and
+        never on a term -- experience does not go backwards, which is a Tier I rule and
+        still holds.
         """
         settings = self.game.settings
-        if not settings.live_pilots_enabled or not getattr(
-            settings, "morale_enabled", True
-        ):
+        if not settings.live_pilots_enabled:
             return 1.0
+        morale_on = getattr(settings, "morale_enabled", True)
         best = squadron.pilot_skill(pilot)
+        # The same man twice over: the one who teaches, and the one the formation is
+        # measured through. He starts as the pilot himself, so a man who is the senior
+        # one in his flight weighs everybody equally -- from where he sits there is
+        # nobody in front.
+        leader = pilot
+        mates = []
         for other in flight.roster.iter_pilots():
             if other is None:
                 continue
+            if other is not pilot:
+                mates.append(other)
             skill = (
                 other.squadron.pilot_skill(other)
                 if hasattr(other, "squadron")
@@ -799,10 +978,27 @@ class MissionResultsProcessor:
             )
             if SKILL_LADDER.index(skill) > SKILL_LADDER.index(best):
                 best = skill
+                leader = other
         # The player has no morale to be worth more or less for; flying with someone
         # better than you is not morale, so he keeps that half of it.
-        state = morale_rules.xp_multiplier(pilot.morale) if pilot.has_morale else 1.0
-        return state + morale_rules.learning_bonus(squadron.pilot_skill(pilot), best)
+        state = (
+            morale_rules.xp_multiplier(pilot.morale)
+            if morale_on and pilot.has_morale
+            else 1.0
+        )
+        learning = (
+            morale_rules.learning_bonus(squadron.pilot_skill(pilot), best)
+            if morale_on
+            else 0.0
+        )
+        company = (
+            friendship.xp_bonus(
+                friendship.mean_towards(pilot, mates, leader, settings), settings
+            )
+            if friendship.in_play(settings)
+            else 0.0
+        )
+        return max(0.0, state + learning + company)
 
     def _note_mission_morale(
         self,
@@ -834,6 +1030,7 @@ class MissionResultsProcessor:
         self._commit_pilot_experience(self.game.red.ato, debriefing, earned)
         self._note_shared_morale(debriefing)
         self._commit_morale(debriefing)
+        self._commit_friendship()
         self.xp_log.write()
         self._xp_log = None
 

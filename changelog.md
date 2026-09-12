@@ -2,6 +2,41 @@
 
 ## Features/Improvements
 * **[Plugins]** New *Lua tick profiler* plugin, off by default: measures what one tick of a script costs in VM instructions, real time and allocation.
+* **[UI]** Every flight in a package shows its own timeline -- departure, the waypoint where it starts working (ingress, sweep start or orbit start), and landing -- so TOT offsets can be lined up without opening each flight. Escorts warn that an "ahead" offset does nothing for them.
+* **[FIX]** The OPFOR API hid partial repairs: a site's repair countdown stopped being reported the moment one of its units was standing, so a battery that was firing today and getting three launchers back next turn looked like a battery at full strength. It reports the countdown either way now, with the live and repairing unit counts, and `/iads` carries the same countdown per node.
+* **[FIX]** Planning an escort into a package that holds nothing but escorts crashed instead of creating the flight: the escort was its own package's primary flight, so it escorted itself. It now flies the package's ordinary geometry, and a flight plan that asks for itself raises a planning error naming both flights rather than overflowing the stack.
+* **[UI]** Air Wing Configuration papercuts: one squadron card stays open per aircraft type rather than per dialog, the disclosure arrow is big enough to see and turns blue when open, labels no longer paint their own background over the cheat header, and closing the window asks whether to keep the changes instead of whether to discard them.
+* **[UI]** The Air Wing Configuration dialog was redrawn: three panes (types, squadrons, bases) instead of a form, so parking is on screen instead of hidden at the bottom of a group box; squadrons are collapsible cards; the twenty-row task grid is chips grouped by family, showing only what the aircraft can fly; and the header says whether you are composing a new air wing or cheating into a running campaign.
+* **[Mission Generator]** A battery that deploys with its own generator (Patriot EPP, SAMP/T MGE) no longer goes dark when the nearest substation is bombed; killing the generator itself puts it back on the grid.
+* **[UI]** A SAM cut off from its network paints its health bar violet, and one with no power paints it grey and draws no range rings at all, with the reason in the tooltip. A battery running on its own generator says so and names the vehicle.
+* **[UI]** A waypoint you can give up — one you added, a refuelling stop, the join of a flight that is the whole package — can be deleted on an AI flight again; only *adding* is still reserved for all-player flights.
+* **[UI]** Pilots can be selected several at a time, for Discharge and for Send on leave.
+* **[UI]** The map has a search box: find a place by its code name, by what is parked there ("Patriot", "Linebacker") or by what kind of thing it is, with filters by side and by kind.
+* **[UI]** Delete cancels the selected flight inside a package, the same key that already cancels a package.
+* **[UI]** The loadout list in the flight creator can be searched, like the one on the payload tab.
+* **[Campaign AI]** The OPFOR API reports which sites are autonomous or dark and why, on targets, threats and /iads.
+* **[FIX]** A destroyed site was dropped from the IADS network, so its links vanished from the map instead of drawing broken -- and losing your last command centre handed command back.
+* **[UI]** The only flight in a package has NAV where a formation would have JOIN and SPLIT; a second flight in the package brings them back.
+* **[FIX]** A destroyed site left the IADS network in saves written before this, taking its links off the map for good; the network is rebuilt once on load to put them back.
+* **[UI]** The squadron dialog reads the roster as figures — max, current, on leave, wounded, broken, available — in the same shape as the aircraft inventory, and the Pilots header says how full the squadron is.
+* **[UI]** A squadron can carry its own *Max pilots*, beside *Max size*, instead of every squadron following the campaign-wide limit; it follows the setting until you move it.
+* **[FIX]** A plugin option that takes a word drew its label and no control at all, so the Mission Log's good- and bad-news words could be read and not changed.
+* **[FIX]** Skynet switched an element's radar back on the moment it lost its comms node, power station or no power station: going autonomous means it lost its network, not that it grew a generator. Bombing the comms of an unpowered site was worse than bombing nothing.
+* **[FIX]** The squadron dialog and the Air Wing row counted pilots who refuse to fly as available, so a squadron with nobody to send read as fully manned.
+* **[Plugins]** Mission Log: a kill and a loss of ours get a word in front — YEAH! and OH NO! by default, both settings, empty for none.
+* **[Plugins]** Mission Log: *monitoring* is off by default, a ground kill carries the same "enemy" prefix an aircraft already had, and SHOT DOWN / CRASHED / EJECTED / DESTROYED are shouted so a kill does not read like a takeoff.
+* **[UI]** The Edit Flight dialog was redrawn: a header naming the aircraft, squadron, package and target with an attention stack for an empty seat or a fuel shortfall, cards instead of stacked group boxes, a button per seat labelled with the pilot's name, a pilot selector painted like the Air Wing roster, consecutive target waypoints folded into one row that opens on a click, a colour dot per waypoint type, a fuel bar against what the aircraft carries, and a footer with Done and *Go to package*.
+* **[UI]** The flight editor is no longer modal and follows the flight you pick: a selector in its header lists the package's other flights, and clicking one in the main window's Flights list switches the open editor to it.
+* **[UI]** Long combo lists — payload presets, liveries, predefined waypoints and every pylon's own store list, which runs to seventy-five stores on a Hornet — open with a search field; below a dozen items they keep the ordinary popup.
+* **[UI]** Adding waypoints by hand is greyed out for a flight with an AI seat in it and says how many; JTAC laser codes are only offered when the campaign is generating JTACs.
+* **[Campaign AI]** The flight editor asks again on the way out when an edit has left the flight short of fuel, or given it fuel to spare, offering *Add waypoint and tanker* or *Add waypoint only* — with the first greyed out and the reason on screen when there is nothing to send. Saying yes does not rebuild the plan.
+* **[FIX]** A tanker planned for a package held for five minutes plus four a head and reached station ninety seconds before an arrival time that is itself an estimate. It now holds for the campaign's tanker on-station time and is there ten minutes early.
+* **[FIX]** Planning a tanker into a defensive package asserted: it has no split point to lay the track along or to time the receiver from.
+* **[FIX]** A flight given a TOT offset **ahead** of its package arrived *behind* it instead. The package now leaves room for the flights that have to arrive first.
+* **[FIX]** The tanker the auto-planner proposed for Strike, OCA and DEAD packages was pruned every time, so the three settings that asked for it did nothing.
+* **[Campaign AI]** One *Plan a tanker and a refuelling waypoint when a package needs the fuel* option replaces the three per-task ones, and the refuelling waypoint is only added to a flight the fuel estimate says cannot make the plan.
+* **[FIX]** The METAR refresh button drew a text glyph that fell back to the wrong font; it uses the reload icon now, on a slightly larger button.
+* **[UI]** The Repository, Issues and Releases links and the About box point at this fork; the manual and forum thread still point upstream, where that documentation actually is.
 * **[Plugins]** Mission Log: fighters watching a contact without committing have their own switch, apart from those moving to intercept.
 * **[Plugins]** Mission Log: enemy pilots, aircraft, flights and missiles are named as enemy, so a campaign where both sides fly the same airframes still says who shot whom.
 * **[FIX]** The fuel figure did not move when a drop tank was added or removed.
@@ -11,6 +46,7 @@
 * **[Settings]** How far morale settles back towards Normal each turn is a Morale Event Value now, and several event sizes were re-weighed.
 * **[FIX]** *Apply to all* moved nothing on a helicopter's flight plan and little on a low-level one.
 * **[UI]** A pilot's morale shows as a face after his name where the word does not fit, above all in the pilot selector for a flight.
+* **[FIX]** The pilot selector elided the rank and the name, in the box and in the list, and widening the dialog did not help.
 * **[UI]** *Internal Fuel Quantity* is *Fuel Quantity*, and says what the external tanks add.
 * **[FIX]** Mission Log read every missile in the air as a helicopter: a Patriot firing at an AGM-84 came out as the AGM-84 defending itself, and downing one counted as an air-to-air kill.
 * **[UI]** The waypoints tab estimates the fuel the plan needs, against what the flight is carrying.
@@ -239,6 +275,9 @@
 * **[Modding]** Update UH-60L mod to v2.1.5 including MH-60L DAP
 
 ## Fixes
+* **[UX]** Editing a faction from the Air Wing dialog now takes effect in the running campaign; only preset-group changes did before.
+* **[UX]** The faction editor's tick boxes did nothing outside the New Game wizard; entries have a remove button there instead, which refuses a unit the campaign still has deployed.
+* **[UX]** The faction editor sorts its lists by the name shown rather than the internal DCS id.
 * **[Mission Generation]** Fix mission generation dying on "Duplicate convoy unit": convoy and cargo-ship names no longer reset each turn onto a convoy still in transit.
 * **[Mission Generator]** Dynamically allocated TACAN channels no longer collide with map beacons: DME/VOR-DME beacons (which share TACAN's channelization) are now blacklisted alongside TACAN/VORTAC, and beacons whose DCS data omits a channel (e.g. Syria's KALDE "KAD" VOR-DME) have their channel/band derived from the beacon's VHF frequency per the ICAO VOR/TACAN channelling plan instead of being silently skipped. The "Assign TACAN" dialog now warns in real time when the selected channel/band is already in use by a map beacon or another carrier/airfield/flight. (#36)
 * **[Map]** Right-clicking a front line under a blue flight-plan route now opens the new-package dialog instead of the browser context menu (the route's invisible hover overlay swallowed the click).

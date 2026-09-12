@@ -48,7 +48,7 @@ class PlanMotorpoolAttack(PackagePlanningTask[MotorpoolGroundObject]):
                 min(4, (target_count // 2) + target_count % 2),
             )
             if (
-                self.target.control_point.coalition.game.settings.autoplan_tankers_for_strike
+                self.target.control_point.coalition.game.settings.plan_refuelling_when_needed
             ):
                 self.propose_flight(FlightType.REFUELING, 1, EscortType.Refuel)
         self.propose_common_escorts()

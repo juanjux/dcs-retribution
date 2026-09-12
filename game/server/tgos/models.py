@@ -7,6 +7,7 @@ from pydantic import BaseModel
 
 from game.data.groups import GroupTask
 from game.server.leaflet import LeafletPoint
+from game.theater.iadsnetwork.iadsstate import IadsStatus
 from game.theater.theatergroundobject import MotorpoolGroundObject, ShipGroundObject
 
 if TYPE_CHECKING:
@@ -43,6 +44,14 @@ class TgoJs(BaseModel):
     task: Optional[GroupTask]
     mobile: bool
     destination: Optional[LeafletPoint]
+    # What the IADS will do with this site when the mission starts: "networked",
+    # "autonomous" or "dark", or None for anything that is not part of an IADS. Derived
+    # from the network, because DCS never reports it back.
+    iads_state: Optional[str]
+    # Why, in a line, for the tooltip.
+    iads_reason: Optional[str]
+    # Nothing left that can find a target for itself.
+    iads_blind: bool
 
     class Config:
         title = "Tgo"
@@ -62,6 +71,21 @@ class TgoJs(BaseModel):
             return None
         reach = jamming_reach_for(game, tgo)
         return reach.meters if reach is not None else None
+
+    @staticmethod
+    def _iads_status(tgo: TheaterGroundObject) -> Optional[IadsStatus]:
+        """What Skynet will do with this site, if it is in an IADS at all.
+
+        Reached through the theater rather than passed in, because single-TGO updates
+        come through the event stream one at a time. The network caches the answer for
+        the whole map and throws it away when anything dies, so asking per site is
+        cheap.
+        """
+        theater = getattr(getattr(tgo, "control_point", None), "theater", None)
+        network = getattr(theater, "iads_network", None)
+        if network is None:
+            return None
+        return network.state_map.status_for(tgo)
 
     @staticmethod
     def for_tgo(tgo: TheaterGroundObject) -> TgoJs:
@@ -91,6 +115,7 @@ class TgoJs(BaseModel):
             and tgo.target_position is not None
         ):
             destination = LeafletPoint.from_latlng(tgo.target_position.latlng())
+        iads = TgoJs._iads_status(tgo)
         units = [unit.display_name for unit in tgo.units]
         dead = tgo.is_dead
         if isinstance(tgo, MotorpoolGroundObject) and not tgo.groups:
@@ -122,6 +147,9 @@ class TgoJs(BaseModel):
             task=tgo.groups[0].ground_object.task if tgo.groups else None,
             mobile=mobile,
             destination=destination,
+            iads_state=iads.state.value if iads is not None else None,
+            iads_reason=iads.reason if iads is not None else None,
+            iads_blind=iads is not None and iads.blind,
         )
 
     @staticmethod

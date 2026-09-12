@@ -26,6 +26,7 @@ from game.squadrons.squadron import Squadron
 from game.theater import ControlPoint, OffMapSpawn
 from qt_ui.uiconstants import EVENT_ICONS
 from qt_ui.widgets.QFlightSizeSpinner import QFlightSizeSpinner
+from qt_ui.widgets.searchablecombo import SearchableComboBox
 from qt_ui.widgets.QLabeledWidget import QLabeledWidget
 from qt_ui.widgets.combos.QAircraftTypeSelector import QAircraftTypeSelector
 from qt_ui.widgets.combos.QArrivalAirfieldSelector import QArrivalAirfieldSelector
@@ -102,7 +103,10 @@ class QFlightCreator(QDialog):
         layout.addLayout(QLabeledWidget("Size:", self.flight_size_spinner))
 
         hbox = QHBoxLayout()
-        self.loadout_selector = QComboBox()
+        # Same searchable combo as the payload tab: an aircraft's preset list runs to
+        # a few hundred, and finding one means scrolling a list ordered by a rule you
+        # did not choose.
+        self.loadout_selector = SearchableComboBox(placeholder="Search loadouts…")
         self.loadout_selector.setMaximumWidth(250)
         self.loadout_selector.setItemDelegate(LoadoutDelegate(self.loadout_selector))
         self._init_loadout_selector()

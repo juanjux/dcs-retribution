@@ -481,6 +481,9 @@ export type Tgo = {
   task?: string[];
   mobile: boolean;
   destination?: LatLng;
+  iads_state?: string | null;
+  iads_reason?: string | null;
+  iads_blind?: boolean;
 };
 export type SupplyRoute = {
   id: string;

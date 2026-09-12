@@ -120,7 +120,7 @@ def _motorpool_target(reserve_count: int) -> MotorpoolGroundObject:
     settings = cp.coalition.game.settings
     settings.motorpool_spawn_cap = 10
     settings.motorpool_enabled = True
-    settings.autoplan_tankers_for_strike = False
+    settings.plan_refuelling_when_needed = False
     return tgo
 
 

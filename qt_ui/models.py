@@ -17,6 +17,7 @@ from game.ato.airtaaskingorder import AirTaskingOrder
 from game.ato.flight import Flight
 from game.ato.flighttype import FlightType
 from game.ato.package import Package
+from game.ato.traveltime import TotEstimator
 from game.dcs.beacons import Beacons
 from game.game import Game
 from game.radio.RadioFrequencyContainer import RadioFrequencyContainer
@@ -165,6 +166,7 @@ class PackageModel(QAbstractListModel):
         # update_tot is not called here because the new flight does not have a
         # flight plan yet. Will be called manually by the caller.
         self.endInsertRows()
+        self._redraw_the_rest_of_the_package(flight)
 
     def cancel_or_abort_flight_at_index(self, index: QModelIndex) -> None:
         """Removes the flight at the given index from the package."""
@@ -187,6 +189,25 @@ class PackageModel(QAbstractListModel):
         self.update_tot()
         self.game_model.release_freq(flight.frequency)
         self.game_model.release_tacan(flight.tacan)
+        self._redraw_the_rest_of_the_package(flight)
+
+    def _redraw_the_rest_of_the_package(self, changed: Flight) -> None:
+        """Push every OTHER flight in the package to the map.
+
+        Adding or removing a flight changes the routes of the ones that stay: crossing
+        two flights is what turns their join and split from nav points into a
+        rendezvous and back. Only the flight that was added or removed was ever pushed,
+        so the others kept drawing the names they had until something else touched
+        them.
+        """
+        events = GameUpdateEvents()
+        pushed = False
+        for flight in self.package.flights:
+            if flight is not changed:
+                events.update_flight(flight)
+                pushed = True
+        if pushed:
+            EventStream.put_nowait(events)
 
     def flight_at_index(self, index: QModelIndex) -> Flight:
         """Returns the flight located at the given index."""
@@ -199,6 +220,20 @@ class PackageModel(QAbstractListModel):
     def set_asap(self, asap: bool) -> None:
         self.package.auto_asap = asap
         self.update_tot()
+
+    def push_tot_if_unreachable(self) -> None:
+        """Move the package TOT later if any flight can no longer make it.
+
+        Sliding the whole package keeps the spacing its offsets asked for, which a
+        flight left with an unreachable TOT does not.
+        """
+        if self.package.auto_asap:
+            # set_tot_asap already puts the TOT on the earliest reachable time.
+            return
+        now = self.game_model.sim_controller.current_time_in_sim
+        earliest = TotEstimator(self.package).earliest_tot(now)
+        if self.package.time_over_target < earliest:
+            self.package.time_over_target = earliest
 
     def update_tot(self) -> None:
         if self.package.auto_asap:
@@ -534,7 +569,11 @@ class SquadronModel(QAbstractListModel):
         self.endResetModel()
 
     def toggle_leave_state(self, index: QModelIndex, turns: int = 0) -> None:
-        pilot = self.pilot_at_index(index)
+        self.toggle_leave_state_of(self.pilot_at_index(index), turns)
+
+    def toggle_leave_state_of(self, pilot: Pilot, turns: int = 0) -> None:
+        """By pilot rather than by row: the model resets after each one, and a row
+        number taken before that no longer means the same man."""
         self.beginResetModel()
         try:
             if pilot.on_leave:
@@ -548,7 +587,9 @@ class SquadronModel(QAbstractListModel):
             self.endResetModel()
 
     def discharge_pilot(self, index: QModelIndex) -> None:
-        pilot = self.pilot_at_index(index)
+        self.discharge(self.pilot_at_index(index))
+
+    def discharge(self, pilot: Pilot) -> None:
         self.beginResetModel()
         self.squadron.discharge(pilot)
         self.endResetModel()

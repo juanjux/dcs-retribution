@@ -50,6 +50,8 @@ from game.settings import (
 )
 from game.settings.ISettingsContainer import SettingsContainer
 from game.settings.settings import (
+    LIVE_PILOTS_FRIENDSHIP_SECTION,
+    LIVE_PILOTS_HARDENING_SECTION,
     LIVE_PILOTS_MORALE_EVENTS_SECTION,
     LIVE_PILOTS_MORALE_STATES_SECTION,
     LIVE_PILOTS_MORALE_SECTION,
@@ -253,6 +255,26 @@ class AutoSettingsLayout(QGridLayout):
                 [name for name in self.settings_map if name != "morale_enabled"],
                 lambda settings: settings.live_pilots_enabled
                 and getattr(settings, "morale_enabled", True),
+            )
+        if self.section == LIVE_PILOTS_HARDENING_SECTION:
+            # It is earned from the morale bands and most of what it does is to
+            # morale, so it follows morale as well as Live Pilots.
+            morale_on = lambda settings: settings.live_pilots_enabled and getattr(
+                settings, "morale_enabled", True
+            )
+            self._wire_enabled(["hardening_enabled"], morale_on)
+            self._wire_enabled(
+                [name for name in self.settings_map if name != "hardening_enabled"],
+                lambda settings: morale_on(settings)
+                and getattr(settings, "hardening_enabled", True),
+            )
+        if self.section == LIVE_PILOTS_FRIENDSHIP_SECTION:
+            # As with morale: the whole section is a detail of the switch at the top
+            # of it, and of Live Pilots.
+            self._wire_enabled(
+                [name for name in self.settings_map if name != "friendship_enabled"],
+                lambda settings: settings.live_pilots_enabled
+                and getattr(settings, "friendship_enabled", True),
             )
         if self.section == LIVE_PILOTS_SURVIVAL_SECTION:
             self._wire_survival_odds()
@@ -783,6 +805,8 @@ class AutoSettingsLayout(QGridLayout):
             description.max,
             self.sc.settings.__dict__[name],
             divisor=description.divisor,
+            prefix=description.prefix,
+            decimals=description.decimals,
         )
 
         def on_changed() -> None:

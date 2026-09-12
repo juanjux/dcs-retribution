@@ -47,8 +47,11 @@ class Migrator:
         self._reconcile_available_pilots()
         self._clear_leave_requests_from_the_wounded()
         self._restate_the_morale_numbers()
+        self._collapse_the_tanker_options()
         self._update_weather()
         self._update_tgos()
+        self._restore_pruned_iads_nodes()
+        self._relabel_formation_waypoints()
         try_set_attr(self.game.settings, "motorpool_enabled", True)
         try_set_attr(self.game.settings, "motorpool_spawn_cap", 10)
         self._ensure_motorpool_tgos()
@@ -174,7 +177,7 @@ class Migrator:
     def _restate_the_morale_numbers(self) -> None:
         """Move a campaign in progress onto the re-weighed morale figures.
 
-        The fifteen event sizes are settings, and settings ride inside the save, so a
+        The event sizes are settings, and settings ride inside the save, so a
         campaign started before they were re-weighed would keep playing by the old ones
         for ever. Only the ones still sitting on the previous default are moved: a
         figure the player set himself is his.
@@ -190,6 +193,30 @@ class Migrator:
             moved.append(f"{event.key} {held} -> {event.default}")
         if moved:
             logging.info("Morale event sizes brought up to date: %s", "; ".join(moved))
+
+    #: The three per-task tanker options this replaced.
+    TANKER_OPTIONS = (
+        "autoplan_tankers_for_strike",
+        "autoplan_tankers_for_oca",
+        "autoplan_tankers_for_dead",
+    )
+
+    def _collapse_the_tanker_options(self) -> None:
+        """One option where there were three, honouring a campaign that said no.
+
+        The three never did anything -- the fulfiller pruned the tanker they asked
+        for -- but a player who turned them all off said what he wanted, so the one
+        that replaces them starts off for him. Any of them still on reads as
+        "tankers, yes", which is the new option's default anyway.
+        """
+        settings = self.game.settings
+        held = [getattr(settings, name, None) for name in self.TANKER_OPTIONS]
+        for name in self.TANKER_OPTIONS:
+            if hasattr(settings, name):
+                delattr(settings, name)
+        if held and all(value is False for value in held):
+            settings.plan_refuelling_when_needed = False
+            logging.info("Tanker auto-planning was off in all three tasks; kept off")
 
     def _clear_leave_requests_from_the_wounded(self) -> None:
         """A pilot cannot be asking for leave from a hospital bed.
@@ -399,6 +426,44 @@ class Migrator:
             # raises AttributeError on pre-feature saves.
             if isinstance(go, ShipGroundObject):
                 try_set_attr(go, "target_position", None)
+
+    def _restore_pruned_iads_nodes(self) -> None:
+        """Put back the IADS nodes a destroyed site used to be dropped from.
+
+        A site with nothing alive was taken out of the network altogether, and its
+        links went off the map with it -- so in a campaign that has been fought in, the
+        breaks you most want to see are the ones that are missing. The code no longer
+        prunes, but the damage is already in the save: the nodes and their connection
+        ids are gone, and nothing recreates them.
+
+        So the network is rebuilt once, from the campaign's own configuration and the
+        objectives as they stand, which is exactly what happens when a campaign starts.
+        Once is enough -- it cannot be pruned again -- and the flag says it has been
+        done, so a save that has already been through here keeps the network it has.
+        """
+        network = self.game.theater.iads_network
+        if getattr(network, "keeps_destroyed_nodes", False):
+            return
+        network.keeps_destroyed_nodes = True
+        before = len(network.nodes)
+        network.nodes = []
+        network.ground_objects = {}
+        network.initialize_network(iter(self.game.theater.ground_objects))
+        logging.info(
+            "IADS network rebuilt to restore pruned nodes: "
+            f"{before} -> {len(network.nodes)} nodes"
+        )
+
+    def _relabel_formation_waypoints(self) -> None:
+        """Join and split are the package's, not the flight's.
+
+        A flight that is the whole package has nobody to meet, so those two waypoints
+        read as nav points now. Flight plans are saved with the game, so the ones
+        already built carry the old names until they are rebuilt.
+        """
+        for coalition in (self.game.blue, self.game.red):
+            for package in coalition.ato.packages:
+                package.label_formation_waypoints()
 
     def _ensure_motorpool_tgos(self) -> None:
         from game.data.groups import GroupTask

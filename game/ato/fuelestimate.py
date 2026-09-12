@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
+from collections.abc import Iterable
 from typing import TYPE_CHECKING, Optional
 
 from game.ato.flighttype import FlightType
@@ -81,6 +82,42 @@ class FuelEstimate:
         return self.carried >= self.required
 
 
+@dataclass(frozen=True)
+class Leg:
+    """One stretch of a route and what it should be charged at.
+
+    Both estimators build these and hand them to :func:`burn_for`, so a route
+    measured before a plan exists and the same route measured afterwards are
+    charged by the same rules. They were not, and the planning-time one came out
+    20-35% cheap -- which is the wrong direction, because that is a flight given no
+    tanker and no way home.
+    """
+
+    nautical_miles: float
+    altitude_ft: float
+    #: The run in to the target, at the combat rate.
+    attack: bool = False
+    #: Off the deck. The climb rate already covers the whole climb, so no altitude
+    #: correction is applied on top of it.
+    climb: bool = False
+
+
+def burn_for(
+    consumption: FuelConsumption, legs: Iterable[Leg], helicopter: bool
+) -> float:
+    """Pounds burnt over these legs."""
+    total = 0.0
+    for leg in legs:
+        if leg.climb:
+            total += leg.nautical_miles * consumption.climb
+            continue
+        rate = consumption.combat if leg.attack else consumption.cruise
+        total += (
+            leg.nautical_miles * rate * altitude_factor(leg.altitude_ft, helicopter)
+        )
+    return total
+
+
 def estimate_fuel(flight: Flight) -> Optional[FuelEstimate]:
     """Never None in practice: an unmeasured airframe falls back to a guess."""
     consumption = flight.unit_type.fuel_consumption or assumed_consumption(
@@ -102,40 +139,58 @@ def estimate_fuel(flight: Flight) -> Optional[FuelEstimate]:
     # fuel_consumption_between_points, which returns None for an unmeasured airframe.
     # Only the DISTANCE comes from the plan, which is what knows a racetrack flies its
     # laps rather than one crossing.
-    helicopter = flight.unit_type.helicopter
-    burn = 0.0
+    legs = []
     for a, b in pairwise(waypoints):
+        distance = plan.fuel_burn_distance_between_points(a, b).nautical_miles
         if a.waypoint_type is FlightWaypointType.TAKEOFF:
-            # Off the deck and climbing, so no altitude correction: the climb rate
-            # already covers the whole climb.
-            burn += (
-                plan.fuel_burn_distance_between_points(a, b).nautical_miles
-                * consumption.climb
-            )
+            legs.append(Leg(distance, a.alt.feet, climb=True))
             continue
         # Combat rate for the attack itself. The plan also flags the join and the
         # split, which are flown at the package's cruise speed rather than in
         # combat -- charging those at the combat rate put a strike's egress leg,
         # eighty miles of it, at over twice the right figure.
-        rate = (
-            consumption.combat
-            if b.waypoint_type in ATTACK_WAYPOINTS
-            else consumption.cruise
-        )
-        altitude = (a.alt.feet + b.alt.feet) / 2
-        burn += (
-            plan.fuel_burn_distance_between_points(a, b).nautical_miles
-            * rate
-            * altitude_factor(altitude, helicopter)
+        legs.append(
+            Leg(
+                distance,
+                (a.alt.feet + b.alt.feet) / 2,
+                attack=b.waypoint_type in ATTACK_WAYPOINTS,
+            )
         )
 
+    burn = burn_for(consumption, legs, flight.unit_type.helicopter)
     required = (consumption.taxi + burn + consumption.min_safe) * MARGIN
-    # Internal plus the drop tanks. Reading the internal figure alone called a
-    # tanked-up strike short of fuel it was carrying on the pylons.
+    return FuelEstimate(required=pounds(required), carried=carried_fuel(flight))
+
+
+def carried_fuel(flight: Flight) -> Mass:
+    """What the flight takes off with: internal plus the drop tanks.
+
+    Reading the internal figure alone called a tanked-up strike short of fuel it was
+    carrying on the pylons.
+    """
     external = loadout_fuel(flight.roster.members[0].loadout)
-    return FuelEstimate(
-        required=pounds(required), carried=kgs(flight.fuel + external.kgs)
+    return kgs(flight.fuel + external.kgs)
+
+
+#: How much of a route is charged at the climb rate when the legs are not known yet.
+#: The measured airframes are level by about here.
+CLIMB_DISTANCE_NM = 25.0
+
+
+def fuel_for_route(flight: Flight, legs: Iterable[Leg]) -> FuelEstimate:
+    """What these legs cost, for the moment before a plan exists.
+
+    estimate_fuel walks the legs of a built plan. A plan being BUILT has none to walk
+    -- which is exactly when the planner has to decide whether the flight will need a
+    tanker -- so the caller itemises what the package geometry implies. Same Leg,
+    same burn_for, same answer for the same route.
+    """
+    consumption = flight.unit_type.fuel_consumption or assumed_consumption(
+        flight.unit_type
     )
+    burn = burn_for(consumption, legs, flight.unit_type.helicopter)
+    required = (consumption.taxi + burn + consumption.min_safe) * MARGIN
+    return FuelEstimate(required=pounds(required), carried=carried_fuel(flight))
 
 
 #: Floor on the nominal still-air range of each class, for airframes the fit below

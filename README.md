@@ -7,24 +7,21 @@ Retribution. Some features and fixes are also adapted from the
 
 ## How development works here
 
-Development now happens **in this fork**. New work is opened as a
-[Pull Request against this repository](https://github.com/juanjux/dcs-retribution/pulls)
-(targeting `juanjux-dev`), **not** against upstream — this keeps the upstream
-review queue light and makes it easy for other forks to cherry-pick whatever
-they want. Each PR describes the feature or fix it adds. Individual fixes may
-still be offered upstream case by case.
+Development happens **in this fork**. New work is opened as a
+[Pull Request against this repository](https://github.com/juanjux/dcs-retribution/pulls),
+targeting `master`, **not** against upstream — this keeps the upstream review
+queue light and makes it easy for other forks to cherry-pick whatever they want.
+Each PR describes the feature or fix it adds. Individual fixes may still be
+offered upstream case by case.
 
 ## Branches
 
 | Branch | Purpose |
 | --- | --- |
 | **`dev`** | A clean mirror of upstream `dcs-retribution/dev`. Pristine, untouched — the base everything is cut from. |
-| **`juanjux-dev`** | The curated line. A feature lands here **only after it has been tested and reviewed via a PR** (opened against `juanjux-dev`). Branched from `dev` and periodically re-synced with upstream `dev`. |
-| **`master`** | The live "buffed" build where new things are tried out and soak-tested. It is **ahead of `juanjux-dev`** and carries work-in-progress not yet PR'd. **Build this branch** if you want to play with everything. |
+| **`master`** | The line you build. Every feature and fix lands here through a PR, after it has been tested. |
 
-In short: experiment on `master`, promote the proven pieces to `juanjux-dev`
-through a PR, and keep `dev` a pristine upstream mirror. When upstream `dev`
-gets new commits they are occasionally pulled into `master` and `juanjux-dev`.
+When upstream `dev` gets new commits they are occasionally pulled into `master`.
 
 ## Features not in upstream Retribution
 
@@ -32,10 +29,23 @@ Each item links to the fork PR that implements it. The authoritative, up-to-date
 list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=is%3Apr).
 
 ### Map & UI
-- **Air Wing squadron list, redesigned** — the aircraft type leads the row so the list
-  can be scanned, the primary task shows as a role chip, and the list gained a filter, a
-  sort order and grouping by type or base, both remembered between openings.
-  ([#118](https://github.com/juanjux/dcs-retribution/pull/118))
+- **Each flight in a package shows its own timeline** -- off the ground, the moment it
+  starts working, and back down -- on a line of its own under the squadron. The middle
+  one is what that kind of flight actually does: the ingress for anything running in on
+  a target, the start of the corridor for a fighter sweep, the start of the orbit for a
+  patrol or a tanker. Lining those up across a package is how TOT offsets get set, and
+  it used to mean opening every flight in turn. Escort flights also carry a warning
+  under the TOT control: an "ahead" offset does nothing for them, because DCS ties an
+  escort to the flight it protects from the join point on.
+- **The interface has been rebuilt.** The Air Wing list, the squadron dialog, the ATO
+  package and flight lists, the event log, the settings dialog, the command bar above the
+  map and the flight dialog were all redrawn to one vocabulary: a task chip in a fixed
+  colour family, the thing you came to read as the only large text, figures and times in
+  mono so they line up down a column, and amber reserved for the one thing in a row that
+  wants a decision. Dialogs remember the size you give them and open once rather than ten
+  times. Nothing about how the campaign plays changed -- same fields, same signals, same
+  validations, only where they live and how they read.
+  ([design by Claude Design](https://claude.ai/))
 
   <img src="https://raw.githubusercontent.com/juanjux/dcs-retribution/juanjux/screenshots/airwing-redesign.png" width="760">
 
@@ -59,6 +69,109 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   its emitters; package route lines show flight/package info on hover. (The
   click-to-select half of this made it upstream as #761.)
   ([#8](https://github.com/juanjux/dcs-retribution/pull/8))
+- **A site cut off from its network stops looking like a live one.** An autonomous SAM
+  engages only what its own radar finds, and a dark one never brings its radar up at all,
+  but both drew the same confident threat ring as a fully networked battery. **The health
+  bar** carries it: violet when the site is autonomous, grey when it is dark, with the
+  reason in the tooltip — "No power: its substation is down and it carries no generator".
+  A dark site draws **no range rings at all**, because it will neither see nor shoot for
+  the whole mission; an autonomous one keeps its rings exactly as they are, since it does
+  still shoot. Nothing is recoloured or dashed out there: a dashed ring already means a
+  GPS jamming bubble. A battery whose substation is down but which runs on its own
+  generator says so and **names the vehicle**, because bombing that one truck is how the
+  other side switches it off. A destroyed site is left alone entirely: it keeps its own
+  bar and whatever rings its surviving point defence has, which is a live threat.
+  The state is derived, not measured: DCS never reports it, so the rules are lifted
+  from the plugin function by function — `goLive()` refuses without power,
+  `genericCheckOneObjectIsAlive` reads an empty dependency list as "fine",
+  `setToCorrectAutonomousState` needs a live parent radar that covers the site, and
+  `buildRadarCoverage` decides that by range. The same three fields ride the API
+  (`iads_state` / `iads_reason` / `iads_blind` on targets and threats, `state` /
+  `state_reason` / `blind` on `/iads`), omitted whenever a site is working normally, so
+  a planner that sees one knows it has already broken something.
+- **A battery with its own generator is not on the grid.** A Patriot deploys with an
+  EPP-III and a SAMP/T with an MGE, so bombing whichever substation happened to be
+  nearest should do nothing to it — and it was switching the battery off. Read from the
+  `class: Power` the unit data already carries, so a mod that ships a generator works the
+  day it is registered. No Lua change was needed after all: Skynet reads an empty power
+  list as "powered", so leaving the connection out of the table *is* the feature. Kill
+  the generator itself and the site is back on the grid next mission.
+- **The Air Wing Configuration dialog was redrawn.** Three panes, one per question:
+  what this coalition flies and how much of it, what each squadron is allowed to be
+  given and where it is based, and — the one the old form did not have at all — whether
+  it all fits. Parking was a grey line at the bottom of one group box, and going over it
+  was the commonest mistake made in this window; now every base is on screen and turns
+  red the moment you bump a max size, with the header saying "1 over" before you look.
+  Squadron boxes became collapsible cards whose closed header answers what you go
+  looking for, one open at a time. The twenty-row *Mission Type / Auto-Assign* grid is
+  chips grouped into the three task families the rest of the app already colours by,
+  showing only what the airframe can fly and naming what it cannot; the primary task is
+  marked and cannot be switched off, which closes a trap the old form left open. And the
+  two situations the window opens in — composing an air force before a campaign, and
+  reaching into a running one with the cheat on — are now told apart by a blue or amber
+  header, an amber block around the cheat's own controls, and a primary button that says
+  which act it is. A squadron also gets a **Max pilots** of its own beside its Max size,
+  because there was a campaign-wide pilot limit and nowhere to give one squadron a
+  different one, so a wing could not hold a small training unit beside its front-line
+  outfits. It shows the campaign's figure until you move it and stores nothing while it
+  matches, so a squadron you never touched still follows that setting when you change it
+  later.
+- **The map can be searched.** A log line or a message from the OPFOR planner names a
+  site — MINK, or "the Patriot north of Creech" — and finding it meant panning around
+  hunting a code name among two hundred icons. The box on the top left searches every
+  objective and every base by name, **by what is parked there** (so "Patriot" or
+  "Linebacker" finds the site that holds one, and the row says which unit it was), and by
+  what kind of thing it is, with chips to narrow it to a side or a kind. Hovering a
+  result marks it on the map, clicking it goes there. Entirely client-side: the map
+  already holds every name and unit list, so there is nothing to ask the server for.
+- **Joining and splitting is something flights do with each other.** A flight that is the
+  whole package has nobody to meet and nobody to leave, so calling its two package
+  waypoints JOIN and SPLIT described something that was not happening — and it is the
+  package that decides, not the flight, however many aircraft that one flight has. They
+  read **NAV** on their own and are a join and a split again for everyone the moment a
+  second flight is in the package, from the dialog, the API or anywhere else that adds or
+  removes one. Only the labels move: the package still meets and parts there and every
+  time in the plan is measured from those two points, so everything that acts on them was
+  taught to ask the flight plan's **layout** which waypoint is which rather than reading
+  its name — the escort task, the flag that releases the escorts, jamming and the
+  unlimited-fuel toggle in the generator, and the map's drag handler. That last one was
+  not merely going to miss a join labelled NAV: for the primary flight it propagates the
+  drag to the others by waypoint type, so it would have dragged the first nav point of
+  every other flight in the package. A custom flight plan has no layout to ask and falls
+  back to the name, as before. Flight plans live in the save, so the ones already built
+  are relabelled once on load.
+- **A deletable waypoint can be deleted on an AI flight.** Hand-*adding* waypoints stays
+  reserved for all-player flights — an edited route has taken DCS down before — but
+  whether a waypoint can go is a property of the waypoint, not of the crew: one you added
+  yourself, a refuelling stop, one of several target points, or the join and split of a
+  flight that is the whole package all leave a plan the AI can still fly. The delete
+  button leaves the greyed box and turns itself on for a selection it can actually reach
+  — every waypoint in it, not just one, because half a deletion is worse than none — and
+  the join and split it deletes come back the moment a second flight joins the package.
+- **The squadron roster reads as figures.** Max, current, on leave, wounded, broken and
+  available, in the same tiles as the aircraft inventory, with the Pilots header saying
+  how full the squadron is. Pilots can be selected several at a time: sending nine men on
+  leave one dialog at a time is a thing a squadron has every turn.
+- **The long lists can be typed into.** A Hornet has 86 payload presets and one of its
+  pylons takes up to 75 stores, and finding the TALD among sixty rocket pods was
+  scrolling rather than choosing. The payload presets, the liveries, the predefined
+  waypoints, every pylon's own store list and the loadout list in the flight creator all
+  open with a search field above them. Below a dozen items the ordinary popup opens
+  instead: a search box over six entries is one more thing to read past.
+- **The flight editor is not modal, and it follows the flight you pick.** Editing a
+  package means going round its flights, and every trip round cost closing this window
+  and finding the next one in the list behind it — and picking one in the main window's
+  Flights list, which is meant to bring it up here, was eaten by the modal dialog: the
+  window flashed and nothing happened. A selector in the header lists the package's other
+  flights, clicking one in the main window switches the open editor to it, and the footer
+  has the *Go to package* that was previously reachable only by closing this and finding
+  the package again on the map. Everything applies as it is changed, so there is no
+  half-finished state a stray click can leave behind, and the checks that run on close now
+  run on the way out of each flight, so a trip round the package cannot skip them.
+- **Delete cancels a flight, not only a package.** The same key that already cancelled a
+  package cancels the selected flight inside one, and keeps a flight selected afterwards
+  so a held key works down the list. A flight already in the air is aborted rather than
+  cancelled, exactly as it is from the menu.
 - **The IADS update interval is a setting.** Skynet re-reads every radar in the network
   and re-decides who wakes every **5 seconds**, which is the single biggest cost it
   carries on a large map -- MANTIS, for comparison, runs its equivalent at 30. It is now
@@ -158,72 +271,16 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   1.6 KB of a 12 MB campaign. Reopening it re-offers the leave requests still waiting
   (the promotion box is told once, not on every reopening).
 
-- **The squadron dialog fits its own text, and keeps the size you give it.** It opened
-  at 1200 px, which left the notes column 35 px of the roster's 564 -- the identity
-  column and the morale block take the rest -- so *every* note was shortened, down to
-  "Requests leave" itself becoming "Requests l...". The minimum is 1320 now, which fits
-  the longest of them ("Will refuse to fly next mission", 142 px) in 155. And the size
-  is remembered between openings, for any squadron, the same way the main window
-  remembers its own.
-
-- **Air Wing and Transfers open once.** Pressing Air Wing ten times opened ten of them,
-  each one held by the main window it was parented to; an open one is brought to the
-  front now. The two also shared a single reference, so opening Transfers dropped the
-  only one the transfers dialog had. A closed dialog is rebuilt rather than shown again,
-  so it never returns with a turn-old view.
-
-- **The six boxes above the map became one command bar.** Turn, weather, factions,
-  budget and intel used to be five group boxes with five frames, five sets of margins
-  and their own type sizes, next to a sixth full of buttons. They are one 80 px strip
-  now, with hairline dividers, the same 10.5 px caps captions as everywhere else, and
-  two big mono numbers -- turn and budget -- as the anchors. Intel is three bars with a
-  one-word verdict instead of "strong advantage" three times in 9 px type. A frame means
-  you can click it: Budget and Intel open dialogs and are framed, the read-only cells are
-  not. The toolbar icons move into the menu row as flat 22 px buttons, which gives their
-  old row back to the map. Narrow windows drop Intel first, then the winds.
-  ([design by Claude Design](https://claude.ai/))
-
-- **Packages and flights are rows, not prose.** Both ATO lists were four blocks of the
-  same 10 pt text in a two-by-two grid — name and TOT on the left, "Player Slots: 2" and
-  "Missing pilots: 1" on the right. They are 56 px rows now in the vocabulary the Air
-  Wing list already taught: the task chip first in the same three colour families, the
-  target or the airframe as the only large bold text, and the times in mono where they
-  line up down the column. A package with no flights, an unfilled flight or a missing
-  pilot is the one amber thing in the row, so it is not discovered at take-off.
-
-- **The log became an event list.** Every line began
-  `[2012-05-18 21:03:44][11]` — twenty-eight characters of prefix on every row, and the
-  wall clock is when the message object was built, which is not a fact about the
-  campaign. A row now carries the turn in mono, a category chip (repair, allied, enemy,
-  info, classified from the wording the twenty-odd message sites use) and the message
-  with its subject in bold. This turn's entries get an amber bar, the filter narrows to
-  one category, and the panel shows this turn until you ask for all of them. The full
-  timestamp lives in the tooltip.
-
-- **Live Pilots is one master switch, and the morale numbers have their own box.**
-  Turning it off used to leave morale, the enemy-aircrew report and the rank ladder
-  live; the rule is by page now, so everything on it greys out together and whatever is
-  added later is covered without anyone remembering. With morale off, its sixteen event
-  values grey out too. "Show pilot ranks in mission" is gone -- it is part of Live
-  Pilots, not a choice of its own. Two rules changed with the re-weighing: a wound is
-  felt every turn the medics keep him rather than the first three, and going without
-  leave costs the same each turn rather than compounding.
-- **One Mission Plugins page instead of two.** A row per plugin -- switch, name, and a
-  gear where there is something to set -- with the description underneath, and the
-  options in their own dialog. Turning CTLD on and setting it up used to be two pages
-  apart, and the options page was a wall of boxes for plugins you had not enabled.
+- **Two morale rules were re-weighed** when Live Pilots became a single master switch: a
+  wound is felt every turn the medics keep him rather than only the first three, and going
+  without leave costs the same each turn rather than compounding. "Show pilot ranks in
+  mission" is gone -- it is part of Live Pilots, not a choice of its own.
 
 - **The debriefing's morale section listed everyone who flew.** It reported any
   movement past a fixed size, and flying the mission is exactly that size, so every man
   who came home earned a row -- reading "Normal -> Normal", since the row names his
   state at each end. It reports a change of state now, which is the thing the row can
   show; the figures stay in the ledger.
-
-- **Settings pages index their own sections.** A page with several boxes was a scroll
-  rather than something to navigate -- Campaign Management now has seven. Any page with
-  more than one section gets a list of them beside it and shows one at a time, the same
-  move the dialog makes with its pages, and a section with nothing left to show drops out
-  of the list. "Campaign Management+" is folded into Campaign Management.
 
 - **Ignore parking space at airbases.** Airbases hold as many aircraft as you can pay
   for, whatever their ramp size. Carriers and FOBs are unaffected.
@@ -237,10 +294,6 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
 - **Search box for the settings.** Two hundred settings over six pages, plus the
   plugins' own options behind their gears. Type a word, pick a hit, and it opens the
   page, the gear or the plugin's options and flashes the setting. ([#181](https://github.com/juanjux/dcs-retribution/pull/181))
-- **The settings dialog got a working-over.** It opens wide enough that nothing is
-  cut off, sections index themselves without the index scrolling away, a switch with
-  tuning behind it carries a gear instead of a page, and *Mission Start* and *AI* are
-  their own sections. ([#170](https://github.com/juanjux/dcs-retribution/pull/170), [#174](https://github.com/juanjux/dcs-retribution/pull/174), [#179](https://github.com/juanjux/dcs-retribution/pull/179))
 - **Ranks, with a price.** *Rank Names* is *Ranks*, and what each rung costs in XP is
   set there beside its name. The morale bands are settings too, and a pilot's rank
   shift follows them. ([#174](https://github.com/juanjux/dcs-retribution/pull/174), [#179](https://github.com/juanjux/dcs-retribution/pull/179))
@@ -283,6 +336,48 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   [#20](https://github.com/juanjux/dcs-retribution/pull/20))
 
 ### Missions, AI & tasking
+- **Refuelling that actually happens.** Upstream had three per-task tanker options that
+  asked for a tanker the fulfiller then always pruned, and it hung a refuelling waypoint
+  on flights whether or not they needed one. Underneath, the waypoint could not work even
+  when it was wanted: the DCS task carried a start condition of *"every unit is at or
+  above 20% fuel"*, so a flight arriving at the tanker below a fifth of its fuel -- the
+  one case the whole thing exists for -- never began refuelling at all, and went home, or
+  to whatever airfield it could reach. That is why flights came back on fumes past a
+  tanker that was right there.
+
+  Now it is one setting, and the fuel decides. A package's route is costed leg by leg --
+  the climb at the climb rate, the run in at the combat rate, everything else at cruise
+  with the altitude correction -- against what the flight leaves the ground with,
+  internal plus its drop tanks. If it will not make it, and the faction has a tanker to
+  send, it gets a refuelling waypoint **after the target, on the way home**, in friendly
+  airspace, and the package asks for a tanker. Patrols get one too: a BARCAP orbits for
+  hours and is the flight most likely to want one.
+
+  The decision is made again when **you** edit the flight. The planner decides once,
+  while it builds the plan, so taking the drop tanks off or taking the route down to
+  eight thousand feet left a flight short with nothing noticing. On the way out of the
+  flight editor it asks, the way it already asks whether the ingress point should move:
+  *"Add waypoint and tanker"* or *"Add waypoint only"*, with the first greyed out and the
+  reason on screen when there is nothing to send. Saying yes does not rebuild the plan --
+  that would throw away the edits that made the flight short in the first place.
+
+  A tanker sent this way orbits at the very point the waypoint was put, so the two cannot
+  disagree, and it is not offered at all when that point is inside enemy air defences: a
+  tanker is large, slow, unarmed and flies in a straight line for an hour. Every idle
+  tanker squadron is offered rather than the first, with **the refuelling system each one
+  uses**, because nothing in the aircraft data -- ours or pydcs's -- says whether a
+  receiver has a probe or a receptacle, and a Hornet sent to a boom-only KC-135 comes home
+  empty.
+
+  And it is still there when the flight arrives. The tanker used to hold for five minutes
+  plus four a head -- ten minutes for a single flight -- centred on an arrival time that
+  is itself an estimate, and to reach station ninety seconds before it. It now holds for
+  the campaign's configured tanker on-station time and is there **ten minutes early**,
+  because a flight that fought, routed around a threat or simply flew its legs at another
+  speed is minutes out either way, and nearly always late.
+  ([#211](https://github.com/juanjux/dcs-retribution/pull/211),
+  [#213](https://github.com/juanjux/dcs-retribution/pull/213),
+  [#214](https://github.com/juanjux/dcs-retribution/pull/214))
 - **The LLM can see and choose its pilots, and read every setting.** Two parity gaps the
   OPFOR agent reported: it could see a flight's uncrewed count and nothing else about the
   people in it, and `/settings` was a hand-written subset that happened not to include
@@ -433,7 +528,19 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   toggle, and the roster is only seeded when the plugin is on. Interceptions are polled
   rather than eventful — DCS fires nothing for "I have seen him and I am going after
   him" — so every fighter group is asked what its radar holds and what the datalink
-  handed it, and the message says which of the two found the target.
+  handed it, and the message says which of the two found the target. The log has since
+  been quietened and then sharpened: *monitoring* — a fighter looking at something it has
+  not committed to, the commonest line by a distance and the least eventful — is off
+  until you ask for it; a ground kill carries the same "enemy" prefix an aircraft already
+  had, because "DESTROYED 3 T-72" and "DESTROYED 3 enemy T-72" are not the same sentence
+  on a front with both sides' armour on it (and whose it was is part of the batching key,
+  so a friendly and an enemy T-72 killed in the same window cannot merge into one line
+  that would have to lie about one of them); SHOT DOWN, CRASHED, EJECTED and DESTROYED
+  are shouted, because a kill and a takeoff read the same in a scrolling column and are
+  not the same news, while "hit" stays lower case since it is damage rather than a kill;
+  and the two lines you actually want to find again get a word in front of them — YEAH!
+  and OH NO! by default, both settings, an empty one turning it off. Good news only when
+  what died was theirs: blue blowing up blue gets the other word.
   ([#120](https://github.com/juanjux/dcs-retribution/pull/120))
 - **Turn times from the sun** — the four turn slots are derived from the
   theater's latitude and the campaign date instead of one fixed window per map.
@@ -514,6 +621,21 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   DCS that a static spawned dead answers `getByName=ok, isExist=false, life=0`, which is
   exactly what Skynet tests. Vehicle-backed roles still drop out, since their groups have
   no name left once every unit is gone.
+- **A destroyed site keeps its place in the network, and its links on the map.** The same
+  fault one layer up: a site with nothing alive was dropped from the IADS network
+  altogether, and its links went off the map with it — so a link whose power station died
+  drew as a break, and a link whose SAM died simply vanished. The state you most want to
+  see was the one state never drawn. On the Nevada save that is 9 nodes and 19 links
+  drawn where there are 17 and 34, and 24 of those 34 are breaks. A dead site keeps its
+  node now. Whoever is alive still *leads* it, though, so a site whose SAM is gone but
+  whose point defence is not goes on reaching Skynet and fighting; handing the lead to
+  the dead group would have taken a live Vulcan out of the IADS. The second fix of the
+  class is the command centre: flattened, it used to leave the network, and Skynet's
+  `isCommandCenterUsable()` returns true on an empty table, so losing the last one handed
+  command back. The damage is already in the saves, and nothing recreates a node that was
+  pruned, so a campaign that has been fought in builds its network once more on load,
+  from the campaign configuration and the objectives as they stand — the same thing that
+  happens when a campaign starts. Once is enough, because it cannot be pruned again.
 - **Ferry flights may return fire** — a relocating squadron flew on Weapon Hold, so it
   would evade a missile without ever shooting at the fighter that launched it and a
   relocation across contested airspace was a free kill. Ferries now fly Return Fire:
@@ -584,6 +706,46 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   (branch [`juanjux/ch_china_1.1.6`](https://github.com/juanjux/dcs-retribution/tree/juanjux/ch_china_1.1.6))
 
 ### Fixes
+
+- **A SAM with no power woke up the moment it lost its comms.** Reported as two Patriots
+  keeping their threat rings and firing with their power stations destroyed. The data was
+  right the whole way down — the archived mission for that turn hands both sites to
+  Skynet with exactly what they depend on, and both power statics spawn into it with
+  `dead = true`, which is what Skynet reads as "no power". The fault is in Skynet's own
+  `goAutonomous()`: losing a connection node makes an element autonomous, and under
+  `AUTONOMOUS_STATE_DCS_AI`, which is what we set, autonomous meant `goLive()`
+  unconditionally. So bombing the comms node of a site whose power station was already
+  rubble was *worse than bombing nothing* — it woke a site the command centre would
+  otherwise have kept dark. Going autonomous means an element lost its network, not that
+  it grew a generator, so it now stays dark without power whatever its autonomous
+  behaviour says. Found by reading the archived `.miz` for the turn in question: the
+  sites had been destroyed since, so nothing in the current save could have shown it.
+- **A squadron with nobody willing to fly read as fully manned.** The engine was right —
+  of 43 broken pilots in one campaign save, not one was in an availability pool. The text
+  lied: the squadron dialog subtracted the wounded and the ones on leave and nothing
+  else, so a squadron with eight men refusing to fly still read "8 available", and the
+  Air Wing row showed the bare headcount, so one with nobody to send read "16 pilots".
+  Both go through `Squadron.fit_for_duty` now — on the books, not hurt, not away, willing
+  — which is what those counts have always meant to a player. Deliberately not
+  `available_pilots`: that is the untasked pool and shrinks as you plan, which is a
+  different question. The dialog names the refusers beside the wounded, because a
+  squadron you know to rest is not the same as one that looks under-used.
+- **A plugin could not ask the player for a word.** The plugin options dialog drew a
+  checkbox for a boolean and a spinner for a number, and for a string it drew the label
+  and no control at all — so the Mission Log's YEAH! and OH NO! arrived as two rows you
+  could read and not change. Strings get a field, and an empty one is an empty one: the
+  log already treats that as "say nothing".
+- **A flight sent AHEAD of its package arrived behind it.** The package TOT was worked
+  out from the slowest flight's transit alone, ignoring each flight's own TOT offset --
+  but a flight three minutes early has to be over the target three minutes *before* the
+  package, so it needs the package scheduled three minutes *later* than its transit
+  demands. It wasn't, so its plan was built backwards from a time it could not reach,
+  its takeoff landed before the mission started, and the clamp turned the requested
+  head start into an equal delay -- worse the larger the offset. The earliest reachable
+  package TOT now accounts for the offsets, and changing an offset in the flight dialog
+  slides the whole package later when it has to, keeping the spacing the offset asked
+  for. The offset direction is also now read from the control's state rather than
+  flipped, so it cannot drift out of step with what the box shows.
 
 - **Three in the fuel figures.** Adding or removing a drop tank did not move the total;
   the estimate took no account of the altitude flown; and it charged the join and split
@@ -1061,24 +1223,6 @@ and it is longer than this section.
 
 Planned, not started. Enough detail here to pick each one up cold.
 
-- **IADS: a power generator keeps its own battery alive.** A SAM whose power line is cut
-  goes dark. A battery that carries its own generator should stay up regardless, and only
-  go dark when that generator is destroyed — it powers itself, it does not feed the
-  neighbour. Five `class: Power` units are already modelled (Patriot EPP, two CurrentHill,
-  LvS-103, the SAMP/T MGE) and all of them already live inside their own SAM's group, so
-  the data is there. The catch is that this is not a Python-only change:
-  `skynetiads-config.lua` resolves power sources with `StaticObject.getByName`, which
-  returns nil for a vehicle, so the generators need their own array on the Lua side.
-  Apply it only to sites already wired to a substation — otherwise a Patriot goes from
-  "always powered" to "switched off by killing one truck", which is worse than today.
-  `game/agent/docs/howtoplay.md` currently states the opposite and has to be corrected in
-  the same change.
-- **IADS: network state on the map.** Show which sites are autonomous or dark, on the
-  health bar and the threat ring, instead of leaving the player to guess. The state is
-  never persisted and never comes back from DCS, so it has to be derived from which nodes
-  are still alive — which is exactly what Skynet itself looks at. Suppressing the ring is
-  free. The trap: without also pushing the TGO when a power station dies, the map keeps
-  drawing the stale ring until the campaign is reloaded.
 - **[from 414Ret] Strikes timed behind their SEAD.** Packages are scheduled independently
   today, so nothing stops a strike entering a threat ring before the SEAD servicing it.
 

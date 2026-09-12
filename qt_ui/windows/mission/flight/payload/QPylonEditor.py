@@ -11,6 +11,7 @@ from game.ato.flight import Flight
 from game.ato.flightmember import FlightMember
 from game.ato.loadouts import Loadout
 from game.data.weapons import Pylon, Weapon
+from qt_ui.widgets.searchablecombo import SearchableComboBox
 from .QWeaponSettingsDialog import QWeaponSettingsDialog
 
 
@@ -30,8 +31,10 @@ class QPylonEditor(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(5)
 
-        # Create combobox for weapon selection
-        self.weapon_combo = QComboBox()
+        # Create combobox for weapon selection. Searchable: a Hornet pylon takes
+        # most of the American inventory, and finding the TALD among sixty rocket
+        # pods is scrolling rather than choosing.
+        self.weapon_combo = SearchableComboBox(placeholder="Type to find a weapon…")
         current = self.flight_member.loadout.pylons.get(self.pylon.number)
 
         self.weapon_combo.addItem("None", None)

@@ -48,10 +48,27 @@ class MoraleEvent:
     default: int
     reason: str
 
+    #: What this copy of the event is worth, when it is worth something other than the
+    #: campaign's figure -- leave taken in company, say. It wins over the settings key,
+    #: because it was worked out from that figure to begin with.
+    override: Optional[int] = None
+
     def amount(self, settings: Optional["Settings"] = None) -> int:
+        if self.override is not None:
+            return self.override
         if settings is None:
             return self.default
         return int(getattr(settings, self.key, self.default))
+
+    def scaled_by(
+        self, factor: float, settings: Optional["Settings"] = None
+    ) -> "MoraleEvent":
+        """The same event, worth more to one man than to the next.
+
+        Whole numbers, because morale is one: a factor that rounds to nothing leaves
+        the event exactly as the campaign wrote it.
+        """
+        return replace(self, override=round(self.amount(settings) * factor))
 
 
 # --- what wears him down ----------------------------------------------------
@@ -63,7 +80,8 @@ LOST_AIRCRAFT = MoraleEvent("morale_lost_aircraft", -15, "lost his aircraft")
 #: He flew a strike, a CAS or a SEAD and destroyed nothing at all.
 ACHIEVED_NOTHING = MoraleEvent("morale_achieved_nothing", -10, "came home empty")
 
-#: Per pilot of his own squadron killed. Friendship weighting is Tier IV.
+#: Per pilot of his own squadron killed, weighted by what he thought of the man:
+#: see :func:`game.squadrons.friendship.grief_times`.
 SQUADRON_DEATH = MoraleEvent("morale_squadron_death", -20, "lost a squadron mate")
 
 #: On top of the above, for the men who were in the same flight and watched it happen.
@@ -112,6 +130,13 @@ PROMOTED = MoraleEvent("morale_promoted", 20, "promoted")
 #: Per turn of leave served.
 ON_LEAVE = MoraleEvent("morale_on_leave", 15, "on leave")
 
+#: He walked out of the hospital. The mirror of the wound: losing him for a few turns
+#: cost the squadron, and having him back pays some of it in. Never all of it -- a wound
+#: has to be worth avoiding.
+SQUADRON_RECOVERED = MoraleEvent(
+    "morale_squadron_recovered", 4, "a man came back from the hospital"
+)
+
 #: Every event, for the settings page and for tests that check nothing was forgotten.
 MORALE_EVENTS: tuple[MoraleEvent, ...] = (
     LOST_AIRCRAFT,
@@ -129,6 +154,7 @@ MORALE_EVENTS: tuple[MoraleEvent, ...] = (
     MISSION_COMPLETE,
     PROMOTED,
     ON_LEAVE,
+    SQUADRON_RECOVERED,
 )
 
 
@@ -221,11 +247,26 @@ def resistance(skill: Skill) -> float:
     return 1.0 - 0.15 * rung
 
 
-def apply(morale: int, event: MoraleEvent, skill: Skill, settings: Any = None) -> int:
-    """Move a pilot by one event, softened by his rank if it is a knock."""
+def apply(
+    morale: int,
+    event: MoraleEvent,
+    skill: Skill,
+    settings: Any = None,
+    relief: float = 0.0,
+) -> int:
+    """Move a pilot by one event, softened if it is a knock.
+
+    Twice over: by his rank, which is armour he was given, and by ``relief`` -- what he
+    has already been through, which is armour he earned. The two multiply, because they
+    are separate reasons the same news lands lighter, and neither applies to good news.
+
+    A knock never costs nothing, however hard the man: the floor of one point is the
+    rule rather than a rounding guard.
+    """
     amount = event.amount(settings)
     if amount < 0:
-        amount = -max(1, round(-amount * resistance(skill)))
+        softened = resistance(skill) * max(0.0, 1.0 - relief)
+        amount = -max(1, round(-amount * softened))
     return clamp(morale + amount)
 
 
@@ -278,16 +319,24 @@ def band_ceiling(name: str, settings: Any = None) -> int:
     return MORALE_MAX + 1
 
 
-def shifted_skill(skill: Skill, morale: int, settings: Any = None) -> Skill:
-    """The rung he will actually fly at, clamped to the ladder."""
-    shift = skill_shift(morale, settings)
-    if not shift:
+def bumped_skill(skill: Skill, rungs: int) -> Skill:
+    """A rung up or down the ladder, clamped to its ends.
+
+    Shared by the two things that move a pilot off his rank: how he is holding up, and
+    whether the formation around him is one he gets on with.
+    """
+    if not rungs:
         return skill
     try:
         rung = SKILL_LADDER.index(skill)
     except ValueError:
         return skill
-    return SKILL_LADDER[max(0, min(len(SKILL_LADDER) - 1, rung + shift))]
+    return SKILL_LADDER[max(0, min(len(SKILL_LADDER) - 1, rung + rungs))]
+
+
+def shifted_skill(skill: Skill, morale: int, settings: Any = None) -> Skill:
+    """The rung he will actually fly at, clamped to the ladder."""
+    return bumped_skill(skill, skill_shift(morale, settings))
 
 
 @dataclass(frozen=True)
