@@ -235,10 +235,13 @@ class IadsStateMap:
             # shows about a wreck is that it is a wreck.
             return IadsStatus(IadsState.DESTROYED, "Destroyed.", False)
 
-        # A command centre is a building. It never had a radar, so having none is not
-        # news about it.
+        # A command centre is a building and a GPS jammer is a truck with an antenna.
+        # Neither ever had a search radar, so having none is not news about them.
+        jams_gps = bool(getattr(node.group.ground_object, "carries_gps_jammer", False))
         blind = (
-            role is not IadsRole.COMMAND_CENTER and _detection_range(node.group) <= 0
+            role is not IadsRole.COMMAND_CENTER
+            and not jams_gps
+            and _detection_range(node.group) <= 0
         )
 
         if not powered:
@@ -262,6 +265,18 @@ class IadsStateMap:
             if own_generator is not None
             else ""
         )
+
+        if jams_gps:
+            # A GPS jammer sits in an early-warning slot but is not a radar: nobody
+            # cues it, it reports to nobody, and it denies its bubble for as long as
+            # its trucks are alive. Losing the network costs it nothing, so neither the
+            # violet bar nor the "no radar of its own" line belongs on it. Power is the
+            # one thing it does want, and that was answered above.
+            return IadsStatus(
+                IadsState.NETWORKED,
+                "Jamming GPS; it needs no network." + mains_note,
+                False,
+            )
 
         if role is IadsRole.COMMAND_CENTER:
             if not connected:

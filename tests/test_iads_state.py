@@ -50,6 +50,7 @@ class _Tgo:
             y=at[1],
         )
         self.groups: list[Any] = []
+        self.carries_gps_jammer = False
 
 
 def _group(
@@ -185,6 +186,40 @@ def test_a_campaign_with_no_command_centre_at_all_is_not_penalised() -> None:
     ewr = _group("MOOSE", IadsRole.EWR, _unit(detection=100_000), at=(0.0, 0.0))
     sam = _group("BADGER", IadsRole.SAM, _unit(detection=50_000), at=(50_000.0, 0.0))
     assert _status(_map(_node(ewr), _node(sam)), sam).state is IadsState.NETWORKED
+
+
+def test_a_gps_jammer_cut_off_from_the_network_is_not_reported_as_autonomous() -> None:
+    """It sits in an early-warning slot but is not a radar: nobody cues it, it reports
+    to nobody, and the bubble it denies depends only on its trucks being alive. The
+    violet bar would be a colour on the map for a state that means nothing here."""
+    comms = _group("KEA", IadsRole.CONNECTION_NODE, _unit(alive=False))
+    jammer = _group("MINK", IadsRole.EWR, _unit())
+    jammer.ground_object.carries_gps_jammer = True
+    state = _status(_map(_node(jammer, comms), _node(comms)), jammer)
+    assert state.state is IadsState.NETWORKED
+    assert state.blind is False
+    assert state.notable is False
+
+
+def test_a_gps_jammer_with_no_power_is_still_dark() -> None:
+    """Power is the one thing it wants."""
+    power = _group("SUBSTATION", IadsRole.POWER_SOURCE, _unit(alive=False))
+    jammer = _group("MINK", IadsRole.EWR, _unit())
+    jammer.ground_object.carries_gps_jammer = True
+    state = _status(_map(_node(jammer, power), _node(power)), jammer)
+    assert state.state is IadsState.DARK
+    # "dark, and blind" reads as a radar that lost its dish; this one never had one.
+    assert state.blind is False
+
+
+def test_an_ordinary_ewr_with_its_comms_cut_is_still_autonomous() -> None:
+    """The jammer rule must not let every early-warning radar off."""
+    comms = _group("KEA", IadsRole.CONNECTION_NODE, _unit(alive=False))
+    ewr = _group("MOOSE", IadsRole.EWR, _unit(detection=100_000))
+    assert (
+        _status(_map(_node(ewr, comms), _node(comms)), ewr).state
+        is IadsState.AUTONOMOUS
+    )
 
 
 def test_a_site_that_has_lost_its_search_radar_is_blind() -> None:
