@@ -613,6 +613,19 @@ class IadsGroundObject(TheaterGroundObject, ABC):
         )
 
     @property
+    def carries_gps_jammer(self) -> bool:
+        """Whether this site jams GPS, whatever slot the campaign put it in.
+
+        Read off the units rather than off the class, the same way the map symbol is:
+        a radar site, a missile battery and a jamming site are interchangeable now.
+        """
+        return any(
+            unit.unit_type is not None and getattr(unit.unit_type, "gps_jamming", None)
+            for group in self.groups
+            for unit in group.units
+        )
+
+    @property
     def symbol_set_and_entity(self) -> tuple[SymbolSet, Entity]:
         """Read the symbol off the site, not off the class it was created as.
 
@@ -622,16 +635,15 @@ class IadsGroundObject(TheaterGroundObject, ABC):
         jammer wins over everything (it is the thing worth telling apart), a launcher
         beats a bare radar, and a site with neither is a radar.
         """
-        jamming = False
         shoots = False
         for group in self.groups:
             for unit in group.units:
                 unit_type = unit.unit_type
                 if unit_type is not None and getattr(unit_type, "gps_jamming", None):
-                    jamming = True
-                elif getattr(unit_type, "unit_class", None) in LAUNCHER_CLASSES:
+                    continue
+                if getattr(unit_type, "unit_class", None) in LAUNCHER_CLASSES:
                     shoots = True
-        if jamming:
+        if self.carries_gps_jammer:
             return SymbolSet.LAND_UNIT, LandUnitEntity.ELECTRONIC_WARFARE_JAMMING
         if shoots:
             return SymbolSet.LAND_UNIT, LandUnitEntity.AIR_DEFENSE
