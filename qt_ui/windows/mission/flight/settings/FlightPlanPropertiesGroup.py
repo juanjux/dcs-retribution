@@ -14,7 +14,6 @@ from PySide6.QtWidgets import (
     QCheckBox,
     QFrame,
     QHBoxLayout,
-    QLabel,
     QMessageBox,
     QVBoxLayout,
     QWidget,
@@ -70,20 +69,6 @@ class FlightPlanPropertiesGroup(QWidget):
         self.update_departure_time()
 
         layout.addWidget(key_value("TOT offset", self._offset_control(), height=40))
-
-        if flight.flight_type.is_escort_type:
-            # An escort is tied to the flight it protects by the DCS Escort task from
-            # the join point on, so it cannot be anywhere its package is not.
-            warning = QLabel(
-                'WARNING: "Ahead" TOT offsets usually do not work for '
-                f"{flight.flight_type} flights. They are tied to the package they "
-                "protect and cross the target area with it however early they set "
-                'off. "Behind" does work. For fighters over the target before the '
-                "package, use a sweep, which flies a route of its own."
-            )
-            warning.setWordWrap(True)
-            warning.setStyleSheet("color: #D9A441; padding: 2px 12px 6px 12px;")
-            layout.addWidget(warning)
 
         layout.addWidget(
             key_value("Arrival", value_label(flight.arrival.name, align_right=True))
