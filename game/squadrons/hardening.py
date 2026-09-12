@@ -48,13 +48,12 @@ HARDENING_BY_STATE: tuple[tuple[str, str, int], ...] = (
     ("Broken", "hardening_broken", BROKEN),
 )
 
-#: What the whole ruler is worth, as percentages reached at the top of it and scaled
-#: straight down from there. Written as "what a man at the very top gets" rather than as
-#: a rate per point, because that is the figure worth arguing about -- the rate falls
-#: out of it and the ceiling together.
-MORALE_RELIEF_FULL = 80
-SURVIVAL_FULL = 20
-FRIENDSHIP_DAMPING_FULL = 60
+#: What one point is worth to each effect, as percentages. Per point rather than per
+#: ruler so the arithmetic a player can do in his head is the right one: a pilot with 30
+#: points takes 30 x 2 = 60% off every morale hit.
+MORALE_RELIEF_PER_POINT = 2.0
+SURVIVAL_PER_POINT = 0.5
+FRIENDSHIP_DAMPING_PER_POINT = 1.5
 
 
 def _setting(settings: Any, key: str, default: Any) -> Any:
@@ -83,12 +82,9 @@ def ceiling(settings: Any = None) -> int:
     return int(_setting(settings, "hardening_max", HARDENING_MAX))
 
 
-def share(hardened: int, settings: Any = None) -> float:
-    """How far along the ruler he is, 0 to 1. Everything else is priced off this."""
-    top = ceiling(settings)
-    if top <= 0:
-        return 0.0
-    return max(0.0, min(1.0, hardened / top))
+def _worth(hardened: int, settings: Any, key: str, default: float) -> float:
+    """One effect, at this many points. Never more than the whole of whatever it is."""
+    return min(1.0, max(0, hardened) * _percent(settings, key, default))
 
 
 # --- earning it ------------------------------------------------------------------
@@ -136,8 +132,9 @@ def morale_relief(hardened: int, settings: Any = None) -> float:
     """
     if not in_play(settings):
         return 0.0
-    full = _percent(settings, "hardening_morale_relief_full", MORALE_RELIEF_FULL)
-    return share(hardened, settings) * full
+    return _worth(
+        hardened, settings, "hardening_morale_relief_per_point", MORALE_RELIEF_PER_POINT
+    )
 
 
 def survival_bonus(hardened: int, settings: Any = None) -> float:
@@ -149,8 +146,9 @@ def survival_bonus(hardened: int, settings: Any = None) -> float:
     """
     if not in_play(settings):
         return 0.0
-    full = _percent(settings, "hardening_survival_full", SURVIVAL_FULL)
-    return share(hardened, settings) * full
+    return _worth(
+        hardened, settings, "hardening_survival_per_point", SURVIVAL_PER_POINT
+    )
 
 
 def friendship_damping(hardened: int, settings: Any = None) -> float:
@@ -163,10 +161,12 @@ def friendship_damping(hardened: int, settings: Any = None) -> float:
     """
     if not in_play(settings):
         return 0.0
-    full = _percent(
-        settings, "hardening_friendship_damping_full", FRIENDSHIP_DAMPING_FULL
+    return _worth(
+        hardened,
+        settings,
+        "hardening_friendship_damping_per_point",
+        FRIENDSHIP_DAMPING_PER_POINT,
     )
-    return share(hardened, settings) * full
 
 
 def feels(pilot: Pilot, amount: float, settings: Any = None) -> float:

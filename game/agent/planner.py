@@ -1684,7 +1684,9 @@ def _rungs_between(before: Any, after: Any) -> int:
         return 0
 
 
-def _relationship_views(pilot: Any, index: dict[Any, Any]) -> list[dict[str, Any]]:
+def _relationship_views(
+    pilot: Any, index: dict[Any, Any], settings: Any = None
+) -> list[dict[str, Any]]:
     """Every bond worth mentioning, in both directions and across squadrons.
 
     Both signs, because a man he cannot stand is exactly as actionable as a friend --
@@ -1716,7 +1718,7 @@ def _relationship_views(pilot: Any, index: dict[Any, Any]) -> list[dict[str, Any
                     "id": str(other.id),
                     "name": other.name,
                     "squadron": str(other_squadron),
-                    "band": friendship.band_name(towards),
+                    "band": friendship.band_name(towards, settings),
                     "towards": round(towards, 1),
                     "from": round(from_him, 1),
                 },
@@ -1793,7 +1795,9 @@ def _pilot_view(
         # to be able to name one of them.
         view["id"] = str(pilot.id)
         bonds = _relationship_views(
-            pilot, _wing_index(squadron) if index is None else index
+            pilot,
+            _wing_index(squadron) if index is None else index,
+            getattr(squadron, "settings", None),
         )
         if bonds:
             view["relationships"] = bonds
@@ -2004,7 +2008,7 @@ def squadron_pilots(game: Game, side: str, squadron_id: str) -> dict[str, Any]:
             if cohesion is not None:
                 roster["cohesion"] = {
                     "value": round(cohesion, 1),
-                    "band": friendship.band_name(cohesion),
+                    "band": friendship.band_name(cohesion, squadron.settings),
                 }
             return roster
     return {"error": f"no squadron {squadron_id!r} on {side}"}
@@ -2046,7 +2050,7 @@ def flight_crew(game: Game, side: str, flight_id: str) -> dict[str, Any]:
         # having it.
         crew["synergy"] = {
             "value": round(synergy, 1),
-            "band": friendship.band_name(synergy),
+            "band": friendship.band_name(synergy, squadron.settings),
             "flies_a_rung_better": friendship.flies_a_rung_better(
                 synergy, squadron.settings
             ),

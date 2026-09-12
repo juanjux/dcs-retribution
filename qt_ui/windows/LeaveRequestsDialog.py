@@ -244,7 +244,10 @@ class LeaveRequestsDialog(QDialog):
             row.explain(self._explanation(chosen, row))
 
     def _tint(self, chosen: Pilot, other: Pilot) -> Optional[str]:
-        colour = affinity_tint(friendship.group_affinity(other, [chosen]))
+        colour = affinity_tint(
+            friendship.group_affinity(other, [chosen]),
+            settings=self.game.settings,
+        )
         if colour is None:
             return None
         return f"rgba({colour.red()},{colour.green()},{colour.blue()},{colour.alpha()})"
@@ -257,7 +260,7 @@ class LeaveRequestsDialog(QDialog):
         is exactly the kind of thing a colour on its own would let you get wrong.
         """
         value = friendship.group_affinity(other.pilot, [chosen.pilot])
-        band = friendship.band_name(value)
+        band = friendship.band_name(value, self.game.settings)
         if other.squadron is not chosen.squadron:
             return (
                 f"{band} with {chosen.pilot.name}, but a different squadron:"

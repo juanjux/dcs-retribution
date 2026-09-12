@@ -10,13 +10,11 @@ meant; Behind/Ahead plus mm:ss says it once.
 import logging
 from datetime import timedelta
 
-from PySide6.QtCore import QTime
 from PySide6.QtWidgets import (
     QCheckBox,
     QFrame,
     QHBoxLayout,
     QMessageBox,
-    QTimeEdit,
     QVBoxLayout,
     QWidget,
 )
@@ -28,6 +26,7 @@ from game.ato.flightplans.planningerror import PlanningError
 from qt_ui.models import PackageModel
 from qt_ui.widgets.combos.QArrivalAirfieldSelector import QArrivalAirfieldSelector
 from qt_ui.widgets.cards import make_transparent
+from qt_ui.widgets.spinsliders import MinuteSecondSpinner
 from qt_ui.widgets.controls import (
     wrapped_tooltip,
     Segmented,
@@ -113,13 +112,12 @@ class FlightPlanPropertiesGroup(QWidget):
         self.direction = Segmented([("Behind", False), ("Ahead", True)], current=ahead)
         self.direction.selection_changed.connect(self._on_direction_changed)
 
-        self.tot_offset_spinner = QTimeEdit(
-            QTime(delay // 3600, delay // 60 % 60, delay % 60)
+        self.tot_offset_spinner = MinuteSecondSpinner(delay, maximum=59 * 60 + 59)
+        self.tot_offset_spinner.valueChanged.connect(self.set_tot_offset)
+        self.tot_offset_spinner.setToolTip(
+            "How far this flight is from the package TOT. The arrows step a minute at"
+            " a time; seconds can be typed."
         )
-        self.tot_offset_spinner.setMaximumTime(QTime(59, 0))
-        self.tot_offset_spinner.setDisplayFormat("mm:ss")
-        self.tot_offset_spinner.timeChanged.connect(self.set_tot_offset)
-        self.tot_offset_spinner.setToolTip("Flight TOT offset from package TOT")
 
         row = QHBoxLayout()
         row.setContentsMargins(0, 0, 0, 0)
@@ -244,10 +242,8 @@ class FlightPlanPropertiesGroup(QWidget):
                 QMessageBox.StandardButton.Ok,
             )
 
-    def set_tot_offset(self, offset: QTime) -> None:
-        delay = timedelta(
-            hours=offset.hour(), minutes=offset.minute(), seconds=offset.second()
-        )
+    def set_tot_offset(self, seconds: int) -> None:
+        delay = timedelta(seconds=seconds)
         if self.direction.value:
             delay = -delay
         self._apply_tot_offset(delay)

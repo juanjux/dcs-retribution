@@ -14,6 +14,10 @@ class BoundedFloatOption(OptionDescription):
     #: mostly are; a quantity passes an empty one.
     prefix: str = "X "
 
+    #: How many decimals the spinner shows. One is enough for a multiplier; a setting
+    #: whose real value is 0.05 needs two, or it reads as a number nobody set.
+    decimals: int = 1
+
 
 def bounded_float_option(
     text: str,
@@ -24,6 +28,7 @@ def bounded_float_option(
     max: float,
     divisor: int,
     prefix: str = "X ",
+    decimals: int = 1,
     detail: Optional[str] = None,
     tooltip: Optional[str] = None,
     subsection: Optional[str] = None,
@@ -43,6 +48,7 @@ def bounded_float_option(
                 max=max,
                 divisor=divisor,
                 prefix=prefix,
+                decimals=decimals,
                 subsection=subsection,
                 enabled_when=enabled_when,
             )

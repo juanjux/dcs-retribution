@@ -638,14 +638,16 @@ class Squadron:
                 1
                 for other in self.living_pilots
                 if other is not pilot
-                and friendship.is_close(friendship.feeling(pilot, other))
+                and friendship.is_close(friendship.feeling(pilot, other), self.settings)
             )
         else:
             company = sum(
                 1
                 for other in self.living_pilots
                 if other is not pilot
-                and friendship.is_hostile(friendship.feeling(other, pilot))
+                and friendship.is_hostile(
+                    friendship.feeling(other, pilot), self.settings
+                )
             )
         distance = abs(pilot.morale - morale_rules.MORALE_START)
         moved = round(step * friendship.drift_help(company, self.settings))

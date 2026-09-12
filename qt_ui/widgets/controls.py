@@ -168,12 +168,24 @@ def styled_input(widget: QWidget, width: Optional[int] = None) -> QWidget:
     # the style would otherwise have greyed for us: the payload preset is disabled
     # whenever Custom loadout is on, and without this it looked like a combo that
     # simply refused to open.
+    # The two sub-control rules are not decoration. Giving a spin box a border in a
+    # stylesheet hands its whole layout to the stylesheet style, and with nothing said
+    # about the buttons they end up somewhere the clicks do not land: pressing an arrow
+    # selected the text instead of stepping the value. Saying where they are puts them
+    # back, and the right-hand padding keeps the digits out from under them.
     widget.setStyleSheet(
         f"QWidget {{ background: {IDLE_BG}; color: {VALUE};"
         f" border: 1px solid {BORDER}; border-radius: 3px; padding: 0 6px;"
         " font-size: 12px; }"
         f"QWidget:disabled {{ background: {DISABLED_BG}; color: {DISABLED_TEXT};"
         f" border-color: {DISABLED_BORDER}; }}"
+        " QAbstractSpinBox { padding-right: 20px; }"
+        " QAbstractSpinBox::up-button { subcontrol-origin: border;"
+        " subcontrol-position: top right; width: 18px; border: none;"
+        " image: url(resources/stylesheets/chevron-up.png); }"
+        " QAbstractSpinBox::down-button { subcontrol-origin: border;"
+        " subcontrol-position: bottom right; width: 18px; border: none;"
+        " image: url(resources/stylesheets/chevron-down.png); }"
     )
     return widget
 

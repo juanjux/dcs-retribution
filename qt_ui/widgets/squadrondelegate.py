@@ -529,7 +529,7 @@ class SquadronDelegate(QStyledItemDelegate):
         value = squadron.cohesion
         if value is None:
             return
-        band = friendship.band(value)
+        band = friendship.band(value, squadron.settings)
         if band.colour is None:
             return
         painter.setFont(self._font(option, 11.5, QFont.Weight.Normal))

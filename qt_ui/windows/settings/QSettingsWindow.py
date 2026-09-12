@@ -806,6 +806,7 @@ class AutoSettingsLayout(QGridLayout):
             self.sc.settings.__dict__[name],
             divisor=description.divisor,
             prefix=description.prefix,
+            decimals=description.decimals,
         )
 
         def on_changed() -> None:

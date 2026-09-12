@@ -111,7 +111,7 @@ def morale_word(pilot: Pilot, squadron: Any) -> Optional[str]:
 
 
 def affinity_tint(
-    affinity: Optional[float], selected: bool = False
+    affinity: Optional[float], selected: bool = False, settings: Any = None
 ) -> Optional[QColor]:
     """The wash behind a man whose company would change the flight.
 
@@ -121,7 +121,7 @@ def affinity_tint(
     """
     if affinity is None:
         return None
-    band = friendship.band(affinity)
+    band = friendship.band(affinity, settings)
     if band.colour is None:
         return None
     strength = min(abs(friendship.points(affinity)), 5.0) / 5.0
@@ -157,7 +157,7 @@ def paint_pilot(
         painter.restore()
         return
 
-    tint = affinity_tint(affinity, selected)
+    tint = affinity_tint(affinity, selected, getattr(squadron, "settings", None))
     if tint is not None:
         painter.fillRect(rect, tint)
 

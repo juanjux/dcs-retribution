@@ -108,8 +108,9 @@ you lose if they capture yours. Think in terms of a campaign, not a single turn.
   1. **What a sortie pays him** — half at the bottom, half again at the top. A cadet also
      earns more for flying with a better pilot, so putting a rookie on a veteran's wing
      is how you bring him on.
-  2. **How he flies** — above 85 he flies a rung better than his rank, below 15 a rung
-     worse. `flies_at` already accounts for this; `skill` is the rank he holds.
+  2. **How he flies** — above 85 he flies one skill level better than his rank,
+     below 15 one worse. `flies_at` already accounts for this; `skill` is the rank he
+     holds.
   3. **What his flight will put up with** — a lead below 20 routes his flight around
      threats instead of fighting through them, and below 10 he turns for home. Do not
      send a broken lead on a mission that has to succeed.
@@ -163,12 +164,13 @@ you lose if they capture yours. Think in terms of a campaign, not a single turn.
   5. It is **one-way** -- what he thinks of somebody is not what they think of him --
   and it is worth reading before you crew anything, because it decides four things:
 
-  1. **What a sortie pays him**, measured against the men he flew with. A formation he
+  1. **What a mission pays him**, measured against the men he flew with. A flight he
      cannot stand is worth *less* to him than flying alone.
-  2. **How the formation flies**. A flight, or a whole package, that is **Close** or
-     better flies **one rung above** the rank its pilots hold -- on top of whatever
-     morale did. `flights/{flight_id}/crew` reports the formation's `synergy`: its
-     `value`, its `band`, and `flies_a_rung_better`, which is the thing to crew for.
+  2. **How the flight flies**. A flight, or a whole package, that is **Close** or
+     better flies **one skill level above** the rank its pilots hold -- on top of
+     whatever morale did. `flights/{flight_id}/crew` reports the flight's `synergy`:
+     its `value`, its `band`, and `flies_a_rung_better`, which is the thing to crew
+     for.
   3. **Whether he is pulled out of a wreck**. This one reads the other end of the pair:
      what *they* think of *him*. Being disliked never makes anybody slower -- there is
      no penalty, only men who look harder.
@@ -176,7 +178,7 @@ you lose if they capture yours. Think in terms of a campaign, not a single turn.
      him as many times over as they thought of him.
 
   **What each man makes of his leader counts double** what he makes of a wingman, so
-  in a four-ship half of what a wingman feels about the formation is what he feels
+  in a four-ship half of what a wingman feels about his flight is what he feels
   about the man leading it. Spreading your senior pilots one to a flight is therefore
   worth more than stacking them in one. (The leader weighs his own three the same:
   from where he sits there is nobody in front.)
@@ -186,14 +188,14 @@ you lose if they capture yours. Think in terms of a campaign, not a single turn.
   `from` each man, with the band's name -- both signs and across squadrons, because an
   enemy is exactly as actionable as a friend and a package is crewed out of more than
   one squadron. A seat in a crew also carries `skill_breakdown`, which is the working
-  behind `flies_at`: the rank he holds, the rungs morale moved him, and the rung the
-  company he is in is worth. The roster carries the squadron's own `cohesion`, which
+  behind `flies_at`: the rank he holds, the skill levels morale moved him, and the
+  level the company he is in is worth. The roster carries the squadron's own `cohesion`, which
   answers whether it is a crew or a list of names.
 
   Pilots at a base warm to each other slowly on their own, but **a quiet turn can never
   carry a pair past Friendly**: everything above that is earned in the air. That is the
   one thing worth planning around -- a crew you keep together across turns becomes worth
-  a rung of skill, and a crew you shuffle every turn never will.
+  a skill level, and a crew you shuffle every turn never will.
 - **Ground forces**: vehicle groups at your bases and along the front. You buy them,
   move them between bases (transfers), and commit them via front-line stance.
 - **Money**: you earn income each turn and spend it on aircraft and ground units.

@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import random
 from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING, Any, Iterable, Optional, Sequence
 from uuid import UUID
 
@@ -42,28 +42,45 @@ FRIENDSHIP_START = 5.0
 
 @dataclass(frozen=True)
 class FriendshipBand:
-    """One rung of the ladder, and what a squadron commander would call it.
+    """One level of the ladder, and what a squadron commander would call it.
 
-    ``floor`` is the bottom of the band, taken inclusively. ``colour`` is what the map
-    and the pilot picker paint it; Neutral has none because nothing is drawn for a pair
-    nobody needs to think about.
+    ``floor`` is the bottom of the level, taken inclusively. ``colour`` is what the
+    lists paint it; Neutral has none, because nothing is drawn for two pilots nobody
+    needs to think about. ``key`` is the setting that moves the floor -- Bad blood has
+    none, because it is the bottom of the scale.
     """
 
     floor: float
     name: str
     colour: Optional[str] = None
+    key: Optional[str] = None
 
 
 #: Highest first, so the first match wins.
 FRIENDSHIP_BANDS: tuple[FriendshipBand, ...] = (
-    FriendshipBand(9.1, "Inseparable", "#8FC3F0"),
-    FriendshipBand(7.1, "Close", "#86C39A"),
-    FriendshipBand(6.1, "Friendly", "#A9C99A"),
-    FriendshipBand(4.1, "Neutral"),
-    FriendshipBand(3.1, "Frosty", "#E0A86B"),
-    FriendshipBand(1.1, "Hostile", "#D97B4F"),
+    FriendshipBand(9.1, "Inseparable", "#8FC3F0", "friendship_band_inseparable"),
+    FriendshipBand(7.1, "Close", "#86C39A", "friendship_band_close"),
+    FriendshipBand(6.1, "Friendly", "#A9C99A", "friendship_band_friendly"),
+    FriendshipBand(4.1, "Neutral", None, "friendship_band_neutral"),
+    FriendshipBand(3.1, "Frosty", "#E0A86B", "friendship_band_frosty"),
+    FriendshipBand(1.1, "Hostile", "#D97B4F", "friendship_band_hostile"),
     FriendshipBand(FRIENDSHIP_MIN, "Bad blood", "#D9645E"),
 )
+
+
+def bands(settings: Any = None) -> tuple[FriendshipBand, ...]:
+    """The levels as this campaign has them set, highest first."""
+    if settings is None:
+        return FRIENDSHIP_BANDS
+    return tuple(
+        (
+            level
+            if level.key is None
+            else replace(level, floor=float(getattr(settings, level.key, level.floor)))
+        )
+        for level in FRIENDSHIP_BANDS
+    )
+
 
 #: The top of the band a quiet turn can carry a pair into. Above this is earned in the
 #: air: see :func:`drift_step`.
@@ -83,39 +100,32 @@ def points(value: float) -> float:
     return value - FRIENDSHIP_START
 
 
-def band(value: float) -> FriendshipBand:
-    for candidate in FRIENDSHIP_BANDS:
+def band(value: float, settings: Any = None) -> FriendshipBand:
+    for candidate in bands(settings):
         if value >= candidate.floor:
             return candidate
     return FRIENDSHIP_BANDS[-1]
 
 
-def band_name(value: float) -> str:
-    return band(value).name
+def band_name(value: float, settings: Any = None) -> str:
+    return band(value, settings).name
 
 
-def _floor_of(name: str) -> float:
-    for candidate in FRIENDSHIP_BANDS:
+def _floor_of(name: str, settings: Any = None) -> float:
+    for candidate in bands(settings):
         if candidate.name == name:
             return candidate.floor
     raise KeyError(name)
 
 
-#: The two bands the morale drift reads: who is worth having around on a bad week, and
-#: who is worth avoiding on a good one. Taken from the table above rather than written
-#: out a second time, so moving a band moves these with it.
-CLOSE_FLOOR = _floor_of("Close")
-FROSTY_FLOOR = _floor_of("Frosty")
+def is_close(value: float, settings: Any = None) -> bool:
+    """Close or better: a man he is glad to have around on a bad week."""
+    return value >= _floor_of("Close", settings)
 
 
-def is_close(value: float) -> bool:
-    """Close or better: a man he is glad to have around."""
-    return value >= CLOSE_FLOOR
-
-
-def is_hostile(value: float) -> bool:
+def is_hostile(value: float, settings: Any = None) -> bool:
     """Hostile or worse: below the bottom of Frosty, where it stops being coolness."""
-    return value < FROSTY_FLOOR
+    return value < _floor_of("Frosty", settings)
 
 
 # --- reading --------------------------------------------------------------------
@@ -292,8 +302,11 @@ FRIENDLY_FIRE_GROUND = -2.0
 #: block below.
 LEADER_SPOKE_WEIGHT = 2.0
 
-#: What a point of friendship is worth to each effect, and how far each can pile up.
-XP_PER_POINT = 5
+#: Added straight to the experience multiplier, so it is a fraction rather than a
+#: percentage -- which is what the settings page shows, and what it means.
+XP_PER_POINT = 0.05
+
+#: The rest of this block is percentages.
 SURVIVAL_PER_POINT = 3
 SURVIVAL_CAP = 20
 DESERTION_PER_POINT = 5
@@ -302,9 +315,10 @@ LEAVE_TOGETHER_PER_POINT = 8
 LEAVE_TOGETHER_CAP = 50
 DRIFT_HELP_PER_FRIEND = 5
 DRIFT_HELP_CAP = 30
-GRIEF_PER_POINT = 33
 
-#: A multiplier rather than a percentage: the most a death can be repeated by.
+#: Both of these are multipliers rather than percentages: what one point adds to how
+#: many times a death is felt, and the most it can come to.
+GRIEF_PER_POINT = 0.33
 GRIEF_CAP = 4.0
 
 #: The band a formation has to reach before it flies a rung above its rank.
@@ -413,7 +427,7 @@ def xp_bonus(mean: float, settings: Any = None) -> float:
     point of it. The multiplier itself is floored by the caller -- experience never goes
     backwards.
     """
-    per = _percent(settings, "friendship_xp_per_point", XP_PER_POINT)
+    per = float(_setting(settings, "friendship_xp_per_point", XP_PER_POINT))
     return round(points(mean)) * per
 
 
@@ -465,7 +479,7 @@ def grief_times(times: int, value: float, settings: Any = None) -> int:
     one. An enemy mourns once: a man he hated dying in front of him is still a man dying
     in front of him.
     """
-    per = _percent(settings, "friendship_grief_per_point", GRIEF_PER_POINT)
+    per = float(_setting(settings, "friendship_grief_per_point", GRIEF_PER_POINT))
     cap = float(_setting(settings, "friendship_grief_cap", GRIEF_CAP))
     scale = min(cap, 1.0 + max(0.0, points(value)) * per)
     return max(1, round(times * scale))

@@ -123,8 +123,9 @@ class PilotSelector(PaintedPilotCombo):
         all, so it says the word as well as the men.
         """
         affinity = self.affinity_of(pilot)
-        if affinity is None:
+        if affinity is None or self.squadron is None:
             return None
+        settings = self.squadron.settings
         others = [
             other for other in self.crew_without_this_seat() if other is not pilot
         ]
@@ -137,11 +138,13 @@ class PilotSelector(PaintedPilotCombo):
         )[:3]
         lines = [
             f"  {other.name}: "
-            f"{friendship.band_name(friendship.group_affinity(pilot, [other]))}"
+            f"{friendship.band_name(friendship.group_affinity(pilot, [other]), settings)}"
             for other in pairs
         ]
         return wrapped_tooltip(
-            "\n".join([f"With this crew: {friendship.band_name(affinity)}"] + lines)
+            "\n".join(
+                [f"With this crew: {friendship.band_name(affinity, settings)}"] + lines
+            )
         )
 
     def text_for(self, pilot: Pilot) -> str:
