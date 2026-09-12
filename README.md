@@ -582,6 +582,18 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
 
 ### Fixes
 
+- **A flight sent AHEAD of its package arrived behind it.** The package TOT was worked
+  out from the slowest flight's transit alone, ignoring each flight's own TOT offset --
+  but a flight three minutes early has to be over the target three minutes *before* the
+  package, so it needs the package scheduled three minutes *later* than its transit
+  demands. It wasn't, so its plan was built backwards from a time it could not reach,
+  its takeoff landed before the mission started, and the clamp turned the requested
+  head start into an equal delay -- worse the larger the offset. The earliest reachable
+  package TOT now accounts for the offsets, and changing an offset in the flight dialog
+  slides the whole package later when it has to, keeping the spacing the offset asked
+  for. The offset direction is also now read from the control's state rather than
+  flipped, so it cannot drift out of step with what the box shows.
+
 - **Three in the fuel figures.** Adding or removing a drop tank did not move the total;
   the estimate took no account of the altitude flown; and it charged the join and split
   legs at the combat rate, which put a strike's eighty-mile egress at over twice its

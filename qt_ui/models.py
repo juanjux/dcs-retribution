@@ -17,6 +17,7 @@ from game.ato.airtaaskingorder import AirTaskingOrder
 from game.ato.flight import Flight
 from game.ato.flighttype import FlightType
 from game.ato.package import Package
+from game.ato.traveltime import TotEstimator
 from game.dcs.beacons import Beacons
 from game.game import Game
 from game.radio.RadioFrequencyContainer import RadioFrequencyContainer
@@ -199,6 +200,24 @@ class PackageModel(QAbstractListModel):
     def set_asap(self, asap: bool) -> None:
         self.package.auto_asap = asap
         self.update_tot()
+
+    def push_tot_if_unreachable(self) -> None:
+        """Move the package TOT later if any flight can no longer make it.
+
+        Flight plans are built backwards from the TOT, so a flight that cannot reach
+        it gets a takeoff time before the mission starts. That time is then clamped,
+        and the flight arrives late -- the opposite of what was asked for when the
+        cause is a flight put AHEAD of the package. Sliding the whole package later
+        keeps the requested spacing between its flights, which is the point of the
+        offset in the first place.
+        """
+        if self.package.auto_asap:
+            # set_tot_asap already puts the TOT on the earliest reachable time.
+            return
+        now = self.game_model.sim_controller.current_time_in_sim
+        earliest = TotEstimator(self.package).earliest_tot(now)
+        if self.package.time_over_target < earliest:
+            self.package.time_over_target = earliest
 
     def update_tot(self) -> None:
         if self.package.auto_asap:
