@@ -1065,6 +1065,9 @@ class ControlPoint(MissionTarget, SidcDescribable, ABC):
         self.release_parking_slots()
         self.depopulate_uncapturable_tgos()
         self._coalition = new_coalition
+        from game.missiongenerator.motorpoolpopulator import MotorpoolPopulator
+
+        MotorpoolPopulator(game)._rehome_motorpools(events)
         self.base.set_strength_to_minimum()
         self._clear_front_lines(events)
         self._create_missing_front_lines(game.laser_code_registry, events)
@@ -1240,7 +1243,7 @@ class ControlPoint(MissionTarget, SidcDescribable, ABC):
         # we don't know what time the next turn will start yet. It doesn't actually
         # matter though, because the first thing the start of turn action will do is
         # clear the ATO and replan the airlifts with the correct time.
-        self.ground_unit_orders.process(game, game.conditions.start_time)
+        self.ground_unit_orders.process(game, game.conditions.start_time, events)
 
         self.release_parking_slots()
 

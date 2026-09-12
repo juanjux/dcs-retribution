@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import typing
 from datetime import timedelta
+from itertools import chain
 from typing import TYPE_CHECKING, Any
 
 from dcs.countries import countries_by_name
@@ -16,7 +17,7 @@ from game.data.doctrine import MODERN_DOCTRINE, COLDWAR_DOCTRINE, WWII_DOCTRINE
 from game.squadrons import morale
 from game.theater import ParkingType, SeasonalConditions, Airfield
 from game.theater.player import Player
-from game.theater.theatergroundobject import ShipGroundObject
+from game.theater.theatergroundobject import ShipGroundObject, TheaterGroundObject
 
 if TYPE_CHECKING:
     from game import Game
@@ -61,6 +62,13 @@ class Migrator:
 
         # TODO: remove in due time as this is supposedly fixed
         self.game.settings.nevatim_parking_fix = False
+
+        from game.missiongenerator.motorpoolpopulator import MotorpoolPopulator
+
+        # Re-home only. Upstream #960 made the motorpool groups ephemeral on purpose:
+        # they are filled at mission generation (and on demand by the serializer), not
+        # written into the save, so populating here would persist them.
+        MotorpoolPopulator(self.game)._rehome_motorpools()
 
     def _update_doctrine(self) -> None:
         doctrines = [
@@ -347,21 +355,53 @@ class Migrator:
                     try_set_attr(sdef, "radio_presets", {})
 
     def _update_transfers(self) -> None:
+        # Track transfers across all coalitions to detect the same object in
+        # more than one coalition's containers.
+        global_seen: set[int] = set()
         for coalition in self.game.coalitions:
-            transfers = coalition.transfers
-            for transfer in transfers.pending_transfers:
-                self._normalize_transfer_player(transfer)
-            for convoy in transfers.convoys:
-                for transfer in convoy.transfers:
-                    self._normalize_transfer_player(transfer)
-            for cargo_ship in transfers.cargo_ships:
-                for transfer in cargo_ship.transfers:
-                    self._normalize_transfer_player(transfer)
+            self._normalize_transfers_for_coalition(coalition, global_seen)
+
+    def _normalize_transfers_for_coalition(
+        self, coalition: Any, global_seen: set[int]
+    ) -> None:
+        """Normalize transfer player ownership for a coalition's transfers.
+
+        Traverses the pending list plus convoy/cargo aliases, deduplicating
+        transfer objects by identity. Missing and legacy-boolean owners are set
+        from the containing coalition. An existing enum owner that conflicts
+        with its sole container, or the same transfer reachable from more than
+        one coalition, fails with a diagnostic.
+        """
+        transfers = coalition.transfers
+        aliased = chain.from_iterable(c.transfers for c in transfers.convoys)
+        shipped = chain.from_iterable(c.transfers for c in transfers.cargo_ships)
+        seen: set[int] = set()
+        all_transfers: list[Any] = []
+        for transfer in chain(transfers.pending_transfers, aliased, shipped):
+            if id(transfer) not in seen:
+                seen.add(id(transfer))
+                all_transfers.append(transfer)
+
+        for transfer in all_transfers:
+            if id(transfer) in global_seen:
+                raise RuntimeError(
+                    f"Transfer {transfer} is reachable from more than one coalition"
+                )
+            global_seen.add(id(transfer))
+
+        for transfer in all_transfers:
+            self._normalize_single_transfer_player(transfer, coalition)
 
     @staticmethod
-    def _normalize_transfer_player(transfer: Any) -> None:
-        if hasattr(transfer, "player") and isinstance(transfer.player, bool):
-            transfer.player = Player.BLUE if transfer.player else Player.RED
+    def _normalize_single_transfer_player(transfer: Any, coalition: Any) -> None:
+        owner = getattr(transfer, "player", None)
+        if owner is None or isinstance(owner, bool):
+            transfer.player = coalition.player
+        elif owner != coalition.player:
+            raise RuntimeError(
+                f"Transfer {transfer} has owner {owner} but is in the "
+                f"{coalition.player} coalition"
+            )
 
     @typing.no_type_check
     def _update_factions(self) -> None:
@@ -473,25 +513,66 @@ class Migrator:
 
         if not self.game.settings.motorpool_enabled:
             return
-        for cp in self.game.theater.controlpoints:
-            locations = getattr(cp.preset_locations, "motorpools", [])
-            if not locations:
-                continue
-            if any(isinstance(go, MotorpoolGroundObject) for go in cp.ground_objects):
-                continue
-            for location in locations:
+        control_points = self.game.theater.controlpoints
+        from game.missiongenerator.motorpoolpopulator import motorpool_identity
+
+        authored = {
+            motorpool_identity(location.original_name, location)
+            for cp in control_points
+            for location in getattr(cp.preset_locations, "motorpools", [])
+        }
+        existing: dict[tuple[str, float, float, float], MotorpoolGroundObject] = {}
+        identity: tuple[str, float, float, float]
+        for cp in control_points:
+            for tgo in cp.ground_objects:
+                if not isinstance(tgo, MotorpoolGroundObject):
+                    continue
+                identity = (
+                    tgo.original_name,
+                    tgo.position.x,
+                    tgo.position.y,
+                    tgo.heading.degrees,
+                )
+                if identity in authored:
+                    existing.setdefault(identity, tgo)
+
+        # Remove stale and duplicate persisted references before ensuring every
+        # current authored marker has exactly one surviving TGO.
+        seen: set[MotorpoolGroundObject] = set()
+        for cp in control_points:
+            retained: list[TheaterGroundObject] = []
+            for tgo in cp.connected_objectives:
+                if not isinstance(tgo, MotorpoolGroundObject):
+                    retained.append(tgo)
+                    continue
+                identity = (
+                    tgo.original_name,
+                    tgo.position.x,
+                    tgo.position.y,
+                    tgo.heading.degrees,
+                )
+                if existing.get(identity) is tgo and tgo not in seen:
+                    retained.append(tgo)
+                    seen.add(tgo)
+            cp.connected_objectives[:] = retained
+
+        for cp in control_points:
+            for location in getattr(cp.preset_locations, "motorpools", []):
+                identity = motorpool_identity(location.original_name, location)
+                if identity in existing:
+                    continue
                 name = namegen.random_objective_name()
                 warn_if_motorpool_inside_capture_zone(name, location, cp)
-                cp.connected_objectives.append(
-                    MotorpoolGroundObject(
-                        # Codename like every other TGO; the "motorpool" category
-                        # label already says what it is.
-                        name,
-                        location,
-                        cp,
-                        GroupTask.MOTORPOOL,
-                    )
+                tgo = MotorpoolGroundObject(
+                    # Codename like every other TGO; the "motorpool" category
+                    # label already says what it is.
+                    name,
+                    location,
+                    cp,
+                    GroupTask.MOTORPOOL,
                 )
+                cp.connected_objectives.append(tgo)
+                existing[identity] = tgo
 
     def _reload_terrain(self) -> None:
         t = self.game.theater.terrain

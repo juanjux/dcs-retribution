@@ -10,6 +10,7 @@ from shapely.geometry import Point as ShapelyPoint
 
 from game.config import IADS_REPAIR_COST, REWARDS
 from game.data.units import UnitClass
+from game.ground_forces.ai_ground_planner import reserve_armor_for
 from game.sidc import (
     Entity,
     LandEquipmentEntity,
@@ -33,6 +34,68 @@ if TYPE_CHECKING:
     from game.threatzones import ThreatPoly
     from .theatergroup import TheaterUnit, TheaterGroup
     from .controlpoint import ControlPoint, Coalition
+
+
+def _select_capped(
+    reserve: dict[GroundUnitType, int], cap: int
+) -> dict[GroundUnitType, int]:
+    """Proportionally reduce ``reserve`` to at most ``cap`` units."""
+    total = sum(reserve.values())
+    if total <= cap:
+        return {ut: n for ut, n in reserve.items() if n > 0}
+    exact = {ut: count * cap / total for ut, count in reserve.items()}
+    floors = {ut: int(v) for ut, v in exact.items()}
+    remaining = cap - sum(floors.values())
+    if remaining > 0:
+        by_frac = sorted(
+            ((ut, exact[ut] - floors[ut]) for ut in reserve),
+            key=lambda kv: kv[1],
+            reverse=True,
+        )
+        for ut, _frac in by_frac[:remaining]:
+            floors[ut] += 1
+    return {ut: n for ut, n in floors.items() if n > 0}
+
+
+def motorpool_projected_counts(
+    motorpools: list[MotorpoolGroundObject], cap: int
+) -> list[dict[GroundUnitType, int]]:
+    """Project one shared reserve pool across a CP's motorpool locations."""
+    reserve = reserve_armor_for(motorpools[0].control_point)
+    selected = _select_capped(reserve, cap)
+    per_tgo: list[dict[GroundUnitType, int]] = [{} for _ in motorpools]
+    slot = 0
+    for unit_type, count in selected.items():
+        for _ in range(count):
+            bucket = per_tgo[slot % len(motorpools)]
+            bucket[unit_type] = bucket.get(unit_type, 0) + 1
+            slot += 1
+    return per_tgo
+
+
+def motorpool_rendered_unit_count(
+    tgo: MotorpoolGroundObject, motorpool_enabled: bool, spawn_cap: int
+) -> int:
+    """Return the alive units in the current or next motorpool snapshot."""
+    if not motorpool_enabled or spawn_cap <= 0:
+        return 0
+    motorpools = [
+        candidate
+        for candidate in tgo.control_point.ground_objects
+        if isinstance(candidate, MotorpoolGroundObject)
+    ]
+    if tgo not in motorpools:
+        return 0
+    projected_count = sum(
+        motorpool_projected_counts(motorpools, spawn_cap)[
+            motorpools.index(tgo)
+        ].values()
+    )
+    if tgo.groups:
+        # Groups are ephemeral and may outlive a reserve decrement from the prior
+        # mission. Never plan more units than the next current snapshot can render.
+        return min(tgo.alive_unit_count, projected_count)
+    return projected_count
 
 
 NAME_BY_CATEGORY = {
@@ -756,9 +819,8 @@ class VehicleGroupGroundObject(TheaterGroundObject):
 
 class MotorpoolGroundObject(TheaterGroundObject):
     """A control point's not-deployed reserve armor, rendered as a stationary,
-    strikeable vehicle park. Its .groups are populated ephemerally each mission
-    from the current reserve slice (see MotorpoolPopulator); units are NOT
-    persisted."""
+    strikeable vehicle park. Its groups and projection keys are a persisted cache
+    reconciled from the current reserve slice by MotorpoolPopulator."""
 
     def __init__(
         self,
@@ -776,9 +838,24 @@ class MotorpoolGroundObject(TheaterGroundObject):
             task=task,
         )
         # group-id -> the exact GroundUnitType variant that group represents, so
-        # the renderer decrements the right base.armor key. Set by the populator;
-        # never persisted meaningfully (groups are rebuilt each mission).
+        # the renderer decrements the right base.armor key.
         self.motorpool_unit_types: dict[int, GroundUnitType] = {}
+        # unit-id -> stable desired-projection key. Persisted with groups so an
+        # unchanged reconciliation preserves object identity and campaign IDs.
+        self.motorpool_projection_keys: dict[int, tuple[uuid.UUID, str, int]] = {}
+
+    def __getstate__(self) -> dict[str, Any]:
+        state = super().__getstate__()
+        # Reserve vehicles are rendered per mission from the current base reserve;
+        # never persist their generated groups or the renderer's lookup map.
+        state["groups"] = []
+        state["motorpool_unit_types"] = {}
+        return state
+
+    def __setstate__(self, state: dict[str, Any]) -> None:
+        state["groups"] = []
+        state["motorpool_unit_types"] = {}
+        super().__setstate__(state)
 
     @property
     def symbol_set_and_entity(self) -> tuple[SymbolSet, Entity]:
@@ -819,18 +896,19 @@ class MotorpoolGroundObject(TheaterGroundObject):
 
     @property
     def sidc_status(self) -> Status:
-        # A motorpool is a live reserve projection: empty on the strategic map is its
-        # normal resting state (vehicles populate ephemerally at mission-gen), not
-        # destruction. Always render as a present depot — never damaged/destroyed.
+        # A motorpool is a live reserve projection: empty is a valid disabled or
+        # zero-reserve state, not destruction. Always render as a present depot —
+        # never damaged/destroyed.
         # is_dead is deliberately left intact so AI target-selection, capture, and
         # IADS logic (which read is_dead, not sidc_status) are unaffected.
         return Status.PRESENT
 
     def clear(self) -> None:
-        # Keep the group-id -> unit-type map in lockstep with groups so a wiped
-        # motorpool (e.g. on capture) leaves no dangling group-id keys behind.
+        # Keep persisted projection metadata in lockstep with groups so a wiped
+        # motorpool (e.g. on capture) leaves no dangling keys behind.
         super().clear()
         self.motorpool_unit_types = {}
+        self.motorpool_projection_keys = {}
 
 
 class EwrGroundObject(IadsGroundObject):
