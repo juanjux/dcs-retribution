@@ -336,6 +336,19 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   [#20](https://github.com/juanjux/dcs-retribution/pull/20))
 
 ### Missions, AI & tasking
+- **An escort asked to arrive ahead of its package now arrives ahead of it.** An
+  *"ahead"* TOT offset used to buy an Escort or a SEAD Escort nothing: the DCS escort
+  task ties a flight to the one it protects from the join point onwards, so the escort
+  got to the join early, orbited there, and crossed the target alongside the package
+  however early it had set off. Pushing the formation station forward instead does not
+  work -- DCS clamps the offset, and a three-minute ask came out as less than a minute
+  of lead. Holding the *task* back does: the escort flies its own route and keeps the
+  whole head start, and the task takes over when the flight it protects reaches its
+  ingress point, which is roughly where it would have picked it up anyway. It still
+  covers the attack and still comes home with the package. No setting to find -- a
+  negative TOT offset is the whole of the ask, and the warning that used to sit under
+  the control is gone.
+  ([#220](https://github.com/juanjux/dcs-retribution/pull/220))
 - **Refuelling that actually happens.** Upstream had three per-task tanker options that
   asked for a tanker the fulfiller then always pruned, and it hung a refuelling waypoint
   on flights whether or not they needed one. Underneath, the waypoint could not work even
