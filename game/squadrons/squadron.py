@@ -416,14 +416,19 @@ class Squadron:
     def _pick(
         self, candidates: Sequence[Pilot], alongside: Sequence[Pilot], default: Pilot
     ) -> Pilot:
-        """Whoever this crew would get on with best, or the man the list offered.
+        """Who takes this seat: the senior man if it is the first -- seat zero is the
+        flight lead -- otherwise whoever the crew already seated gets on with best.
 
-        ``default`` is exactly who the branch would have taken anyway, so a campaign
-        with friendship switched off -- or a first seat, which has nobody to get on
-        with -- crews the way it always did. A candidate nobody has an opinion about
-        is not an improvement on one, so Neutral loses to the default.
+        ``default`` wins every tie, so crewing is unchanged with Live Pilots off.
         """
-        if not alongside or not self.friendship_in_play or len(candidates) < 2:
+        if len(candidates) < 2:
+            return default
+        if not alongside:
+            senior = min(candidates, key=self.rank_order)
+            if self.rank_order(senior) < self.rank_order(default):
+                return senior
+            return default
+        if not self.friendship_in_play:
             return default
         best = max(
             candidates, key=lambda pilot: friendship.group_affinity(pilot, alongside)
