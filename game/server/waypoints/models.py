@@ -22,6 +22,36 @@ def timing_info(flight: Flight, waypoint_idx: int) -> str:
     return f"{prefix} {time:%H:%M:%S}"
 
 
+def leg_speed(flight: Flight, waypoint_idx: int) -> float:
+    """Knots on the leg into this waypoint, or 0 where there is no leg.
+
+    The plan owns this: a package flies its formation speed between the join and the
+    split whatever each flight would do alone, so asking the aircraft would be wrong.
+    """
+    if waypoint_idx < 1:
+        return 0.0
+    waypoints = flight.flight_plan.waypoints
+    if waypoint_idx > len(waypoints):
+        return 0.0
+    destination = waypoints[waypoint_idx - 1]
+    if waypoint_idx == 1:
+        origin = FlightWaypoint(
+            "TAKEOFF",
+            FlightWaypointType.TAKEOFF,
+            flight.departure.position,
+        )
+    else:
+        origin = waypoints[waypoint_idx - 2]
+    try:
+        return float(
+            flight.flight_plan.speed_between_waypoints(origin, destination).knots
+        )
+    except Exception:
+        # A custom plan can be asked about a pair it has no opinion on. Nothing to
+        # show is better than a dialog that will not open.
+        return 0.0
+
+
 class FlightWaypointJs(BaseModel):
     name: str
     position: LeafletPoint
@@ -31,6 +61,14 @@ class FlightWaypointJs(BaseModel):
     should_mark: bool
     include_in_path: bool
     timing: str
+    #: Its place in the route, which is how every other endpoint addresses it.
+    index: int
+    #: Whether the flight can give it up without its plan being rebuilt. The map
+    #: refuses the ones it cannot rather than quietly degrading the plan.
+    can_delete: bool
+    #: What the flight flies the leg into this waypoint at. Computed from the plan --
+    #: there is no per-waypoint speed to set -- so the dialog shows it and no more.
+    speed_kts: float
 
     class Config:
         title = "Waypoint"
@@ -81,7 +119,7 @@ class FlightWaypointJs(BaseModel):
         }
 
         return FlightWaypointJs(
-            name=waypoint.name,
+            name=waypoint.display_name,
             position=waypoint.position.latlng(),
             altitude_ft=waypoint.alt.feet,
             altitude_reference=waypoint.alt_type,
@@ -89,4 +127,8 @@ class FlightWaypointJs(BaseModel):
             should_mark=should_mark,
             include_in_path=include_in_path,
             timing=timing_info(flight, waypoint_idx),
+            index=waypoint_idx,
+            can_delete=waypoint_idx > 0
+            and flight.flight_plan.can_delete_waypoint(waypoint),
+            speed_kts=leg_speed(flight, waypoint_idx),
         )
