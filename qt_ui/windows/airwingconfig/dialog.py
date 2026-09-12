@@ -202,6 +202,10 @@ class AirWingConfigurationTab(QWidget):
     def build_cards(self) -> None:
         for cards in self.cards.values():
             for card in cards:
+                # Hidden first: a visible widget with no parent is a top-level window,
+                # and it stays one until deleteLater runs a turn of the event loop
+                # later -- long enough for Windows to flash it on screen.
+                card.hide()
                 card.setParent(None)
                 card.deleteLater()
         self.cards = defaultdict(list)
@@ -289,6 +293,7 @@ class AirWingConfigurationTab(QWidget):
             for card in cards:
                 if card.squadron is squadron:
                     cards.remove(card)
+                    card.hide()
                     card.setParent(None)
                     card.deleteLater()
                     squadron.coalition.air_wing.unclaim_squadron_def(squadron)

@@ -332,10 +332,14 @@ class FlightHeader(QFrame):
             item = self.pills.takeAt(0)
             widget = item.widget()
             if widget is not None:
-                # Unparent before scheduling the delete: deleteLater only runs on the
-                # next turn of the event loop, and until it does the old pill is still
-                # a child of the header and still painted -- at whatever geometry it
-                # had, which is across the top of it.
+                # Hide before unparenting, and unparent before scheduling the delete.
+                # deleteLater only runs on the next turn of the event loop, and until
+                # it does the old pill is still painted at whatever geometry it had,
+                # which is across the top of the header -- so it has to go. But a
+                # *visible* widget with no parent is a top-level window, and Windows
+                # duly opened one for a few milliseconds every time the header
+                # refreshed, which is every time the TOT offset moves.
+                widget.hide()
                 widget.setParent(None)
                 widget.deleteLater()
         for text, severity, tab in self._attention():
