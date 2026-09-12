@@ -769,6 +769,19 @@ class MotorpoolGroundObject(TheaterGroundObject):
         # unchanged reconciliation preserves object identity and campaign IDs.
         self.motorpool_projection_keys: dict[int, tuple[uuid.UUID, str, int]] = {}
 
+    def __getstate__(self) -> dict[str, Any]:
+        state = super().__getstate__()
+        # Reserve vehicles are rendered per mission from the current base reserve;
+        # never persist their generated groups or the renderer's lookup map.
+        state["groups"] = []
+        state["motorpool_unit_types"] = {}
+        return state
+
+    def __setstate__(self, state: dict[str, Any]) -> None:
+        state["groups"] = []
+        state["motorpool_unit_types"] = {}
+        super().__setstate__(state)
+
     @property
     def symbol_set_and_entity(self) -> tuple[SymbolSet, Entity]:
         # Maintenance-facility installation symbol: visually distinct from the
