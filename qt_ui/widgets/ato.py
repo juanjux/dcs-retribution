@@ -71,7 +71,7 @@ class QFlightList(QListView):
         """
         from qt_ui.dialogs import Dialog
 
-        dialog = getattr(Dialog, "edit_flight_dialog", None)
+        dialog = Dialog.live_edit_flight_dialog()
         if dialog is None or not dialog.isVisible():
             return
         if not index.isValid() or self.package_model is None:
