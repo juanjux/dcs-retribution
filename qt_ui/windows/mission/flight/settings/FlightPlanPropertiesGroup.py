@@ -183,18 +183,14 @@ class FlightPlanPropertiesGroup(QGroupBox):
         self._apply_tot_offset(delay)
 
     def toggle_negative_offset(self, ahead: bool) -> None:
-        # Take the sign from the state that was reported, rather than flipping what is
-        # stored. Flipping is only correct while the signal fires exactly once per real
-        # change; deriving it from the box cannot go out of step with what it shows.
+        # The sign comes from the box's state, so the two cannot disagree.
         delay = abs(self.flight.flight_plan.tot_offset)
         self._apply_tot_offset(-delay if ahead else delay)
 
     def _apply_tot_offset(self, delay: timedelta) -> None:
         self.flight.flight_plan.tot_offset = delay
-        # A flight put AHEAD of its package may no longer be able to reach its own TOT.
-        # Slide the whole package later instead of leaving this flight with a takeoff
-        # before the mission starts, which is clamped -- so it arrives LATE, the exact
-        # opposite of what was asked for.
+        # A flight put ahead of its package may no longer reach its own TOT; slide the
+        # package rather than leave it with an unreachable plan.
         self.package_model.push_tot_if_unreachable()
         self.package_model.update_tot()
         self.update_departure_time()

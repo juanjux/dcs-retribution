@@ -1,7 +1,7 @@
 ﻿# Retribution v1.6.3 (414th)
 
 ## Features/Improvements
-* **[FIX]** A flight given a TOT offset **ahead** of its package arrived *behind* it, the more so the larger the offset. The package time was computed from the slowest flight's transit alone, ignoring the offsets, so the early flight's plan was built backwards from a time it could not reach and its takeoff -- clamped to the mission start -- turned the head start into an equal delay. The package now leaves room for the flights that have to arrive first.
+* **[FIX]** A flight given a TOT offset **ahead** of its package arrived *behind* it instead. The package now leaves room for the flights that have to arrive first.
 * **[FIX]** The tanker the auto-planner proposed for Strike, OCA and DEAD packages was pruned every time, so the three settings that asked for it did nothing.
 * **[Campaign AI]** One *Plan a tanker and a refuelling waypoint when a package needs the fuel* option replaces the three per-task ones, and the refuelling waypoint is only added to a flight the fuel estimate says cannot make the plan.
 * **[FIX]** The METAR refresh button drew a text glyph that fell back to the wrong font; it uses the reload icon now, on a slightly larger button.

@@ -60,10 +60,6 @@ class TotEstimator:
             The earliest possible TOT for the given flight.
         """
         flight_time = flight.flight_plan.minimum_duration_from_start_to_tot()
-        # The flight is over the target at the package TOT plus its own offset, so a
-        # flight asked to be three minutes AHEAD needs the package three minutes LATER
-        # than its own transit demands. Without this the package is timed to the
-        # flight that has no offset, the early flight's plan is built backwards from
-        # an unreachable time, and its takeoff lands before the mission starts -- where
-        # it is clamped, so it arrives late instead of early.
+        # A flight is over the target at the package TOT plus its own offset, so one
+        # asked to arrive early needs the package that much later.
         return now + flight_time - flight.flight_plan.tot_offset

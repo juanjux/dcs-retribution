@@ -204,12 +204,8 @@ class PackageModel(QAbstractListModel):
     def push_tot_if_unreachable(self) -> None:
         """Move the package TOT later if any flight can no longer make it.
 
-        Flight plans are built backwards from the TOT, so a flight that cannot reach
-        it gets a takeoff time before the mission starts. That time is then clamped,
-        and the flight arrives late -- the opposite of what was asked for when the
-        cause is a flight put AHEAD of the package. Sliding the whole package later
-        keeps the requested spacing between its flights, which is the point of the
-        offset in the first place.
+        Sliding the whole package keeps the spacing its offsets asked for, which a
+        flight left with an unreachable TOT does not.
         """
         if self.package.auto_asap:
             # set_tot_asap already puts the TOT on the earliest reachable time.
