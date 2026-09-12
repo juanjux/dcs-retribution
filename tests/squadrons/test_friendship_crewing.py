@@ -29,6 +29,9 @@ def _squadron(settings: Settings, pilots: list[Pilot], blue: bool = True) -> Any
     )
     squadron.available_pilots = list(pilots)
     squadron.current_roster = list(pilots)
+    # The first seat is chosen on rank, so the fake has to be able to answer for one.
+    # base_skill is a property and comes off the settings above.
+    squadron.country = SimpleNamespace(name="USA")
     return squadron
 
 
@@ -62,12 +65,57 @@ def test_a_man_the_crew_cannot_stand_is_the_last_one_taken() -> None:
     assert squadron.claim_available_pilot([lead]) is stranger
 
 
-def test_the_first_seat_is_filled_the_way_it_always_was() -> None:
-    """Nobody to get on with yet, so the list decides -- and it has to decide exactly
-    as it did before any of this existed."""
+def _veteran(name: str, xp: int) -> Pilot:
+    pilot = Pilot(name)
+    pilot.record.xp = xp
+    return pilot
+
+
+def test_the_first_seat_goes_to_the_senior_man() -> None:
+    """Seat zero is the flight lead: DCS takes the group's options from the man in
+    front, and the friendship rules weigh what each wingman thinks of him double."""
+    cadet, major = Pilot("Cadet"), _veteran("Major", 8000)
+    squadron = _squadron(_settings(), [major, cadet])
+
+    assert squadron.claim_available_pilot() is major
+    assert major not in squadron.available_pilots
+
+
+def test_the_first_seat_is_filled_the_way_it_always_was_when_nobody_outranks() -> None:
+    """Rank only gets to break the tie it can see. Two men on the same rung leave the
+    list deciding, exactly as it did before any of this existed."""
     first, second = Pilot("First"), Pilot("Second")
     squadron = _squadron(_settings(), [first, second])
     assert squadron.claim_available_pilot() is second  # off the end, as ever
+
+
+def test_rank_does_not_choose_the_lead_with_live_pilots_off() -> None:
+    """rank_order is constant then, so there is no rank to lead by and the list has
+    to decide as it always did."""
+    cadet, major = Pilot("Cadet"), _veteran("Major", 8000)
+    squadron = _squadron(_settings(live_pilots_enabled=False), [major, cadet])
+    assert squadron.claim_available_pilot() is cadet
+
+
+def test_the_lead_is_the_senior_man_the_preference_allows() -> None:
+    """Rank orders the men who matched the player's preference; it does not overrule
+    it, any more than friendship does."""
+    human, major = Pilot("Human", player=True), _veteran("Major", 8000)
+    settings = _settings(auto_ato_behavior=AutoAtoBehavior.Prefer)
+    squadron = _squadron(settings, [major, human])
+    assert squadron.claim_available_pilot() is human
+
+
+def test_the_seats_after_the_lead_are_still_chosen_on_friendship() -> None:
+    """Rank picks the man in front and stops there: a crew is grouped around him, not
+    filled by seniority down the roster."""
+    lead = Pilot("Lead")
+    friend, major = Pilot("Friend"), _veteran("Major", 8000)
+    friendship.move(lead, friend, 4.0)
+    friendship.move(friend, lead, 4.0)
+    squadron = _squadron(_settings(), [major, friend])
+
+    assert squadron.claim_available_pilot([lead]) is friend
 
 
 def test_switched_off_friendship_does_not_touch_the_order() -> None:

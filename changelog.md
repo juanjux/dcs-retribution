@@ -1,6 +1,7 @@
 ﻿# Retribution v1.6.3 (414th)
 
 ## Features/Improvements
+* **[UI]** Filling a flight gives the lead seat to the squadron's senior available pilot, and the seats after it to whoever that crew gets on with best.
 * **[FIX]** A GPS jamming site cut off from the IADS was painted and reported as autonomous, which means nothing for a jammer: it is cued by nobody and jams for as long as its trucks are alive.
 * **[FIX]** A command centre whose comms were cut reported itself as directing the network, while every SAM under it reported having no command centre.
 * **[Campaigns]** Battle for Area 51: red's IADS is one network instead of three with its three power stations feeding a single grid, and blue gets the radars, comms towers and power stations it never had.
