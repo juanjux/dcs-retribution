@@ -1,6 +1,7 @@
 ﻿# Retribution v1.6.3 (414th)
 
 ## Features/Improvements
+* **[UI]** Delete removes the selected waypoints in the flight's waypoint tab.
 * **[UI]** Waypoints can be edited from the map: double-click opens one, right-click offers rename, delete and insert, Delete removes the selected one, and alt-clicking a leg draws a nav point into it.
 * **[FIX]** Closing the flight editor stopped asking whether the ingress point should move after a payload change, or whether to send a tanker.
 * **[UI]** The flight plan you have selected is drawn whether or not its side's flight plans are switched on in Map Layers.

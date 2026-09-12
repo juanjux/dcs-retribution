@@ -11,6 +11,7 @@ from PySide6.QtCore import (
 from PySide6.QtGui import (
     QColor,
     QFont,
+    QKeyEvent,
     QMouseEvent,
     QPainter,
     QStandardItem,
@@ -163,6 +164,10 @@ class WaypointNameDelegate(QStyledItemDelegate):
 class QFlightWaypointList(QTableView):
     #: Total ground track in nautical miles, emitted whenever the list is rebuilt.
     route_length_changed = Signal(float)
+
+    #: Delete was pressed over the list. The tab owns the rule about what may go,
+    #: so it decides whether to honour it -- the same rule the button is greyed by.
+    delete_requested = Signal()
 
     def __init__(self, package: Package, flight: Flight):
         super().__init__()
@@ -363,6 +368,20 @@ class QFlightWaypointList(QTableView):
                 self.update_list()
                 return
         super().mousePressEvent(event)
+
+    def keyPressEvent(self, event: QKeyEvent) -> None:  # noqa: N802 (Qt naming)
+        """Delete removes the selection, as it does in the package and flight lists.
+
+        Not while a cell is being edited: there Delete belongs to the text.
+        """
+        if (
+            event.key() == Qt.Key.Key_Delete
+            and self.state() != QTableView.State.EditingState
+        ):
+            self.delete_requested.emit()
+            event.accept()
+            return
+        super().keyPressEvent(event)
 
     def on_changed(self) -> None:
         for i in range(self.model.rowCount()):
