@@ -250,12 +250,18 @@ class FlightPlanPropertiesGroup(QWidget):
         )
         if self.direction.value:
             delay = -delay
-        self.flight.flight_plan.tot_offset = delay
-        self.package_model.update_tot()
-        self.update_departure_time()
+        self._apply_tot_offset(delay)
 
-    def _on_direction_changed(self, _ahead: bool) -> None:
-        self.flight.flight_plan.tot_offset = -self.flight.flight_plan.tot_offset
+    def _on_direction_changed(self, ahead: bool) -> None:
+        # The sign comes from the control's state, so the two cannot disagree.
+        delay = abs(self.flight.flight_plan.tot_offset)
+        self._apply_tot_offset(-delay if ahead else delay)
+
+    def _apply_tot_offset(self, delay: timedelta) -> None:
+        self.flight.flight_plan.tot_offset = delay
+        # A flight put ahead of its package may no longer reach its own TOT; slide the
+        # package rather than leave it with an unreachable plan.
+        self.package_model.push_tot_if_unreachable()
         self.package_model.update_tot()
         self.update_departure_time()
 

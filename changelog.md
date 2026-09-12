@@ -30,6 +30,7 @@
 * **[Campaign AI]** The flight editor asks again on the way out when an edit has left the flight short of fuel, or given it fuel to spare, offering *Add waypoint and tanker* or *Add waypoint only* — with the first greyed out and the reason on screen when there is nothing to send. Saying yes does not rebuild the plan.
 * **[FIX]** A tanker planned for a package held for five minutes plus four a head and reached station ninety seconds before an arrival time that is itself an estimate. It now holds for the campaign's tanker on-station time and is there ten minutes early.
 * **[FIX]** Planning a tanker into a defensive package asserted: it has no split point to lay the track along or to time the receiver from.
+* **[FIX]** A flight given a TOT offset **ahead** of its package arrived *behind* it instead. The package now leaves room for the flights that have to arrive first.
 * **[FIX]** The tanker the auto-planner proposed for Strike, OCA and DEAD packages was pruned every time, so the three settings that asked for it did nothing.
 * **[Campaign AI]** One *Plan a tanker and a refuelling waypoint when a package needs the fuel* option replaces the three per-task ones, and the refuelling waypoint is only added to a flight the fuel estimate says cannot make the plan.
 * **[FIX]** The METAR refresh button drew a text glyph that fell back to the wrong font; it uses the reload icon now, on a slightly larger button.

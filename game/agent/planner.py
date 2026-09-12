@@ -264,7 +264,10 @@ def earliest_tot_duration(package) -> tuple[timedelta, str] | None:
     where = ""
     for flight in package.flights:
         try:
-            need = flight.flight_plan.minimum_duration_from_start_to_tot()
+            need = (
+                flight.flight_plan.minimum_duration_from_start_to_tot()
+                - flight.flight_plan.tot_offset
+            )
         except Exception:
             continue
         if worst is None or need > worst:
