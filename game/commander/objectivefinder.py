@@ -138,25 +138,35 @@ class ObjectiveFinder:
             yield target
 
     def motorpool_targets(self) -> Iterator[MotorpoolGroundObject]:
-        """Iterates over enemy motorpool depots worth striking this turn."""
-        from game.theater.theatergroundobject import motorpool_rendered_unit_count
+        """Iterates over enemy motorpool depots worth striking this turn.
 
-        if not self.game.settings.motorpool_enabled:
+        A motorpool is a target only when it will actually render reserve armor,
+        so membership is gated on its live shared-cap allocation plus the
+        motorpool being enabled with a positive spawn cap. Unlike
+        :meth:`strike_targets`, ``is_dead`` is intentionally *not* used: the
+        motorpool's groups are repopulated each mission *after* planning runs, so
+        ``is_dead`` (which reads ``alive_unit_count``) reflects a stale render
+        while the reserve pool is the current source of truth.
+
+        Targets are sorted by proximity to friendly control points, matching the
+        behavior of :meth:`strike_targets`.
+        """
+        settings = self.game.settings
+        if not settings.motorpool_enabled or settings.motorpool_spawn_cap <= 0:
             return
-        spawn_cap = self.game.settings.motorpool_spawn_cap
-        if spawn_cap <= 0:
-            return
+        from game.missiongenerator.motorpoolpopulator import (
+            motorpool_rendered_unit_count,
+        )
 
         candidates: list[MotorpoolGroundObject] = []
         for enemy_cp in self.enemy_control_points():
             for ground_object in enemy_cp.ground_objects:
-                if not isinstance(ground_object, MotorpoolGroundObject):
-                    continue
                 if (
-                    motorpool_rendered_unit_count(
+                    isinstance(ground_object, MotorpoolGroundObject)
+                    and motorpool_rendered_unit_count(
                         ground_object,
-                        self.game.settings.motorpool_enabled,
-                        spawn_cap,
+                        settings.motorpool_enabled,
+                        settings.motorpool_spawn_cap,
                     )
                     > 0
                 ):

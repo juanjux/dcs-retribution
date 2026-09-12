@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections import defaultdict
 from collections.abc import Iterable
 from dataclasses import dataclass
+import math
 from typing import TYPE_CHECKING
 from uuid import UUID
 
@@ -13,12 +14,6 @@ from game.ground_forces.ai_ground_planner import reserve_armor_for
 from game.theater.controlpoint import ControlPoint, ControlPointType
 from game.theater.theatergroup import TheaterGroup, TheaterUnit
 from game.theater.theatergroundobject import MotorpoolGroundObject
-from game.theater.theatergroup import TheaterGroup, TheaterUnit
-from game.theater.theatergroundobject import (
-    MotorpoolGroundObject,
-    motorpool_projected_counts,
-)
-from game.point_with_heading import PointWithHeading
 
 if TYPE_CHECKING:
     from game.game import Game
@@ -125,6 +120,28 @@ def projected_motorpool_count(motorpool: MotorpoolGroundObject, cap: int) -> int
     return projected_motorpool_counts(motorpools_at(motorpool.control_point), cap).get(
         motorpool.id, 0
     )
+
+
+def motorpool_full_grid_extent_m() -> float:
+    """Distance from the garage origin to the furthest slot of a full grid."""
+    last_row = _COLUMNS - 1
+    last_column = _COLUMNS - 1
+    return math.hypot(_GRID_OFFSET_M + last_row * _SPACING_M, last_column * _SPACING_M)
+
+
+def motorpool_rendered_unit_count(
+    tgo: MotorpoolGroundObject, motorpool_enabled: bool, spawn_cap: int
+) -> int:
+    """The units the renderer will put in its next snapshot.
+
+    Projected rather than counted: the groups from the previous mission are
+    ephemeral, so what is standing there now says nothing about what will be.
+    """
+    if not motorpool_enabled or spawn_cap <= 0:
+        return 0
+    if tgo not in motorpools_at(tgo.control_point):
+        return 0
+    return projected_motorpool_count(tgo, spawn_cap)
 
 
 class MotorpoolPopulator:
