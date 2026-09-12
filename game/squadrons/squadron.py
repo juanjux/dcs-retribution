@@ -416,18 +416,10 @@ class Squadron:
     def _pick(
         self, candidates: Sequence[Pilot], alongside: Sequence[Pilot], default: Pilot
     ) -> Pilot:
-        """Who takes this seat: the senior man if it is the first, otherwise whoever
-        the crew already seated would get on with best.
+        """Who takes this seat: the senior man if it is the first -- seat zero is the
+        flight lead -- otherwise whoever the crew already seated gets on with best.
 
-        Seat zero is the one worth choosing on rank. It is the flight lead to DCS --
-        the group's ROE, formation and reaction options are taken from the man in
-        front -- and it is the lead the friendship rules weigh double, so putting the
-        senior man there is also what makes the seats after it worth grouping.
-
-        ``default`` is exactly who the branch would have taken anyway and it wins
-        every tie, so a campaign with Live Pilots off crews the way it always did:
-        rank_order is constant then. A candidate nobody has an opinion about is not an
-        improvement on one either, so Neutral loses to the default as well.
+        ``default`` wins every tie, so crewing is unchanged with Live Pilots off.
         """
         if len(candidates) < 2:
             return default
