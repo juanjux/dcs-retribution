@@ -1,5 +1,5 @@
 import { renderWithProviders } from "../../testutils";
-import FlightPlansLayer from "./FlightPlansLayer";
+import FlightPlansLayer, { SelectedFlightPlanLayer } from "./FlightPlansLayer";
 import { PropsWithChildren } from "react";
 
 const mockPolyline = jest.fn();
@@ -182,8 +182,8 @@ describe("FlightPlansLayer", () => {
       expect(mockPolyline).toHaveBeenCalledTimes(2);
       expect(mockLayerGroup).toBeCalledTimes(1);
     });
-    it("are not drawn when only selected flights are to be drawn", () => {
-      renderWithProviders(<FlightPlansLayer selectedOnly />, {
+    it("are not drawn by the selected-plan layer", () => {
+      renderWithProviders(<SelectedFlightPlanLayer />, {
         preloadedState: {
           flights: {
             flights: {
@@ -230,8 +230,8 @@ describe("FlightPlansLayer", () => {
     });
   });
   describe("selected flights", () => {
-    it("are drawn", () => {
-      renderWithProviders(<FlightPlansLayer blue={true} />, {
+    it("are drawn by their own layer", () => {
+      renderWithProviders(<SelectedFlightPlanLayer />, {
         preloadedState: {
           flights: {
             flights: {
@@ -306,10 +306,10 @@ describe("FlightPlansLayer", () => {
           },
         },
       });
-      expect(mockPolyline).toHaveBeenCalledTimes(4);
+      expect(mockPolyline).toHaveBeenCalledTimes(2);
       expect(mockLayerGroup).toBeCalledTimes(1);
     });
-    it("are not drawn twice", () => {
+    it("are left to that layer by the side layers, so never drawn twice", () => {
       renderWithProviders(<FlightPlansLayer blue={true} />, {
         preloadedState: {
           flights: {
@@ -352,11 +352,11 @@ describe("FlightPlansLayer", () => {
           },
         },
       });
-      expect(mockPolyline).toHaveBeenCalledTimes(2);
+      expect(mockPolyline).not.toHaveBeenCalled();
       expect(mockLayerGroup).toBeCalledTimes(1);
     });
-    it("are not drawn if red", () => {
-      renderWithProviders(<FlightPlansLayer selectedOnly />, {
+    it("are drawn whatever side they are on", () => {
+      renderWithProviders(<SelectedFlightPlanLayer />, {
         preloadedState: {
           flights: {
             flights: {
