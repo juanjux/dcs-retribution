@@ -104,8 +104,7 @@ export function iconForTgo(tgo: TgoModel) {
 }
 
 export function formatInventory(inventory: string[]): string {
-  return inventory.length ? inventory.join("
-") : "None";
+  return inventory.length ? inventory.join("\n") : "None";
 }
 
 function formatAggregateInventory(
@@ -128,8 +127,7 @@ function InventorySection(props: { label: string; inventory: string }) {
       ) : (
         <>
           <br />
-          <SplitLines items={props.inventory.split("
-")} />
+          <SplitLines items={props.inventory.split("\n")} />
         </>
       )}
     </>
