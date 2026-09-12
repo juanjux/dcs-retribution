@@ -349,6 +349,7 @@ class QFlightWaypointTab(QFrame):
         self.flight_waypoint_list.selectionModel().selectionChanged.connect(
             self.refresh_delete_button
         )
+        self.flight_waypoint_list.delete_requested.connect(self.on_delete_requested)
         self.refresh_delete_button()
 
         rlayout.addStretch()
@@ -423,6 +424,12 @@ class QFlightWaypointTab(QFrame):
             if waypoint in targets and len(targets) > 1:
                 return True
         return fp.can_delete_waypoint(waypoint)
+
+    def on_delete_requested(self) -> None:
+        """Delete pressed over the list. Under the button's rule, so the key can never
+        do what the button refuses to."""
+        if self.delete_selected is not None and self.delete_selected.isEnabled():
+            self.on_delete_waypoint()
 
     def on_delete_waypoint(self):
         for waypoint in self.selected_waypoints():
