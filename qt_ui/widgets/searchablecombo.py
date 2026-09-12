@@ -30,6 +30,11 @@ SEARCH_HEIGHT = 26
 #: and typing is slower than looking.
 WORTH_SEARCHING = 12
 
+#: Loadout lists are the exception. The names are long, arbitrary and community-made
+#: ("SEAD mio", "CAP LONG RANGE 2"), so even a short one is read rather than scanned,
+#: and an aircraft that has three today has thirty the day its presets are imported.
+LOADOUT_SEARCH_FLOOR = 2
+
 
 class SearchableComboBox(QComboBox):
     """A combo whose popup opens with a search field above the list."""
@@ -78,6 +83,10 @@ class SearchableComboBox(QComboBox):
             return
 
         self._list.setModel(self.model())
+        # The popup draws the items, so it needs whatever delegate the combo was given
+        # -- the flight creator sets one to put the pylon list in a tooltip, and it was
+        # being dropped the moment the list became searchable.
+        self._list.setItemDelegate(self.itemDelegate())
         self._search.clear()
         self._filter("")
 

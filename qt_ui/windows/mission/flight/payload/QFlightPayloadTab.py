@@ -24,7 +24,7 @@ from qt_ui.widgets.QLabeledWidget import QLabeledWidget
 from qt_ui.widgets.cards import CARD_BG, carded, make_transparent
 from qt_ui.widgets.controls import Segmented, mono, styled_input
 from qt_ui.widgets.combos.QSquadronLiverySelector import SquadronLiverySelector
-from qt_ui.widgets.searchablecombo import SearchableComboBox
+from qt_ui.widgets.searchablecombo import LOADOUT_SEARCH_FLOOR, SearchableComboBox
 from .QLoadoutEditor import QLoadoutEditor
 from .ownlasercodeinfo import OwnLaserCodeInfo
 from .propertyeditor import PropertyEditor
@@ -45,7 +45,9 @@ class DcsLoadoutSelector(SearchableComboBox):
     """
 
     def __init__(self, flight: Flight, member: FlightMember) -> None:
-        super().__init__(placeholder="Type to find a payload…")
+        super().__init__(
+            placeholder="Type to find a payload…", threshold=LOADOUT_SEARCH_FLOOR
+        )
         for loadout in Loadout.iter_for(flight):
             self.addItem(loadout.name, loadout)
         self.model().sort(0)
