@@ -29,7 +29,9 @@ def _flight(minutes_to_tot: int, offset_minutes: float) -> Any:
 
 
 def _package(*flights: Any) -> Any:
-    return SimpleNamespace(flights=list(flights))
+    # Every real package carries a time over target; the estimate is measured against
+    # it and puts it back, so the double needs one too.
+    return SimpleNamespace(flights=list(flights), time_over_target=NOW)
 
 
 def test_flight_with_no_offset_is_unchanged() -> None:
@@ -77,3 +79,114 @@ def test_every_flight_can_reach_its_own_tot_at_the_earliest_package_tot() -> Non
         own_tot = tot + flight.flight_plan.tot_offset
         needed = flight.flight_plan.minimum_duration_from_start_to_tot()
         assert own_tot - needed >= NOW
+
+
+class _PatrolPlan:
+    """A patrol in a package takes its station time from the package's escort window,
+    not from the package TOT, so its takeoff does not move one-for-one with the TOT.
+
+    ``escort_lead`` is how far before the package TOT the escort window opens.
+    """
+
+    def __init__(
+        self,
+        package: Any,
+        escort_lead: datetime.timedelta,
+        transit: datetime.timedelta,
+        offset_minutes: float = 0,
+    ) -> None:
+        self.package = package
+        self.escort_lead = escort_lead
+        self.transit = transit
+        self.tot_offset = datetime.timedelta(minutes=offset_minutes)
+
+    @property
+    def patrol_start_time(self) -> datetime.datetime:
+        return self.package.time_over_target - self.escort_lead + self.tot_offset
+
+    def takeoff_time(self) -> datetime.datetime:
+        return self.patrol_start_time - self.transit
+
+    def minimum_duration_from_start_to_tot(self) -> datetime.timedelta:
+        # What the analytic estimate sees: transit to its own TOT. It knows nothing
+        # about the escort window, which is exactly the gap being covered.
+        return self.transit
+
+
+class _StrikePlan:
+    def __init__(self, transit: datetime.timedelta, package: Any) -> None:
+        self.transit = transit
+        self.package = package
+        self.tot_offset = datetime.timedelta()
+
+    def takeoff_time(self) -> datetime.datetime:
+        return self.package.time_over_target - self.transit
+
+    def minimum_duration_from_start_to_tot(self) -> datetime.timedelta:
+        return self.transit
+
+
+def _live_package() -> Any:
+    package: Any = SimpleNamespace(flights=[], time_over_target=NOW)
+    strike = SimpleNamespace(
+        flight_plan=_StrikePlan(datetime.timedelta(minutes=30), package)
+    )
+    # On station 15 minutes before the package, 20 minutes of transit to get there.
+    patrol = SimpleNamespace(
+        flight_plan=_PatrolPlan(
+            package, datetime.timedelta(minutes=15), datetime.timedelta(minutes=20)
+        )
+    )
+    package.flights = [strike, patrol]
+    return package
+
+
+def test_a_patrol_is_not_asked_to_take_off_before_the_mission_starts() -> None:
+    """The analytic estimate gives +30 (the strike's transit), but the patrol has to
+    be on station at TOT-15 and needs 20 minutes to get there, so it would be sent off
+    5 minutes before the mission began."""
+    package = _live_package()
+
+    tot = TotEstimator(package).earliest_tot(NOW)
+
+    assert tot >= NOW + datetime.timedelta(minutes=35)
+    package.time_over_target = tot
+    for flight in package.flights:
+        assert flight.flight_plan.takeoff_time() >= NOW
+
+
+def test_the_package_tot_is_left_alone_while_measuring() -> None:
+    package = _live_package()
+    package.time_over_target = NOW + datetime.timedelta(hours=3)
+
+    TotEstimator(package).earliest_tot(NOW)
+
+    assert package.time_over_target == NOW + datetime.timedelta(hours=3)
+
+
+def test_a_package_everyone_can_make_is_not_pushed() -> None:
+    package: Any = SimpleNamespace(flights=[], time_over_target=NOW)
+    package.flights = [
+        SimpleNamespace(
+            flight_plan=_StrikePlan(datetime.timedelta(minutes=30), package)
+        )
+    ]
+
+    assert TotEstimator(package).earliest_tot(NOW) == NOW + datetime.timedelta(
+        minutes=30
+    )
+
+
+def test_a_plan_that_cannot_say_when_it_takes_off_is_skipped() -> None:
+    class Mute(_StrikePlan):
+        def takeoff_time(self) -> datetime.datetime:
+            raise RuntimeError("no flight plan yet")
+
+    package: Any = SimpleNamespace(flights=[], time_over_target=NOW)
+    package.flights = [
+        SimpleNamespace(flight_plan=Mute(datetime.timedelta(minutes=30), package))
+    ]
+
+    assert TotEstimator(package).earliest_tot(NOW) == NOW + datetime.timedelta(
+        minutes=30
+    )

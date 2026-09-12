@@ -1,6 +1,7 @@
 ﻿# Retribution v1.6.3 (414th)
 
 ## Features/Improvements
+* **[FIX]** A patrol in a package (TARCAP, BARCAP, tanker) could be given a takeoff before the mission started, because its station time comes from the package's escort window rather than from the package TOT. The earliest package TOT is now measured against every flight's own takeoff, not just estimated.
 * **[UI]** Every flight in a package shows its own timeline -- departure, the waypoint where it starts working (ingress, sweep start or orbit start), and landing -- so TOT offsets can be lined up without opening each flight. Escorts warn that an "ahead" offset does nothing for them.
 * **[FIX]** The OPFOR API hid partial repairs: a site's repair countdown stopped being reported the moment one of its units was standing, so a battery that was firing today and getting three launchers back next turn looked like a battery at full strength. It reports the countdown either way now, with the live and repairing unit counts, and `/iads` carries the same countdown per node.
 * **[FIX]** Planning an escort into a package that holds nothing but escorts crashed instead of creating the flight: the escort was its own package's primary flight, so it escorted itself. It now flies the package's ordinary geometry, and a flight plan that asks for itself raises a planning error naming both flights rather than overflowing the stack.
