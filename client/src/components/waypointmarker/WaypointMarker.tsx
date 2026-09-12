@@ -3,6 +3,7 @@ import {
   Waypoint,
   useSetWaypointPositionMutation,
 } from "../../api/liberationApi";
+import "./WaypointMarker.css";
 import { Icon } from "leaflet";
 import { Marker as LMarker } from "leaflet";
 import icon from "leaflet/dist/images/marker-icon.png";
@@ -16,10 +17,22 @@ const WAYPOINT_ICON = new Icon({
   iconAnchor: [12, 41],
 });
 
+// The same pin, lit up. A class rather than a second image: one icon to keep.
+const SELECTED_ICON = new Icon({
+  iconUrl: icon,
+  shadowUrl: iconShadow,
+  iconAnchor: [12, 41],
+  className: "wp-marker-selected",
+});
+
 interface WaypointMarkerProps {
   number: number;
   waypoint: Waypoint;
   flight: Flight;
+  selected: boolean;
+  onSelect: () => void;
+  onOpen: (at: { x: number; y: number }) => void;
+  onMenu: (at: { x: number; y: number }) => void;
 }
 
 const WaypointMarker = (props: WaypointMarkerProps) => {
@@ -70,9 +83,23 @@ const WaypointMarker = (props: WaypointMarkerProps) => {
   return (
     <Marker
       position={waypoint.position}
-      icon={WAYPOINT_ICON}
+      icon={props.selected ? SELECTED_ICON : WAYPOINT_ICON}
       draggable
       eventHandlers={{
+        click: () => props.onSelect(),
+        dblclick: (e) => {
+          // Leaflet's own double-click zooms the map. Editing a waypoint is not a
+          // reason to change what you are looking at.
+          e.originalEvent.preventDefault();
+          e.originalEvent.stopPropagation();
+          props.onSelect();
+          props.onOpen({ x: e.originalEvent.clientX, y: e.originalEvent.clientY });
+        },
+        contextmenu: (e) => {
+          e.originalEvent.preventDefault();
+          props.onSelect();
+          props.onMenu({ x: e.originalEvent.clientX, y: e.originalEvent.clientY });
+        },
         dragstart: (e) => {
           const m: LMarker = e.target;
           m.setTooltipContent("Waiting to recompute TOT...");

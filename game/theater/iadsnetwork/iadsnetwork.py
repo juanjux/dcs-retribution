@@ -40,6 +40,18 @@ STATIC_BACKED_ROLES = frozenset(
 )
 
 
+def _settings_of(tgo: TheaterGroundObject) -> Any:
+    """This campaign's settings, reached through the objective that needs them.
+
+    The network is built from a list of objectives and never handed the game, and
+    the two ranges below are plugin options rather than constants. None for a test
+    double that stops short of a game, which then gets the defaults.
+    """
+    coalition = getattr(tgo.control_point, "coalition", None)
+    game = getattr(coalition, "game", None)
+    return getattr(game, "settings", None)
+
+
 def brings_its_own_power(group: IadsGroundGroup) -> bool:
     """Whether this site generates its own electricity.
 
@@ -469,9 +481,10 @@ class IadsNetwork:
         iads_role = IadsRole.for_category(tgo.category)
         if not iads_role.is_comms_or_power:
             return
+        reach = iads_role.connection_range(_settings_of(tgo)).meters
         for node in self.nodes:
             dist = node.group.ground_object.position.distance_to_point(tgo.position)
-            in_range = dist < iads_role.connection_range.meters
+            in_range = dist < reach
             if in_range and self._is_friendly(node, tgo):
                 node.add_connection_for_tgo(tgo)
                 events.update_iads_node(node)
@@ -484,6 +497,8 @@ class IadsNetwork:
             if not iads_role.is_comms_or_power or nearby_go == tgo:
                 continue
             dist = nearby_go.position.distance_to_point(tgo.position)
-            in_range = dist <= iads_role.connection_range.meters
+            in_range = (
+                dist <= iads_role.connection_range(_settings_of(nearby_go)).meters
+            )
             if in_range and self._is_friendly(node, nearby_go):
                 node.add_connection_for_tgo(nearby_go)

@@ -1,7 +1,9 @@
+from typing import Any, Optional
 from uuid import UUID
 
 from dcs.mapping import LatLng, Point
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel
 from starlette.responses import Response
 
 from game import Game
@@ -12,7 +14,7 @@ from game.server import GameContext
 from game.server.leaflet import LeafletPoint
 from game.server.waypoints.models import FlightWaypointJs
 from game.sim import GameUpdateEvents
-from game.utils import meters
+from game.utils import feet, meters
 
 router: APIRouter = APIRouter(prefix="/waypoints")
 
@@ -46,6 +48,68 @@ def all_waypoints_for_flight(
     return waypoints_for_flight(game.db.flights.get(flight_id))
 
 
+class WaypointEdit(BaseModel):
+    """What the map's waypoint dialog can change. Absent means "leave it"."""
+
+    name: Optional[str] = None
+    altitude_ft: Optional[float] = None
+    altitude_reference: Optional[str] = None
+
+
+class WaypointInsert(BaseModel):
+    """Where a new nav point goes, relative to the one addressed.
+
+    ``position`` is where the player clicked, which for a click on a leg is the leg.
+    Without one the new waypoint lands half way along, as the flight editor's Add NAV
+    puts it.
+    """
+
+    before: bool = False
+    position: Optional[LeafletPoint] = None
+
+
+def _waypoint_of(flight: Flight, waypoint_idx: int) -> FlightWaypoint:
+    """The waypoint that index addresses, or the reason it addresses nothing.
+
+    Index 0 is the departure, which the map draws but the flight plan does not hold:
+    it is where the aircraft is, and nothing about it is editable.
+    """
+    if waypoint_idx == 0:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="The departure point is where the aircraft is.",
+        )
+    try:
+        return flight.flight_plan.waypoints[waypoint_idx - 1]
+    except IndexError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"{flight} has no waypoint {waypoint_idx}",
+        )
+
+
+def _package_model_of(flight: Flight) -> Any:
+    model = (
+        GameContext.get_model()
+        .ato_model_for(flight.blue)
+        .find_matching_package_model(flight.package)
+    )
+    if model is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Could not find PackageModel owning {flight}",
+        )
+    return model
+
+
+def _re_time_and_publish(flight: Flight, events: GameUpdateEvents) -> None:
+    """Every edit changes the route, so the package is re-timed and the map redrawn."""
+    from game.server import EventStream
+
+    _package_model_of(flight).update_tot()
+    EventStream.put_nowait(events.update_flight(flight))
+
+
 @router.post(
     "/{flight_id}/{waypoint_idx}/position",
     operation_id="set_waypoint_position",
@@ -58,30 +122,143 @@ def set_position(
     position: LeafletPoint,
     game: Game = Depends(GameContext.require),
 ) -> None:
-    from game.server import EventStream
-
     flight = game.db.flights.get(flight_id)
-    if waypoint_idx == 0:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
-
-    waypoint = flight.flight_plan.waypoints[waypoint_idx - 1]
+    waypoint = _waypoint_of(flight, waypoint_idx)
     waypoint.position = Point.from_latlng(
         LatLng(position.lat, position.lng), game.theater.terrain
     )
-    package_model = (
-        GameContext.get_model()
-        .ato_model_for(flight.blue)
-        .find_matching_package_model(flight.package)
-    )
-    if package_model is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Could not find PackageModel owning {flight}",
-        )
     events = GameUpdateEvents()
     update_package_waypoints_if_primary_flight(waypoint, flight, events)
-    package_model.update_tot()
-    EventStream.put_nowait(events.update_flight(flight))
+    _re_time_and_publish(flight, events)
+
+
+@router.patch(
+    "/{flight_id}/{waypoint_idx}",
+    operation_id="edit_waypoint",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
+)
+def edit_waypoint(
+    flight_id: UUID,
+    waypoint_idx: int,
+    edit: WaypointEdit,
+    game: Game = Depends(GameContext.require),
+) -> None:
+    """Rename a waypoint, or change the height it is flown at.
+
+    The rename is the one the flight editor's list already does, so it reaches the
+    aircraft's own waypoint list on a player flight by the same path.
+    """
+    flight = game.db.flights.get(flight_id)
+    waypoint = _waypoint_of(flight, waypoint_idx)
+    if edit.altitude_reference is not None and edit.altitude_reference not in (
+        "BARO",
+        "RADIO",
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Altitude reference is BARO or RADIO.",
+        )
+    if edit.name is not None:
+        waypoint.apply_name_edit(edit.name)
+    if edit.altitude_ft is not None:
+        waypoint.alt = feet(edit.altitude_ft)
+    if edit.altitude_reference is not None:
+        waypoint.alt_type = edit.altitude_reference  # type: ignore[assignment]
+    _re_time_and_publish(flight, GameUpdateEvents())
+
+
+@router.delete(
+    "/{flight_id}/{waypoint_idx}",
+    operation_id="delete_waypoint",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
+)
+def delete_waypoint(
+    flight_id: UUID,
+    waypoint_idx: int,
+    game: Game = Depends(GameContext.require),
+) -> None:
+    """Take a waypoint out of the route, if it is one the flight can give up.
+
+    Anything else is refused with the reason rather than quietly rebuilding the plan
+    around it: the flight editor has a path that degrades the plan to a custom one,
+    and that is too much to hang off a key on the map.
+    """
+    flight = game.db.flights.get(flight_id)
+    waypoint = _waypoint_of(flight, waypoint_idx)
+    plan = flight.flight_plan
+    if not plan.can_delete_waypoint(waypoint) or not plan.delete_waypoint(waypoint):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                f"{waypoint.display_name} is part of this flight's plan. It can be "
+                "removed from the flight's waypoint tab, which can rebuild the plan "
+                "around it."
+            ),
+        )
+    _re_time_and_publish(flight, GameUpdateEvents())
+
+
+@router.post(
+    "/{flight_id}/{waypoint_idx}/insert",
+    operation_id="insert_waypoint",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
+)
+def insert_waypoint(
+    flight_id: UUID,
+    waypoint_idx: int,
+    insert: WaypointInsert,
+    game: Game = Depends(GameContext.require),
+) -> None:
+    """Put a nav point next to the one addressed.
+
+    The layout decides where a nav point may go -- it belongs to the way out or the
+    way home, and not every waypoint sits on one of them -- so a refusal here is the
+    plan saying there is no room rather than something unimplemented.
+    """
+    flight = game.db.flights.get(flight_id)
+    _waypoint_of(flight, waypoint_idx)
+    waypoints = flight.flight_plan.waypoints
+    # add_waypoint inserts AFTER its anchor, so inserting before a waypoint is
+    # inserting after the one in front of it. Waypoint 1 has only the departure in
+    # front, which the plan does not hold, so it anchors on itself: the layout puts a
+    # nav point at the head of the outbound leg for a takeoff anyway.
+    anchor_idx = max(1, waypoint_idx - 1 if insert.before else waypoint_idx)
+    anchor = waypoints[anchor_idx - 1]
+    following = waypoints[anchor_idx] if anchor_idx < len(waypoints) else None
+    before = list(waypoints)
+    if not flight.flight_plan.layout.add_waypoint(anchor, following):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                f"There is no room for a waypoint next to {anchor.display_name}. Nav "
+                "points go on the way out or on the way home."
+            ),
+        )
+    if insert.position is not None:
+        added = _added_waypoint(before, flight.flight_plan.waypoints)
+        if added is not None:
+            added.position = Point.from_latlng(
+                LatLng(insert.position.lat, insert.position.lng), game.theater.terrain
+            )
+    _re_time_and_publish(flight, GameUpdateEvents())
+
+
+def _added_waypoint(
+    before: list[FlightWaypoint], after: list[FlightWaypoint]
+) -> Optional[FlightWaypoint]:
+    """The one waypoint the route gained, by identity.
+
+    Asked of the route rather than of the layout: which list a nav point lands in is
+    the layout's business, and it has three of them.
+    """
+    known = {id(waypoint) for waypoint in before}
+    for waypoint in after:
+        if id(waypoint) not in known:
+            return waypoint
+    return None
 
 
 def formation_waypoint(

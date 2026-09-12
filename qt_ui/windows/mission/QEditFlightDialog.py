@@ -60,6 +60,10 @@ class QEditFlightDialog(QDialog):
         # flashed and nothing happened. Everything here applies as it is changed, so
         # there is no half-finished state a stray click could leave behind.
         self.setModal(False)
+        # On the way out, ask about what was just edited. It belongs here and not in
+        # a handler: connecting it inside on_go_to_package meant it was connected on
+        # one path out of four, and there after the accept() that would have fired it.
+        self.finished.connect(self.on_close)
 
         self._layout = QVBoxLayout()
         self.header: Optional[FlightHeader] = None
@@ -163,7 +167,6 @@ class QEditFlightDialog(QDialog):
 
         self.accept()
         Dialog.open_edit_package_dialog(self.package_model)
-        self.finished.connect(self.on_close)
 
     def on_squadron_change(self, flight: Flight):
         self.events = GameUpdateEvents().delete_flight(self.flight)
