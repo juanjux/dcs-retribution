@@ -37,62 +37,24 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
 
 ### IADS
 
-- **Skynet comes from our own fork**,
-  [juanjux/Skynet-IADS](https://github.com/juanjux/Skynet-IADS): upstream 3.3.0 with its
+- **Custom Skynetfork**, [juanjux/Skynet-IADS](https://github.com/juanjux/Skynet-IADS): upstream 3.3.0 with its
   HARM fixes, plus `ActMobile` and the four High Digit SAMs systems (S-400, S-300V4,
-  SAMP/T, Pantsir-SM). The build is labelled `3.3.0-juanjux-fork` in `dcs.log`.
-- **A performance pass on the Skynet script.** Indexed contact merging, HARM tracks
-  rejected by distance before any geometry, values sampled once per instant, radar
-  coverage built once per pair, and world events dispatched only to the elements that
-  subscribed to them. Two bugs with it: a zero-speed contact aborted the whole HARM
-  sweep, and the periodic maintenance that clears spent missiles and expires HARM tracks
-  was switched off for point defences and every EWR.
-- **The IADS update interval is a setting**, default 15 seconds instead of 5. The price
-  of raising it is latency.
-- **A radius for what Skynet manages.** Only what lies within a given distance of the
-  front line, a package target or a carrier is coordinated; everything else still spawns
-  and fights, forced to red alert, but never goes dark and never reacts to a HARM. The
-  radius reaches radars only — command centres, comms towers and power stations always
-  reach Skynet, and a site that stays keeps every dependency it has. Default 0, the
-  whole map.
-- **Stock SAMs play the SEAD game the modded ones already did.** Forty stock search and
-  track radars get a 90% chance of noticing an inbound HARM and going dark for it, and
-  wake at 120–130% of their own envelope instead of only once you are inside the kill
-  zone. The "Adjust default SAM go-live range" setting still overrides them per system.
-- **A battery with its own generator is not on the grid.** A Patriot's EPP-III or a
-  SAMP/T's MGE keeps the site powered when the nearest substation is bombed; killing the
-  generator itself puts it back on the grid. Read from the `class: Power` in the unit
-  data, so a mod that ships a generator works the day it is registered.
-- **A destroyed IADS building reads as destroyed, not as absent.** Nodes whose units were
-  all dead were dropped from `skynet_nodes`, and Skynet treats a missing dependency as
-  satisfied — so bombing a power station switched its SAMs back on, and destroying a
-  coalition's last command centre handed it perfect command back.
-- **A destroyed site keeps its place in the network, and its links on the map.** A site
-  with nothing alive was dropped from the network, so the link whose power station died
-  was the one link never drawn. Campaigns saved before this rebuild their network once on
-  load.
-- **A site with no power stays dark when it loses its comms.** Going autonomous under
-  `AUTONOMOUS_STATE_DCS_AI` called `goLive()` unconditionally, so bombing the comms node
-  of an unpowered site woke a battery the command centre was keeping dark.
-- **IADS infrastructure can be rebuilt.** Comms towers, power stations and command
-  centres get a flat rebuild cost (5M, 15M, 10M) and still earn nothing, so striking the
-  network is an attrition loop rather than a one-off. The AI ranks them alongside its
-  ammo depots.
-  ([#97](https://github.com/juanjux/dcs-retribution/pull/97))
-- **Autonomous and dark sites are told apart from working ones.** The state is derived
-  from Skynet's own rules and published: a dark site draws no range rings and its health
-  bar says why, network links are coloured by state, and the API carries `iads_state` /
-  `iads_reason` / `iads_blind` on targets and threats and `state` / `state_reason` /
-  `blind` on `/iads`, omitted whenever a site is working normally.
-  ([#10](https://github.com/juanjux/dcs-retribution/pull/10))
-- **Radar, missile battery and jamming site are one slot.** Buy any of the three where
-  any one of them stands; the map symbol follows what is parked there, and a site that
-  only watches draws its detection ring dashed in its faction's colour.
-  ([#183](https://github.com/juanjux/dcs-retribution/pull/183))
-- **The IADS configs resolve.** Thirty-nine buildings the campaign configs named had a
-  trigger zone and no object placed, so bombing the infrastructure did nothing and some
-  command centres never reached Skynet at all.
-  ([#183](https://github.com/juanjux/dcs-retribution/pull/183))
+  SAMP/T, Pantsir-SM), and many, many fixes and performance improvements including (optional) culling of the network based on the
+  plannet flight packages
+
+- **Batteries with their own generator can survive a power grid cut.** A Patriot's EPP-III or a
+  SAMP/T's MGE keeps the site powered when the nearest substation is bombed until the defined
+   generator unit itself is destroyed.
+
+- **IADS infrastructure can be rebuilt.**
+  
+- **Autonomous and dark sites are told apart from working ones.** A dark site draws no range rings
+  and its health bar color and tooltip says why, network links are coloured by state.
+  
+- **Radar, missile battery and jamming sites are interchangeable** You can buy any of these in the place of others.
+  They still have distinct icons.
+  
+- **Many fixed on campaigns that used IADS but had some errors in the topology or configuration.**
 
 ### Kneeboards
 - **Friendly-packages list** plus a **package-targets map** page.
