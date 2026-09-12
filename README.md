@@ -193,7 +193,8 @@ rivals tend to be friends (but _not_ in the Tarantino interpretation of the film
   nothing but the bunker -- no radar, no comms, no power, so every site of its own went
   autonomous whatever happened -- and gets two early-warning radars, three relay towers
   and two power stations, so it is one working network too.
-  ([#221](https://github.com/juanjux/dcs-retribution/pull/221))
+  ([#221](https://github.com/juanjux/dcs-retribution/pull/221),
+  [#225](https://github.com/juanjux/dcs-retribution/pull/225))
 - **Syria — Invasion of the Canary Islands 2030, new campaign**, with the **Spain 2030** and
   **Morocco 2030** factions. A rework of NoGoodNews' original: both sides fly what they
   are expected to field by 2030 (so it required the Eurofighter and F35 mods, which this fork also adds support for), and both navies are built from real hulls with pinned compositions. Air defenses are about a third lighter than the original, the IADS is fully wired, and every base on a front has a motor pool holding its undeployed armor as a bombable target and Morocco has been made stronger to better balance the campaign.
