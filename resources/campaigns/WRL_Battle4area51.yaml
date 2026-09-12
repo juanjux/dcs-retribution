@@ -25,57 +25,80 @@ advanced_iads: true # Campaign has connection_nodes / power_sources / command_ce
 iads_config:
 # Red ran as three islands -- WEST (CM-A/PW-A), CENTRAL (CM-A2/CM-B/PW-B) and EAST
 # (CM-C/CM-B2/PW-C) shared no node, so the map drew separate networks a few miles
-# apart. The comms are cross-linked below to make it one network; a dependency list
-# is an OR, so the power stations are deliberately left local and each one still
-# blacks out its own cluster. Every cross-link is inside Skynet's 15 nm comms range.
+# apart. Comms are cross-linked, and the power is a single grid: every site draws
+# from all three stations, because a military grid is built to lose nodes. A
+# dependency list is an OR, so nothing goes dark until all three stations are down --
+# and when the last one does, the whole network goes at once. Every site is inside
+# the 35 nm power range of every station, and every comms link inside 15 nm.
 #COMMAND
   - COMMAND:
     - CM-C
     - CM-B2
     - CM-B
     - CM-A2
+    - PW-A
+    - PW-B
     - PW-C
 #WEST IADS
   - EWR-A:
     - CM-A
     - CM-A2
     - PW-A
+    - PW-B
+    - PW-C
   - SAM-A:
     - CM-A
     - CM-A2
     - PW-A
+    - PW-B
+    - PW-C
 #CENTRAL IADS
   - EWR-B:
     - CM-A2
     - CM-B2
+    - PW-A
     - PW-B
+    - PW-C
   - SAM-A2:
     - CM-A2
     - CM-A
+    - PW-A
     - PW-B
+    - PW-C
   - SAM-B:
     - CM-B
     - CM-B2
+    - PW-A
     - PW-B
+    - PW-C
 #EAST IADS
   - EWR-C:
     - CM-C
+    - PW-A
+    - PW-B
     - PW-C
   - SAM-C1:
     - CM-B2
+    - PW-A
+    - PW-B
     - PW-C
   - SAM-C2:
     - CM-B2
     - CM-B
+    - PW-A
+    - PW-B
     - PW-C
   - SAM-C3:
     - CM-C
+    - PW-A
+    - PW-B
     - PW-C
 #NATO IADS
 # Blue had no comms and no power at all. Three relay towers and two power stations,
 # placed so that the coverage overlaps: CM-1 and CM-2 share NELLIS 1, CM-2 and CM-3
 # share NELLIS 2 and 3, which makes blue one network rather than three islands the
-# way red was. Every link is inside Skynet's ranges (15 nm comms, 35 nm power).
+# way red was. Its grid is meshed as far as the 35 nm range allows -- only NELLIS 1
+# sits inside both stations; Creech and Nellis are 37-48 nm apart.
   - NATO SAM-1:
     - NATO CM-1
     - NATO PW-1
@@ -86,6 +109,7 @@ iads_config:
     - NATO CM-1
     - NATO CM-2
     - NATO PW-1
+    - NATO PW-2
   - NATO NELLIS 2:
     - NATO CM-2
     - NATO CM-3
