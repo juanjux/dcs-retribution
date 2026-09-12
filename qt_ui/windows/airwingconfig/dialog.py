@@ -729,7 +729,12 @@ class AirWingConfigurationDialog(QDialog):
         c.configure_default_air_wing(config)
         tab.revert()
         if c.game.turn != 0:
-            c.initialize_turn(False)
+            from game.server import EventStream
+            from game.sim.gameupdateevents import GameUpdateEvents
+
+            events = GameUpdateEvents()
+            c.initialize_turn(False, events)
+            EventStream.put_nowait(events)
 
     # --- window ---------------------------------------------------------------
 
@@ -756,7 +761,12 @@ class AirWingConfigurationDialog(QDialog):
             # The wing changes are still applied via tab.apply(). (Turn 0 already skips
             # this.)
             if tab.coalition.game.turn != 0 and not self.cheat:
-                tab.coalition.initialize_turn(False)
+                from game.server import EventStream
+                from game.sim.gameupdateevents import GameUpdateEvents
+
+                events = GameUpdateEvents()
+                tab.coalition.initialize_turn(False, events)
+                EventStream.put_nowait(events)
         super().accept()
 
     def reject(self) -> None:

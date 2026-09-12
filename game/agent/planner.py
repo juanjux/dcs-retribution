@@ -1465,7 +1465,9 @@ def transfer_ground(
                 f"{origin.name} has no {unit_name!r} to move (it has: {have})"
             )
         qty = max(1, min(quantity, armor[unit]))
-        order = TransferOrder(origin, dest, {unit: qty}, request_airflift=by_air)
+        order = TransferOrder(
+            origin, dest, {unit: qty}, coalition.player, request_airflift=by_air
+        )
         # Validate the route BEFORE new_transfer — new_transfer debits the origin base
         # up front, so an unreachable destination would otherwise lose the units.
         if not order.is_completable(coalition.transfers.network_for(origin)):
