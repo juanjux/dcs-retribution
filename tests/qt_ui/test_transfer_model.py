@@ -347,8 +347,8 @@ def test_ground_purchase_does_not_refresh_frames_when_validation_fails(
 @pytest.mark.parametrize(
     ("enemy_buy_sell", "expected_tabs"),
     [
-        (False, ["Intel", "Departing Convoys"]),
-        (True, ["Intel", "Departing Convoys", "Ground Forces HQ"]),
+        (False, ["Intel", "Convoys  1"]),
+        (True, ["Intel", "Convoys  1", "Ground forces  4"]),
     ],
 )
 def test_red_base_menu_exposes_authorized_ground_forces_tab(
@@ -376,12 +376,19 @@ def test_red_base_menu_exposes_authorized_ground_forces_tab(
     monkeypatch.setattr(tabs_module, "DepartingConvoysMenu", StubConvoys)
     monkeypatch.setattr(tabs_module, "QGroundForcesHQ", StubGroundForces)
 
+    # Each tab carries its count now, so the fake has to be able to answer for one
+    # convoy leaving and four units on the ground.
     cp = SimpleNamespace(captured=Player.RED)
+    convoy = SimpleNamespace(origin=cp)
+    coalition = SimpleNamespace(transfers=[convoy])
     game_model = SimpleNamespace(
         game=SimpleNamespace(
-            settings=SimpleNamespace(enable_enemy_buy_sell=enemy_buy_sell)
+            settings=SimpleNamespace(enable_enemy_buy_sell=enemy_buy_sell),
+            coalitions=[coalition],
+            coalition_for=lambda _player: coalition,
         )
     )
+    cp.allocated_ground_units = lambda _transfers: SimpleNamespace(total_present=4)
 
     tabs = tabs_module.QBaseMenuTabs(cast(Any, cp), cast(Any, game_model))
 
@@ -391,7 +398,11 @@ def test_red_base_menu_exposes_authorized_ground_forces_tab(
 def test_neutral_base_menu_does_not_expose_ground_forces_tab(
     app: QApplication, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Neutral control points do not expose the ground-forces catalog."""
+    """A neutral control point offers no ground-forces catalog.
+
+    The tab is there rather than missing -- the window keeps its shape between bases,
+    and a player who wonders where it went is told why -- but it cannot be opened.
+    """
     from qt_ui.windows.basemenu import QBaseMenuTabs as tabs_module
 
     class StubAirfield(QWidget):
@@ -402,20 +413,28 @@ def test_neutral_base_menu_does_not_expose_ground_forces_tab(
         def __init__(self, _cp: Any, _game_model: Any) -> None:
             super().__init__()
 
+    class StubFlights(QWidget):
+        def __init__(self, _game_model: Any, _cp: Any) -> None:
+            super().__init__()
+
     monkeypatch.setattr(tabs_module, "QAirfieldCommand", StubAirfield)
     monkeypatch.setattr(tabs_module, "QGroundForcesHQ", StubGroundForces)
+    monkeypatch.setattr(tabs_module, "QPlannedFlightsView", StubFlights)
 
     cp = SimpleNamespace(
         captured=Player.NEUTRAL,
         can_deploy_ground_units=True,
+        total_aircraft_parking=lambda _parking_type: 6,
+        allocated_aircraft=lambda _parking_type: SimpleNamespace(total_present=2),
     )
-    game_model = SimpleNamespace(game=SimpleNamespace(settings=SimpleNamespace()))
+    game_model = SimpleNamespace(game=None)
 
     tabs = tabs_module.QBaseMenuTabs(cast(Any, cp), cast(Any, game_model))
 
-    assert "Ground Forces HQ" not in [
-        tabs.tabText(index) for index in range(tabs.count())
-    ]
+    labels = [tabs.tabText(index) for index in range(tabs.count())]
+    ground = next(index for index, label in enumerate(labels) if "Ground" in label)
+    assert not tabs.isTabEnabled(ground)
+    assert tabs.tabToolTip(ground) == "Ground units cannot be based here."
 
 
 def test_ground_purchase_authorization_is_live_and_owner_based() -> None:

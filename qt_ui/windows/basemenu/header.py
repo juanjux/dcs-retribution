@@ -1,0 +1,517 @@
+"""What the base menu says before you do anything: what is here, and does it work.
+
+The window used to open with a 300 px photograph, then the base name in bold beside
+four radio editors, then a paragraph of rich text holding the aircraft, the ground
+units and the runway state, then a repair button. Everything weighed the same and
+the three facts a player checks before fragging a strike -- is the runway up, is
+there ammo, how much parking is left -- were the tail of the paragraph.
+
+Here the name is the only large text, the kind and the owner are stated rather than
+inferred from which tabs turned up, and the paragraph becomes figures.
+"""
+
+from __future__ import annotations
+
+from copy import deepcopy
+from typing import Optional
+
+from dcs.planes import B_1B
+from PySide6.QtGui import QPixmap
+from PySide6.QtWidgets import (
+    QGridLayout,
+    QHBoxLayout,
+    QLabel,
+    QVBoxLayout,
+    QWidget,
+)
+
+from game.dcs.aircrafttype import AircraftType
+from game.theater import (
+    AMMO_DEPOT_FRONTLINE_UNIT_CONTRIBUTION,
+    FREE_FRONTLINE_UNIT_SUPPLY,
+    ControlPoint,
+    Fob,
+    NavalControlPoint,
+    ParkingType,
+)
+from qt_ui.widgets.cards import CAPTION, card, make_transparent
+from qt_ui.widgets.controls import KEY, VALUE, mono, wrapped_tooltip
+
+#: The status of a thing that works, does not, or is being seen to.
+GOOD = "#86C39A"
+BAD = "#D9645E"
+PENDING = "#E0A86B"
+QUIET = "#8FA3BD"
+
+#: Blue and red as the rest of the app paints them.
+OWNER_BLUE = "#8FC3F0"
+OWNER_RED = "#D9645E"
+
+BANNER_HEIGHT = 132
+
+#: Every kind of parking, because a base's figure counts every kind of aircraft.
+EVERY_PARKING = ParkingType(fixed_wing=True, fixed_wing_stol=True, rotary_wing=True)
+
+
+def chip(text: str, colour: str, filled: bool = False) -> QLabel:
+    """A word with a box around it: a state, not a control."""
+    label = QLabel(text)
+    if filled:
+        style = (
+            f"background: {colour}; color: #0F1922; font-weight: bold;"
+            " border: none; border-radius: 3px; padding: 2px 8px; font-size: 11px;"
+            " letter-spacing: 1px;"
+        )
+    else:
+        style = (
+            f"background: transparent; color: {colour}; border: 1px solid {colour};"
+            " border-radius: 3px; padding: 2px 8px; font-size: 11px;"
+        )
+    label.setStyleSheet(style)
+    return label
+
+
+def figure(value: str, label: str, note: str = "", warn: bool = False) -> QWidget:
+    """One cell of the figures strip: a number to read, and the breakdown under it."""
+    column = QVBoxLayout()
+    column.setContentsMargins(0, 0, 0, 0)
+    column.setSpacing(2)
+
+    name = QLabel(label.upper())
+    name.setStyleSheet(
+        f"font-size: 11px; font-weight: bold; letter-spacing: 1px; color: {CAPTION};"
+        " background: transparent; border: none;"
+    )
+    column.addWidget(name)
+
+    number = QLabel(value)
+    number.setFont(mono(20))
+    number.setStyleSheet(
+        f"color: {PENDING if warn else VALUE}; background: transparent; border: none;"
+    )
+    column.addWidget(number)
+
+    if note:
+        detail = QLabel(note)
+        detail.setStyleSheet(
+            f"font-size: 11px; color: {QUIET}; background: transparent; border: none;"
+        )
+        column.addWidget(detail)
+
+    holder = QWidget()
+    make_transparent(holder)
+    holder.setLayout(column)
+    return holder
+
+
+def kind_of(cp: ControlPoint) -> str:
+    """What this base is, in the words the header states rather than implies."""
+    if cp.is_carrier:
+        return "CARRIER"
+    if cp.is_lha:
+        return "LHA"
+    if isinstance(cp, Fob):
+        return "HELIPORT" if cp.has_helipads and not cp.has_ground_spawns else "FOB"
+    if isinstance(cp, NavalControlPoint):
+        return "SHIP"
+    return "AIRBASE"
+
+
+def parking_breakdown(cp: ControlPoint) -> Optional[dict[str, dict[str, int]]]:
+    """Estimate per-category parking usage by simulating slot allocation.
+
+    The data model only tracks aircraft counts, not which slot each one
+    occupies, so this replicates the placement priority used elsewhere to
+    attribute aircraft to slot categories. The split is an estimate.
+    """
+    airport = cp.dcs_airport
+    if airport is None:
+        return None
+
+    pt_rotary = ParkingType(rotary_wing=True)
+    pt_stol = ParkingType(fixed_wing_stol=True)
+    slots = list(cp.parking_slots)
+    totals = {
+        "shared": len([s for s in slots if s.helicopter and s.airplanes]),
+        "fixed": len([s for s in slots if s.airplanes and not s.helicopter]),
+        "rotary": len([s for s in slots if s.helicopter and not s.airplanes])
+        + cp.total_aircraft_parking(pt_rotary),
+        "ground": cp.total_aircraft_parking(pt_stol),
+    }
+    counts: dict[str, dict[str, int]] = {
+        c: {"present": 0, "transferring": 0, "ordered": 0}
+        for c in ("shared", "fixed", "rotary", "ground")
+    }
+
+    ap = deepcopy(airport)
+    free_helipads = cp.total_aircraft_parking(pt_rotary)
+    free_ground = cp.total_aircraft_parking(pt_stol)
+    ground_start = cp.coalition.game.settings.ground_start_ai_planes
+
+    def place(aircraft: AircraftType, phase: str) -> None:
+        nonlocal free_helipads, free_ground
+        is_heli = aircraft.helicopter
+        is_vtol = not is_heli and aircraft.lha_capable
+        ground_ok = aircraft.flyable or ground_start
+        if free_helipads > 0 and is_heli:
+            free_helipads -= 1
+            counts["rotary"][phase] += 1
+        elif free_ground > 0 and (is_heli or is_vtol or ground_ok):
+            free_ground -= 1
+            counts["ground"][phase] += 1
+        else:
+            slot = ap.free_parking_slot(aircraft.dcs_unit_type)
+            if slot is None:
+                return
+            slot.unit_id = 1
+            if slot.helicopter and slot.airplanes:
+                counts["shared"][phase] += 1
+            elif slot.airplanes:
+                counts["fixed"][phase] += 1
+            else:
+                counts["rotary"][phase] += 1
+
+    staying = [s for s in cp.squadrons if s.destination is None]
+    incoming = [
+        s for s in cp.coalition.air_wing.iter_squadrons() if s.destination == cp
+    ]
+    for s in staying:
+        for _ in range(s.owned_aircraft):
+            place(s.aircraft, "present")
+    for s in incoming:
+        for _ in range(s.owned_aircraft):
+            place(s.aircraft, "transferring")
+    for s in staying + incoming:
+        for _ in range(max(s.pending_deliveries, 0)):
+            place(s.aircraft, "ordered")
+
+    # Fixed-wing slots split by size. "Big" slots are those that can host a
+    # heavy aircraft (C-130, B-1B, tankers, AWACS...). DCS uses two slot
+    # schemes: v1 maps flag big slots with .large, while v2 maps decide
+    # purely by physical dimensions, so we mirror pydcs' own v2 fit test
+    # against a representative heavy (the B-1B). Free counts come from the
+    # placement sim above, so they match what a transfer would actually find.
+    fw_slots = [s for s in ap.parking_slots if s.airplanes]
+    if ap.slot_version == 1:
+        big_flags = [s.large for s in fw_slots]
+    else:
+        big_flags = [
+            s.width is not None
+            and s.length is not None
+            and B_1B.width < s.width
+            and B_1B.height < (s.height or 1000)
+            and B_1B.length < s.length
+            for s in fw_slots
+        ]
+    big_total = sum(big_flags)
+    small_total = len(fw_slots) - big_total
+    free_big = sum(
+        1 for s, big in zip(fw_slots, big_flags) if big and s.unit_id is None
+    )
+    free_small = sum(
+        1 for s, big in zip(fw_slots, big_flags) if not big and s.unit_id is None
+    )
+
+    result: dict[str, dict[str, int]] = {}
+    for c, total in totals.items():
+        occ = counts[c]["present"]
+        tr = counts[c]["transferring"]
+        od = counts[c]["ordered"]
+        result[c] = {
+            "total": total,
+            "occupied": occ,
+            "transferring": tr,
+            "ordered": od,
+            "free": max(total - occ - tr - od, 0),
+        }
+    result["fixed_size"] = {
+        "small_total": small_total,
+        "free_small": free_small,
+        "big_total": big_total,
+        "free_big": free_big,
+    }
+    return result
+
+
+class BaseHeader(QWidget):
+    """The banner, the name, what it is, who holds it, and whether it works."""
+
+    def __init__(self, cp: ControlPoint, game_model) -> None:  # type: ignore[no-untyped-def]
+        super().__init__()
+        self.cp = cp
+        self.game_model = game_model
+
+        layout = QVBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+        layout.addWidget(self._banner())
+        layout.addWidget(self._identity())
+        self.setLayout(layout)
+
+    # -- the pieces ----------------------------------------------------------
+
+    def _banner(self, image: Optional[str] = None) -> QWidget:
+        """The photograph, cropped to a strip.
+
+        It only ever said "this is an airbase" or "this is a carrier", which the chip
+        beside the name now says in words -- but it says it faster, so it stays, at a
+        height that does not cost the fold every time the window opens.
+        """
+        banner = QLabel()
+        banner.setFixedHeight(BANNER_HEIGHT)
+        banner.setScaledContents(False)
+        if image is not None:
+            pixmap = QPixmap(image)
+            if not pixmap.isNull():
+                banner.setPixmap(pixmap)
+        banner.setStyleSheet("background: #0F1922; border: none;")
+        return banner
+
+    def _identity(self) -> QWidget:
+        row = QHBoxLayout()
+        row.setContentsMargins(16, 12, 16, 12)
+        row.setSpacing(16)
+        row.addLayout(self._name_and_state(), 1)
+        comms = self._comms()
+        if comms is not None:
+            row.addWidget(comms)
+
+        holder = QWidget()
+        make_transparent(holder)
+        holder.setLayout(row)
+        return holder
+
+    def _name_and_state(self) -> QVBoxLayout:
+        column = QVBoxLayout()
+        column.setContentsMargins(0, 0, 0, 0)
+        column.setSpacing(8)
+
+        title_row = QHBoxLayout()
+        title_row.setContentsMargins(0, 0, 0, 0)
+        title_row.setSpacing(10)
+
+        name = QLabel(self.cp.name)
+        name.setStyleSheet(
+            "font-size: 26px; font-weight: bold; color: #E8F0FB;"
+            " background: transparent; border: none;"
+        )
+        title_row.addWidget(name)
+
+        blue = self.cp.captured.is_blue
+        owner = "BLUE" if blue else "RED"
+        title_row.addWidget(
+            chip(
+                f"{kind_of(self.cp)} · {owner}",
+                OWNER_BLUE if blue else OWNER_RED,
+                filled=True,
+            )
+        )
+        title_row.addStretch()
+        column.addLayout(title_row)
+
+        pills = QHBoxLayout()
+        pills.setContentsMargins(0, 0, 0, 0)
+        pills.setSpacing(8)
+        for pill in self.status_pills():
+            pills.addWidget(pill)
+        pills.addStretch()
+        column.addLayout(pills)
+        return column
+
+    def status_pills(self) -> list[QLabel]:
+        """Runway, ammunition and industry: the three things checked before a strike."""
+        pills: list[QLabel] = []
+        status = self.cp.runway_status
+        if status is not None:
+            if status.damaged and status.repair_turns_remaining is not None:
+                pills.append(
+                    chip(
+                        f"Runway damaged · repairs in {status.repair_turns_remaining}",
+                        PENDING,
+                    )
+                )
+            elif status.damaged:
+                pills.append(chip("Runway damaged", BAD))
+            else:
+                pills.append(chip("Runway operational", GOOD))
+
+        depots = self._ammo_depots()
+        if depots is not None:
+            alive, total = depots
+            pills.append(
+                chip(
+                    f"Ammo depots {alive}/{total}",
+                    GOOD if alive == total else PENDING,
+                )
+            )
+
+        if self._has_factory():
+            pills.append(chip("Factory producing", GOOD))
+        return pills
+
+    def _ammo_depots(self) -> Optional[tuple[int, int]]:
+        depots = [go for go in self.cp.connected_objectives if go.category == "ammo"]
+        if not depots:
+            return None
+        return sum(1 for go in depots if not go.is_dead), len(depots)
+
+    def _has_factory(self) -> bool:
+        return any(
+            go.category == "factory" and not go.is_dead
+            for go in self.cp.connected_objectives
+        )
+
+    def _comms(self) -> Optional[QWidget]:
+        """Radio, TACAN, ICLS and Link 4, one row each, and only the ones it has.
+
+        Built by whoever owns those widgets and handed here, so this module does not
+        learn what a TACAN channel is.
+        """
+        rows = getattr(self, "comms_rows", None)
+        if not rows:
+            return None
+        grid = QGridLayout()
+        grid.setContentsMargins(12, 10, 12, 10)
+        grid.setSpacing(8)
+        for index, (label, widget) in enumerate(rows):
+            key = QLabel(label)
+            key.setStyleSheet(
+                f"font-size: 12px; color: {KEY}; background: transparent;"
+                " border: none;"
+            )
+            grid.addWidget(key, index, 0)
+            grid.addWidget(widget, index, 1)
+        holder = card()
+        holder.setLayout(grid)
+        return holder
+
+
+class FiguresStrip(QWidget):
+    """Aircraft, ground units and money: the paragraph as three numbers.
+
+    Budget belongs here rather than in the footer. It is a figure you read, not a
+    button, and it sits beside the two numbers it constrains. The detail line under
+    each number is what the paragraph said in fifteen lines of indented rich text;
+    the rest of it -- how the deployable limit is arrived at, what is free where --
+    is the tooltip, where a figure you only sometimes want belongs.
+    """
+
+    def __init__(self, cp: ControlPoint, game_model) -> None:  # type: ignore[no-untyped-def]
+        super().__init__()
+        self.cp = cp
+        self.game_model = game_model
+
+        self._row = QHBoxLayout()
+        self._row.setContentsMargins(16, 10, 16, 10)
+        self._row.setSpacing(28)
+
+        holder = card()
+        holder.setLayout(self._row)
+        outer = QVBoxLayout()
+        outer.setContentsMargins(16, 0, 16, 12)
+        outer.addWidget(holder)
+        self.setLayout(outer)
+        self.refresh()
+
+    def refresh(self) -> None:
+        """Rebuilt rather than updated: a repaired runway changes which cells there are."""
+        while self._row.count():
+            taken = self._row.takeAt(0)
+            widget = taken.widget()
+            if widget is not None:
+                widget.deleteLater()
+        for cell in self.cells():
+            self._row.addWidget(cell)
+        self._row.addStretch()
+
+    def cells(self) -> list[QWidget]:
+        if self.cp.captured.is_blue:
+            return [self._aircraft(), self._ground(), self._budget()]
+        return [self._aircraft(), self._ground()]
+
+    def _aircraft(self) -> QWidget:
+        allocation = self.cp.allocated_aircraft(EVERY_PARKING)
+        parking = self.cp.total_aircraft_parking(EVERY_PARKING)
+        present = allocation.total_present
+
+        parts = []
+        tooltip = ""
+        breakdown = parking_breakdown(self.cp)
+        if breakdown is not None:
+            sizes = breakdown["fixed_size"]
+            small, big = sizes["small_total"], sizes["big_total"]
+            rotary = breakdown["rotary"]
+            ground = breakdown["ground"]
+            if small:
+                parts.append(f"{small - sizes['free_small']}/{small} small")
+            if big:
+                parts.append(f"{big - sizes['free_big']}/{big} big")
+            if rotary["total"]:
+                parts.append(
+                    f"{rotary['total'] - rotary['free']}/{rotary['total']} rotary"
+                )
+            if ground["total"]:
+                parts.append(
+                    f"{ground['total'] - ground['free']}/{ground['total']} ground start"
+                )
+            tooltip = wrapped_tooltip(
+                "Which parking is taken is an estimate: the campaign counts aircraft, "
+                "not which slot each one sits in, so this places them the way the "
+                "mission generator would. A big slot is one a B-1B would fit in."
+            )
+        else:
+            free = max(parking - allocation.total, 0)
+            parts.append(f"{free} free")
+
+        if allocation.total_transferring:
+            parts.append(f"{allocation.total_transferring} transferring")
+        if allocation.total_ordered:
+            parts.append(f"{allocation.total_ordered} ordered")
+
+        cell = figure(f"{present} / {parking}", "Aircraft", " · ".join(parts))
+        if tooltip:
+            cell.setToolTip(tooltip)
+        return cell
+
+    def _ground(self) -> QWidget:
+        transfers = self.game_model.game.coalition_for(self.cp.captured).transfers
+        allocation = self.cp.allocated_ground_units(transfers)
+        limit = self.cp.frontline_unit_count_limit
+        reserve = max(allocation.total_present - limit, 0)
+
+        parts = [f"{min(allocation.total_present, limit)}/{limit} deployable"]
+        if reserve:
+            parts.append(f"{reserve} reserve")
+        if allocation.total_transferring_out:
+            parts.append(f"{allocation.total_transferring_out} transferring out")
+        if allocation.total_transferring:
+            parts.append(f"{allocation.total_transferring} en route")
+        if allocation.total_ordered:
+            parts.append(f"{allocation.total_ordered} ordered")
+
+        cell = figure(f"{allocation.total_present}", "Ground units", " · ".join(parts))
+        cell.setToolTip(wrapped_tooltip(self.deployable_limit_explained()))
+        return cell
+
+    def deployable_limit_explained(self) -> str:
+        """Why the limit is what it is, which is not derivable from the number."""
+        text = (
+            f"{self.cp.frontline_unit_count_limit} deployable = "
+            f"{FREE_FRONTLINE_UNIT_SUPPLY} for the base + "
+            f"{AMMO_DEPOT_FRONTLINE_UNIT_CONTRIBUTION} for each of its "
+            f"{self.cp.total_ammo_depots_count} ammo depots."
+        )
+        if self.cp.has_active_frontline:
+            reserve = max(
+                self.cp.base.total_armor - self.cp.frontline_unit_count_limit, 0
+            )
+            if reserve:
+                text += (
+                    f" The {reserve} over that stay here in reserve rather than going "
+                    "to the front this turn."
+                )
+        return text
+
+    def _budget(self) -> QWidget:
+        budget = self.game_model.game.blue.budget
+        return figure(f"${budget:.2f}M", "Budget", "available to spend")
