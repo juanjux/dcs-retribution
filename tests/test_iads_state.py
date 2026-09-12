@@ -162,6 +162,23 @@ def test_the_last_command_centre_going_down_sets_every_sam_loose() -> None:
     assert "command centre" in state.reason
 
 
+def test_a_command_centre_with_its_comms_cut_is_not_directing_anybody() -> None:
+    """It is excluded from isCommandCenterUsable() -- that wants an active connection
+    node as well as power -- so it must not report itself as running the network while
+    every SAM is being told there is no command centre standing."""
+    comms = _group("KEA", IadsRole.CONNECTION_NODE, _unit(alive=False))
+    centre = _group("SUNBEAR", IadsRole.COMMAND_CENTER, _unit())
+    ewr = _group("MOOSE", IadsRole.EWR, _unit(detection=100_000), at=(0.0, 0.0))
+    sam = _group("BADGER", IadsRole.SAM, _unit(detection=50_000), at=(50_000.0, 0.0))
+    state_map = _map(_node(centre, comms), _node(ewr), _node(sam), _node(comms))
+
+    centre_state = _status(state_map, centre)
+    assert centre_state.state is IadsState.AUTONOMOUS
+    assert "directs nobody" in centre_state.reason
+    # The two halves have to agree.
+    assert "command centre" in _status(state_map, sam).reason
+
+
 def test_a_campaign_with_no_command_centre_at_all_is_not_penalised() -> None:
     """isCommandCenterUsable() answers true to an empty table, so a campaign that wired
     none must not read as having lost one."""

@@ -264,6 +264,16 @@ class IadsStateMap:
         )
 
         if role is IadsRole.COMMAND_CENTER:
+            if not connected:
+                # Same test has_command applies to it -- getUsableAbstractRadarElemtentsOfTable
+                # wants an active connection node as well as power -- so saying it is
+                # directing the network here would contradict every site that has just
+                # been told there is no command centre standing.
+                return IadsStatus(
+                    IadsState.AUTONOMOUS,
+                    "Comms cut: it directs nobody." + mains_note,
+                    blind,
+                )
             return IadsStatus(
                 IadsState.NETWORKED, "Directing the network." + mains_note, blind
             )

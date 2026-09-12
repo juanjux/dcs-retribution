@@ -1,6 +1,7 @@
 ﻿# Retribution v1.6.3 (414th)
 
 ## Features/Improvements
+* **[FIX]** A command centre whose comms were cut reported itself as directing the network, while every SAM under it reported having no command centre.
 * **[Campaigns]** Battle for Area 51: red's IADS is one network instead of three with its three power stations feeding a single grid, and blue gets the comms towers and power stations it never had.
 * **[Mission Generator]** An Escort or SEAD Escort with an "ahead" TOT offset now reaches the target ahead of its package.
 * **[FIX]** A patrol in a package (TARCAP, BARCAP, tanker) could be given a takeoff before the mission started, because its station time comes from the package's escort window rather than from the package TOT. The earliest package TOT is now measured against every flight's own takeoff, not just estimated.
