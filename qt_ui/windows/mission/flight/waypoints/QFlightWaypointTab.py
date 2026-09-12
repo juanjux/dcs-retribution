@@ -417,12 +417,7 @@ class QFlightWaypointTab(QFrame):
 
     def waypoint_is_deletable(self, waypoint: FlightWaypoint) -> bool:
         """Whether this one can go without rebuilding the plan around it."""
-        fp = self.flight.flight_plan
-        if isinstance(fp, FormationAttackFlightPlan):
-            targets = fp.target_area_waypoint.targets
-            if waypoint in targets and len(targets) > 1:
-                return True
-        return fp.can_delete_waypoint(waypoint)
+        return self.flight.flight_plan.can_delete_waypoint(waypoint)
 
     def on_delete_waypoint(self):
         for waypoint in self.selected_waypoints():
@@ -435,12 +430,6 @@ class QFlightWaypointTab(QFrame):
         # If the waypoint is a target waypoint and is not the last target
         # waypoint, we don't need to degrade.
         fp = self.flight.flight_plan
-        if isinstance(fp, FormationAttackFlightPlan):
-            is_target = waypoint in fp.target_area_waypoint.targets
-            count = len(fp.target_area_waypoint.targets)
-            if is_target and count > 1:
-                fp.target_area_waypoint.targets.remove(waypoint)
-                return
         model = self.flight_waypoint_list.model
         if fp.delete_waypoint(waypoint):
             model.removeRow(model.rowCount() - 1)

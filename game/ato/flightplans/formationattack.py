@@ -36,6 +36,31 @@ class FormationAttackFlightPlan(FormationFlightPlan, ABC):
             self.layout.split,
         } | set(self.layout.targets)
 
+    def can_delete_waypoint(self, waypoint: FlightWaypoint) -> bool:
+        """One of several target points can go; the last one cannot.
+
+        A strike spreads itself over one waypoint per target, and dropping one of them
+        is the player saying he does not want that building. Dropping the only one
+        leaves an attack with nothing to attack, which is the degrade-to-custom path.
+        """
+        if self._is_one_of_several_targets(waypoint):
+            return True
+        return super().can_delete_waypoint(waypoint)
+
+    def delete_waypoint(self, waypoint: FlightWaypoint) -> bool:
+        if self._is_one_of_several_targets(waypoint):
+            self.layout.targets = [
+                target for target in self.layout.targets if target is not waypoint
+            ]
+            return True
+        return super().delete_waypoint(waypoint)
+
+    def _is_one_of_several_targets(self, waypoint: FlightWaypoint) -> bool:
+        # By identity: FlightWaypoint compares by value, and two target points on
+        # identical buildings are equal without being the same waypoint.
+        targets = self.layout.targets
+        return len(targets) > 1 and any(waypoint is target for target in targets)
+
     def speed_between_waypoints(self, a: FlightWaypoint, b: FlightWaypoint) -> Speed:
         # FlightWaypoint is only comparable by identity, so adding
         # target_area_waypoint to package_speed_waypoints is useless.
