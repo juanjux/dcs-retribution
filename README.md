@@ -190,8 +190,9 @@ rivals tend to be friends (but _not_ in the Tarantino interpretation of the film
   groups shared no node and drew as three networks a few miles apart; the comms are
   cross-linked into one and the three power stations feed a single grid, so the network
   survives losing a station and goes dark all at once when the last one falls. Blue had
-  neither comms nor power, and gets two power stations, at Creech and at Nellis, and
-  three relay towers whose coverage overlaps, so it is one network too.
+  nothing but the bunker -- no radar, no comms, no power, so every site of its own went
+  autonomous whatever happened -- and gets two early-warning radars, three relay towers
+  and two power stations, so it is one working network too.
   ([#221](https://github.com/juanjux/dcs-retribution/pull/221))
 - **Syria — Invasion of the Canary Islands 2030, new campaign**, with the **Spain 2030** and
   **Morocco 2030** factions. A rework of NoGoodNews' original: both sides fly what they
