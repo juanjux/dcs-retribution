@@ -23,27 +23,39 @@ ground_forces:
 
 advanced_iads: true # Campaign has connection_nodes / power_sources / command_centers
 iads_config:
+# Red ran as three islands -- WEST (CM-A/PW-A), CENTRAL (CM-A2/CM-B/PW-B) and EAST
+# (CM-C/CM-B2/PW-C) shared no node, so the map drew separate networks a few miles
+# apart. The comms are cross-linked below to make it one network; a dependency list
+# is an OR, so the power stations are deliberately left local and each one still
+# blacks out its own cluster. Every cross-link is inside Skynet's 15 nm comms range.
 #COMMAND
   - COMMAND:
     - CM-C
     - CM-B2
+    - CM-B
+    - CM-A2
     - PW-C
 #WEST IADS
   - EWR-A:
     - CM-A
+    - CM-A2
     - PW-A
   - SAM-A:
     - CM-A
+    - CM-A2
     - PW-A
 #CENTRAL IADS
   - EWR-B:
     - CM-A2
+    - CM-B2
     - PW-B
   - SAM-A2:
     - CM-A2
+    - CM-A
     - PW-B
   - SAM-B:
     - CM-B
+    - CM-B2
     - PW-B
 #EAST IADS
   - EWR-C:
@@ -54,20 +66,43 @@ iads_config:
     - PW-C
   - SAM-C2:
     - CM-B2
+    - CM-B
     - PW-C
   - SAM-C3:
     - CM-C
     - PW-C
-  - NATO SAM-1
-  - NATO SAM-2
-  - NATO NELLIS 1
-  - NATO NELLIS 2
-  - NATO NELLIS 3
-  - NATO NELLIS 4
+#NATO IADS
+# Blue had no comms and no power at all. Three relay towers and two power stations,
+# placed so that the coverage overlaps: CM-1 and CM-2 share NELLIS 1, CM-2 and CM-3
+# share NELLIS 2 and 3, which makes blue one network rather than three islands the
+# way red was. Every link is inside Skynet's ranges (15 nm comms, 35 nm power).
+  - NATO SAM-1:
+    - NATO CM-1
+    - NATO PW-1
+  - NATO SAM-2:
+    - NATO CM-1
+    - NATO PW-1
+  - NATO NELLIS 1:
+    - NATO CM-1
+    - NATO CM-2
+    - NATO PW-1
+  - NATO NELLIS 2:
+    - NATO CM-2
+    - NATO CM-3
+    - NATO PW-2
+  - NATO NELLIS 3:
+    - NATO CM-2
+    - NATO CM-3
+    - NATO PW-2
+  - NATO NELLIS 4:
+    - NATO CM-3
+    - NATO PW-2
 # Command centres only reach Skynet as KEYS -- as a dependency of a site
 # they are never handed to the plugin, and an empty command centre list
 # reads as working command, so the bunker could not be bombed at all.
-  - NATO COMMAND
+  - NATO COMMAND:
+    - NATO CM-1
+    - NATO PW-1
 squadrons:
 # Nellis AFB
   4:

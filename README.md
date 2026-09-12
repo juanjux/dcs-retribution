@@ -220,6 +220,12 @@ list is the [pull requests](https://github.com/juanjux/dcs-retribution/pulls?q=i
   ([#41](https://github.com/juanjux/dcs-retribution/pull/41))
 
 ### Campaigns
+- **Battle for Area 51: both sides get a real IADS.** Red's west, central and east
+  groups shared no node and drew as three networks a few miles apart; the comms are
+  cross-linked into one, with the power stations left local so each still blacks out its
+  own cluster. Blue had neither comms nor power, and gets two power stations, at Creech
+  and at Nellis, and three relay towers whose coverage overlaps, so it is one network too.
+  ([#221](https://github.com/juanjux/dcs-retribution/pull/221))
 - **Syria — Invasion of the Canary Islands 2030**, with the **Spain 2030** and
   **Morocco 2030** factions. A rework of NoGoodNews' original: both sides fly what they
   are expected to field by 2030, each Spanish wing carries its own livery, and both
