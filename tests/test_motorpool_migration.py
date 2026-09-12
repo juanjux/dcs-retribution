@@ -12,6 +12,7 @@ from dcs.vehicles import Armor
 
 from game import persistency
 from game.dcs.groundunittype import GroundUnitType
+from game.db.gamedb import GameDb
 from game.migrator import Migrator
 from game.theater.controlpoint import ControlPointType
 from game.theater.presetlocation import PresetLocation
@@ -174,7 +175,11 @@ def test_global_marker_reconciliation_finds_tgo_under_another_cp() -> None:
 
 def test_migrate_game_rehomes_motorpools_after_all_migrations() -> None:
     events: list[str] = []
-    game = SimpleNamespace(settings=SimpleNamespace())
+    game = SimpleNamespace(
+        settings=SimpleNamespace(),
+        theater=SimpleNamespace(controlpoints=[]),
+        db=GameDb(),
+    )
     migrator = Migrator.__new__(Migrator)
     migrator.game = game  # type: ignore[assignment]
     method_names = [
@@ -255,6 +260,7 @@ def test_loaded_migration_rehomes_without_persisting_ephemeral_groups(
     next_unit_id = _IdAllocator()
     game = SimpleNamespace(
         theater=SimpleNamespace(controlpoints=[owner, farp]),
+        db=GameDb(),
         settings=SimpleNamespace(motorpool_enabled=True, motorpool_spawn_cap=10),
         current_group_id=20,
         current_unit_id=10,

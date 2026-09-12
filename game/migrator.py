@@ -56,6 +56,7 @@ class Migrator:
         try_set_attr(self.game.settings, "motorpool_enabled", True)
         try_set_attr(self.game.settings, "motorpool_spawn_cap", 10)
         self._ensure_motorpool_tgos()
+        self._register_new_tgos()
         self._reload_terrain()
         self._update_theater()
         self._update_campaign_name()
@@ -573,6 +574,20 @@ class Migrator:
                 )
                 cp.connected_objectives.append(tgo)
                 existing[identity] = tgo
+
+    def _register_new_tgos(self) -> None:
+        """Put every objective in the lookup the map and the API read.
+
+        db.tgos is filled once, at turn 0, so an objective added to a campaign already
+        under way -- a motorpool the step above just created, anything a later
+        migration adds -- was never in it. Clicking one asked the server for a UUID it
+        did not know and the info window never opened. Last of the migration steps, so
+        it catches whatever the others made.
+        """
+        for cp in self.game.theater.controlpoints:
+            for tgo in cp.connected_objectives:
+                if tgo.id not in self.game.db.tgos.objects:
+                    self.game.db.tgos.add(tgo.id, tgo)
 
     def _reload_terrain(self) -> None:
         t = self.game.theater.terrain
