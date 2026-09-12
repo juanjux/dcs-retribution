@@ -44,9 +44,14 @@ ROW_BG_ORDERED = "#182430"
 ICON_WIDTH = 91
 ICON_HEIGHT = 24
 PRESENT_WIDTH = 96
+COMPACT_PRESENT_WIDTH = 60
 PRICE_WIDTH = 70
 ROW_HEIGHT = 56
+
+#: A ground unit has no silhouette, no cap and no idle count, so its row is one line.
+COMPACT_ROW_HEIGHT = 40
 SUMMARY_HEIGHT = 40
+GROUP_HEADER_HEIGHT = 24
 
 
 @dataclass(frozen=True)
@@ -85,6 +90,21 @@ def chip(text: str, fill: str, ink: str) -> QLabel:
         " padding: 1px 8px; font-size: 10px; font-weight: bold; letter-spacing: 0.8px;"
     )
     label.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+    return label
+
+
+def group_header(name: str, count: int) -> QWidget:
+    """A class of unit, so twenty identical rows read as five short groups."""
+    label = QLabel(f"{name.upper()}   {count}")
+    label.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+    label.setObjectName(f"buyGroup{id(label)}")
+    label.setFixedHeight(GROUP_HEADER_HEIGHT)
+    label.setStyleSheet(
+        f"#{label.objectName()} {{ background: #1B2732; color: {CAPTION};"
+        " font-size: 10px; font-weight: bold; letter-spacing: 1px;"
+        f" padding-left: 14px; border: none;"
+        f" border-bottom: 1px solid {CARD_BORDER}; }}"
+    )
     return label
 
 
@@ -164,19 +184,23 @@ class PurchaseRow(QWidget):
     a squadron is.
     """
 
-    def __init__(self, item: object, frame: UnitTransactionFrame) -> None:
+    def __init__(
+        self, item: object, frame: UnitTransactionFrame, compact: bool = False
+    ) -> None:
         super().__init__()
         self.item = item
         self.frame = frame
+        self.compact = compact
 
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.setObjectName(f"buyRow{id(self)}")
-        self.setFixedHeight(ROW_HEIGHT)
+        self.setFixedHeight(COMPACT_ROW_HEIGHT if compact else ROW_HEIGHT)
 
         row = QHBoxLayout()
-        row.setContentsMargins(14, 8, 14, 8)
+        row.setContentsMargins(14, 4 if compact else 8, 14, 4 if compact else 8)
         row.setSpacing(10)
-        row.addWidget(self._icon())
+        if not compact:
+            row.addWidget(self._icon())
         row.addLayout(self._identity(), 1)
         row.addWidget(self._present())
         row.addWidget(self._price())
@@ -222,11 +246,15 @@ class PurchaseRow(QWidget):
             title.addWidget(_text(variant, 12, QUIET))
         for text, fill, ink in self.frame.row_chips(self.item):
             title.addWidget(chip(text, fill, ink))
-        title.addStretch()
-        column.addLayout(title)
-
         self._subtitle = _text("", 11.5, QUIET)
-        column.addWidget(self._subtitle)
+        if self.compact:
+            title.addWidget(self._subtitle)
+            title.addStretch()
+            column.addLayout(title)
+        else:
+            title.addStretch()
+            column.addLayout(title)
+            column.addWidget(self._subtitle)
         return column
 
     def _present(self) -> QWidget:
@@ -247,11 +275,14 @@ class PurchaseRow(QWidget):
         column.addLayout(first)
 
         self._idle = _text("", 11, GREEN)
-        column.addWidget(self._idle)
+        if self.compact:
+            self._idle.setVisible(False)
+        else:
+            column.addWidget(self._idle)
 
         holder = QWidget()
         make_transparent(holder)
-        holder.setFixedWidth(PRESENT_WIDTH)
+        holder.setFixedWidth(COMPACT_PRESENT_WIDTH if self.compact else PRESENT_WIDTH)
         holder.setLayout(column)
         return holder
 

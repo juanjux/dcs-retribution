@@ -506,11 +506,17 @@ def test_armor_recruitment_menu_uses_captured_faction_catalog(
             budget=100,
         ),
     )
+    # The summary pinned above the list counts the order against the deployable
+    # limit, so the fake has to be able to answer for both.
     cp = SimpleNamespace(
         captured=Player.RED,
         ground_unit_orders=orders,
         base=SimpleNamespace(total_units_of_type=lambda _unit: 3),
         has_ground_unit_source=lambda _game: True,
+        frontline_unit_count_limit=27,
+        allocated_ground_units=lambda _transfers: SimpleNamespace(
+            total_present=3, total_ordered=0
+        ),
     )
     game_model = SimpleNamespace(game=game, transfer_model=FakeTransferModel())
 

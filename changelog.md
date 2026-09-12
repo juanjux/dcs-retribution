@@ -1,6 +1,7 @@
 ﻿# Retribution v1.6.3 (414th)
 
 ## Features/Improvements
+* **[UI]** Buying ground units: the catalogue is grouped by class with a filter row and an "Owned" view, the front-line stance names the enemy it is about and shows the unit balance, and a card lists what is deployed at the base.
 * **[UI]** Buying aircraft: each squadron's row carries its silhouette, task and name, with what is present, its cap, what is on order and what is idle as figures, and a row pinned above the list says what the order leaves you with.
 * **[UI]** Delete removes the selected waypoints in the flight's waypoint tab.
 * **[UI]** The base menu states what the base is, who holds it and whether its runway, depots and factory work, turns the aircraft, ground units and budget into figures, names its tabs with their counts, gives the flights planned from the base a tab of its own, and can be resized.

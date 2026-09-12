@@ -275,8 +275,10 @@ class UnitTransactionFrame(QFrame, Generic[TransactionItemType]):
         self.purchase_groups[item] = group
         return group
 
-    def add_styled_row(self, item: TransactionItemType) -> QWidget:
-        row = PurchaseRow(item, self)
+    def add_styled_row(
+        self, item: TransactionItemType, compact: bool = False
+    ) -> QWidget:
+        row = PurchaseRow(item, self, compact=compact)
         self.styled_rows[item] = row
         return row
 
