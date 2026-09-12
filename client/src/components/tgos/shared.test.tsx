@@ -45,6 +45,9 @@ const tgo = (overrides: Partial<TgoModel> = {}): TgoModel => ({
   threat_ranges: [],
   detection_ranges: [],
   dead: false,
+  // Required by the fork's Tgo type, which carries the repair and purchase state.
+  purchasable: false,
+  repairing: false,
   sidc: "SFGPUCI----K---",
   mobile: false,
   ...overrides,
