@@ -1,6 +1,7 @@
 ﻿# Retribution v1.6.3 (414th)
 
 ## Features/Improvements
+* **[FIX]** An objective added to a campaign already under way -- a migrated motorpool, for one -- could not be opened from the map.
 * **[FIX]** Closing a package dialog left every flight editor in the session unopenable, with "Internal C++ object (QEditFlightDialog) already deleted".
 * **[FIX]** The loadout lists opened without their search field below twelve presets, and the searchable popup dropped the pylon tooltip.
 * **[UI]** Filling a flight gives the lead seat to the squadron's senior available pilot, and the seats after it to whoever that crew gets on with best.
