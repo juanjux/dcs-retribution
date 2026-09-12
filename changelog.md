@@ -1,6 +1,7 @@
 ﻿# Retribution v1.6.3 (414th)
 
 ## Features/Improvements
+* **[Campaigns]** Battle for Area 51: red's IADS was three separate networks a few miles apart and is now one, and blue gets a power station at Creech.
 * **[Mission Generator]** An Escort or SEAD Escort with an "ahead" TOT offset now reaches the target ahead of its package.
 * **[FIX]** A patrol in a package (TARCAP, BARCAP, tanker) could be given a takeoff before the mission started, because its station time comes from the package's escort window rather than from the package TOT. The earliest package TOT is now measured against every flight's own takeoff, not just estimated.
 * **[UI]** Every flight in a package shows its own timeline -- departure, the waypoint where it starts working (ingress, sweep start or orbit start), and landing -- so TOT offsets can be lined up without opening each flight.
