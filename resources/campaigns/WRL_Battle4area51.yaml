@@ -72,22 +72,36 @@ iads_config:
     - CM-C
     - PW-C
 #NATO IADS
-# NATO PW-1 is the blue power station at the Creech industrial area. The three sites
-# at and around Nellis are 37-48 nm from it, past the 35 nm power range, so they keep
-# no power dependency.
+# Blue had no comms and no power at all. Three relay towers and two power stations,
+# placed so that the coverage overlaps: CM-1 and CM-2 share NELLIS 1, CM-2 and CM-3
+# share NELLIS 2 and 3, which makes blue one network rather than three islands the
+# way red was. Every link is inside Skynet's ranges (15 nm comms, 35 nm power).
   - NATO SAM-1:
+    - NATO CM-1
     - NATO PW-1
   - NATO SAM-2:
+    - NATO CM-1
     - NATO PW-1
   - NATO NELLIS 1:
+    - NATO CM-1
+    - NATO CM-2
     - NATO PW-1
-  - NATO NELLIS 2
-  - NATO NELLIS 3
-  - NATO NELLIS 4
+  - NATO NELLIS 2:
+    - NATO CM-2
+    - NATO CM-3
+    - NATO PW-2
+  - NATO NELLIS 3:
+    - NATO CM-2
+    - NATO CM-3
+    - NATO PW-2
+  - NATO NELLIS 4:
+    - NATO CM-3
+    - NATO PW-2
 # Command centres only reach Skynet as KEYS -- as a dependency of a site
 # they are never handed to the plugin, and an empty command centre list
 # reads as working command, so the bunker could not be bombed at all.
   - NATO COMMAND:
+    - NATO CM-1
     - NATO PW-1
 squadrons:
 # Nellis AFB
