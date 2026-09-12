@@ -307,11 +307,15 @@ class MissionResultsProcessor:
                     f"{loss.flight.unit_type} destroyed on the ground at "
                     f"{loss.flight.squadron}; its pilot was not in it"
                 )
-            elif loss.pilot is not None and (
-                not loss.pilot.player
-                or not self.game.settings.invulnerable_player_pilots
-            ):
-                self._resolve_pilot_fate(loss, debriefing)
+            elif loss.pilot is not None:
+                if loss.pilot.player and self.game.settings.invulnerable_player_pilots:
+                    # Invulnerability is about his life, not about the sortie. He
+                    # walks away, but he did not bring the aircraft home, and the
+                    # mission-complete award is paid to whoever landed -- skipping
+                    # this whole branch paid a shot-down player as though he had.
+                    debriefing.pilot_outcomes.lost_aircraft.add(id(loss.pilot))
+                else:
+                    self._resolve_pilot_fate(loss, debriefing)
             squadron = loss.flight.squadron
             aircraft = loss.flight.unit_type
             available = squadron.owned_aircraft
