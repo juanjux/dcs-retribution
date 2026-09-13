@@ -1,6 +1,7 @@
 ﻿# Retribution v1.6.3 (414th)
 
 ## Features/Improvements
+* **[UI]** Command palette: Ctrl+P finds settings, bases, objectives, squadrons, pilots, flights and every command in the menus, and opens what is chosen.
 * **[FIX]** Base menu: ordering a ground unit took seconds and the window resized itself on opening.
 * **[UI]** A flight plan is no longer drawn through its target: the target waypoints are marked in red, a dashed red run joins the ingress to each of them, the route carries on to the next navigation point, and every leg is labelled with its length in nautical miles. Double-clicking a target opens the objective.
 * **[UI]** Base menu: the buy lists sort by any column and their headings line up with the figures, a squadron opens from anywhere on its row, a base states what it has no ammunition or factory rather than going quiet, a FARP counts its helipads instead of claiming a runway, and the ammunition and factory pills explain what they do.
