@@ -177,11 +177,16 @@ def test_a_broken_depot_says_what_repairing_it_would_buy(qt_app: Any) -> None:
     assert "Repairing the other 1 would take that to 39" in tooltip
 
 
-def test_the_factory_pill_explains_what_it_is_for(qt_app: Any) -> None:
-    assert "Ground units cannot be bought here" in _tooltip(_cp(), "No factory")
-    assert "Ground units can be bought here" in _tooltip(
+def test_the_factory_pill_says_where_the_units_come_from(qt_app: Any) -> None:
+    """Not whether they can be ordered: without a factory they still can, and the
+    pill claiming otherwise was contradicted by the list right under it."""
+    assert "built here, and are on the base next turn" in _tooltip(
         _cp(factory=True), "Factory producing"
     )
+
+    without = _tooltip(_cp(), "No factory")
+    assert "can still be ordered here" in without
+    assert "nearest friendly base that has one" in without
 
 
 def test_every_kind_of_base_is_named(qt_app: Any) -> None:
@@ -221,3 +226,35 @@ def test_every_kind_of_base_is_named(qt_app: Any) -> None:
 
     assert kind_of(_Fob(pads=False, spawns=True)) == "FOB"
     assert kind_of(_Fob(pads=True, spawns=False)) == "HELIPORT"
+
+
+def test_a_long_sentence_does_not_decide_how_wide_a_window_opens(
+    qt_app: Any,
+) -> None:
+    """A QLabel demands the full width of its text and a layout has to honour it.
+
+    One air-defence line naming seven kinds of SAM set the smallest the base menu
+    could be at 1803 px, so the window grew itself the moment it was shown -- which
+    is what the window dancing its way open was.
+    """
+    from PySide6.QtWidgets import QLabel, QVBoxLayout, QWidget
+
+    from qt_ui.widgets.cards import shrinkable
+
+    sentence = (
+        "M48 Chaparral x4 · M6 Linebacker x4 · M163 Vulcan Air Defense System x3 "
+        "· SAM NASAMS LN AIM-120C · SAM Hawk TR (AN/MPQ-46)"
+    )
+
+    def demanded(label: QLabel) -> int:
+        # The layout is where the size policy is honoured, which is where the window
+        # got its floor from.
+        holder = QWidget()
+        layout = QVBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(label)
+        holder.setLayout(layout)
+        return layout.minimumSize().width()
+
+    assert demanded(QLabel(sentence)) > 400
+    assert demanded(shrinkable(QLabel(sentence))) <= 40

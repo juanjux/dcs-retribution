@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Callable, Generic, Optional, TypeVar
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QMouseEvent, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
@@ -164,11 +164,12 @@ class PurchaseGroup(QGroupBox, Generic[TransactionItemType]):
         self.amount_bought.setText(f"<b>{self.pending_units}</b>")
         if self.stepper:
             colour = ORDERED_INK if self.pending_units else QUIET_INK
-            self.amount_bought.setStyleSheet(
+            edge = colour if self.pending_units else BORDER_INK
+            PurchaseRow.restyle(
+                self.amount_bought,
                 f"color: {colour}; background: #14202B;"
-                f" border-top: 1px solid {colour if self.pending_units else BORDER_INK};"
-                f" border-bottom: 1px solid"
-                f" {colour if self.pending_units else BORDER_INK};"
+                f" border-top: 1px solid {edge};"
+                f" border-bottom: 1px solid {edge};",
             )
 
 
@@ -189,6 +190,7 @@ class UnitTransactionFrame(QFrame, Generic[TransactionItemType]):
         ] = {}
         self.styled_rows: dict[TransactionItemType, PurchaseRow] = {}
         self.order_summary: Optional[OrderSummary] = None
+        self._repaint_pending = False
         self.game_model.transfer_model.inventory_changed.connect(
             self.post_transaction_update
         )
@@ -417,6 +419,15 @@ class UnitTransactionFrame(QFrame, Generic[TransactionItemType]):
     def update_existing_units(self) -> None:
         for item, label in self.existing_units_labels.items():
             label.setText(str(self.current_quantity_of(item)))
+        # Once for a burst of signals: a ground purchase emits three, and each of
+        # them used to restyle every row in the list.
+        if self._repaint_pending:
+            return
+        self._repaint_pending = True
+        QTimer.singleShot(0, self.repaint_rows)
+
+    def repaint_rows(self) -> None:
+        self._repaint_pending = False
         for row in self.styled_rows.values():
             row.refresh()
         if self.order_summary is not None:
