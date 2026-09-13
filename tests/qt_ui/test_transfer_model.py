@@ -361,7 +361,7 @@ def test_red_base_menu_exposes_authorized_ground_forces_tab(
     from qt_ui.windows.basemenu import QBaseMenuTabs as tabs_module
 
     class StubIntel(QWidget):
-        def __init__(self, _cp: Any) -> None:
+        def __init__(self, _cp: Any, _game_model: Any) -> None:
             super().__init__()
 
     class StubConvoys(QWidget):

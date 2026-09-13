@@ -37,7 +37,7 @@ class QBaseMenuTabs(QTabWidget):
         game = game_model.game
 
         if cp.captured.is_red:
-            self.intel = QIntelInfo(cp)
+            self.intel = QIntelInfo(cp, game_model)
             self.addTab(self.intel, "Intel")
 
             self.departing_convoys = DepartingConvoysMenu(cp, game_model)
