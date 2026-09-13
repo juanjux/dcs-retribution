@@ -3,10 +3,12 @@ import {
   useGetCommitBoundaryForFlightQuery,
   useInsertWaypointMutation,
   useDeleteWaypointMutation,
+  useOpenTgoInfoDialogMutation,
   useSelectFlightMutation,
 } from "../../api/liberationApi";
 import WaypointMarker from "../waypointmarker";
 import { WaypointDialog, WaypointMenu, WaypointTarget } from "../waypointmenu";
+import { LegDistance, TargetRuns } from "./legs";
 import { LineUtil, Polyline as LPolyline, LeafletMouseEvent } from "leaflet";
 import { ReactElement, useEffect, useRef, useState } from "react";
 import { Polyline, Tooltip, useMap } from "react-leaflet";
@@ -119,6 +121,18 @@ function FlightPlanPath(props: PathProps) {
   return (
     <>
       {visible}
+      {props.selected && (
+        <>
+          {drawn.slice(0, -1).map((waypoint, index) => (
+            <LegDistance
+              key={`leg-${waypoint.index}`}
+              from={waypoint.position}
+              to={drawn[index + 1].position}
+            />
+          ))}
+          <TargetRuns waypoints={waypoints} drawn={drawn} />
+        </>
+      )}
       <Polyline
         positions={points}
         pathOptions={{
@@ -301,6 +315,7 @@ export default function FlightPlan(props: FlightPlanProps) {
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [deleteWaypoint] = useDeleteWaypointMutation();
+  const [openTgoInfo] = useOpenTgoInfoDialogMutation();
 
   // Delete removes the selected waypoint, the same key that removes it in the
   // flight editor's list, in the package list and in the flights list. Asked first,
@@ -374,6 +389,12 @@ export default function FlightPlan(props: FlightPlanProps) {
       {menu && (
         <WaypointMenu
           target={menu}
+          onOpenTarget={() => {
+            if (menu.waypoint.target_id) {
+              openTgoInfo({ tgoId: menu.waypoint.target_id });
+            }
+            setMenu(null);
+          }}
           onOpenDialog={() => {
             setDialog({ target: menu, renaming: false });
             setMenu(null);

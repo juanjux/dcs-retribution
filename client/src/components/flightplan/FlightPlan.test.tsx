@@ -25,6 +25,7 @@ function waypoint(index: number, lat: number, lng: number): Waypoint {
     can_delete: true,
     speed_kts: 0,
     is_target: false,
+    shows_altitude: true,
   };
 }
 
