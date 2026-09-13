@@ -63,6 +63,7 @@ class Segmented(QWidget):
         options: Sequence[tuple[str, Any]],
         current: Any = None,
         parent: Optional[QWidget] = None,
+        fill: bool = True,
     ) -> None:
         super().__init__(parent)
         self._values: list[Any] = []
@@ -78,7 +79,17 @@ class Segmented(QWidget):
             button.setCheckable(True)
             button.setCursor(Qt.CursorShape.PointingHandCursor)
             button.setFixedHeight(CONTROL_HEIGHT)
-            button.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+            # Filling is right for a set of equals -- a start type, behind-or-ahead --
+            # and wrong for a filter bar, where the widths should say how long the
+            # words are rather than how many filters there happen to be.
+            button.setSizePolicy(
+                (
+                    QSizePolicy.Policy.Expanding
+                    if fill
+                    else QSizePolicy.Policy.Preferred
+                ),
+                QSizePolicy.Policy.Fixed,
+            )
             button.setStyleSheet(
                 f"QPushButton {{ background: {IDLE_BG}; color: {IDLE_TEXT};"
                 f" border: 1px solid {BORDER}; border-radius: 3px;"
@@ -93,6 +104,8 @@ class Segmented(QWidget):
             if value == current:
                 button.setChecked(True)
 
+        if not fill:
+            row.addStretch()
         self.setLayout(row)
         self.group.idClicked.connect(self._on_clicked)
 
