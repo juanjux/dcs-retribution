@@ -1,6 +1,7 @@
 import {
   Flight,
   Waypoint,
+  useOpenTgoInfoDialogMutation,
   useSetWaypointPositionMutation,
 } from "../../api/liberationApi";
 import "./WaypointMarker.css";
@@ -50,6 +51,26 @@ function iconFor(isTarget: boolean, selected: boolean): Icon {
   return selected ? SELECTED_ICON : WAYPOINT_ICON;
 }
 
+/**
+ * What the tooltip says about a waypoint.
+ *
+ * The altitude is left out where it is not a height the flight flies at: a target's
+ * is the ground it stands on and a takeoff's is the airfield, and "0 ft RADIO" on a
+ * target reads as a setting rather than as a fact about the terrain.
+ */
+export function tooltipFor(waypoint: Waypoint, number: number): string {
+  const lines = [`${number - 1} ${waypoint.name}`];
+  if (waypoint.shows_altitude) {
+    lines.push(
+      `${waypoint.altitude_ft.toFixed()} ft ${waypoint.altitude_reference}`,
+    );
+  }
+  if (waypoint.timing) {
+    lines.push(waypoint.timing);
+  }
+  return lines.join("<br />");
+}
+
 interface WaypointMarkerProps {
   number: number;
   waypoint: Waypoint;
@@ -77,6 +98,7 @@ const WaypointMarker = (props: WaypointMarkerProps) => {
   const marker: MutableRefObject<LMarker | undefined> = useRef();
 
   const [putDestination] = useSetWaypointPositionMutation();
+  const [openTgoInfo] = useOpenTgoInfoDialogMutation();
 
   const rebindTooltip = useCallback(() => {
     if (marker.current === undefined) {
@@ -96,20 +118,26 @@ const WaypointMarker = (props: WaypointMarkerProps) => {
   useMapEvent("zoomend", rebindTooltip);
 
   useEffect(() => {
-    const waypoint = props.waypoint;
-    marker.current?.setTooltipContent(
-      `${props.number - 1} ${waypoint.name}<br />` +
-        `${waypoint.altitude_ft.toFixed()} ft ${waypoint.altitude_reference}<br />` +
-        waypoint.timing,
-    );
+    marker.current?.setTooltipContent(tooltipFor(props.waypoint, props.number));
   });
 
   const waypoint = props.waypoint;
+
+  // A target opens the objective rather than a waypoint editor: what matters at a
+  // target is what is down there. The rest of the waypoint controls are refused for
+  // the same reason -- the package was fragged against this place, and renaming or
+  // dropping the mark would say the plan changed when it has not.
+  const openTarget = () => {
+    if (waypoint.target_id) {
+      openTgoInfo({ tgoId: waypoint.target_id });
+    }
+  };
+
   return (
     <Marker
       position={waypoint.position}
       icon={iconFor(waypoint.is_target, props.selected)}
-      draggable
+      draggable={waypoint.is_movable}
       eventHandlers={{
         click: () => props.onSelect(),
         dblclick: (e) => {
@@ -118,6 +146,10 @@ const WaypointMarker = (props: WaypointMarkerProps) => {
           e.originalEvent.preventDefault();
           e.originalEvent.stopPropagation();
           props.onSelect();
+          if (waypoint.is_target) {
+            openTarget();
+            return;
+          }
           props.onOpen({
             x: e.originalEvent.clientX,
             y: e.originalEvent.clientY,
@@ -155,7 +187,7 @@ const WaypointMarker = (props: WaypointMarkerProps) => {
         }
       }}
     >
-      <Tooltip position={waypoint.position} />
+      <Tooltip position={waypoint.position} className="wp-tip" />
     </Marker>
   );
 };
