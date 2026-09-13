@@ -103,6 +103,13 @@ class PurchaseGroup(QGroupBox, Generic[TransactionItemType]):
         self.sell_button.setDisabled(not recruiter.enable_sale(item))
         self.sell_button.setVisible(recruiter.enable_sale(item))
         self._size(self.sell_button, 28 if stepper else 16)
+        if stepper:
+            # Hidden but still taking up its space: a row that cannot sell used to be
+            # 28 px narrower than the ones around it, which pulled its price and its
+            # count out of line with the whole column.
+            policy = self.sell_button.sizePolicy()
+            policy.setRetainSizeWhenHidden(True)
+            self.sell_button.setSizePolicy(policy)
 
         self.sell_button.clicked.connect(
             lambda: self.recruiter.recruit_handler(RecruitType.SELL, self.item)

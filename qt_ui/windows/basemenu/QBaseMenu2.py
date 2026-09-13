@@ -7,7 +7,6 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QMessageBox,
-    QPushButton,
     QVBoxLayout,
     QWidget,
 )
@@ -27,11 +26,8 @@ from game.theater import (
     Player,
 )
 from qt_ui.dialogs import Dialog
-from qt_ui.windows.airwingconfig.common import (
-    CHEAT_BG,
-    CHEAT_BORDER,
-    CHEAT_HEADER,
-)
+from qt_ui.widgets.controls import button
+from qt_ui.windows.airwingconfig.common import CHEAT_BORDER, CHEAT_HINT
 from qt_ui.windows.basemenu.header import BaseHeader, FiguresStrip, kind_of
 from qt_ui.models import GameModel
 from qt_ui.uiconstants import EVENT_ICONS
@@ -64,11 +60,6 @@ class QBaseMenu2(QDialog):
         self.setWindowIcon(EVENT_ICONS["capture"])
 
         self.setWindowFlags(Qt.WindowType.WindowStaysOnTopHint)
-        # It was pinned to exactly 1024 wide, so a wide monitor bought nothing and the
-        # lists scrolled instead of widening. A floor and a first-open size, and after
-        # that the size you last chose for this kind of base.
-        self.setMinimumSize(MINIMUM_SIZE)
-        self.resize(DEFAULT_SIZE)
         self.setModal(True)
 
         self.setWindowTitle(self.cp.name)
@@ -102,7 +93,14 @@ class QBaseMenu2(QDialog):
         main_layout.addLayout(tabs_holder, 1)
         main_layout.addLayout(self._footer())
         self.setLayout(main_layout)
-        self._restore_geometry()
+
+        # Sized once, at the end, and never twice: it was resized to the default and
+        # then again to the remembered geometry, and the window danced its way open.
+        # It was pinned to exactly 1024 wide before that, so a wide monitor bought
+        # nothing and the lists scrolled instead of widening.
+        self.setMinimumSize(MINIMUM_SIZE)
+        if not self._restore_geometry():
+            self.resize(DEFAULT_SIZE)
 
     def _comms_rows(self) -> list:
         """The radio, TACAN, ICLS and Link 4 editors this base actually has.
@@ -150,26 +148,19 @@ class QBaseMenu2(QDialog):
 
         if self.cp.runway_is_destroyable and self.cp.runway_status is not None:
             if self.cp.runway_status.damaged:
-                self.repair_button = QPushButton()
-                self.repair_button.clicked.connect(self.begin_runway_repair)
+                self.repair_button = button("", "normal", self.begin_runway_repair)
                 self.update_repair_button()
                 row.addWidget(self.repair_button)
 
         if FlightType.OCA_RUNWAY in self.cp.mission_types(for_player=Player.BLUE):
-            strike = QPushButton("Plan airfield strike…")
-            strike.setProperty("style", "btn-danger")
-            strike.clicked.connect(self.new_package)
-            row.addWidget(strike)
+            row.addWidget(button("Plan airfield strike…", "danger", self.new_package))
 
         if self.cp.captured.is_blue and self.has_transfer_destinations:
-            transfer = QPushButton("Transfer units…")
-            transfer.clicked.connect(self.open_transfer_dialog)
-            row.addWidget(transfer)
+            row.addWidget(
+                button("Transfer units…", "normal", self.open_transfer_dialog)
+            )
 
-        close = QPushButton("Close")
-        close.setProperty("style", "btn-primary")
-        close.clicked.connect(self.close)
-        row.addWidget(close)
+        row.addWidget(button("Close", "primary", self.close))
         return row
 
     def _cheat_block(self) -> Optional[QWidget]:
@@ -178,15 +169,12 @@ class QBaseMenu2(QDialog):
             self.cp.runway_is_destroyable
             and self.game_model.game.settings.enable_runway_state_cheat
         ):
-            self.cheat_runway_state = QPushButton()
+            self.cheat_runway_state = button("", "normal", self.on_cheat_runway_state)
             self.update_cheat_runway_state_text()
-            self.cheat_runway_state.clicked.connect(self.on_cheat_runway_state)
             buttons.append(self.cheat_runway_state)
         if self.cheat_capturable:
             label = "Sink/Resurrect" if self.cp.is_fleet else "Capture"
-            capture = QPushButton(label)
-            capture.clicked.connect(self.cheat_capture)
-            buttons.append(capture)
+            buttons.append(button(label, "normal", self.cheat_capture))
         if not buttons:
             return None
 
@@ -195,19 +183,22 @@ class QBaseMenu2(QDialog):
         row.setSpacing(8)
         tag = QLabel("CHEAT")
         tag.setStyleSheet(
-            f"color: {CHEAT_HEADER}; font-size: 11px; font-weight: bold;"
+            f"color: {CHEAT_HINT}; font-size: 11px; font-weight: bold;"
             " letter-spacing: 1px; background: transparent; border: none;"
         )
         row.addWidget(tag)
-        for button in buttons:
-            row.addWidget(button)
+        for cheat in buttons:
+            row.addWidget(cheat)
 
+        # Marked off with an amber outline rather than filled with one. The Air Wing
+        # card's amber fill sits on a card two shades darker than this footer; against
+        # this one the same brown reads as a mud puddle in the corner of the window.
         holder = QWidget()
         holder.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         holder.setObjectName("baseCheats")
         holder.setStyleSheet(
-            f"#baseCheats {{ background: {CHEAT_BG};"
-            f" border: 1px solid {CHEAT_BORDER}; border-radius: 3px; }}"
+            f"#baseCheats {{ background: transparent;"
+            f" border: 1px dashed {CHEAT_BORDER}; border-radius: 3px; }}"
         )
         holder.setLayout(row)
         return holder
@@ -335,10 +326,10 @@ class QBaseMenu2(QDialog):
     def _qsettings() -> QSettings:
         return QSettings("DCS Retribution", "Qt UI")
 
-    def _restore_geometry(self) -> None:
+    def _restore_geometry(self) -> bool:
+        """Whether there was a remembered size to go back to."""
         saved = self._qsettings().value(self.geometry_key())
-        if saved is not None:
-            self.restoreGeometry(saved)
+        return saved is not None and self.restoreGeometry(saved)
 
     def closeEvent(self, close_event: QCloseEvent):
         self._qsettings().setValue(self.geometry_key(), self.saveGeometry())

@@ -8,13 +8,8 @@ filter that shows only what is already here.
 
 from __future__ import annotations
 
-from typing import Optional
-
-from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
-    QHBoxLayout,
     QLabel,
-    QScrollArea,
     QVBoxLayout,
     QWidget,
 )
@@ -24,16 +19,28 @@ from game.dcs.groundunittype import GroundUnitType
 from game.purchaseadapter import GroundUnitPurchaseAdapter
 from game.theater import ControlPoint
 from qt_ui.models import GameModel
-from qt_ui.widgets.cards import CAPTION, CARD_BG, CARD_BORDER, card, make_transparent
+from qt_ui.widgets.cards import CAPTION, card, make_transparent
 from qt_ui.widgets.controls import Segmented
 from qt_ui.widgets.squadrondelegate import split_aircraft_name as split_variant
 from qt_ui.windows.basemenu.buylist import (
     COMPACT_PRESENT_WIDTH,
     PRICE_WIDTH,
+    STEPPER_WIDTH,
+    Column,
+    ColumnHeaders,
     Figure,
     OrderSummary,
+    scrolling,
     group_header,
 )
+
+#: The four headings, at the widths the rows lay themselves out to.
+COLUMNS = [
+    Column("Unit", "unit"),
+    Column("Here", "here", COMPACT_PRESENT_WIDTH, descending_first=True),
+    Column("Price", "price", PRICE_WIDTH, descending_first=True),
+    Column("Order", "order", STEPPER_WIDTH, descending_first=True),
+]
 from qt_ui.windows.basemenu.UnitTransactionFrame import RowCounts, UnitTransactionFrame
 
 #: The classes a player thinks in, and what falls into each. Order is the order the
@@ -108,6 +115,8 @@ class QArmorRecruitmentMenu(UnitTransactionFrame[GroundUnitType]):
         self.order_summary = OrderSummary(
             "After this order", self.order_figures, self.clear_order
         )
+        self.headers = ColumnHeaders(COLUMNS, current="unit")
+        self.headers.sort_changed.connect(lambda _key: self.rebuild())
 
         self._rows = QVBoxLayout()
         self._rows.setContentsMargins(0, 0, 0, 0)
@@ -117,18 +126,13 @@ class QArmorRecruitmentMenu(UnitTransactionFrame[GroundUnitType]):
         make_transparent(scroll_content)
         scroll_content.setLayout(self._rows)
 
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setWidget(scroll_content)
-        scroll.setFrameShape(QScrollArea.Shape.NoFrame)
-        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        scroll.setStyleSheet("background: transparent; border: none;")
+        scroll = scrolling(scroll_content)
 
         inside = QVBoxLayout()
         inside.setContentsMargins(0, 0, 0, 0)
         inside.setSpacing(0)
         inside.addWidget(self.order_summary)
-        inside.addWidget(_column_headers())
+        inside.addWidget(self.headers)
         inside.addWidget(scroll, 1)
 
         holder = card()
@@ -170,6 +174,29 @@ class QArmorRecruitmentMenu(UnitTransactionFrame[GroundUnitType]):
                 groups.append((name, unit_types))
         return groups
 
+    def in_order(self, unit_types: list[GroundUnitType]) -> list[GroundUnitType]:
+        """Sorted inside its group, because the grouping is what makes it readable.
+
+        Sorting the whole catalogue by price would throw away the classes, which is
+        the half of this list worth keeping.
+        """
+        key = self.headers.current
+        if key == "here":
+            order = lambda u: (  # noqa: E731
+                self.current_quantity_of(u),
+                u.display_name,
+            )
+        elif key == "price":
+            order = lambda u: (self.price_of(u), u.display_name)  # noqa: E731
+        elif key == "order":
+            order = lambda u: (  # noqa: E731
+                self.pending_delivery_quantity(u),
+                u.display_name,
+            )
+        else:
+            order = lambda u: (u.display_name,)  # noqa: E731
+        return sorted(unit_types, key=order, reverse=not self.headers.ascending)
+
     def rebuild(self) -> None:
         """Redraw the list. The order survives, because it lives on the game."""
         while self._rows.count():
@@ -194,7 +221,7 @@ class QArmorRecruitmentMenu(UnitTransactionFrame[GroundUnitType]):
             # filter button already says which one it is.
             if len(groups) > 1:
                 self._rows.addWidget(group_header(name, len(unit_types)))
-            for unit_type in unit_types:
+            for unit_type in self.in_order(unit_types):
                 self._rows.addWidget(self.add_styled_row(unit_type, compact=True))
         self._rows.addStretch()
 
@@ -281,36 +308,3 @@ def _nothing(text: str) -> QWidget:
         " border: none; padding: 14px;"
     )
     return label
-
-
-def _column_headers() -> QWidget:
-    """The four words above the rows, at the widths the rows lay themselves out to."""
-
-    def header(text: str, width: Optional[int] = None) -> QLabel:
-        label = QLabel(text.upper())
-        label.setStyleSheet(
-            "font-size: 10px; font-weight: bold; letter-spacing: 1px;"
-            f" color: {CAPTION}; background: transparent; border: none;"
-        )
-        if width is not None:
-            label.setFixedWidth(width)
-        return label
-
-    line = QHBoxLayout()
-    line.setContentsMargins(14, 0, 14, 0)
-    line.setSpacing(10)
-    line.addWidget(header("Unit"), 1)
-    line.addWidget(header("Here", COMPACT_PRESENT_WIDTH))
-    line.addWidget(header("Price", PRICE_WIDTH))
-    line.addWidget(header("Order"))
-
-    row = QWidget()
-    row.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
-    row.setObjectName("armourListHeaders")
-    row.setFixedHeight(22)
-    row.setStyleSheet(
-        f"#armourListHeaders {{ background: {CARD_BG}; border: none;"
-        f" border-bottom: 1px solid {CARD_BORDER}; }}"
-    )
-    row.setLayout(line)
-    return row

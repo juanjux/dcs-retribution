@@ -355,47 +355,142 @@ class BaseHeader(QWidget):
         return column
 
     def status_pills(self) -> list[QLabel]:
-        """Runway, ammunition and industry: the three things checked before a strike."""
-        pills: list[QLabel] = []
-        status = self.cp.runway_status
-        if status is not None:
-            if status.damaged and status.repair_turns_remaining is not None:
-                pills.append(
-                    chip(
-                        f"Runway damaged · repairs in {status.repair_turns_remaining}",
-                        PENDING,
-                    )
-                )
-            elif status.damaged:
-                pills.append(chip("Runway damaged", BAD))
-            else:
-                pills.append(chip("Runway operational", GOOD))
+        """Where it flies from, its ammunition and its industry.
 
-        depots = self._ammo_depots()
-        if depots is not None:
-            alive, total = depots
-            pills.append(
-                chip(
-                    f"Ammo depots {alive}/{total}",
-                    GOOD if alive == total else PENDING,
+        Every pill is always here, including the ones that say no: a base with no
+        depots looked exactly like a base whose depots the window had forgotten to
+        mention, and the three of them are what a player checks before fragging.
+        """
+        pills = [self._surface_pill(), self._depots_pill(), self._factory_pill()]
+        return [pill for pill in pills if pill is not None]
+
+    def _surface_pill(self) -> Optional[QLabel]:
+        """The runway, or the helipads, depending on what the base actually has.
+
+        A FARP reports a runway status because every control point does, but it has
+        no runway: nothing can crater it and nothing repairs it, so saying "runway
+        operational" there says nothing and invites the player to believe a Hornet
+        could use it.
+        """
+        if not self.cp.runway_is_destroyable:
+            pads = self.cp.total_aircraft_parking(ParkingType(rotary_wing=True))
+            if not pads:
+                return None
+            pill = chip(f"{pads} helipad{'' if pads == 1 else 's'}", GOOD)
+            pill.setToolTip(
+                wrapped_tooltip(
+                    "Helicopters and anything that can land vertically. There is no "
+                    "runway here, so nothing can crater it and nothing needs "
+                    "repairing."
                 )
             )
+            return pill
 
-        if self._has_factory():
-            pills.append(chip("Factory producing", GOOD))
-        return pills
-
-    def _ammo_depots(self) -> Optional[tuple[int, int]]:
-        depots = [go for go in self.cp.connected_objectives if go.category == "ammo"]
-        if not depots:
+        status = self.cp.runway_status
+        if status is None:
             return None
-        return sum(1 for go in depots if not go.is_dead), len(depots)
+        if status.damaged and status.repair_turns_remaining is not None:
+            pill = chip(
+                f"Runway damaged · repairs in {status.repair_turns_remaining}", PENDING
+            )
+        elif status.damaged:
+            pill = chip("Runway damaged", BAD)
+        else:
+            pill = chip("Runway operational", GOOD)
+        if status.damaged:
+            pill.setToolTip(
+                wrapped_tooltip(
+                    "Nothing takes off or lands here while the runway is cratered. "
+                    "Helicopters and anything with a ground start are unaffected."
+                )
+            )
+        return pill
+
+    def _depots_pill(self) -> QLabel:
+        """How many units the front can be fed from here, and by what.
+
+        The figure alone is meaningless without the arithmetic behind it, which is
+        why it carries it: each live depot is worth twelve more units at the front.
+        """
+        alive, total = self._ammo_depots()
+        if not total:
+            pill = chip("No ammo depots", QUIET)
+        elif alive == total:
+            pill = chip(f"Ammo depots {alive}/{total}", GOOD)
+        elif alive:
+            pill = chip(f"Ammo depots {alive}/{total} · low", PENDING)
+        else:
+            pill = chip(f"Ammo depots 0/{total}", BAD)
+
+        pill.setToolTip(wrapped_tooltip(self.deployable_explained(alive, total)))
+        return pill
+
+    def deployable_explained(self, alive: int, total: int) -> str:
+        """Where the front-line limit comes from, in the terms that set it.
+
+        The campaign has a ceiling of its own, and above it the depots stop counting.
+        Reciting the arithmetic there would be quoting a sum that does not equal the
+        figure beside it, so the cap says so instead.
+        """
+        limit = self.cp.frontline_unit_count_limit
+        depots = f"{alive} live depot{'' if alive == 1 else 's'}"
+        supplied = (
+            FREE_FRONTLINE_UNIT_SUPPLY + AMMO_DEPOT_FRONTLINE_UNIT_CONTRIBUTION * alive
+        )
+
+        if supplied > limit:
+            return (
+                f"{limit} units can be deployed to the front from here, which is the "
+                "campaign's own ceiling. The base and its "
+                f"{depots} would otherwise supply {supplied}, so another depot would "
+                "buy nothing."
+            )
+
+        text = (
+            f"{limit} units can be deployed to the front from here: "
+            f"{FREE_FRONTLINE_UNIT_SUPPLY} for the base itself and "
+            f"{AMMO_DEPOT_FRONTLINE_UNIT_CONTRIBUTION} for each of its {depots}."
+        )
+        if alive < total:
+            repaired = self.cp.front_line_capacity_with(total)
+            if repaired > limit:
+                text += (
+                    f" Repairing the other {total - alive} would take that to "
+                    f"{repaired}."
+                )
+        return text
+
+    def _factory_pill(self) -> QLabel:
+        if self._has_factory():
+            pill = chip("Factory producing", GOOD)
+            pill.setToolTip(
+                wrapped_tooltip(
+                    "Ground units can be bought here. They are built by the factory "
+                    "and arrive next turn by convoy."
+                )
+            )
+        else:
+            pill = chip("No factory", QUIET)
+            pill.setToolTip(
+                wrapped_tooltip(
+                    "Ground units cannot be bought here: that needs a working "
+                    "factory connected to the base. They can still be transferred "
+                    "in from a base that has one."
+                )
+            )
+        return pill
+
+    def _ammo_depots(self) -> tuple[int, int]:
+        """Alive and total, counted the way the front-line limit counts them.
+
+        The limit is driven by the warehouses inside the objectives rather than by
+        the objectives themselves, and one objective can hold several. Counting the
+        objectives here gave a figure whose own tooltip could not add up.
+        """
+        return self.cp.active_ammo_depots_count, self.cp.total_ammo_depots_count
 
     def _has_factory(self) -> bool:
-        return any(
-            go.category == "factory" and not go.is_dead
-            for go in self.cp.connected_objectives
-        )
+        return self.cp.has_factory
 
     def _comms(self) -> Optional[QWidget]:
         """Radio, TACAN, ICLS and Link 4, one row each, and only the ones it has.
