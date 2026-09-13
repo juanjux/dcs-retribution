@@ -504,6 +504,8 @@ export type Waypoint = {
   can_delete: boolean;
   speed_kts: number;
   is_target: boolean;
+  target_id?: string | null;
+  shows_altitude: boolean;
 };
 export type Flight = {
   id: string;

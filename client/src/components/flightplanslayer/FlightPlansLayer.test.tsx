@@ -4,6 +4,7 @@ import { PropsWithChildren } from "react";
 
 const mockPolyline = jest.fn();
 const mockLayerGroup = jest.fn();
+const mockMarker = jest.fn();
 jest.mock("react-leaflet", () => ({
   LayerGroup: (props: PropsWithChildren<any>) => {
     mockLayerGroup(props);
@@ -12,14 +13,20 @@ jest.mock("react-leaflet", () => ({
   Polyline: (props: any) => {
     mockPolyline(props);
   },
-  // The route reads the map to work out which leg an alt-click landed on. Only the
-  // projection is needed, and only on a click, which no test here makes.
+  // The route reads the map to work out which leg an alt-click landed on, and the
+  // leg labels read it to decide which side of the line to sit on. Only the
+  // projection is needed; no test here clicks or zooms.
   useMap: () => ({
     latLngToLayerPoint: ({ lat, lng }: { lat: number; lng: number }) => ({
       x: lng,
       y: lat,
     }),
   }),
+  useMapEvent: () => undefined,
+  Marker: (props: any) => {
+    mockMarker(props);
+    return null;
+  },
 }));
 
 // The waypoints in test data below should all use `should_make: false`. Markers
@@ -49,6 +56,7 @@ describe("FlightPlansLayer", () => {
                     should_mark: false,
                     include_in_path: true,
                     is_target: false,
+                    shows_altitude: true,
                     timing: "",
                     index: 0,
                     can_delete: false,
@@ -66,6 +74,7 @@ describe("FlightPlansLayer", () => {
                     should_mark: false,
                     include_in_path: true,
                     is_target: false,
+                    shows_altitude: true,
                     timing: "",
                     index: 0,
                     can_delete: false,
@@ -90,6 +99,7 @@ describe("FlightPlansLayer", () => {
                     should_mark: false,
                     include_in_path: true,
                     is_target: false,
+                    shows_altitude: true,
                     timing: "",
                     index: 0,
                     can_delete: false,
@@ -107,6 +117,7 @@ describe("FlightPlansLayer", () => {
                     should_mark: false,
                     include_in_path: true,
                     is_target: false,
+                    shows_altitude: true,
                     timing: "",
                     index: 0,
                     can_delete: false,
@@ -149,6 +160,7 @@ describe("FlightPlansLayer", () => {
                     should_mark: false,
                     include_in_path: true,
                     is_target: false,
+                    shows_altitude: true,
                     timing: "",
                     index: 0,
                     can_delete: false,
@@ -166,6 +178,7 @@ describe("FlightPlansLayer", () => {
                     should_mark: false,
                     include_in_path: true,
                     is_target: false,
+                    shows_altitude: true,
                     timing: "",
                     index: 0,
                     can_delete: false,
@@ -190,6 +203,7 @@ describe("FlightPlansLayer", () => {
                     should_mark: false,
                     include_in_path: true,
                     is_target: false,
+                    shows_altitude: true,
                     timing: "",
                     index: 0,
                     can_delete: false,
@@ -207,6 +221,7 @@ describe("FlightPlansLayer", () => {
                     should_mark: false,
                     include_in_path: true,
                     is_target: false,
+                    shows_altitude: true,
                     timing: "",
                     index: 0,
                     can_delete: false,
@@ -244,6 +259,7 @@ describe("FlightPlansLayer", () => {
                     should_mark: false,
                     include_in_path: true,
                     is_target: false,
+                    shows_altitude: true,
                     timing: "",
                     index: 0,
                     can_delete: false,
@@ -261,6 +277,7 @@ describe("FlightPlansLayer", () => {
                     should_mark: false,
                     include_in_path: true,
                     is_target: false,
+                    shows_altitude: true,
                     timing: "",
                     index: 0,
                     can_delete: false,
@@ -300,6 +317,7 @@ describe("FlightPlansLayer", () => {
                     should_mark: false,
                     include_in_path: true,
                     is_target: false,
+                    shows_altitude: true,
                     timing: "",
                     index: 0,
                     can_delete: false,
@@ -317,6 +335,7 @@ describe("FlightPlansLayer", () => {
                     should_mark: false,
                     include_in_path: true,
                     is_target: false,
+                    shows_altitude: true,
                     timing: "",
                     index: 0,
                     can_delete: false,
@@ -341,6 +360,7 @@ describe("FlightPlansLayer", () => {
                     should_mark: false,
                     include_in_path: true,
                     is_target: false,
+                    shows_altitude: true,
                     timing: "",
                     index: 0,
                     can_delete: false,
@@ -358,6 +378,7 @@ describe("FlightPlansLayer", () => {
                     should_mark: false,
                     include_in_path: true,
                     is_target: false,
+                    shows_altitude: true,
                     timing: "",
                     index: 0,
                     can_delete: false,
@@ -395,6 +416,7 @@ describe("FlightPlansLayer", () => {
                     should_mark: false,
                     include_in_path: true,
                     is_target: false,
+                    shows_altitude: true,
                     timing: "",
                     index: 0,
                     can_delete: false,
@@ -412,6 +434,7 @@ describe("FlightPlansLayer", () => {
                     should_mark: false,
                     include_in_path: true,
                     is_target: false,
+                    shows_altitude: true,
                     timing: "",
                     index: 0,
                     can_delete: false,
@@ -449,6 +472,7 @@ describe("FlightPlansLayer", () => {
                     should_mark: false,
                     include_in_path: true,
                     is_target: false,
+                    shows_altitude: true,
                     timing: "",
                     index: 0,
                     can_delete: false,
@@ -466,6 +490,7 @@ describe("FlightPlansLayer", () => {
                     should_mark: false,
                     include_in_path: true,
                     is_target: false,
+                    shows_altitude: true,
                     timing: "",
                     index: 0,
                     can_delete: false,

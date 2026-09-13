@@ -39,6 +39,7 @@ function useNudgedOnScreen(at: { x: number; y: number }) {
 interface MenuProps {
   target: WaypointTarget;
   onOpenDialog: () => void;
+  onOpenTarget: () => void;
   onRename: () => void;
   onClose: () => void;
   onError: (message: string) => void;
@@ -92,6 +93,26 @@ export function WaypointMenu(props: MenuProps) {
     }
   };
 
+  // A target is what the package was fragged against. Renaming it, dropping it or
+  // threading a nav point through the attack run would each say the mission changed
+  // when it has not, so the menu offers the objective and nothing else.
+  if (waypoint.is_target) {
+    return createPortal(
+      <div className="wp-menu" ref={ref} style={style}>
+        <div className="wp-menu-title">{waypoint.name}</div>
+        <button onClick={props.onOpenTarget} disabled={!waypoint.target_id}>
+          Objective…
+        </button>
+        <div className="wp-menu-note">
+          {waypoint.is_movable
+            ? "Dragging the mark moves where this flight hunts."
+            : "The target is fixed: plan a different package to attack elsewhere."}
+        </div>
+      </div>,
+      document.body,
+    );
+  }
+
   return createPortal(
     <div className="wp-menu" ref={ref} style={style}>
       <div className="wp-menu-title">{waypoint.name}</div>
@@ -129,7 +150,9 @@ export function WaypointDialog(props: DialogProps) {
   const [editWaypoint] = useEditWaypointMutation();
   const { ref, style } = useNudgedOnScreen(props.target.at);
   const [name, setName] = useState(waypoint.name);
-  const [altitude, setAltitude] = useState(String(Math.round(waypoint.altitude_ft)));
+  const [altitude, setAltitude] = useState(
+    String(Math.round(waypoint.altitude_ft)),
+  );
   const [reference, setReference] = useState(waypoint.altitude_reference);
 
   useEffect(() => {
@@ -202,7 +225,9 @@ export function WaypointDialog(props: DialogProps) {
         <label>Speed</label>
         {/* The plan's, not the waypoint's: there is nothing per-waypoint to set. */}
         <span className="wp-readonly">
-          {waypoint.speed_kts > 0 ? `${Math.round(waypoint.speed_kts)} kt` : "—"}
+          {waypoint.speed_kts > 0
+            ? `${Math.round(waypoint.speed_kts)} kt`
+            : "—"}
         </span>
       </div>
       <div className="wp-actions">

@@ -1,7 +1,7 @@
 ﻿# Retribution v1.6.3 (414th)
 
 ## Features/Improvements
-* **[UI]** A flight plan is no longer drawn through its target: the target waypoints are marked in red and the route runs from the ingress to the next navigation point.
+* **[UI]** A flight plan is no longer drawn through its target: the target waypoints are marked in red, a dashed red run joins the ingress to each of them, the route carries on to the next navigation point, and every leg is labelled with its length in nautical miles. Double-clicking a target opens the objective.
 * **[UI]** An enemy base reports its air defences -- how many sites and of what kind -- alongside its aircraft and ground units, its known units are grouped by class, and a convoy leaving this turn is shown on the intel tab as well as its own.
 * **[UI]** Buying ground units: the catalogue is grouped by class with a filter row and an "Owned" view, the front-line stance names the enemy it is about and shows the unit balance, and a card lists what is deployed at the base.
 * **[UI]** Buying aircraft: each squadron's row carries its silhouette, task and name, with what is present, its cap, what is on order and what is idle as figures, and a row pinned above the list says what the order leaves you with.

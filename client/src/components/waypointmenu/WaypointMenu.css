@@ -148,3 +148,13 @@
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
   cursor: pointer;
 }
+
+/* Why the menu is as short as it is, rather than leaving the reader to wonder where
+   the other four items went. */
+.wp-menu-note {
+  max-width: 210px;
+  padding: 4px 8px 2px;
+  font-size: 10.5px;
+  line-height: 1.3;
+  color: #8fa3bd;
+}

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 from typing import Any, cast
+from uuid import uuid4
 
 import pytest
 
@@ -48,13 +49,21 @@ class _Plan:
         raise ValueError("no opinion")
 
 
-def _view(kind: FlightWaypointType) -> FlightWaypointJs:
+def _view(
+    kind: FlightWaypointType,
+    flight_type: Any = None,
+    target: Any = None,
+) -> FlightWaypointJs:
+    from game.ato.flighttype import FlightType
+
     waypoint = _waypoint(kind)
     flight = cast(
         Any,
         SimpleNamespace(
             flight_plan=_Plan([waypoint]),
             departure=SimpleNamespace(position=SimpleNamespace(x=0.0, y=0.0)),
+            flight_type=flight_type or FlightType.STRIKE,
+            package=SimpleNamespace(target=target or SimpleNamespace()),
         ),
     )
     # Index 1 so the timing lookup takes the waypoint path rather than the takeoff one.
@@ -106,3 +115,94 @@ def test_takeoff_is_drawn_through_but_not_marked() -> None:
     assert not view.is_target
     assert not view.should_mark
     assert view.include_in_path
+
+
+@pytest.mark.parametrize(
+    "kind",
+    [
+        FlightWaypointType.TARGET_POINT,
+        FlightWaypointType.TARGET_GROUP_LOC,
+        FlightWaypointType.TARGET_SHIP,
+    ],
+)
+def test_a_target_cannot_be_renamed_deleted_or_dragged(
+    kind: FlightWaypointType,
+) -> None:
+    """It is what the package was fragged against, and the plan is not a sketch."""
+    view = _view(kind)
+    assert not view.can_delete
+    assert not view.is_movable
+
+
+def test_an_armed_recon_target_can_be_dragged_because_it_moves_the_search() -> None:
+    """Armed recon hunts inside a circle centred on this waypoint, so the drag lands."""
+    from game.ato.flighttype import FlightType
+
+    view = _view(
+        FlightWaypointType.TARGET_GROUP_LOC, flight_type=FlightType.ARMED_RECON
+    )
+    assert view.is_movable
+
+
+def test_armed_recon_against_a_motorpool_cannot_be_dragged() -> None:
+    """The circle is pinned to the garage there, so the drag would move the flyover
+    point and leave the hunt where it was -- half an effect, which is worse than
+    none."""
+    from game.ato.flighttype import FlightType
+    from game.theater.theatergroundobject import MotorpoolGroundObject
+
+    motorpool = cast(Any, object.__new__(MotorpoolGroundObject))
+    motorpool.id = uuid4()
+    view = _view(
+        FlightWaypointType.TARGET_GROUP_LOC,
+        flight_type=FlightType.ARMED_RECON,
+        target=motorpool,
+    )
+    assert not view.is_movable
+
+
+def test_a_target_names_the_objective_it_belongs_to() -> None:
+    """So the mark can open what is down there instead of a waypoint editor."""
+    from game.theater.theatergroundobject import SamGroundObject
+
+    objective = cast(Any, object.__new__(SamGroundObject))
+    objective.id = uuid4()
+    view = _view(FlightWaypointType.TARGET_POINT, target=objective)
+    assert view.target_id == objective.id
+
+
+def test_a_target_that_is_not_a_ground_object_names_nothing() -> None:
+    """A convoy or a front line has no dialog to open, so the menu says so instead
+    of offering a button that would do nothing."""
+    view = _view(FlightWaypointType.TARGET_GROUP_LOC)
+    assert view.target_id is None
+
+
+@pytest.mark.parametrize(
+    "kind",
+    [
+        FlightWaypointType.TARGET_POINT,
+        FlightWaypointType.TAKEOFF,
+        FlightWaypointType.LANDING_POINT,
+        FlightWaypointType.DROPOFF_ZONE,
+        FlightWaypointType.PICKUP_ZONE,
+    ],
+)
+def test_an_altitude_that_is_the_ground_is_not_reported(
+    kind: FlightWaypointType,
+) -> None:
+    """ "0 ft RADIO" on a target reads as a setting; it is the terrain."""
+    assert not _view(kind).shows_altitude
+
+
+@pytest.mark.parametrize(
+    "kind",
+    [
+        FlightWaypointType.NAV,
+        FlightWaypointType.INGRESS_STRIKE,
+        FlightWaypointType.PATROL,
+        FlightWaypointType.JOIN,
+    ],
+)
+def test_an_altitude_the_flight_flies_at_is(kind: FlightWaypointType) -> None:
+    assert _view(kind).shows_altitude
