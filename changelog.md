@@ -1,6 +1,7 @@
 ﻿# Retribution v1.6.3 (414th)
 
 ## Features/Improvements
+* **[UI]** Base menu: the buy lists sort by any column and their headings line up with the figures, a squadron opens from anywhere on its row, a base states what it has no ammunition or factory rather than going quiet, a FARP counts its helipads instead of claiming a runway, and the ammunition and factory pills explain what they do.
 * **[UI]** A flight plan is no longer drawn through its target: the target waypoints are marked in red and the route runs from the ingress to the next navigation point.
 * **[UI]** An enemy base reports its air defences -- how many sites and of what kind -- alongside its aircraft and ground units, its known units are grouped by class, and a convoy leaving this turn is shown on the intel tab as well as its own.
 * **[UI]** Buying ground units: the catalogue is grouped by class with a filter row and an "Owned" view, the front-line stance names the enemy it is about and shows the unit balance, and a card lists what is deployed at the base.

@@ -208,6 +208,39 @@ def on_click(button: QPushButton, handler: Callable[[], None]) -> QPushButton:
     return button
 
 
+#: The app-wide QPushButton is a light grey gradient with white text on it, which is
+#: hard to read anywhere and unreadable on a dark panel. These are the same three
+#: meanings in the palette the rest of these controls use.
+BUTTON_KINDS = {
+    "normal": (IDLE_BG, BORDER, VALUE, "#31424F"),
+    "primary": ("#2B506D", "#3F6B8C", "#DCE9F4", "#34617F"),
+    "danger": ("#4A2A2A", "#6E3B3B", "#E8C5C5", "#5C3434"),
+}
+
+
+def button(
+    text: str,
+    kind: str = "normal",
+    handler: Optional[Callable[[], None]] = None,
+) -> QPushButton:
+    """A button in the window's own palette rather than the app's grey gradient."""
+    background, border, ink, hover = BUTTON_KINDS[kind]
+    widget = QPushButton(text)
+    widget.setCursor(Qt.CursorShape.PointingHandCursor)
+    widget.setMinimumHeight(CONTROL_HEIGHT)
+    widget.setStyleSheet(
+        f"QPushButton {{ background: {background}; color: {ink};"
+        f" border: 1px solid {border}; border-radius: 3px; padding: 4px 14px;"
+        f" font-size: 12px; font-weight: {'600' if kind != 'normal' else 'normal'}; }}"
+        f"QPushButton:hover {{ background: {hover}; }}"
+        f"QPushButton:disabled {{ background: {DISABLED_BG}; color: {DISABLED_TEXT};"
+        f" border-color: {DISABLED_BORDER}; }}"
+    )
+    if handler is not None:
+        on_click(widget, handler)
+    return widget
+
+
 #: Qt lays a plain-text tooltip out on one line per paragraph and lets it run as wide
 #: as it likes, so a paragraph of explanation becomes a band across the whole monitor.
 #: Rich text wraps where it is told to, so the wrapping is done here.
