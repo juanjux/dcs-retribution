@@ -34,6 +34,7 @@ from game.theater import (
     NavalControlPoint,
     ParkingType,
 )
+from game.theater.theatergroundobject import TheaterGroundObject
 from qt_ui.widgets.cards import CAPTION, card, make_transparent
 from qt_ui.widgets.controls import KEY, VALUE, mono, wrapped_tooltip
 
@@ -48,6 +49,9 @@ OWNER_BLUE = "#8FC3F0"
 OWNER_RED = "#D9645E"
 
 BANNER_HEIGHT = 132
+
+#: How many kinds of air defence the figure names before it says "and n more".
+NAMED_DEFENCES = 3
 
 #: Every kind of parking, because a base's figure counts every kind of aircraft.
 EVERY_PARKING = ParkingType(fixed_wing=True, fixed_wing_stol=True, rotary_wing=True)
@@ -231,6 +235,38 @@ def parking_breakdown(cp: ControlPoint) -> Optional[dict[str, dict[str, int]]]:
         "free_big": free_big,
     }
     return result
+
+
+def air_defences(cp: ControlPoint) -> list[TheaterGroundObject]:
+    """The live air-defence sites this base is covered by, strongest first.
+
+    Dead sites are left out: a site whose launchers are gone is not a reason to send
+    SEAD, and counting it would overstate what a strike has to get through.
+    """
+    sites = [
+        objective
+        for objective in cp.connected_objectives
+        if objective.category == "aa" and not objective.is_dead
+    ]
+    return sorted(sites, key=lambda site: (-site.alive_unit_count, site.obj_name))
+
+
+def site_name(site: TheaterGroundObject) -> str:
+    """What the site is, from what is in it: its most numerous live launcher.
+
+    The objective's own name is a code word -- ALBATROSS, PYTHON -- which says where
+    it is on the map but nothing about what it can shoot at you.
+    """
+    counts: dict[str, int] = {}
+    for unit in site.units:
+        # unit.type is the pydcs class; unit_type is the campaign's own model of it,
+        # and the only one of the two with a name meant for a player to read.
+        if unit.alive and unit.unit_type is not None:
+            name = unit.unit_type.display_name
+            counts[name] = counts.get(name, 0) + 1
+    if not counts:
+        return site.obj_name
+    return max(counts.items(), key=lambda pair: pair[1])[0]
 
 
 class BaseHeader(QWidget):
@@ -427,7 +463,41 @@ class FiguresStrip(QWidget):
     def cells(self) -> list[QWidget]:
         if self.cp.captured.is_blue:
             return [self._aircraft(), self._ground(), self._budget()]
-        return [self._aircraft(), self._ground()]
+        # An enemy base's third figure is not money you cannot spend: it is what a
+        # strike on this base would have to get through.
+        return [self._aircraft(), self._ground(), self._air_defence()]
+
+    def _air_defence(self) -> QWidget:
+        sites = air_defences(self.cp)
+        kinds: dict[str, int] = {}
+        for site in sites:
+            name = site_name(site)
+            kinds[name] = kinds.get(name, 0) + 1
+        # The heaviest few, not all sixteen: this is a line under a figure, and the
+        # full list is what the Intel tab is for.
+        ordered = sorted(kinds.items(), key=lambda pair: (-pair[1], pair[0]))
+        shown = ordered[:NAMED_DEFENCES]
+        parts = [name if count == 1 else f"{name} x{count}" for name, count in shown]
+        if len(ordered) > NAMED_DEFENCES:
+            parts.append(f"+{len(ordered) - NAMED_DEFENCES} more")
+
+        cell = figure(
+            str(len(sites)),
+            "Air defence",
+            " · ".join(parts) or "nothing covering this base",
+        )
+        if len(ordered) > NAMED_DEFENCES:
+            cell.setToolTip(
+                wrapped_tooltip(
+                    "Covering this base: "
+                    + ", ".join(
+                        name if count == 1 else f"{name} x{count}"
+                        for name, count in ordered
+                    )
+                    + ". The Intel tab lists them in full."
+                )
+            )
+        return cell
 
     def _aircraft(self) -> QWidget:
         allocation = self.cp.allocated_aircraft(EVERY_PARKING)

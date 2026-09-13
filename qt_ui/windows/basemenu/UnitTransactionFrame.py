@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
 from enum import Enum
 from typing import Callable, Generic, Optional, TypeVar
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QMouseEvent
+from PySide6.QtGui import QMouseEvent, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
     QFrame,
@@ -19,10 +20,18 @@ from PySide6.QtWidgets import (
     QSizePolicy,
     QSpacerItem,
     QVBoxLayout,
+    QWidget,
 )
 
 from game.purchaseadapter import PurchaseAdapter, TransactionError
 from qt_ui.models import GameModel
+from qt_ui.widgets.controls import BORDER as BORDER_INK, mono
+from qt_ui.windows.basemenu.buylist import (
+    AMBER as ORDERED_INK,
+    OrderSummary,
+    PurchaseRow,
+    QUIET as QUIET_INK,
+)
 from qt_ui.windows.GameUpdateSignal import GameUpdateSignal
 from qt_ui.windows.QUnitInfoWindow import QUnitInfoWindow
 
@@ -52,31 +61,48 @@ class ClickableLabel(QLabel):
 TransactionItemType = TypeVar("TransactionItemType")
 
 
+@dataclass(frozen=True)
+class RowCounts:
+    """What a buy row says you have: here now, the cap, on order, and free to fly."""
+
+    present: int
+    capacity: Optional[int]
+    pending: int
+    idle: Optional[int]
+
+
 class PurchaseGroup(QGroupBox, Generic[TransactionItemType]):
     def __init__(
         self,
         item: TransactionItemType,
         recruiter: UnitTransactionFrame[TransactionItemType],
+        stepper: bool = False,
     ) -> None:
         super().__init__()
         self.item = item
         self.recruiter = recruiter
+        self.stepper = stepper
 
-        self.setProperty("style", "buy-box")
-        self.setMaximumHeight(72)
-        self.setMinimumHeight(36)
+        if not stepper:
+            self.setProperty("style", "buy-box")
+            self.setMaximumHeight(72)
+            self.setMinimumHeight(36)
+        else:
+            # Flat inside a buy row: the row already carries the frame, and a box
+            # around three buttons inside a boxed row is two frames deep.
+            self.setFlat(True)
+            self.setStyleSheet("QGroupBox { border: none; margin: 0; padding: 0; }")
         layout = QHBoxLayout()
+        if stepper:
+            layout.setContentsMargins(0, 0, 0, 0)
+            layout.setSpacing(0)
         self.setLayout(layout)
 
-        self.sell_button = QPushButton("-")
+        self.sell_button = QPushButton("-" if not stepper else "\u2212")
         self.sell_button.setProperty("style", "btn-sell")
         self.sell_button.setDisabled(not recruiter.enable_sale(item))
         self.sell_button.setVisible(recruiter.enable_sale(item))
-        self.sell_button.setMinimumSize(16, 16)
-        self.sell_button.setMaximumSize(16, 16)
-        self.sell_button.setSizePolicy(
-            QSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
-        )
+        self._size(self.sell_button, 28 if stepper else 16)
 
         self.sell_button.clicked.connect(
             lambda: self.recruiter.recruit_handler(RecruitType.SELL, self.item)
@@ -86,18 +112,18 @@ class PurchaseGroup(QGroupBox, Generic[TransactionItemType]):
         self.amount_bought.setSizePolicy(
             QSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         )
+        if stepper:
+            self.amount_bought.setFixedSize(40, 28)
+            self.amount_bought.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.amount_bought.setFont(mono(13))
 
         self.buy_button = QPushButton("+")
         self.buy_button.setProperty("style", "btn-buy")
         self.buy_button.setDisabled(not recruiter.enable_purchase(item))
-        self.buy_button.setMinimumSize(16, 16)
-        self.buy_button.setMaximumSize(16, 16)
+        self._size(self.buy_button, 28 if stepper else 16)
 
         self.buy_button.clicked.connect(
             lambda: self.recruiter.recruit_handler(RecruitType.BUY, self.item)
-        )
-        self.buy_button.setSizePolicy(
-            QSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         )
 
         layout.addWidget(self.sell_button)
@@ -105,6 +131,14 @@ class PurchaseGroup(QGroupBox, Generic[TransactionItemType]):
         layout.addWidget(self.buy_button)
 
         self.update_state()
+
+    @staticmethod
+    def _size(button: QPushButton, side: int) -> None:
+        button.setMinimumSize(side, side)
+        button.setMaximumSize(side, side)
+        button.setSizePolicy(
+            QSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        )
 
     @property
     def pending_units(self) -> int:
@@ -121,6 +155,14 @@ class PurchaseGroup(QGroupBox, Generic[TransactionItemType]):
             self.recruiter.sell_tooltip(self.sell_button.isEnabled())
         )
         self.amount_bought.setText(f"<b>{self.pending_units}</b>")
+        if self.stepper:
+            colour = ORDERED_INK if self.pending_units else QUIET_INK
+            self.amount_bought.setStyleSheet(
+                f"color: {colour}; background: #14202B;"
+                f" border-top: 1px solid {colour if self.pending_units else BORDER_INK};"
+                f" border-bottom: 1px solid"
+                f" {colour if self.pending_units else BORDER_INK};"
+            )
 
 
 class UnitTransactionFrame(QFrame, Generic[TransactionItemType]):
@@ -138,6 +180,8 @@ class UnitTransactionFrame(QFrame, Generic[TransactionItemType]):
         self.purchase_groups: dict[
             TransactionItemType, PurchaseGroup[TransactionItemType]
         ] = {}
+        self.styled_rows: dict[TransactionItemType, PurchaseRow] = {}
+        self.order_summary: Optional[OrderSummary] = None
         self.game_model.transfer_model.inventory_changed.connect(
             self.post_transaction_update
         )
@@ -187,6 +231,56 @@ class UnitTransactionFrame(QFrame, Generic[TransactionItemType]):
     @budget.setter
     def budget(self, value: int) -> None:
         self.game_model.game.blue.budget = value
+
+    # -- what a styled buy row reads -----------------------------------------
+    #
+    # Defaults that describe anything: a subclass overrides only what it can say
+    # better. Nothing here reaches into the item, so the row widget never learns
+    # what a squadron or a unit type is.
+
+    def row_icon(self, item: TransactionItemType) -> Optional[QPixmap]:
+        """The thing's own silhouette, as the Air Wing list paints it."""
+        return None
+
+    def row_title(self, item: TransactionItemType) -> tuple[str, str]:
+        """Its name, and the variant that distinguishes it from its siblings."""
+        return self.display_name_of(item), ""
+
+    def row_chips(self, item: TransactionItemType) -> list[tuple[str, str, str]]:
+        """(text, fill, ink) for each chip beside the name."""
+        return []
+
+    def row_subtitle(self, item: TransactionItemType) -> str:
+        return ""
+
+    def row_warning(self, item: TransactionItemType) -> str:
+        """Why this row cannot take another one, in a few words, or nothing."""
+        if self.enable_purchase(item):
+            return ""
+        return self.purchase_adapter.why_cannot_buy(item)
+
+    def row_counts(self, item: TransactionItemType) -> RowCounts:
+        return RowCounts(
+            present=self.current_quantity_of(item),
+            capacity=None,
+            pending=self.pending_delivery_quantity(item),
+            idle=None,
+        )
+
+    def order_control(self, item: TransactionItemType) -> QWidget:
+        """The stepper, remembered so a transaction anywhere updates every row."""
+        group: PurchaseGroup[TransactionItemType] = PurchaseGroup(
+            item, self, stepper=True
+        )
+        self.purchase_groups[item] = group
+        return group
+
+    def add_styled_row(
+        self, item: TransactionItemType, compact: bool = False
+    ) -> QWidget:
+        row = PurchaseRow(item, self, compact=compact)
+        self.styled_rows[item] = row
+        return row
 
     def add_purchase_row(
         self,
@@ -316,6 +410,10 @@ class UnitTransactionFrame(QFrame, Generic[TransactionItemType]):
     def update_existing_units(self) -> None:
         for item, label in self.existing_units_labels.items():
             label.setText(str(self.current_quantity_of(item)))
+        for row in self.styled_rows.values():
+            row.refresh()
+        if self.order_summary is not None:
+            self.order_summary.refresh()
 
     def buy(self, item: TransactionItemType, quantity: int) -> None:
         try:
