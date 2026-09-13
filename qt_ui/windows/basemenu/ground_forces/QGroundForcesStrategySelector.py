@@ -8,7 +8,7 @@ and picking one does not need the source.
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor, QPixmap
-from PySide6.QtWidgets import QComboBox
+from PySide6.QtWidgets import QComboBox, QSizePolicy
 
 from game.theater import CombatStance, ControlPoint
 
@@ -71,6 +71,13 @@ class QGroundForcesStrategySelector(QComboBox):
                 self.setCurrentIndex(index)
 
         self.setCursor(Qt.CursorShape.PointingHandCursor)
+        # A combo box asks for the width of its longest line, and these are lines.
+        # The popup still shows them in full.
+        self.setSizeAdjustPolicy(
+            QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon
+        )
+        self.setMinimumContentsLength(14)
+        self.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
         self.currentIndexChanged.connect(self.on_change)
 
     def on_change(self) -> None:

@@ -30,7 +30,14 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from qt_ui.widgets.cards import CAPTION, CARD_BG, CARD_BORDER, make_transparent
+from qt_ui.widgets.cards import (
+    CAPTION,
+    CARD_BG,
+    CARD_BORDER,
+    make_transparent,
+    shrinkable,
+    shrinkable_widget,
+)
 from qt_ui.widgets.controls import VALUE, mono
 
 if TYPE_CHECKING:
@@ -194,7 +201,9 @@ class OrderSummary(QWidget):
         row.addWidget(_text(figure.caption, 11, QUIET))
         row.addWidget(_mono(figure.value, 12, AMBER if figure.warn else BRIGHT))
         if figure.note:
-            row.addWidget(_text(figure.note, 11, AMBER if figure.warn else QUIET))
+            row.addWidget(
+                shrinkable(_text(figure.note, 11, AMBER if figure.warn else QUIET))
+            )
 
         holder = QWidget()
         make_transparent(holder)
@@ -416,12 +425,17 @@ class PurchaseRow(QWidget):
         self._subtitle = _text("", 11.5, QUIET)
         if self.compact:
             title.addWidget(self._subtitle)
-            title.addStretch()
-            column.addLayout(title)
-        else:
-            title.addStretch()
-            column.addLayout(title)
-            column.addWidget(self._subtitle)
+        title.addStretch()
+
+        # The pieces keep their own widths and stay packed to the left; it is the box
+        # around them that gives up the demand, so a long squadron name is clipped
+        # rather than deciding how wide the window has to be.
+        packed = QWidget()
+        make_transparent(packed)
+        packed.setLayout(title)
+        column.addWidget(shrinkable_widget(packed))
+        if not self.compact:
+            column.addWidget(shrinkable_widget(self._subtitle))
         return column
 
     def _present(self) -> QWidget:
@@ -493,9 +507,10 @@ class PurchaseRow(QWidget):
         else:
             self._subtitle.setText(subtitle)
             colour = QUIET
-        self._subtitle.setStyleSheet(
+        self.restyle(
+            self._subtitle,
             f"font-size: 11.5px; color: {colour}; background: transparent;"
-            " border: none;"
+            " border: none;",
         )
 
         self._ordered = bool(counts.pending)
@@ -510,8 +525,16 @@ class PurchaseRow(QWidget):
         else:
             background = "transparent"
         bar = AMBER if self._ordered else "transparent"
-        self.setStyleSheet(
+        # Only when it has actually changed: applying a stylesheet re-polishes the
+        # widget and its children, and a purchase repaints every row in the list.
+        self.restyle(
+            self,
             f"#{self.objectName()} {{ background: {background};"
             f" border: none; border-bottom: 1px solid {CARD_BORDER};"
-            f" border-left: 3px solid {bar}; }}"
+            f" border-left: 3px solid {bar}; }}",
         )
+
+    @staticmethod
+    def restyle(widget: QWidget, style: str) -> None:
+        if widget.styleSheet() != style:
+            widget.setStyleSheet(style)

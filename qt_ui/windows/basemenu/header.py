@@ -13,9 +13,10 @@ inferred from which tabs turned up, and the paragraph becomes figures.
 from __future__ import annotations
 
 from copy import deepcopy
-from typing import Optional
+from typing import Any, Optional
 
 from dcs.planes import B_1B
+from PySide6.QtCore import QTimer
 from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (
     QGridLayout,
@@ -35,7 +36,7 @@ from game.theater import (
     ParkingType,
 )
 from game.theater.theatergroundobject import TheaterGroundObject
-from qt_ui.widgets.cards import CAPTION, card, make_transparent
+from qt_ui.widgets.cards import CAPTION, card, make_transparent, shrinkable
 from qt_ui.widgets.controls import KEY, VALUE, mono, wrapped_tooltip
 
 #: The status of a thing that works, does not, or is being seen to.
@@ -100,7 +101,9 @@ def figure(value: str, label: str, note: str = "", warn: bool = False) -> QWidge
         detail.setStyleSheet(
             f"font-size: 11px; color: {QUIET}; background: transparent; border: none;"
         )
-        column.addWidget(detail)
+        # "M48 Chaparral x4 · M6 Linebacker x4 · M163 Vulcan Air Defense System x3"
+        # is a sentence, and a sentence must not decide how wide a window opens.
+        column.addWidget(shrinkable(detail))
 
     holder = QWidget()
     make_transparent(holder)
@@ -121,7 +124,41 @@ def kind_of(cp: ControlPoint) -> str:
     return "AIRBASE"
 
 
+#: The last estimate worked out for each base, against the inputs it was worked out
+#: from. Simulating the placement deep-copies the airport and walks every slot, which
+#: is affordable once and is not affordable on every click: ordering a tank refreshes
+#: the strip, and the strip asks for this.
+_PARKING_CACHE: dict[
+    int, tuple[tuple[Any, ...], Optional[dict[str, dict[str, int]]]]
+] = {}
+
+
+def parking_inputs(cp: ControlPoint) -> tuple[Any, ...]:
+    """Everything the estimate is derived from, so a hit cannot be a stale answer."""
+    squadrons = [
+        (id(squadron), squadron.owned_aircraft, squadron.pending_deliveries)
+        for squadron in cp.coalition.air_wing.iter_squadrons()
+        if squadron.location == cp or squadron.destination == cp
+    ]
+    squadrons.sort()
+    return (
+        tuple(squadrons),
+        cp.coalition.game.settings.ground_start_ai_planes,
+        cp.total_aircraft_parking(EVERY_PARKING),
+    )
+
+
 def parking_breakdown(cp: ControlPoint) -> Optional[dict[str, dict[str, int]]]:
+    inputs = parking_inputs(cp)
+    cached = _PARKING_CACHE.get(id(cp))
+    if cached is not None and cached[0] == inputs:
+        return cached[1]
+    answer = estimate_parking(cp)
+    _PARKING_CACHE[id(cp)] = (inputs, answer)
+    return answer
+
+
+def estimate_parking(cp: ControlPoint) -> Optional[dict[str, dict[str, int]]]:
     """Estimate per-category parking usage by simulating slot allocation.
 
     The data model only tracks aircraft counts, not which slot each one
@@ -461,21 +498,29 @@ class BaseHeader(QWidget):
         return text
 
     def _factory_pill(self) -> QLabel:
+        """Whether this base builds its own ground units or waits for someone else's.
+
+        Not whether it can order them: a base with no factory still can, as long as
+        somewhere friendly has one. What the factory decides is where they are built
+        and how they get here.
+        """
         if self._has_factory():
             pill = chip("Factory producing", GOOD)
             pill.setToolTip(
                 wrapped_tooltip(
-                    "Ground units can be bought here. They are built by the factory "
-                    "and arrive next turn by convoy."
+                    "Ground units ordered here are built here, and are on the base "
+                    "next turn."
                 )
             )
         else:
             pill = chip("No factory", QUIET)
             pill.setToolTip(
                 wrapped_tooltip(
-                    "Ground units cannot be bought here: that needs a working "
-                    "factory connected to the base. They can still be transferred "
-                    "in from a base that has one."
+                    "Ground units can still be ordered here. With no factory of its "
+                    "own, the base is supplied by the nearest friendly base that has "
+                    "one and can reach it, and the units arrive by road -- which "
+                    "takes longer and can be attacked on the way. An order that no "
+                    "factory can reach is not filled at all."
                 )
             )
         return pill
@@ -542,10 +587,22 @@ class FiguresStrip(QWidget):
         outer.setContentsMargins(16, 0, 16, 12)
         outer.addWidget(holder)
         self.setLayout(outer)
-        self.refresh()
+        self._pending = False
+        self.repaint_cells()
 
     def refresh(self) -> None:
-        """Rebuilt rather than updated: a repaired runway changes which cells there are."""
+        """Repaint after the current burst of signals rather than once per signal.
+
+        One purchase emits three -- the motorpool update, the inventory change and the
+        budget -- and each of them used to rebuild these cells in full.
+        """
+        if self._pending:
+            return
+        self._pending = True
+        QTimer.singleShot(0, self.repaint_cells)
+
+    def repaint_cells(self) -> None:
+        self._pending = False
         while self._row.count():
             taken = self._row.takeAt(0)
             widget = taken.widget()
