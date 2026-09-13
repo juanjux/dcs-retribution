@@ -25,6 +25,31 @@ const SELECTED_ICON = new Icon({
   className: "wp-marker-selected",
 });
 
+// The target, in red. The route no longer runs through it, so this mark is the only
+// thing that says where the flight is going -- and a strike with several aim points
+// gets one each, which the single line through them never showed.
+const TARGET_ICON = new Icon({
+  iconUrl: icon,
+  shadowUrl: iconShadow,
+  iconAnchor: [12, 41],
+  className: "wp-marker-target",
+});
+
+const SELECTED_TARGET_ICON = new Icon({
+  iconUrl: icon,
+  shadowUrl: iconShadow,
+  iconAnchor: [12, 41],
+  className: "wp-marker-target wp-marker-selected",
+});
+
+/** Which of the four pins this waypoint gets. */
+function iconFor(isTarget: boolean, selected: boolean): Icon {
+  if (isTarget) {
+    return selected ? SELECTED_TARGET_ICON : TARGET_ICON;
+  }
+  return selected ? SELECTED_ICON : WAYPOINT_ICON;
+}
+
 interface WaypointMarkerProps {
   number: number;
   waypoint: Waypoint;
@@ -73,9 +98,9 @@ const WaypointMarker = (props: WaypointMarkerProps) => {
   useEffect(() => {
     const waypoint = props.waypoint;
     marker.current?.setTooltipContent(
-      `${props.number-1} ${waypoint.name}<br />` +
+      `${props.number - 1} ${waypoint.name}<br />` +
         `${waypoint.altitude_ft.toFixed()} ft ${waypoint.altitude_reference}<br />` +
-        waypoint.timing
+        waypoint.timing,
     );
   });
 
@@ -83,7 +108,7 @@ const WaypointMarker = (props: WaypointMarkerProps) => {
   return (
     <Marker
       position={waypoint.position}
-      icon={props.selected ? SELECTED_ICON : WAYPOINT_ICON}
+      icon={iconFor(waypoint.is_target, props.selected)}
       draggable
       eventHandlers={{
         click: () => props.onSelect(),
@@ -93,12 +118,18 @@ const WaypointMarker = (props: WaypointMarkerProps) => {
           e.originalEvent.preventDefault();
           e.originalEvent.stopPropagation();
           props.onSelect();
-          props.onOpen({ x: e.originalEvent.clientX, y: e.originalEvent.clientY });
+          props.onOpen({
+            x: e.originalEvent.clientX,
+            y: e.originalEvent.clientY,
+          });
         },
         contextmenu: (e) => {
           e.originalEvent.preventDefault();
           props.onSelect();
-          props.onMenu({ x: e.originalEvent.clientX, y: e.originalEvent.clientY });
+          props.onMenu({
+            x: e.originalEvent.clientX,
+            y: e.originalEvent.clientY,
+          });
         },
         dragstart: (e) => {
           const m: LMarker = e.target;
