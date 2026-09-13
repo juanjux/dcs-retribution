@@ -147,14 +147,14 @@ function FlightPlanPath(props: PathProps) {
             // pointer is, on the leg the pointer is over. Without this the only way
             // to bend a route around something was to add a waypoint in the flight
             // editor and then drag it across the map.
-            const leg = legUnderPointer(map, drawn, event);
-            if (leg == null) {
+            const after = legUnderPointer(map, drawn, event);
+            if (after == null) {
               return;
             }
             try {
               await insertWaypoint({
                 flightId: props.flight.id,
-                waypointIdx: leg.index,
+                waypointIdx: after,
                 waypointInsert: {
                   before: false,
                   position: { lat: event.latlng.lat, lng: event.latlng.lng },
@@ -195,8 +195,12 @@ const WaypointMarkers = (props: MarkersProps) => {
           flight={props.flight}
           selected={props.selectedWaypoint === p.index}
           onSelect={() => props.onSelect(p.index)}
-          onOpen={(at) => props.onOpen({ flight: props.flight, waypoint: p, at })}
-          onMenu={(at) => props.onMenu({ flight: props.flight, waypoint: p, at })}
+          onOpen={(at) =>
+            props.onOpen({ flight: props.flight, waypoint: p, at })
+          }
+          onMenu={(at) =>
+            props.onMenu({ flight: props.flight, waypoint: p, at })
+          }
         />,
       );
     }
@@ -254,19 +258,27 @@ function refusalFrom(error: unknown): string {
   return typeof detail === "string" ? detail : "The server refused that.";
 }
 
-/** The waypoint whose leg the pointer is over, or null if the route has none. */
-function legUnderPointer(
+/**
+ * Where a new nav point goes for an alt-click at this spot, or null if the route has
+ * no leg to put one in.
+ *
+ * The answer is an index in the full route, not in the drawn one: a leg can span
+ * waypoints that are not drawn -- the targets between an ingress and a split -- and
+ * the new point belongs after the last of them, so the attack run is left alone and
+ * it is the leg you can see that bends.
+ */
+export function legUnderPointer(
   map: ReturnType<typeof useMap>,
   drawn: Waypoint[],
   event: LeafletMouseEvent,
-): Waypoint | null {
+): number | null {
   if (drawn.length < 2) {
     return null;
   }
   // In screen space, so "nearest" means nearest to look at rather than nearest in
   // degrees, which near the poles is not the same thing.
   const pointer = map.latLngToLayerPoint(event.latlng);
-  let best: Waypoint | null = null;
+  let best: number | null = null;
   let bestDistance = Infinity;
   for (let i = 0; i < drawn.length - 1; i++) {
     const from = map.latLngToLayerPoint(drawn[i].position);
@@ -274,7 +286,7 @@ function legUnderPointer(
     const distance = LineUtil.pointToSegmentDistance(pointer, from, to);
     if (distance < bestDistance) {
       bestDistance = distance;
-      best = drawn[i];
+      best = drawn[i + 1].index - 1;
     }
   }
   return best;
@@ -302,7 +314,10 @@ export default function FlightPlan(props: FlightPlanProps) {
         return;
       }
       const target = document.activeElement;
-      if (target instanceof HTMLInputElement || target instanceof HTMLSelectElement) {
+      if (
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLSelectElement
+      ) {
         return;
       }
       const waypoint = props.flight.waypoints?.find(
@@ -379,7 +394,9 @@ export default function FlightPlan(props: FlightPlanProps) {
           onError={setError}
         />
       )}
-      {error && <WaypointError message={error} onClose={() => setError(null)} />}
+      {error && (
+        <WaypointError message={error} onClose={() => setError(null)} />
+      )}
     </>
   );
 }

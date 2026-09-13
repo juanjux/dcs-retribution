@@ -6,6 +6,16 @@ from game.ato import Flight, FlightWaypoint
 from game.ato.flightwaypointtype import FlightWaypointType
 from game.server.leaflet import LeafletPoint
 
+#: What the flight is there for. A target is not somewhere the aircraft flies to and
+#: then leaves from -- it releases at it, from wherever the run takes it -- so drawing
+#: the route through it says something about the plan that is not true, and on a strike
+#: with several aim points it says it several times over.
+TARGET_TYPES = {
+    FlightWaypointType.TARGET_POINT,
+    FlightWaypointType.TARGET_GROUP_LOC,
+    FlightWaypointType.TARGET_SHIP,
+}
+
 
 def timing_info(flight: Flight, waypoint_idx: int) -> str:
     if waypoint_idx == 0:
@@ -69,6 +79,8 @@ class FlightWaypointJs(BaseModel):
     #: What the flight flies the leg into this waypoint at. Computed from the plan --
     #: there is no per-waypoint speed to set -- so the dialog shows it and no more.
     speed_kts: float
+    #: Whether this is what the flight came for. Marked rather than drawn through.
+    is_target: bool
 
     class Config:
         title = "Waypoint"
@@ -113,7 +125,9 @@ class FlightWaypointJs(BaseModel):
             FlightWaypointType.TAKEOFF,
         }
 
-        include_in_path = waypoint.waypoint_type not in {
+        is_target = waypoint.waypoint_type in TARGET_TYPES
+
+        include_in_path = not is_target and waypoint.waypoint_type not in {
             FlightWaypointType.BULLSEYE,
             FlightWaypointType.DIVERT,
         }
@@ -131,4 +145,5 @@ class FlightWaypointJs(BaseModel):
             can_delete=waypoint_idx > 0
             and flight.flight_plan.can_delete_waypoint(waypoint),
             speed_kts=leg_speed(flight, waypoint_idx),
+            is_target=is_target,
         )

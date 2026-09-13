@@ -3,3 +3,16 @@
 .wp-marker-selected {
   filter: drop-shadow(0 0 5px #ffff00) drop-shadow(0 0 2px #ffff00);
 }
+
+/* The target pin, red. Leaflet ships one marker image, so this is the blue one turned
+   round the colour wheel rather than a second file to keep in step with it. */
+.wp-marker-target {
+  filter: hue-rotate(140deg) saturate(1.6);
+}
+
+/* Selected and a target: both, in one filter, because a second rule would replace the
+   first rather than add to it. */
+.wp-marker-target.wp-marker-selected {
+  filter: hue-rotate(140deg) saturate(1.6) drop-shadow(0 0 5px #ffff00)
+    drop-shadow(0 0 2px #ffff00);
+}

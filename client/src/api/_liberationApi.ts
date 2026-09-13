@@ -503,6 +503,7 @@ export type Waypoint = {
   index: number;
   can_delete: boolean;
   speed_kts: number;
+  is_target: boolean;
 };
 export type Flight = {
   id: string;
