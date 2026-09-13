@@ -16,6 +16,7 @@ from typing import Optional
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
+    QSizePolicy,
     QHBoxLayout,
     QLabel,
     QVBoxLayout,
@@ -51,6 +52,29 @@ def make_transparent(widget: QWidget) -> QWidget:
         f"{existing} #{name} {{ background: transparent; border: none; }}"
     )
     return widget
+
+
+def shrinkable_widget(widget: QWidget) -> QWidget:
+    """Let a widget be narrower than its contents want to be.
+
+    A QLabel asks for the full width of whatever it is showing, and a layout has to
+    honour that, so one long squadron name or one long list of SAM types sets the
+    smallest the whole window can be -- and the window then grows itself the moment
+    it is shown. These are things worth reading and not worth a horizontal
+    scrollbar, so they give up the demand and clip instead.
+
+    Ignored also makes a widget expand into whatever room there is, so a row that
+    needs its pieces packed together should wrap them in a box and shrink the box.
+    """
+    widget.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
+    widget.setMinimumWidth(0)
+    return widget
+
+
+def shrinkable(label: QLabel) -> QLabel:
+    """shrinkable_widget, for the common case of a label on its own."""
+    shrinkable_widget(label)
+    return label
 
 
 def card() -> QWidget:
@@ -101,7 +125,7 @@ def caption(text: str, hint: str = "", loud_hint: bool = False) -> QWidget:
             f"font-size: {'11.5' if loud_hint else '11'}px; color: {colour};"
             f" font-weight: {weight}; background: transparent; border: none;"
         )
-        row.addWidget(note)
+        row.addWidget(shrinkable(note), 1)
 
     row.addStretch()
     holder = QWidget()

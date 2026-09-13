@@ -16,7 +16,13 @@ from PySide6.QtWidgets import (
 
 from game.theater import ControlPoint
 from qt_ui.models import GameModel
-from qt_ui.widgets.cards import HINT, caption, carded, make_transparent
+from qt_ui.widgets.cards import (
+    HINT,
+    caption,
+    carded,
+    make_transparent,
+    shrinkable,
+)
 from qt_ui.windows.basemenu.buylist import AMBER, BRIGHT, QUIET
 from qt_ui.windows.basemenu.ground_forces.QArmorRecruitmentMenu import (
     QArmorRecruitmentMenu,
@@ -26,8 +32,11 @@ from qt_ui.windows.basemenu.ground_forces.QGroundForcesStrategy import (
 )
 
 #: The right-hand column holds two cards that do not scroll; the catalogue takes the
-#: rest, because it is the only thing here long enough to need the width.
+#: rest, because it is the only thing here long enough to need the width. A range
+#: rather than a fixed width: pinned at 380 it set the smallest the whole window
+#: could be, and the window grew itself on opening to make room.
 SIDE_WIDTH = 380
+SIDE_MIN_WIDTH = 280
 
 
 def count_chip(count: int, name: str) -> QWidget:
@@ -47,7 +56,7 @@ def count_chip(count: int, name: str) -> QWidget:
     label.setStyleSheet(
         f"font-size: 11.5px; color: {QUIET}; background: transparent; border: none;"
     )
-    row.addWidget(label)
+    row.addWidget(shrinkable(label), 1)
 
     holder = QWidget()
     holder.setObjectName(f"unitChip{id(holder)}")
@@ -81,7 +90,8 @@ class QGroundForcesHQ(QWidget):
 
         side_holder = QWidget()
         make_transparent(side_holder)
-        side_holder.setFixedWidth(SIDE_WIDTH)
+        side_holder.setMinimumWidth(SIDE_MIN_WIDTH)
+        side_holder.setMaximumWidth(SIDE_WIDTH)
         side_holder.setLayout(side)
 
         buying = QVBoxLayout()
@@ -90,7 +100,11 @@ class QGroundForcesHQ(QWidget):
             _section(
                 "Buy ground units",
                 QArmorRecruitmentMenu(cp, game_model),
-                "they arrive next turn by convoy",
+                (
+                    "built here, ready next turn"
+                    if cp.has_factory
+                    else "built at the nearest friendly factory and driven here"
+                ),
             )
         )
 
@@ -151,7 +165,7 @@ class QGroundForcesHQ(QWidget):
                 f"font-size: 11px; color: {AMBER}; background: transparent;"
                 " border: 1px dashed #4A3A28; border-radius: 3px; padding: 3px 8px;"
             )
-            column.addWidget(note)
+            column.addWidget(shrinkable(note))
 
         holder = QWidget()
         make_transparent(holder)

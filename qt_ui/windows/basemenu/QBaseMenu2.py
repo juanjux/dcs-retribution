@@ -39,10 +39,11 @@ from qt_ui.windows.GameUpdateSignal import GameUpdateSignal
 from qt_ui.windows.basemenu.NewUnitTransferDialog import NewUnitTransferDialog
 from qt_ui.windows.basemenu.QBaseMenuTabs import QBaseMenuTabs
 
-#: What it opens at, and the floor it cannot be dragged under: below this the figures
-#: strip wraps and the tabs start scrolling sideways.
+#: What it opens at, and the floor it cannot be dragged under. The floor is raised
+#: per base to whatever that base's own content needs, because a window asked for a
+#: size its layout will not fit into grows itself the moment it is shown.
 DEFAULT_SIZE = QSize(1280, 900)
-MINIMUM_SIZE = QSize(1100, 760)
+MINIMUM_SIZE = QSize(1200, 760)
 
 
 class QBaseMenu2(QDialog):
@@ -94,13 +95,17 @@ class QBaseMenu2(QDialog):
         main_layout.addLayout(self._footer())
         self.setLayout(main_layout)
 
-        # Sized once, at the end, and never twice: it was resized to the default and
-        # then again to the remembered geometry, and the window danced its way open.
-        # It was pinned to exactly 1024 wide before that, so a wide monitor bought
-        # nothing and the lists scrolled instead of widening.
-        self.setMinimumSize(MINIMUM_SIZE)
-        if not self._restore_geometry():
-            self.resize(DEFAULT_SIZE)
+        # Sized once, at the end, to something the layout will accept. Asking for a
+        # size the content will not fit into means Qt grows the window again the
+        # moment it is shown, which is the window dancing its way open; and the
+        # content can demand a surprising amount, so the floor is what was asked for
+        # or what the layout needs, whichever is larger.
+        floor = MINIMUM_SIZE.expandedTo(main_layout.minimumSize())
+        self.setMinimumSize(floor)
+        if self._restore_geometry():
+            self.resize(self.size().expandedTo(floor))
+        else:
+            self.resize(DEFAULT_SIZE.expandedTo(floor))
 
     def _comms_rows(self) -> list:
         """The radio, TACAN, ICLS and Link 4 editors this base actually has.

@@ -20,7 +20,7 @@ from game import Game
 from game.server import EventStream
 from game.sim.gameupdateevents import GameUpdateEvents
 from game.theater import ControlPoint
-from qt_ui.widgets.cards import HINT, card, carded, make_transparent
+from qt_ui.widgets.cards import HINT, card, carded, make_transparent, shrinkable
 from qt_ui.widgets.controls import KEY, mono
 from qt_ui.windows.airwingconfig.common import CHEAT_BG, CHEAT_BORDER, CHEAT_HEADER
 from qt_ui.windows.GameUpdateSignal import GameUpdateSignal
@@ -63,7 +63,7 @@ class QGroundForcesStrategy(QWidget):
                 f"font-size: 11.5px; color: {HINT}; background: transparent;"
                 " border: none;"
             )
-            column.addWidget(nobody)
+            column.addWidget(shrinkable(nobody))
         for enemy in neighbours:
             column.addLayout(self._row(enemy))
 
