@@ -9,12 +9,9 @@ two numbers that decide the order sit above them and stay there while you scroll
 
 from typing import Optional
 
-from PySide6.QtCore import Qt
 from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (
-    QHBoxLayout,
     QLabel,
-    QScrollArea,
     QVBoxLayout,
     QWidget,
 )
@@ -24,55 +21,31 @@ from game.squadrons import Squadron
 from game.theater import ControlPoint, ParkingType
 from qt_ui.models import GameModel, SquadronModel
 from qt_ui.uiconstants import AIRCRAFT_ICONS
-from qt_ui.widgets.cards import CAPTION, CARD_BG, CARD_BORDER, card, make_transparent
+from qt_ui.widgets.cards import CAPTION, card, make_transparent
 from qt_ui.widgets.squadrondelegate import chip_colours, split_aircraft_name
 from qt_ui.windows.basemenu.buylist import (
     ICON_WIDTH,
     PRESENT_WIDTH,
     PRICE_WIDTH,
+    STEPPER_WIDTH,
+    Column,
+    ColumnHeaders,
     Figure,
     OrderSummary,
+    scrolling,
 )
+
+#: The four headings, at the widths the rows lay themselves out to.
+COLUMNS = [
+    Column("Squadron", "squadron"),
+    Column("Present", "present", PRESENT_WIDTH, descending_first=True),
+    Column("Price", "price", PRICE_WIDTH, descending_first=True),
+    Column("Order", "order", STEPPER_WIDTH, descending_first=True),
+]
 from qt_ui.windows.basemenu.UnitTransactionFrame import RowCounts, UnitTransactionFrame
 
 #: Every kind of parking, because the list holds every kind of squadron.
 EVERY_PARKING = ParkingType(fixed_wing=True, fixed_wing_stol=True, rotary_wing=True)
-
-
-def _column_headers() -> QWidget:
-    """The four words above the rows, at the widths the rows lay themselves out to."""
-
-    def header(text: str, width: Optional[int] = None) -> QLabel:
-        label = QLabel(text.upper())
-        label.setStyleSheet(
-            "font-size: 10px; font-weight: bold; letter-spacing: 1px;"
-            f" color: {CAPTION}; background: transparent; border: none;"
-        )
-        if width is not None:
-            label.setFixedWidth(width)
-        return label
-
-    line = QHBoxLayout()
-    line.setContentsMargins(14, 0, 14, 0)
-    line.setSpacing(10)
-    spacer = QLabel()
-    spacer.setFixedWidth(ICON_WIDTH)
-    line.addWidget(spacer)
-    line.addWidget(header("Squadron"), 1)
-    line.addWidget(header("Present", PRESENT_WIDTH))
-    line.addWidget(header("Price", PRICE_WIDTH))
-    line.addWidget(header("Order"))
-
-    row = QWidget()
-    row.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
-    row.setObjectName("buyListHeaders")
-    row.setFixedHeight(22)
-    row.setStyleSheet(
-        f"#buyListHeaders {{ background: {CARD_BG}; border: none;"
-        f" border-bottom: 1px solid {CARD_BORDER}; }}"
-    )
-    row.setLayout(line)
-    return row
 
 
 class QAircraftRecruitmentMenu(UnitTransactionFrame[Squadron]):
@@ -85,30 +58,26 @@ class QAircraftRecruitmentMenu(UnitTransactionFrame[Squadron]):
             "After this order", self.order_figures, self.clear_order
         )
 
-        rows = QVBoxLayout()
-        rows.setContentsMargins(0, 0, 0, 0)
-        rows.setSpacing(0)
-        for squadron in sorted(
-            cp.squadrons, key=lambda s: (s.aircraft.display_name, s.name)
-        ):
-            rows.addWidget(self.add_styled_row(squadron))
-        rows.addStretch()
+        self.headers = ColumnHeaders(
+            COLUMNS, left_margin=14 + ICON_WIDTH + 10, current="squadron"
+        )
+        self.headers.sort_changed.connect(lambda _key: self.rebuild())
+
+        self._rows = QVBoxLayout()
+        self._rows.setContentsMargins(0, 0, 0, 0)
+        self._rows.setSpacing(0)
 
         scroll_content = QWidget()
         make_transparent(scroll_content)
-        scroll_content.setLayout(rows)
+        scroll_content.setLayout(self._rows)
 
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setWidget(scroll_content)
-        scroll.setFrameShape(QScrollArea.Shape.NoFrame)
-        scroll.setStyleSheet("background: transparent; border: none;")
+        scroll = scrolling(scroll_content)
 
         inside = QVBoxLayout()
         inside.setContentsMargins(0, 0, 0, 0)
         inside.setSpacing(0)
         inside.addWidget(self.order_summary)
-        inside.addWidget(_column_headers())
+        inside.addWidget(self.headers)
         inside.addWidget(scroll, 1)
 
         holder = card()
@@ -140,6 +109,37 @@ class QAircraftRecruitmentMenu(UnitTransactionFrame[Squadron]):
             main_layout.addWidget(arriving)
 
         self.setLayout(main_layout)
+        self.rebuild()
+
+    # -- the order of the list -----------------------------------------------
+
+    def sorted_squadrons(self) -> list[Squadron]:
+        key = self.headers.current
+        if key == "present":
+            order = lambda s: (s.owned_aircraft, s.aircraft.display_name)  # noqa: E731
+        elif key == "price":
+            order = lambda s: (self.price_of(s), s.aircraft.display_name)  # noqa: E731
+        elif key == "order":
+            order = lambda s: (
+                s.pending_deliveries,
+                s.aircraft.display_name,
+            )  # noqa: E731
+        else:
+            order = lambda s: (s.aircraft.display_name, s.name)  # noqa: E731
+        return sorted(self.cp.squadrons, key=order, reverse=not self.headers.ascending)
+
+    def rebuild(self) -> None:
+        while self._rows.count():
+            taken = self._rows.takeAt(0)
+            widget = taken.widget()
+            if widget is not None:
+                widget.deleteLater()
+        self.styled_rows.clear()
+        self.purchase_groups.clear()
+
+        for squadron in self.sorted_squadrons():
+            self._rows.addWidget(self.add_styled_row(squadron))
+        self._rows.addStretch()
 
     # -- what the rows say ---------------------------------------------------
 

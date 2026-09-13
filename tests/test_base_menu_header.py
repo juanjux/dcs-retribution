@@ -3,6 +3,11 @@
 The window used to state neither: the kind was inferred from which tabs turned up,
 the owner from the colours, and the runway state was the tail of a paragraph of rich
 text that also held the aircraft and the ground units.
+
+The pills say what is *not* there as well as what is. A base with no ammunition and no
+factory looked exactly like a base whose ammunition and factory the window had
+forgotten to mention, and the difference matters: one is a base you can still frag a
+strike from, the other is one you cannot reinforce.
 """
 
 from __future__ import annotations
@@ -27,73 +32,156 @@ def qt_app() -> Any:
 
 def _cp(
     runway: Any = None,
-    depots: tuple[int, int] | None = None,
+    depots: tuple[int, int] = (0, 0),
     factory: bool = False,
+    has_runway: bool = True,
+    helipads: int = 0,
+    limit: int = 15,
 ) -> Any:
-    objectives = []
-    if depots is not None:
-        alive, total = depots
-        for index in range(total):
-            objectives.append(SimpleNamespace(category="ammo", is_dead=index >= alive))
-    if factory:
-        objectives.append(SimpleNamespace(category="factory", is_dead=False))
+    alive, total = depots
     return SimpleNamespace(
         name="Creech",
         runway_status=runway,
-        connected_objectives=objectives,
+        runway_is_destroyable=has_runway,
         captured=SimpleNamespace(is_blue=True),
+        # The control point publishes these; the header does not re-derive them,
+        # because the game counts warehouses rather than objectives and the two
+        # disagree.
+        active_ammo_depots_count=alive,
+        total_ammo_depots_count=total,
+        has_factory=factory,
+        frontline_unit_count_limit=limit,
+        front_line_capacity_with=lambda count: min(60, 15 + 12 * count),
+        total_aircraft_parking=lambda _parking_type: helipads,
     )
 
 
-def _pills(cp: Any) -> list[str]:
+def _pills(cp: Any) -> list[Any]:
     from qt_ui.windows.basemenu.header import BaseHeader
 
-    header = BaseHeader.__new__(BaseHeader)
+    header = cast(Any, BaseHeader.__new__(BaseHeader))
     header.cp = cp
-    return [pill.text() for pill in BaseHeader.status_pills(header)]
+    return BaseHeader.status_pills(header)
+
+
+def _texts(cp: Any) -> list[str]:
+    return [pill.text() for pill in _pills(cp)]
+
+
+def _tooltip(cp: Any, contains: str) -> str:
+    """A pill's tooltip as a sentence, with the wrapping and escaping undone.
+
+    It is rich text, so it carries <br> wherever the wrapper chose to break and an
+    escaped apostrophe. Asserting on that would be asserting about the wrapping
+    rather than about what the tooltip says.
+    """
+    import html
+    import re
+
+    pill = next(pill for pill in _pills(cp) if contains in pill.text())
+    plain = html.unescape(re.sub("<[^>]+>", " ", pill.toolTip()))
+    return " ".join(plain.split())
+
+
+def _working() -> Any:
+    return SimpleNamespace(damaged=False, repair_turns_remaining=None)
 
 
 def test_a_working_runway_says_so(qt_app: Any) -> None:
-    cp = _cp(runway=SimpleNamespace(damaged=False, repair_turns_remaining=None))
-    assert _pills(cp) == ["Runway operational"]
+    assert _texts(_cp(runway=_working()))[0] == "Runway operational"
 
 
 def test_a_runway_under_repair_says_how_long(qt_app: Any) -> None:
     """The number is the whole point: it decides whether to frag from here next turn."""
     cp = _cp(runway=SimpleNamespace(damaged=True, repair_turns_remaining=2))
-    assert _pills(cp) == ["Runway damaged · repairs in 2"]
+    assert _texts(cp)[0] == "Runway damaged · repairs in 2"
 
 
 def test_a_damaged_runway_nobody_is_fixing_says_only_that(qt_app: Any) -> None:
     cp = _cp(runway=SimpleNamespace(damaged=True, repair_turns_remaining=None))
-    assert _pills(cp) == ["Runway damaged"]
+    assert _texts(cp)[0] == "Runway damaged"
+
+
+def test_a_farp_talks_about_its_helipads_not_about_a_runway(qt_app: Any) -> None:
+    """It reports a runway status because every control point does, but it has none.
+
+    Nothing can crater it and nothing repairs it, so "runway operational" there says
+    nothing -- and invites the player to believe a Hornet could use it.
+    """
+    cp = _cp(runway=_working(), has_runway=False, helipads=8)
+    assert _texts(cp)[0] == "8 helipads"
+
+
+def test_a_farp_with_one_pad_counts_it_in_the_singular(qt_app: Any) -> None:
+    cp = _cp(runway=_working(), has_runway=False, helipads=1)
+    assert _texts(cp)[0] == "1 helipad"
+
+
+def test_a_base_with_nowhere_to_land_says_nothing_about_landing(qt_app: Any) -> None:
+    cp = _cp(runway=_working(), has_runway=False, helipads=0)
+    assert not any("helipad" in text or "Runway" in text for text in _texts(cp))
 
 
 def test_the_ammo_depots_are_a_figure(qt_app: Any) -> None:
-    cp = _cp(
-        runway=SimpleNamespace(damaged=False, repair_turns_remaining=None),
-        depots=(7, 9),
-        factory=True,
-    )
-    assert _pills(cp) == [
+    cp = _cp(runway=_working(), depots=(3, 3), factory=True)
+    assert _texts(cp) == [
         "Runway operational",
-        "Ammo depots 7/9",
+        "Ammo depots 3/3",
         "Factory producing",
     ]
 
 
-def test_a_base_with_no_depots_and_no_factory_says_nothing_about_them(
-    qt_app: Any,
-) -> None:
-    """Only what is there: a FOB with neither should not carry two empty pills."""
-    cp = _cp(runway=SimpleNamespace(damaged=False, repair_turns_remaining=None))
-    assert _pills(cp) == ["Runway operational"]
+def test_a_base_with_no_depots_says_so_rather_than_going_quiet(qt_app: Any) -> None:
+    """Silence read as "the window forgot", which is the one thing it must not say."""
+    assert "No ammo depots" in _texts(_cp(runway=_working()))
+
+
+def test_a_base_with_no_factory_says_so_too(qt_app: Any) -> None:
+    assert "No factory" in _texts(_cp(runway=_working()))
+
+
+def test_depots_partly_down_are_called_low(qt_app: Any) -> None:
+    assert "Ammo depots 1/2 · low" in _texts(_cp(depots=(1, 2)))
+
+
+def test_every_depot_down_is_not_called_low(qt_app: Any) -> None:
+    """None left is not "running short": it is the floor, and it reads as one."""
+    assert "Ammo depots 0/2" in _texts(_cp(depots=(0, 2)))
 
 
 def test_a_dead_factory_is_not_producing(qt_app: Any) -> None:
-    cp = _cp(runway=None)
-    cp.connected_objectives = [SimpleNamespace(category="factory", is_dead=True)]
-    assert _pills(cp) == []
+    """has_factory is false once it is rubble, which is the answer that matters."""
+    cp = _cp(runway=None, factory=False)
+    assert "No factory" in _texts(cp)
+
+
+def test_the_depots_pill_explains_the_limit_it_sets(qt_app: Any) -> None:
+    """The figure means nothing without the arithmetic: each depot is twelve units."""
+    tooltip = _tooltip(_cp(depots=(2, 2), limit=39), "Ammo depots")
+    assert "39 units can be deployed to the front from here" in tooltip
+    assert "12 for each of its 2 live depots" in tooltip
+
+
+def test_a_limit_the_campaign_caps_says_that_rather_than_an_arithmetic_that_is_wrong(
+    qt_app: Any,
+) -> None:
+    """Reciting "15 plus 12 each" against a capped figure quotes a sum that does not
+    equal the number beside it, which reads as a bug in the window."""
+    tooltip = _tooltip(_cp(depots=(5, 5), limit=60), "Ammo depots")
+    assert "the campaign's own ceiling" in tooltip
+    assert "would otherwise supply 75, so another depot would buy nothing" in tooltip
+
+
+def test_a_broken_depot_says_what_repairing_it_would_buy(qt_app: Any) -> None:
+    tooltip = _tooltip(_cp(depots=(1, 2), limit=27), "Ammo depots")
+    assert "Repairing the other 1 would take that to 39" in tooltip
+
+
+def test_the_factory_pill_explains_what_it_is_for(qt_app: Any) -> None:
+    assert "Ground units cannot be bought here" in _tooltip(_cp(), "No factory")
+    assert "Ground units can be bought here" in _tooltip(
+        _cp(factory=True), "Factory producing"
+    )
 
 
 def test_every_kind_of_base_is_named(qt_app: Any) -> None:
